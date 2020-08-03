@@ -95,33 +95,62 @@ function Main(){
   CurrentYear = Get_Param("His Age")+1993
   FIYear = Get_Param("FI Year")
   InflatEst = 1+Get_Param("Inflation (%)")
+  YearCol = 0
+  YearsTillCol = 1
+  TimeCol =2
+  FICol = 3
+  SavingsCol = 4
+  MarginCol = 5
+  CPICol = 6
+  InflationCol = 7
+  HisIncomeCol = 8
+  HerIncomeCol = 9
+  TaxDeferedCol = 10
+  PensionCol = 11
+  HisSSCol = 12
+  HerSSCol = 13
+  TotalIncomeCol = 14
+  TaxCol = 15
+  SpendingCol = 16
+  KidsCol = 17
+  TotalCostsCol =18
+  SaveRateCol = 19
+  ContributeCol = 20
+  StockAlcCol = 21
+  BondAlcCol = 22
+  REAlcCol = 23
+  StockReturnPctCol = 24
+  BondReturnPctCol = 25
+  REReturnPctCol = 26	
+  ReturnPctCol = 27
+  ReturnAmtCol = 28
     
   //Loops through individual years, adding every column, then creating multi-dimensional array with every year
   for(var x=CurrentYear;x<=2090;x++){ 
     var SingleYear =[]
     SingleYear.push(Get_Year(x-CurrentYear));
-    SingleYear.push(Get_YearsTill(SingleYear[0]));//pass through Year
-    SingleYear.push(Get_Time(SingleYear[0]));
-    SingleYear.push(Get_FI(SingleYear[0]));
+    SingleYear.push(Get_YearsTill(SingleYear[YearCol]));//pass through Year
+    SingleYear.push(Get_Time(SingleYear[YearCol]));
+    SingleYear.push(Get_FI(SingleYear[YearCol]));
     SingleYear.push(Get_Savings(SingleYear[2]));
-    SingleYear.push(Get_Margin(SingleYear[2],SingleYear[4]));
+    SingleYear.push(Get_Margin(SingleYear[1],SingleYear[4]));
     SingleYear.push(Get_CPI(SingleYear[1]));//pass through years till
     SingleYear.push(InflatEst);
     SingleYear.push(Get_Income(SingleYear[1],SingleYear[3],Get_Param("His Total Income")));//pass through years till and FI State
     SingleYear.push(Get_Income(SingleYear[1],SingleYear[3],Get_Param("Her Total Income")));
     SingleYear.push(Get_TaxDefered(SingleYear[1],SingleYear[3]));
-    SingleYear.push(Get_Pension(SingleYear[0],SingleYear[1],Get_Param("Early Pension")));//pass through Year and Years till
-    SingleYear.push(Get_HisSS(SingleYear[0],SingleYear[1],Get_Param("Early SS")));
-    SingleYear.push(Get_HerSS(SingleYear[0],SingleYear[1],Get_Param("Early SS")));
+    SingleYear.push(Get_Pension(SingleYear[YearCol],SingleYear[1],Get_Param("Early Pension")));//pass through Year and Years till
+    SingleYear.push(Get_HisSS(SingleYear[YearCol],SingleYear[1],Get_Param("Early SS")));
+    SingleYear.push(Get_HerSS(SingleYear[YearCol],SingleYear[1],Get_Param("Early SS")));
     SingleYear.push(SingleYear[8]+SingleYear[9]+SingleYear[11]+SingleYear[12]+SingleYear[13]);//Total Income = add Incomes to Pension and SSs
     SingleYear.push((SingleYear[8]+SingleYear[9]-SingleYear[10]+0.8*(SingleYear[11]+SingleYear[12]+SingleYear[13]))*Get_Param("Tax (%)"));//Tax = tax on all income minus tax deductable and 80% of pension/SSs
-    SingleYear.push(Get_Spending(SingleYear[1],SingleYear[3],SingleYear[0]));
-    SingleYear.push(Get_Kids(SingleYear[0],SingleYear[16]));
+    SingleYear.push(Get_Spending(SingleYear[1],SingleYear[3],SingleYear[YearCol]));
+    SingleYear.push(Get_Kids(SingleYear[YearCol],SingleYear[16]));
     SingleYear.push(SingleYear[15]+SingleYear[16]+SingleYear[17]);//Total Costs = add Spending+Tax+Kids
     SingleYear.push(Get_SR(SingleYear[14],SingleYear[15],SingleYear[16],SingleYear[18]));
     SingleYear.push(SingleYear[14]-SingleYear[18]); //Contribution = Income-costs
-    var Allocation = Get_Allocation(SingleYear[0]) //pass through FI State
-    SingleYear.push(Allocation[0]); //equity allocation
+    var Allocation = Get_Allocation(SingleYear[YearCol]) //pass through FI State
+    SingleYear.push(Allocation[YearCol]); //equity allocation
     SingleYear.push(Allocation[1]); //bond allocation
     SingleYear.push(Allocation[2]); //RE allocation
     SingleYear.push(Get_StockReturn());
@@ -215,13 +244,18 @@ function Main(){
       return PrevSav+PrevContribution+PrevReturn
     }
   }
-  function Get_Margin(Time,Savings){
-    var MarginRate = Get_Param("Margin")
-    if (Time=="Present") {return Get_Param("Current Net Worth ($)")*MarginRate} 
-    else {
-      var PrevMargin = AllYears[AllYears.length-1][5];
-      return Math.max(PrevMargin,Savings*MarginRate)
-    }
+  function Get_Margin(YearsTill,Savings){
+    var RERatio = Get_Param("RE Ratio")
+    var EquityTarget = Get_Param("Equity Target") 
+    var rate = Get_Param("Inflation (%)")
+    var MaxRiskFactor = Get_Param("Max Risk Factor")
+    
+    var nper = FIYear-CurrentYear-YearsTill 
+    var EquityTargetPV = EquityTarget / Math.pow(1 + rate, nper); 
+    var RiskFactor = Math.min(Math.max(EquityTargetPV/Savings,0),MaxRiskFactor)
+    var REAlloc = (RiskFactor*RERatio)/((1-RERatio)*(1+RiskFactor*RERatio/(1-RERatio))) //derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
+    var EquityAlloc = (1-REAlloc)*RiskFactor
+    return Math.max(0,(REAlloc+EquityAlloc-1)*Savings)
   }
   function Get_CPI(YearsTill){
     var Current = Get_Param("Current CPI")
