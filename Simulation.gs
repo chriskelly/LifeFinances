@@ -149,14 +149,14 @@ function Main(){
     SingleYear.push(SingleYear[TaxCol]+SingleYear[SpendingCol]+SingleYear[KidsCol]);//Total Costs = add Spending+Tax+Kids
     SingleYear.push(Get_SR(SingleYear[TotalIncomeCol],SingleYear[TaxCol],SingleYear[SpendingCol],SingleYear[TotalCostsCol]));
     SingleYear.push(SingleYear[TotalIncomeCol]-SingleYear[TotalCostsCol]); //Contribution = Income-costs
-    var Allocation = Get_Allocation(SingleYear[YearCol]) //pass through FI State
+    var Allocation = Get_Allocation(SingleYear[YearsTillCol],SingleYear[SavingsCol]) 
     SingleYear.push(Allocation[0]); //equity allocation
-    SingleYear.push(Allocation[2]); //RE allocation
-    SingleYear.push(Allocation[1]); //bond allocation
-    SingleYear.push(Get_Margin(SingleYear[YearsTillCol],SingleYear[SavingsCol]));
-    SingleYear.push(Get_StockReturn());
-    SingleYear.push(Get_REReturn());
-    SingleYear.push(Get_BondReturn());
+    SingleYear.push(Allocation[1]); //RE allocation
+    SingleYear.push(Allocation[2]); //bond allocation 
+    SingleYear.push(Math.max(0,(SingleYear[REAlcCol]+SingleYear[StockAlcCol]-1)*SingleYear[SavingsCol])); //Calculat Margin based on allocations
+    SingleYear.push(Get_Param("Equity Return (%)"));
+    SingleYear.push(Get_Param("RE Return (%)"));
+    SingleYear.push(Get_Param("Bond Return (%)"));
     SingleYear.push(SingleYear[StockAlcCol]*SingleYear[StockReturnPctCol]+SingleYear[BondAlcCol]*SingleYear[BondReturnPctCol]+SingleYear[REAlcCol]*SingleYear[REReturnPctCol]); //Return Rate = allocations x performances
     SingleYear.push(SingleYear[ReturnPctCol]*(SingleYear[SavingsCol]+SingleYear[MarginCol]+0.5*SingleYear[ContributeCol])-SingleYear[MarginCol]*Get_Param("Interest Rate")); //Return($) = returnRate*(Savings+Margin+.5*Contributions)-Margin cost
     AllYears.push(SingleYear)
@@ -175,35 +175,23 @@ function Main(){
   var Savings = Get_Param("Current Net Worth ($)")
   var EndResults =[]
   var lowMargin = 0
-  var oldSuccess = 0
-  var newSuccess = 0
   //loop through each row of generated returns, then each column for an additional trial
-  //everything "old" is just a test to see if you would have been better off not using margin. Safe to remove
   for(var col=0;col<trials;col++){
     var tempSavings = Savings
-    var oldSavings = Savings
-    var tempMargin = Savings*Get_Param("Margin")
     for(var row=0;row<70;row++){
       var stockRate=stockReturns[row][col]
       var bondRate=bondReturns[row][col]
       var RERate=REReturns[row][col]
-      var ReturnRate = stockRate*AllYears[row][StockAlcCol]+bondRate*AllYears[row][BondAlcCol]+RERate*AllYears[row][REAlcCol];
-      //var Return = ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol]+tempMargin)-tempMargin*(Get_Param("Interest Rate"))
-      var Return = TEST3_Get_Return(row,stockRate,bondRate,tempSavings,ContributeCol,RERate);
-      var oldReturn = ReturnRate*(oldSavings+0.5*AllYears[row][ContributeCol])
-      tempSavings = tempSavings + Return+AllYears[row][ContributeCol];
-      oldSavings = oldSavings + oldReturn+AllYears[row][ContributeCol];
-      tempMargin = Math.max(tempMargin,tempSavings*Get_Param("Margin"));
+      var Allocs = Get_Allocation(row,tempSavings)
+      var ReturnRate = stockRate*Allocs[0]+RERate*Allocs[1]+bondRate*Allocs[2]
+      var Return = ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol])-tempSavings*Math.max(Allocs[0]-1,0)*(Get_Param("Interest Rate")) //return rate x (savings + 1/2 contributions) - interest on margin
+      tempSavings = tempSavings + Return + AllYears[row][ContributeCol];
     }
     EndResults.push(tempSavings)
     if(tempSavings>0){success=success+1}
-    if(tempSavings>0 && oldSavings<0){newSuccess=newSuccess+1}
-    if(tempSavings<0 && oldSavings>0){oldSuccess=oldSuccess+1}
     if(tempSavings>best){best=tempSavings}
     if(tempSavings<worst){worst=tempSavings}
   }
-  //Logger.log(newSuccess)
-  //Logger.log(oldSuccess)
   var Results = []
   var successRate = [success/trials]
   Results.push(successRate)
@@ -240,19 +228,6 @@ function Main(){
       var PrevReturn = AllYears[AllYears.length-1][ReturnAmtCol]
       return PrevSav+PrevContribution+PrevReturn
     }
-  }
-  function Get_Margin(YearsTill,Savings){
-    var RERatio = Get_Param("RE Ratio")
-    var EquityTarget = Get_Param("Equity Target") 
-    var rate = Get_Param("Inflation (%)")
-    var MaxRiskFactor = Get_Param("Max Risk Factor")
-    
-    var nper = FIYear-CurrentYear-YearsTill 
-    var EquityTargetPV = EquityTarget / Math.pow(1 + rate, nper); 
-    var RiskFactor = Math.min(Math.max(EquityTargetPV/Savings,0),MaxRiskFactor)
-    var REAlloc = (RiskFactor*RERatio)/((1-RERatio)*(1+RiskFactor*RERatio/(1-RERatio))) //derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
-    var EquityAlloc = (1-REAlloc)*RiskFactor
-    return Math.max(0,(REAlloc+EquityAlloc-1)*Savings)
   }
   function Get_CPI(YearsTill){
     var Current = Get_Param("Current CPI")
@@ -326,25 +301,21 @@ function Main(){
     if (TotalIncome<Spending) {return 0} 
     else {return 1-(TotalCosts-Tax)/(TotalIncome-Tax)}
   }
-  function Get_Allocation(Year){
-    var Allocation=[];
-    if(Year>=FIYear+Get_Param("Years postFI Alc Switch")){
-      Allocation[0] = Get_Param("Equity FI Proportion")
-      Allocation[1] = Get_Param("Bond FI Proportion")
-      Allocation[2] = Get_Param("RE FI Proportion")
-    }
-    else{
-      Allocation[0] = Get_Param("Equity Proportion")
-      Allocation[1] = Get_Param("Bond Proportion")
-      Allocation[2] = Get_Param("RE Proportion")
-    }
-    return Allocation
+  function Get_Allocation(YearsTill,Savings){
+    var RERatio = Get_Param("RE Ratio")
+    var EquityTarget = Get_Param("Equity Target") 
+    var LifecycleTarget = Get_Param("Lifecycle Target") 
+    var rate = Get_Param("Inflation (%)")
+    var MaxRiskFactor = Get_Param("Max Risk Factor")
+    
+    var nper = FIYear-CurrentYear-YearsTill 
+    var EquityTargetPV = EquityTarget / Math.pow(1 + rate, nper); 
+    var RiskFactor = Math.min(Math.max(EquityTargetPV/Savings,0),MaxRiskFactor)
+    var REAlloc = (RiskFactor*RERatio)/((1-RERatio)*(1+RiskFactor*RERatio/(1-RERatio))) //derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
+    var EquityAlloc = (1-REAlloc)*RiskFactor
+    var BondAlloc = Math.max(1-REAlloc-EquityAlloc,0) 
+    return [EquityAlloc,REAlloc,BondAlloc]
   }
-  function Get_StockReturn(){return Get_Param("Equity Return (%)")}
-  
-  function Get_BondReturn(){return Get_Param("Bond Return (%)")}
-  
-  function Get_REReturn(){return Get_Param("RE Return (%)")}
   
   //-------------------------------------------------------------------------------------------------------------------------------------------------
   //Get rid of empty spaces in multi-dimensional array (can't use array.filter)
@@ -407,74 +378,6 @@ function Main(){
     }
     Dashboard_Sheet.getRange(15,3).setValue(Progress)
     SpreadsheetApp.flush(); //forces refresh so you can see bar
-  }
-
-
-    //-----------------TESTS-----------------//
-
-  function TEST_Get_Return(row,stockRate,bondRate,tempSavings,ContributeCol,RERate){
-    var LifecycleTarget = Get_Param("Lifecycle Target") 
-    var EquityTarget = Get_Param("Equity Target") 
-    var rate = Get_Param("Inflation (%)")
-    
-    //var SavingsTarget = AllYears[FIYear-CurrentYear][SavingsCol] 
-    var nper = FIYear-CurrentYear-row 
-    //var SavingsTargetPV = SavingsTarget / Math.pow(1 + rate, nper); 
-    //var EquityTarget = SavingsTargetPV*LifecycleTarget 
-    var EquityTargetPV = EquityTarget / Math.pow(1 + rate, nper); 
-    //var EquityAlloc = Math.max(LifecycleTarget,Math.min(EquityTargetPV/tempSavings,2)) //original interpretation of Lifecycle investing, but provides significantly worse results
-    var EquityAlloc = Math.min(Math.max(EquityTargetPV/tempSavings,0),2)
-    var BondAlloc = Math.max(1-EquityAlloc,0) 
-    var ReturnRate = stockRate*EquityAlloc+bondRate*BondAlloc 
-    
-    //if(row==0){Logger.log(EquityTarget)}
-    //if(EquityAlloc<2){Logger.log(row+", "+stockRate+", "+EquityAlloc+", "+tempSavings)}
-    //Logger.log(row+", "+EquityAlloc+", "+tempSavings)
-  
-    return ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol])-tempSavings*Math.max(EquityAlloc-1,0)*(Get_Param("Interest Rate")) 
-  }
-  
-  function TEST2_Get_Return(row,stockRate,bondRate,tempSavings,ContributeCol,RERate){
-    var StartEquity = Get_Param("Start Equity")
-    var WorkEndEquity = Get_Param("Work End Equity")
-    var RetireStartEquity = Get_Param("Retire Start Equity")
-    var EndEquity = Get_Param("End Equity")
-    
-    var TimeBeforeFI = FIYear-CurrentYear
-    var TimeAfterFI = 70-TimeBeforeFI
-    var YearsSinceFI = row-TimeBeforeFI
-    
-    if(YearsSinceFI<0){
-      var YearsTilFI = -YearsSinceFI
-      var EquityAlloc = (StartEquity-WorkEndEquity)/TimeBeforeFI*YearsTilFI+WorkEndEquity
-    } else{
-      var EquityAlloc = (EndEquity-RetireStartEquity)/TimeAfterFI*YearsSinceFI+RetireStartEquity
-    }
-    var BondAlloc = Math.max(1-EquityAlloc,0) 
-    var ReturnRate = stockRate*EquityAlloc+bondRate*BondAlloc 
-            
-    return ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol])-tempSavings*Math.max(EquityAlloc-1,0)*(Get_Param("Interest Rate")) 
-  }
-  
-  function TEST3_Get_Return(row,stockRate,bondRate,tempSavings,ContributeCol,RERate){
-    var RERatio = Get_Param("RE Ratio")
-    var EquityTarget = Get_Param("Equity Target") 
-    var LifecycleTarget = Get_Param("Lifecycle Target") 
-    var rate = Get_Param("Inflation (%)")
-    var MaxRiskFactor = Get_Param("Max Risk Factor")
-    
-    var nper = FIYear-CurrentYear-row 
-    var EquityTargetPV = EquityTarget / Math.pow(1 + rate, nper); 
-    var RiskFactor = Math.min(Math.max(EquityTargetPV/tempSavings,0),MaxRiskFactor)
-    var REAlloc = (RiskFactor*RERatio)/((1-RERatio)*(1+RiskFactor*RERatio/(1-RERatio))) //derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
-    var EquityAlloc = (1-REAlloc)*RiskFactor
-    var BondAlloc = Math.max(1-REAlloc-EquityAlloc,0) 
-    var ReturnRate = stockRate*EquityAlloc+bondRate*BondAlloc+RERate*REAlloc
-    //if(row==0){Logger.log(EquityTarget)}
-    //if(EquityAlloc<2){Logger.log(row+", "+stockRate+", "+EquityAlloc+", "+tempSavings)}
-    //Logger.log(row+", "+REAlloc+", "+EquityAlloc+", "+BondAlloc+", "+tempSavings)
-  
-    return ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol])-tempSavings*Math.max(EquityAlloc-1,0)*(Get_Param("Interest Rate")) 
   }
 }
 
