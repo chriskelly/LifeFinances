@@ -47,28 +47,7 @@ function Main(){
       }
     TrialArr.push(ParamArr)
   }
-  //Create custom TrialArr. Current design is trying out different Allocation combos. Try to limit to 100 total iter (~set#^options)
-//  var CustomTrialArr = []
-//  var ParamSet1 = ["Equity FI Proportion",0,.2,.4,.6,.8,1];
-//  var ParamSet2 = ["Bond FI Proportion",0,.2,.4,.6,.8,1];
-//  var ParamSet3 = ["RE FI Proportion",0,.2,.4,.6,.8,1];
-//  var CustomTrialName =[]
-//  for(var a =1; a<ParamSet1.length; a++){
-//    for(var b =1; b<ParamSet2.length; b++){
-//      for(var c =1; c<ParamSet3.length; c++){
-//        if(ParamSet1[a]+ParamSet2[b]+ParamSet3[c]==1){ //confirm it's a valid combination
-//          var tempTrial = [[ParamSet1[0],ParamSet1[a]],[ParamSet2[0],ParamSet2[b]],[ParamSet3[0],ParamSet3[c]]]
-//          CustomTrialArr.push(tempTrial);
-//          CustomTrialName.push([[tempTrial[0].join("-"),tempTrial[1].join("-"),tempTrial[2].join("-")].join(", ")])
-//        }
-//      }
-//    }
-//  }
-//  Logger.log(CustomTrialArr.length); //do this sanity check first before trying to setValues
-//  TrialArr=CustomTrialArr;
-//  Param_Sheet.getRange(3,21,CustomTrialName.length).setValues(CustomTrialName);
-  
-  
+
   //Replace AllParams parameters with Trial parameters
   var multiResults =[] //intialize outside of function to prevent reset during loop
   for(var e=0; e<TrialArr.length; e++){
@@ -174,7 +153,6 @@ function Main(){
   var best = 0
   var Savings = Get_Param("Current Net Worth ($)")
   var EndResults =[]
-  var lowMargin = 0
   //loop through each row of generated returns, then each column for an additional trial
   for(var col=0;col<trials;col++){
     var tempSavings = Savings
@@ -304,7 +282,6 @@ function Main(){
   function Get_Allocation(YearsTill,Savings){
     var RERatio = Get_Param("RE Ratio")
     var EquityTarget = Get_Param("Equity Target") 
-    var LifecycleTarget = Get_Param("Lifecycle Target") 
     var rate = Get_Param("Inflation (%)")
     var MaxRiskFactor = Get_Param("Max Risk Factor")
     
