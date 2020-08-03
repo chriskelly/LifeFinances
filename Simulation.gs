@@ -91,6 +91,7 @@ function Main(){
   function fillAllYearsArray(fill){ //giant array creation that will fill the Simulate sheet
       
   //Set variables needed multiple times
+  //Even if Col # changed here, order to array push needs to also be changed!
   AllYears = []
   CurrentYear = Get_Param("His Age")+1993
   FIYear = Get_Param("FI Year")
@@ -100,28 +101,28 @@ function Main(){
   TimeCol =2
   FICol = 3
   SavingsCol = 4
-  MarginCol = 5
-  CPICol = 6
-  InflationCol = 7
-  HisIncomeCol = 8
-  HerIncomeCol = 9
-  TaxDeferedCol = 10
-  PensionCol = 11
-  HisSSCol = 12
-  HerSSCol = 13
-  TotalIncomeCol = 14
-  TaxCol = 15
-  SpendingCol = 16
-  KidsCol = 17
-  TotalCostsCol =18
-  SaveRateCol = 19
-  ContributeCol = 20
-  StockAlcCol = 21
+  CPICol = 5
+  InflationCol = 6
+  HisIncomeCol = 7
+  HerIncomeCol = 8
+  TaxDeferedCol = 9
+  PensionCol = 10
+  HisSSCol = 11
+  HerSSCol = 12
+  TotalIncomeCol = 13
+  TaxCol = 14
+  SpendingCol = 15
+  KidsCol = 16
+  TotalCostsCol =17
+  SaveRateCol = 18
+  ContributeCol = 19
+  StockAlcCol = 20
+  REAlcCol = 21
   BondAlcCol = 22
-  REAlcCol = 23
+  MarginCol = 23
   StockReturnPctCol = 24
-  BondReturnPctCol = 25
-  REReturnPctCol = 26	
+  REReturnPctCol = 25	
+  BondReturnPctCol = 26
   ReturnPctCol = 27
   ReturnAmtCol = 28
     
@@ -132,32 +133,32 @@ function Main(){
     SingleYear.push(Get_YearsTill(SingleYear[YearCol]));//pass through Year
     SingleYear.push(Get_Time(SingleYear[YearCol]));
     SingleYear.push(Get_FI(SingleYear[YearCol]));
-    SingleYear.push(Get_Savings(SingleYear[2]));
-    SingleYear.push(Get_Margin(SingleYear[1],SingleYear[4]));
-    SingleYear.push(Get_CPI(SingleYear[1]));//pass through years till
+    SingleYear.push(Get_Savings(SingleYear[TimeCol]));
+    SingleYear.push(Get_CPI(SingleYear[YearsTillCol]));//pass through years till
     SingleYear.push(InflatEst);
-    SingleYear.push(Get_Income(SingleYear[1],SingleYear[3],Get_Param("His Total Income")));//pass through years till and FI State
-    SingleYear.push(Get_Income(SingleYear[1],SingleYear[3],Get_Param("Her Total Income")));
-    SingleYear.push(Get_TaxDefered(SingleYear[1],SingleYear[3]));
-    SingleYear.push(Get_Pension(SingleYear[YearCol],SingleYear[1],Get_Param("Early Pension")));//pass through Year and Years till
-    SingleYear.push(Get_HisSS(SingleYear[YearCol],SingleYear[1],Get_Param("Early SS")));
-    SingleYear.push(Get_HerSS(SingleYear[YearCol],SingleYear[1],Get_Param("Early SS")));
-    SingleYear.push(SingleYear[8]+SingleYear[9]+SingleYear[11]+SingleYear[12]+SingleYear[13]);//Total Income = add Incomes to Pension and SSs
-    SingleYear.push((SingleYear[8]+SingleYear[9]-SingleYear[10]+0.8*(SingleYear[11]+SingleYear[12]+SingleYear[13]))*Get_Param("Tax (%)"));//Tax = tax on all income minus tax deductable and 80% of pension/SSs
-    SingleYear.push(Get_Spending(SingleYear[1],SingleYear[3],SingleYear[YearCol]));
-    SingleYear.push(Get_Kids(SingleYear[YearCol],SingleYear[16]));
-    SingleYear.push(SingleYear[15]+SingleYear[16]+SingleYear[17]);//Total Costs = add Spending+Tax+Kids
-    SingleYear.push(Get_SR(SingleYear[14],SingleYear[15],SingleYear[16],SingleYear[18]));
-    SingleYear.push(SingleYear[14]-SingleYear[18]); //Contribution = Income-costs
+    SingleYear.push(Get_Income(SingleYear[YearsTillCol],SingleYear[FICol],Get_Param("His Total Income")));//pass through years till and FI State
+    SingleYear.push(Get_Income(SingleYear[YearsTillCol],SingleYear[FICol],Get_Param("Her Total Income")));
+    SingleYear.push(Get_TaxDefered(SingleYear[YearsTillCol],SingleYear[FICol]));
+    SingleYear.push(Get_Pension(SingleYear[YearCol],SingleYear[YearsTillCol],Get_Param("Early Pension")));//pass through Year and Years till
+    SingleYear.push(Get_HisSS(SingleYear[YearCol],SingleYear[YearsTillCol],Get_Param("Early SS")));
+    SingleYear.push(Get_HerSS(SingleYear[YearCol],SingleYear[YearsTillCol],Get_Param("Early SS")));
+    SingleYear.push(SingleYear[HisIncomeCol]+SingleYear[HerIncomeCol]+SingleYear[PensionCol]+SingleYear[HisSSCol]+SingleYear[HerSSCol]);//Total Income = add Incomes to Pension and SSs
+    SingleYear.push((SingleYear[HisIncomeCol]+SingleYear[HerIncomeCol]-SingleYear[TaxDeferedCol]+0.8*(SingleYear[PensionCol]+SingleYear[HisSSCol]+SingleYear[HerSSCol]))*Get_Param("Tax (%)"));//Tax = tax on all income minus tax deductable and 80% of pension/SSs
+    SingleYear.push(Get_Spending(SingleYear[YearsTillCol],SingleYear[FICol],SingleYear[YearCol]));
+    SingleYear.push(Get_Kids(SingleYear[YearCol],SingleYear[SpendingCol]));
+    SingleYear.push(SingleYear[TaxCol]+SingleYear[SpendingCol]+SingleYear[KidsCol]);//Total Costs = add Spending+Tax+Kids
+    SingleYear.push(Get_SR(SingleYear[TotalIncomeCol],SingleYear[TaxCol],SingleYear[SpendingCol],SingleYear[TotalCostsCol]));
+    SingleYear.push(SingleYear[TotalIncomeCol]-SingleYear[TotalCostsCol]); //Contribution = Income-costs
     var Allocation = Get_Allocation(SingleYear[YearCol]) //pass through FI State
-    SingleYear.push(Allocation[YearCol]); //equity allocation
-    SingleYear.push(Allocation[1]); //bond allocation
+    SingleYear.push(Allocation[0]); //equity allocation
     SingleYear.push(Allocation[2]); //RE allocation
+    SingleYear.push(Allocation[1]); //bond allocation
+    SingleYear.push(Get_Margin(SingleYear[YearsTillCol],SingleYear[SavingsCol]));
     SingleYear.push(Get_StockReturn());
-    SingleYear.push(Get_BondReturn());
     SingleYear.push(Get_REReturn());
-    SingleYear.push(SingleYear[21]*SingleYear[24]+SingleYear[22]*SingleYear[25]+SingleYear[23]*SingleYear[26]); //Return Rate = allocations x performances
-    SingleYear.push(SingleYear[27]*(SingleYear[4]+SingleYear[5]+0.5*SingleYear[20])-SingleYear[5]*Get_Param("Interest Rate")); //Return($) = returnRate*(Savings+Margin+.5*Contributions)-Margin cost
+    SingleYear.push(Get_BondReturn());
+    SingleYear.push(SingleYear[StockAlcCol]*SingleYear[StockReturnPctCol]+SingleYear[BondAlcCol]*SingleYear[BondReturnPctCol]+SingleYear[REAlcCol]*SingleYear[REReturnPctCol]); //Return Rate = allocations x performances
+    SingleYear.push(SingleYear[ReturnPctCol]*(SingleYear[SavingsCol]+SingleYear[MarginCol]+0.5*SingleYear[ContributeCol])-SingleYear[MarginCol]*Get_Param("Interest Rate")); //Return($) = returnRate*(Savings+Margin+.5*Contributions)-Margin cost
     AllYears.push(SingleYear)
   }
     if(fill){Sim_Sheet.getRange(2,1,AllYears.length,AllYears[0].length).setValues(AllYears);}
@@ -168,10 +169,6 @@ function Main(){
   //cycle through columns of random returns for a monte carlo simulation
   //To save time, only doing calculations on columns that are affected by the return rate
   //in each loop, start with initial Savings (net worth), bring in next return rates, calculate new return (need contribution amount), calculate next savings
-  var ContributionCol = 20;
-  var StockAlcCol = 21;
-  var BondAlcCol = 22;
-  var REAlcCol = 23;
   var success = 0;
   var worst = 0;
   var best = 0
@@ -191,11 +188,11 @@ function Main(){
       var bondRate=bondReturns[row][col]
       var RERate=REReturns[row][col]
       var ReturnRate = stockRate*AllYears[row][StockAlcCol]+bondRate*AllYears[row][BondAlcCol]+RERate*AllYears[row][REAlcCol];
-      //var Return = ReturnRate*(tempSavings+0.5*AllYears[row][ContributionCol]+tempMargin)-tempMargin*(Get_Param("Interest Rate"))
-      var Return = TEST3_Get_Return(row,stockRate,bondRate,tempSavings,ContributionCol,RERate);
-      var oldReturn = ReturnRate*(oldSavings+0.5*AllYears[row][ContributionCol])
-      tempSavings = tempSavings + Return+AllYears[row][ContributionCol];
-      oldSavings = oldSavings + oldReturn+AllYears[row][ContributionCol];
+      //var Return = ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol]+tempMargin)-tempMargin*(Get_Param("Interest Rate"))
+      var Return = TEST3_Get_Return(row,stockRate,bondRate,tempSavings,ContributeCol,RERate);
+      var oldReturn = ReturnRate*(oldSavings+0.5*AllYears[row][ContributeCol])
+      tempSavings = tempSavings + Return+AllYears[row][ContributeCol];
+      oldSavings = oldSavings + oldReturn+AllYears[row][ContributeCol];
       tempMargin = Math.max(tempMargin,tempSavings*Get_Param("Margin"));
     }
     EndResults.push(tempSavings)
@@ -238,9 +235,9 @@ function Main(){
   function Get_Savings(Time){
     if (Time=="Present") {return Get_Param("Current Net Worth ($)")} 
     else {
-      var PrevSav = AllYears[AllYears.length-1][4];
-      var PrevContribution = AllYears[AllYears.length-1][20]
-      var PrevReturn = AllYears[AllYears.length-1][28]
+      var PrevSav = AllYears[AllYears.length-1][SavingsCol];
+      var PrevContribution = AllYears[AllYears.length-1][ContributeCol]
+      var PrevReturn = AllYears[AllYears.length-1][ReturnAmtCol]
       return PrevSav+PrevContribution+PrevReturn
     }
   }
@@ -415,12 +412,12 @@ function Main(){
 
     //-----------------TESTS-----------------//
 
-  function TEST_Get_Return(row,stockRate,bondRate,tempSavings,ContributionCol,RERate){
+  function TEST_Get_Return(row,stockRate,bondRate,tempSavings,ContributeCol,RERate){
     var LifecycleTarget = Get_Param("Lifecycle Target") 
     var EquityTarget = Get_Param("Equity Target") 
     var rate = Get_Param("Inflation (%)")
     
-    //var SavingsTarget = AllYears[FIYear-CurrentYear][4] 
+    //var SavingsTarget = AllYears[FIYear-CurrentYear][SavingsCol] 
     var nper = FIYear-CurrentYear-row 
     //var SavingsTargetPV = SavingsTarget / Math.pow(1 + rate, nper); 
     //var EquityTarget = SavingsTargetPV*LifecycleTarget 
@@ -434,10 +431,10 @@ function Main(){
     //if(EquityAlloc<2){Logger.log(row+", "+stockRate+", "+EquityAlloc+", "+tempSavings)}
     //Logger.log(row+", "+EquityAlloc+", "+tempSavings)
   
-    return ReturnRate*(tempSavings+0.5*AllYears[row][ContributionCol])-tempSavings*Math.max(EquityAlloc-1,0)*(Get_Param("Interest Rate")) 
+    return ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol])-tempSavings*Math.max(EquityAlloc-1,0)*(Get_Param("Interest Rate")) 
   }
   
-  function TEST2_Get_Return(row,stockRate,bondRate,tempSavings,ContributionCol,RERate){
+  function TEST2_Get_Return(row,stockRate,bondRate,tempSavings,ContributeCol,RERate){
     var StartEquity = Get_Param("Start Equity")
     var WorkEndEquity = Get_Param("Work End Equity")
     var RetireStartEquity = Get_Param("Retire Start Equity")
@@ -456,10 +453,10 @@ function Main(){
     var BondAlloc = Math.max(1-EquityAlloc,0) 
     var ReturnRate = stockRate*EquityAlloc+bondRate*BondAlloc 
             
-    return ReturnRate*(tempSavings+0.5*AllYears[row][ContributionCol])-tempSavings*Math.max(EquityAlloc-1,0)*(Get_Param("Interest Rate")) 
+    return ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol])-tempSavings*Math.max(EquityAlloc-1,0)*(Get_Param("Interest Rate")) 
   }
   
-  function TEST3_Get_Return(row,stockRate,bondRate,tempSavings,ContributionCol,RERate){
+  function TEST3_Get_Return(row,stockRate,bondRate,tempSavings,ContributeCol,RERate){
     var RERatio = Get_Param("RE Ratio")
     var EquityTarget = Get_Param("Equity Target") 
     var LifecycleTarget = Get_Param("Lifecycle Target") 
@@ -477,7 +474,7 @@ function Main(){
     //if(EquityAlloc<2){Logger.log(row+", "+stockRate+", "+EquityAlloc+", "+tempSavings)}
     //Logger.log(row+", "+REAlloc+", "+EquityAlloc+", "+BondAlloc+", "+tempSavings)
   
-    return ReturnRate*(tempSavings+0.5*AllYears[row][ContributionCol])-tempSavings*Math.max(EquityAlloc-1,0)*(Get_Param("Interest Rate")) 
+    return ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol])-tempSavings*Math.max(EquityAlloc-1,0)*(Get_Param("Interest Rate")) 
   }
 }
 
