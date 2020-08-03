@@ -137,7 +137,7 @@ function Main(){
     SingleYear.push(Get_Param("RE Return (%)"));
     SingleYear.push(Get_Param("Bond Return (%)"));
     SingleYear.push(SingleYear[StockAlcCol]*SingleYear[StockReturnPctCol]+SingleYear[BondAlcCol]*SingleYear[BondReturnPctCol]+SingleYear[REAlcCol]*SingleYear[REReturnPctCol]); //Return Rate = allocations x performances
-    SingleYear.push(SingleYear[ReturnPctCol]*(SingleYear[SavingsCol]+SingleYear[MarginCol]+0.5*SingleYear[ContributeCol])-SingleYear[MarginCol]*Get_Param("Interest Rate")); //Return($) = returnRate*(Savings+Margin+.5*Contributions)-Margin cost
+    SingleYear.push(SingleYear[ReturnPctCol]*(SingleYear[SavingsCol]+SingleYear[MarginCol]+0.5*SingleYear[ContributeCol])-SingleYear[MarginCol]*Get_Param("Margin Interest Rate")); //Return($) = returnRate*(Savings+Margin+.5*Contributions)-Margin cost
     AllYears.push(SingleYear)
   }
     if(fill){Sim_Sheet.getRange(2,1,AllYears.length,AllYears[0].length).setValues(AllYears);}
@@ -162,8 +162,9 @@ function Main(){
       var RERate=REReturns[row][col]
       var Allocs = Get_Allocation(row,tempSavings)
       var ReturnRate = stockRate*Allocs[0]+RERate*Allocs[1]+bondRate*Allocs[2]
-      var Return = ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol])-tempSavings*Math.max(Allocs[0]-1,0)*(Get_Param("Interest Rate")) //return rate x (savings + 1/2 contributions) - interest on margin
+      var Return = ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol])-tempSavings*Math.max(Allocs[0]-1,0)*(Get_Param("Margin Interest Rate")) //return rate x (savings + 1/2 contributions) - interest on margin
       tempSavings = tempSavings + Return + AllYears[row][ContributeCol];
+      if(tempSavings<0){tempSavings = -1000000;} //lazy way to make sure if it goes below 0 once, it stays below 0 and doesn't go back up due to SS/pension income
     }
     EndResults.push(tempSavings)
     if(tempSavings>0){success=success+1}
