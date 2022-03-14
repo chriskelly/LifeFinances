@@ -13,8 +13,8 @@ function Main(){
   var Tax_Sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Tax")
   var Dashboard_Sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Dashboard")
   
-  //Get all parameters from Parameter and Tax (SS/Pension) page
-  var AllParams = Param_Sheet.getRange(2,1,100,2).getValues().concat(Param_Sheet.getRange(2,4,100,2).getValues()).concat(Param_Sheet.getRange(2,7,100,2).getValues()).concat(Param_Sheet.getRange(2,10,100,2).getValues()).concat(Tax_Sheet.getRange(19,10,14,2).getValues())
+  //Get all parameters from Parameter and Tax (SS/Pension) page. CHANGES TO ALLPARAMS RANGES NEEDS TO BE REFLECTED IN THE TRIALARRAY/MULTIRESULTS ALLPARAMS RANGES AS WELL
+  var AllParams = Param_Sheet.getRange(2,1,100,2).getValues().concat(Param_Sheet.getRange(2,4,100,2).getValues()).concat(Param_Sheet.getRange(2,7,100,2).getValues()).concat(Param_Sheet.getRange(2,10,100,2).getValues()).concat(Tax_Sheet.getRange(24,11,14,2).getValues())
   AllParams = filterSpaces(AllParams)
   //Get trial parameters
   var TrialParamsList = Param_Sheet.getRange(3,21,100,1).getValues()
@@ -51,7 +51,7 @@ function Main(){
   //Replace AllParams parameters with Trial parameters
   var multiResults =[] //intialize outside of function to prevent reset during loop
   for(var e=0; e<TrialArr.length; e++){
-    AllParams = Param_Sheet.getRange(2,1,100,2).getValues().concat(Param_Sheet.getRange(2,4,100,2).getValues()).concat(Param_Sheet.getRange(2,7,100,2).getValues()).concat(Param_Sheet.getRange(2,10,100,2).getValues()).concat(Tax_Sheet.getRange(19,10,14,2).getValues())
+    AllParams = Param_Sheet.getRange(2,1,100,2).getValues().concat(Param_Sheet.getRange(2,4,100,2).getValues()).concat(Param_Sheet.getRange(2,7,100,2).getValues()).concat(Param_Sheet.getRange(2,10,100,2).getValues()).concat(Tax_Sheet.getRange(24,11,14,2).getValues())
     AllParams = filterSpaces(AllParams) //reset AllParams. Could not figure out a more effiecient way. Tried to record initial params, but kept getting linked to AllParams
     for(var d=0; d<TrialArr[e].length;d++){
       for(var c=0; c<AllParams.length; c++) {
@@ -69,8 +69,7 @@ function Main(){
   //------------------------------------------------------------------------------------------------------------------------------------------------
   function fillAllYearsArray(fill){ //giant array creation that will fill the Simulate sheet
       
-  //Set variables needed multiple times
-  //Even if Col # changed here, order to array push needs to also be changed!
+  //If Col # changed here, order to array push needs to also be changed!
   AllYears = []
   CurrentYear = Get_Param("His Age")+1993
   FIYear = Get_Param("FI Year")
@@ -118,7 +117,7 @@ function Main(){
     SingleYear.push(Get_Income(SingleYear[YearsTillCol],SingleYear[FICol],Get_Param("His Total Income")));//pass through years till and FI State
     SingleYear.push(Get_Income(SingleYear[YearsTillCol],SingleYear[FICol],Get_Param("Her Total Income")));
     SingleYear.push(Get_TaxDefered(SingleYear[YearsTillCol],SingleYear[FICol]));
-    SingleYear.push(Get_Pension(SingleYear[YearCol],SingleYear[YearsTillCol],Get_Param("Early Pension")));//pass through Year and Years till
+    SingleYear.push(Get_Pension(SingleYear[YearCol],SingleYear[YearsTillCol],Get_Param("Early Pension"),Get_Param("Pension Cashout"),Get_Param("Cashout Amount")));//pass through Year and Years till
     SingleYear.push(Get_HisSS(SingleYear[YearCol],SingleYear[YearsTillCol],Get_Param("Early SS")));
     SingleYear.push(Get_HerSS(SingleYear[YearCol],SingleYear[YearsTillCol],Get_Param("Early SS")));
     SingleYear.push(SingleYear[HisIncomeCol]+SingleYear[HerIncomeCol]+SingleYear[PensionCol]+SingleYear[HisSSCol]+SingleYear[HerSSCol]);//Total Income = add Incomes to Pension and SSs
@@ -140,8 +139,11 @@ function Main(){
     SingleYear.push(SingleYear[ReturnPctCol]*(SingleYear[SavingsCol]+SingleYear[MarginCol]+0.5*SingleYear[ContributeCol])-SingleYear[MarginCol]*Get_Param("Margin Interest Rate")); //Return($) = returnRate*(Savings+Margin+.5*Contributions)-Margin cost
     AllYears.push(SingleYear)
   }
+        Logger.log(AllYears)
     if(fill){Sim_Sheet.getRange(2,1,AllYears.length,AllYears[0].length).setValues(AllYears);}
   }
+
+
   
   //------------------------------------------------------------------------------------------------------------------------------------------------
   function simulate(frontPage){
@@ -156,7 +158,9 @@ function Main(){
   //loop through each row of generated returns, then each column for an additional trial
   for(var col=0;col<trials;col++){
     var tempSavings = Savings
-    for(var row=0;row<70;row++){
+    var Failed = false
+    var TotalYears = AllYears.length
+    for(var row=0;row<TotalYears;row++){
       var stockRate=stockReturns[row][col]
       var bondRate=bondReturns[row][col]
       var RERate=REReturns[row][col]
@@ -164,10 +168,10 @@ function Main(){
       var ReturnRate = stockRate*Allocs[0]+RERate*Allocs[1]+bondRate*Allocs[2]
       var Return = ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol])-tempSavings*Math.max(Allocs[0]-1,0)*(Get_Param("Margin Interest Rate")) //return rate x (savings + 1/2 contributions) - interest on margin
       tempSavings = tempSavings + Return + AllYears[row][ContributeCol];
-      if(tempSavings<0){tempSavings = -1000000;} //lazy way to make sure if it goes below 0 once, it stays below 0 and doesn't go back up due to SS/pension income
+      if(tempSavings<0){Failed = true;} 
     }
     EndResults.push(tempSavings)
-    if(tempSavings>0){success=success+1}
+    if(Failed==false){success=success+1}
     if(tempSavings>best){best=tempSavings}
     if(tempSavings<worst){worst=tempSavings}
   }
@@ -222,7 +226,7 @@ function Main(){
     if (FIState==true) {return 0} 
     else {return (His+Hers)*Math.pow(InflatEst,YearsTill)}
   }
-  function Get_Pension(Year,YearsTill,EarlyPension){
+  function Get_Pension(Year,YearsTill,EarlyPension,PensionCashout,CashoutAmount){
     PensionYears = Param_Sheet.getRange(3,13,13).getValues();
     EarlyPensionYear = PensionYears[0];
     LatePensionYear = PensionYears[12];
@@ -234,8 +238,9 @@ function Main(){
       var PensionYear=LatePensionYear;
       var PensionAmount=Get_Param("Her Max Pension (Yearly)");
     }
-    if (Year<PensionYear) {return 0} 
-    else {return PensionAmount/1000*Math.pow(InflatEst,YearsTill)}
+    if(PensionCashout&&Year==FIYear) {return CashoutAmount}
+    else if(!PensionCashout&&Year>=PensionYear) {return PensionAmount/1000*Math.pow(InflatEst,YearsTill)}
+    else {return 0} 
   }
   function Get_HisSS(Year,YearsTill,EarlySS){
     if (EarlySS) {
@@ -322,7 +327,6 @@ function Main(){
   
   function standardDeviation(values){
     var avg = average(values);
-    Logger.log(avg)
     var squareDiffs = values.map(function(value){
       var diff = value - avg;
       var sqrDiff = diff * diff;
@@ -330,7 +334,8 @@ function Main(){
     });
     var avgSquareDiff = average(squareDiffs);
     var stdDev = Math.sqrt(avgSquareDiff);
-    return stdDev;
+    var stdDevAsPrct = stdDev/avg;
+    return stdDevAsPrct;
   }
 
   function average(data){
