@@ -7,8 +7,8 @@ function Main(){
   //Set sheets
   var Sim_Sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Simulation")
   var Param_Sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Parameters")
-  var stockReturns_Sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName("StockReturns")
-  var bondReturns_Sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName("BondReturns")
+  var StockReturns_Sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName("StockReturns")
+  var BondReturns_Sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName("BondReturns")
   var REReturns_Sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName("REReturns")
   var Tax_Sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Tax")
   var Dashboard_Sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Dashboard")
@@ -20,11 +20,13 @@ function Main(){
   var TrialParamsList = Param_Sheet.getRange(3,21,100,1).getValues()
   TrialParamsList = filterSpaces(TrialParamsList)
   updateProgress(0)
+
   
   //Pull in generated random returns
   var trials = Get_Param("Monte Carlo Trials") //max 5000
-  var stockReturns = stockReturns_Sheet.getSheetValues(1, 1, 71, trials)
-  var bondReturns = bondReturns_Sheet.getSheetValues(1, 1, 71, trials)
+  var CurrentREInvestedDol = 0 //just establishing the variable
+  var StockReturns = StockReturns_Sheet.getSheetValues(1, 1, 71, trials)
+  var BondReturns = BondReturns_Sheet.getSheetValues(1, 1, 71, trials)
   var REReturns = REReturns_Sheet.getSheetValues(1, 1, 71, trials)
   updateProgress(1)
   
@@ -127,7 +129,8 @@ function Main(){
     SingleYear.push(SingleYear[TaxCol]+SingleYear[SpendingCol]+SingleYear[KidsCol]);//Total Costs = add Spending+Tax+Kids
     SingleYear.push(Get_SR(SingleYear[TotalIncomeCol],SingleYear[TaxCol],SingleYear[SpendingCol],SingleYear[TotalCostsCol]));
     SingleYear.push(SingleYear[TotalIncomeCol]-SingleYear[TotalCostsCol]); //Contribution = Income-costs
-    var Allocation = Get_Allocation(SingleYear[YearsTillCol],SingleYear[SavingsCol]) 
+    //var Allocation = Get_Allocation(SingleYear[YearsTillCol],SingleYear[SavingsCol]) 
+    var Allocation = Get_Possible_Allocation(SingleYear[YearsTillCol],SingleYear[SavingsCol],SingleYear[ContributeCol],SingleYear[TaxDeferedCol],SingleYear[FICol])
     SingleYear.push(Allocation[0]); //equity allocation
     SingleYear.push(Allocation[1]); //RE allocation
     SingleYear.push(Allocation[2]); //bond allocation 
@@ -139,8 +142,10 @@ function Main(){
     SingleYear.push(SingleYear[ReturnPctCol]*(SingleYear[SavingsCol]+SingleYear[MarginCol]+0.5*SingleYear[ContributeCol])-SingleYear[MarginCol]*Get_Param("Margin Interest Rate")); //Return($) = returnRate*(Savings+Margin+.5*Contributions)-Margin cost
     AllYears.push(SingleYear)
   }
-        Logger.log(AllYears)
-    if(fill){Sim_Sheet.getRange(2,1,AllYears.length,AllYears[0].length).setValues(AllYears);}
+        //Logger.log(AllYears)
+    if(fill){
+      Sim_Sheet.getRange(2,1,Sim_Sheet.getMaxRows()-1,Sim_Sheet.getMaxColumns()).clearContent() //makes sure to clear old simulations
+      Sim_Sheet.getRange(2,1,AllYears.length,AllYears[0].length).setValues(AllYears);}
   }
 
 
@@ -161,11 +166,11 @@ function Main(){
     var Failed = false
     var TotalYears = AllYears.length
     for(var row=0;row<TotalYears;row++){
-      var stockRate=stockReturns[row][col]
-      var bondRate=bondReturns[row][col]
+      var StockRate=StockReturns[row][col]
+      var BondRate=BondReturns[row][col]
       var RERate=REReturns[row][col]
-      var Allocs = Get_Allocation(row,tempSavings)
-      var ReturnRate = stockRate*Allocs[0]+RERate*Allocs[1]+bondRate*Allocs[2]
+      var Allocs = Get_Possible_Allocation(row,tempSavings,AllYears[row][ContributeCol],AllYears[row][TaxDeferedCol],AllYears[row][FICol])
+      var ReturnRate = StockRate*Allocs[0]+RERate*Allocs[1]+BondRate*Allocs[2]
       var Return = ReturnRate*(tempSavings+0.5*AllYears[row][ContributeCol])-tempSavings*Math.max(Allocs[0]-1,0)*(Get_Param("Margin Interest Rate")) //return rate x (savings + 1/2 contributions) - interest on margin
       tempSavings = tempSavings + Return + AllYears[row][ContributeCol];
       if(tempSavings<0){Failed = true;} 
@@ -177,6 +182,7 @@ function Main(){
   }
   var Results = []
   var successRate = [success/trials]
+  Logger.log(successRate)
   Results.push(successRate)
   Results.push([worst])
   Results.push([best])
@@ -285,7 +291,7 @@ function Main(){
     if (TotalIncome<Spending) {return 0} 
     else {return 1-(TotalCosts-Tax)/(TotalIncome-Tax)}
   }
-  function Get_Allocation(YearsTill,Savings){
+  function Get_Ideal_Allocation(YearsTill,Savings){
     var RERatio = Get_Param("RE Ratio")
     var EquityTarget = Get_Param("Equity Target") 
     var rate = Get_Param("Inflation (%)")
@@ -298,6 +304,27 @@ function Main(){
     var EquityAlloc = (1-REAlloc)*RiskFactor
     var BondAlloc = Math.max(1-REAlloc-EquityAlloc,0) 
     return [EquityAlloc,REAlloc,BondAlloc]
+  }
+  function Get_Possible_Allocation(YearsTill,Savings,Contributions,TaxDefered,FIState){
+    if(YearsTill==0){ //need to reset the tracked RE dollars for each simulation
+      CurrentREInvestedDol = Get_Param("Current RE Alloc ($)") //Not including public REITs
+    }
+    var TargetAlloc = Get_Ideal_Allocation(YearsTill,Savings) //use the original allocation func to find ideal targets
+    var RETarPerc = TargetAlloc[1] //what the RE allocation would be without account restrictions
+    var BondPerc = TargetAlloc[2] 
+    if(FIState){ //assuming you can't add addl money, although TBH, after FI, you'll have a huge trad IRA that could invest in private equity
+      MaxTrailREDol = CurrentREInvestedDol*(1 + Get_Param("RE Return (%)"))
+    }else{ //Before FI, you add investable income. The more you put in 401k/etc, the less you'll have to add to RE
+     MaxTrailREDol = CurrentREInvestedDol*(1 + Get_Param("RE Return (%)")) + (Contributions-TaxDefered)
+    }
+    //Unique point here: you typically just had a set allocation for investments, but here, you'll need to take into account that you'll start with a different allocation than you end with
+    RETrailPerc = Math.min(RETarPerc,MaxTrailREDol/(Savings+Contributions)) //don't invest more than the orig target
+    RELeadPerc = CurrentREInvestedDol/Savings //what do we start the year with?
+    REPerc = (RETrailPerc+RELeadPerc)/2 //average the leading and trailing percentages
+    EquityPerc = 1-BondPerc-REPerc
+    CurrentREInvestedDol = RETrailPerc*(Savings+Contributions) //update the tracked RE dollars for the next year
+    return [EquityPerc,REPerc,BondPerc]
+
   }
   
   //-------------------------------------------------------------------------------------------------------------------------------------------------
