@@ -8,7 +8,7 @@ window.minsize(width=500, height=500)
 
 # Load/save parameters
 def load_params():
-    with open('params.json') as json_file:
+    with open('Simulation/params.json') as json_file:
         params = json.load(json_file)
         for k,v in params.items():
             entry=tk.Entry(width=10)
@@ -18,7 +18,7 @@ def load_params():
     
 def save_params():
     saveFile = {}
-    with open('params.json', 'w') as outfile:
+    with open('Simulation/params.json', 'w') as outfile:
         for k,v in params.items():
             saveFile[k]=float(params[k].get())
         json.dump(saveFile, outfile,indent=4)
