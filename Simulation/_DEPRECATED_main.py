@@ -1,5 +1,4 @@
-from params_calcs import *
-from parameter import Parameter
+from _DEPRECATED_params_calcs import *
 import json
 import tkinter as tk
 
