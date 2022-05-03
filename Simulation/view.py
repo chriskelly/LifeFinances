@@ -19,7 +19,7 @@ class View(tk.Tk):
         
     def make_entries(self,param_vals):
         for k,v in param_vals.items():
-            entry=tk.Entry(width=10)
+            entry=ttk.Entry(width=10)
             entry.insert(tk.END, string=v)
             self.param_entries[k]=entry
     
@@ -42,14 +42,14 @@ class View(tk.Tk):
         #Setup user input
         i=0
         for k,v in self.param_entries.items():
-            tk.Label(text=k).grid(column=0,row=i)
+            ttk.Label(text=k).grid(column=0,row=i)
             v.grid(column=1,row=i) #value is an entry
             i+=1
         #Setup displayed calculated values
         i=0
         for k,v in self.controller.calcd_values.items():
-            tk.Label(text=k).grid(column=2,row=i)
-            label=tk.Label(text=v)
+            ttk.Label(text=k).grid(column=2,row=i)
+            label=ttk.Label(text=v)
             label.grid(column=3,row=i)
             self.calcd_labels.append(label)
             i+=1
