@@ -7,6 +7,17 @@ class Controller:
         self.view = View(self)
         
         self.calcd_values = {}
+        '''#TODO store values to be calc'd in a list here.
+        The dual widget frame can be fed a disable/enable based on 
+            if the parameter exists in the calc'd list
+        All params, including calc'd params, should be stored in the param_vals
+            and the params.json and synced as changes made
+        Could make it to where if the value is true/false, DWFrame makes a checkbox
+            rather than an entry. Everything else would be either enabled or disabled entries
+        How to track entries? Create them in view and feed them to DWFrame 
+            or make them in DWFrame? Need to be able to pull value, which could just be a 
+            method in DWFrame. Could accomodate for whatever widget is used.
+        '''
     
     def main(self):
         self.view.make_entries(self.model.param_vals)
