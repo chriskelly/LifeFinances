@@ -1,16 +1,18 @@
 import tkinter as tk
 
 class DWFrame(tk.Frame):
-    def __init__(self,window,key,value,enabled):
+    def __init__(self,window:tk.Tk,key:str,value,enabled:bool):
         super().__init__(window)
-        self.val_var = tk.StringVar()
-        self.val_var.trace('w', window.controller.update)
         label = tk.Label(self,text=key)
         label.pack( side = "left")
-        entry = tk.Entry(self,width=10,textvariable=self.val_var)
-        entry.insert(tk.END, string=value)
+        self.val_var = tk.StringVar(value=value) #this object makes for easier tracking of widget value with getter and setter methods
+        if value =="True" or value == "False":
+            secondWidget = tk.Checkbutton(self,variable=self.val_var,onvalue="True",offvalue="False")
+        else:
+            secondWidget = tk.Entry(self,width=10,textvariable=self.val_var)
         if not enabled:
-            entry.config(state="disabled")
-        entry.pack( side = "left")
+            secondWidget.config(state="disabled")
+        secondWidget.pack( side = "left")
+        self.val_var.trace('w', window.controller.update) #this calls the update function anytime value changed
         
         
