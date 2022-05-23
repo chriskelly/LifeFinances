@@ -1,25 +1,72 @@
 {
-    "FI Year": "2024",
-    "Equity Return (%)": "0.095",
-    "Bond Return (%)": "0.02",
-    "RE Return (%)": "0.11",
-    "International Proportion": "0.404",
-    "Domestic Proportion": "0.596",
-    "RE Ratio": "0.4",
-    "Equity Target": "1400",
-    "Current RE Alloc ($)": "282",
-    "Year @ Kid #1": "2025",
-    "Year @ Kid #2": "",
-    "Year @ Kid #3": "",
-    "Cost of Kid (% Spending)": "0.12",
-    "Monte Carlo Trials": "1000",
-    "Tax (%)": "0.35",
-    "Inflation (%)": "0.025",
-    "Raise (%)": "0.02",
-    "Capital Gains tax (%)": "0.15",
-    "Current CPI": "276.589",
-    "Early SS": "True",
-    "Early Pension": "True",
-    "Pension Cashout": "False",
-    "Cashout Amount": "64"
+    "FI Year": {
+        "val": "2024"
+    },
+    "Equity Return (%)": {
+        "val": "0.095"
+    },
+    "Bond Return (%)": {
+        "val": "0.02"
+    },
+    "RE Return (%)": {
+        "val": "0.11"
+    },
+    "International Proportion": {
+        "val": "0.404"
+    },
+    "Domestic Proportion": {
+        "val": "0.596",
+        "calcd":true
+    },
+    "RE Ratio": {
+        "val": "0.4"
+    },
+    "Equity Target": {
+        "val": "1400"
+    },
+    "Current RE Alloc ($)": {
+        "val": "282"
+    },
+    "Year @ Kid #1": {
+        "val": "2025"
+    },
+    "Year @ Kid #2": {
+        "val": ""
+    },
+    "Year @ Kid #3": {
+        "val": ""
+    },
+    "Cost of Kid (% Spending)": {
+        "val": "0.12"
+    },
+    "Monte Carlo Trials": {
+        "val": "1000"
+    },
+    "Tax (%)": {
+        "val": "0.35"
+    },
+    "Inflation (%)": {
+        "val": "0.025"
+    },
+    "Raise (%)": {
+        "val": "0.02"
+    },
+    "Capital Gains tax (%)": {
+        "val": "0.15"
+    },
+    "Current CPI": {
+        "val": "276.589"
+    },
+    "Early SS": {
+        "val": "True"
+    },
+    "Early Pension": {
+        "val": "True"
+    },
+    "Pension Cashout": {
+        "val": "False"
+    },
+    "Cashout Amount": {
+        "val": "64"
+    }
 }
