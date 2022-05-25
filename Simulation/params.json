@@ -68,5 +68,59 @@
     },
     "Cashout Amount": {
         "val": "64"
+    },
+    "Current Net Worth ($)": {
+        "val": "1126" 
+    },
+    "Total Spending (Yearly)": {
+        "val": "75.8",
+        "popper": 1
+    },
+    "Housing (Monthly)": {
+        "val": "2.597" ,
+        "pop-out": 1
+    },
+    "Groceries (Monthly)": {
+        "val": "0.525" ,
+        "pop-out": 1
+    },
+    "Car (Monthly)": {
+        "val": "0.285" ,
+        "pop-out": 1
+    },
+    "His (Monthly)": {
+        "val": "0.250" ,
+        "pop-out": 1
+    },
+    "Hers (Monthly)": {
+        "val": "0.400" ,
+        "pop-out": 1
+    },
+    "Leisure (Monthly)": {
+        "val": "0.541" ,
+        "pop-out": 1
+    },
+    "Expense Debt (Monthly)": {
+        "val": "0.044" ,
+        "pop-out": 1
+    },
+    "Other (Monthly)": {
+        "val": "0.162" ,
+        "pop-out": 1
+    },
+    "Travel (Yearly)": {
+        "val": "9.300" ,
+        "pop-out": 1
+    },
+    "Giving (Yearly)": {
+        "val": "6.900",
+        "pop-out": 1
+    },
+    "Health (Yearly)": {
+        "val": "2.000" ,
+        "pop-out": 1
+    },
+    "Retirement Change (%)": {
+        "val": "-0.14"
     }
 }

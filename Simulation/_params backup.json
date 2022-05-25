@@ -1,29 +1,126 @@
 {
-    "FI Year": 2024.0,
-    "Equity Return (%)"	:0.095,
-    "Bond Return (%)"	:0.02,
-    "RE Return (%)"	:0.11,
-    "International Proportion"	:0.4,
-    "Domestic Proportion"	:0.6,
-    "RE Ratio"	:0.4,
-    "Equity Target"	:1400 ,
-    "Current RE Alloc ($)"	:282,
-
-    "Year @ Kid #1"	:2025,
-    "Year @ Kid #2"	:null,
-    "Year @ Kid #3"	:null,
-    "Cost of Kid (% Spending)"	:0.12,
-    
-    "Monte Carlo Trials":	1000,
-        
-    "Tax (%)":0.35,
-    "Inflation (%)"	:0.025,
-    "Raise (%)"	:0.02,
-    "Capital Gains tax (%)"	:0.15,
-    "Current CPI"	:276.589,
-    "Early SS":	"true",
-    "Early Pension":	"true",
-                
-    "Pension Cashout"	:"false",
-    "Cashout Amount"	:64
+    "FI Year": {
+        "val": "2024"
+    },
+    "Equity Return (%)": {
+        "val": "0.095"
+    },
+    "Bond Return (%)": {
+        "val": "0.02"
+    },
+    "RE Return (%)": {
+        "val": "0.11"
+    },
+    "International Proportion": {
+        "val": "0.404"
+    },
+    "Domestic Proportion": {
+        "val": "0.596",
+        "calcd": true
+    },
+    "RE Ratio": {
+        "val": "0.4"
+    },
+    "Equity Target": {
+        "val": "1400"
+    },
+    "Current RE Alloc ($)": {
+        "val": "282"
+    },
+    "Year @ Kid #1": {
+        "val": "2025"
+    },
+    "Year @ Kid #2": {
+        "val": ""
+    },
+    "Year @ Kid #3": {
+        "val": ""
+    },
+    "Cost of Kid (% Spending)": {
+        "val": "0.12"
+    },
+    "Monte Carlo Trials": {
+        "val": "1000"
+    },
+    "Tax (%)": {
+        "val": "0.35"
+    },
+    "Inflation (%)": {
+        "val": "0.025"
+    },
+    "Raise (%)": {
+        "val": "0.02"
+    },
+    "Capital Gains tax (%)": {
+        "val": "0.15"
+    },
+    "Current CPI": {
+        "val": "276.589"
+    },
+    "Early SS": {
+        "val": "True"
+    },
+    "Early Pension": {
+        "val": "True"
+    },
+    "Pension Cashout": {
+        "val": "False"
+    },
+    "Cashout Amount": {
+        "val": "64"
+    },
+    "Current Net Worth ($)": {
+        "val": "1126" 
+    },
+    "Total Spending (Yearly)": {
+        "val": "75.8",
+        "popper": 1
+    },
+    "Housing (Monthly)": {
+        "val": "2.597" ,
+        "pop-out": 1
+    },
+    "Groceries (Monthly)": {
+        "val": "0.525" ,
+        "pop-out": 1
+    },
+    "Car (Monthly)": {
+        "val": "0.285" ,
+        "pop-out": 1
+    },
+    "His (Monthly)": {
+        "val": "0.250" ,
+        "pop-out": 1
+    },
+    "Hers (Monthly)": {
+        "val": "0.400" ,
+        "pop-out": 1
+    },
+    "Leisure (Monthly)": {
+        "val": "0.541" ,
+        "pop-out": 1
+    },
+    "Expense Debt (Monthly)": {
+        "val": "0.044" ,
+        "pop-out": 1
+    },
+    "Other (Monthly)": {
+        "val": "0.162" ,
+        "pop-out": 1
+    },
+    "Travel (Yearly)": {
+        "val": "9.300" ,
+        "pop-out": 1
+    },
+    "Giving (Yearly)": {
+        "val": "6.900",
+        "pop-out": 1
+    },
+    "Health (Yearly)": {
+        "val": "2.000" ,
+        "pop-out": 1
+    },
+    "Retirement Change (%)": {
+        "val": "-0.14"
+    }
 }
