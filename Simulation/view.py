@@ -32,7 +32,7 @@ class View(tk.Tk):
     def set_params(self, params: dict):
         """Update all calculated tk.Entries to passed-in params values"""
         for key,value in params.items():
-            if not self.param_frames[key].enabled:
+            if self.param_frames[key].enabled:
                 continue
             self.param_frames[key].val_var.set(value)
         

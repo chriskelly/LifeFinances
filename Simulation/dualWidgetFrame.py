@@ -13,7 +13,8 @@ class DWFrame(tk.Frame):
             secondWidget = tk.Entry(self,width=10,textvariable=self.val_var)
         if not self.enabled:
             secondWidget.config(state="disabled")
+        else:
+            self.val_var.trace('w', window.controller.update) #this calls the update function anytime value changed
         secondWidget.pack( side = "left")
-        self.val_var.trace('w', window.controller.update) #this calls the update function anytime value changed
         
         
