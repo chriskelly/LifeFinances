@@ -26,6 +26,21 @@ class Model:
     
     def check_attr(self,param:str,attr:str):
         pass
+    
+    def filter_params(self,include:bool,attr:str,attr_val:any=None):
+        """returns dict with params that include/exclude specified attributes
+        and optional specified attribute values"""
+        if attr_val is None:
+            if include:
+                new_dict = { key:value for (key,value) in self.params.items() if attr in value}
+            else:
+                new_dict = { key:value for (key,value) in self.params.items() if attr not in value}
+        else:
+            if include:
+                new_dict = { key:value for (key,value) in self.params.items() if value[attr] == attr_val}
+            else:
+                new_dict = { key:value for (key,value) in self.params.items() if value[attr] != attr_val}
+        return new_dict
 
     def _clean_data(self,params:dict):
         for k,v in params.items():
