@@ -1,4 +1,3 @@
-fi_year = {
-    "text" : "FI Year",
-    "val": "2024"
-    }
+import tkinter as tk
+
+widget = tk.Frame()

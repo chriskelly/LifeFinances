@@ -18,7 +18,7 @@ class View(tk.Tk):
     def make_frames(self,params:dict):
         """Make a frame for each parameter. Frame includes a label and appropriate second widget"""
         for k,obj in params.items():
-            frame = DWFrame(window=self,key=k,value=obj["val"],enabled=(False if "calcd" in obj else True))
+            frame = DWFrame(window=self,param=k,obj=obj["val"],enabled=(False if "calcd" in obj else True))
             frame.pack()
             self.param_frames[k] = frame
     
