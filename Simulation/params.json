@@ -1,126 +1,153 @@
 {
     "FI Year": {
-        "val": "2024"
+        "val": "2024",
+        "popout": 0
     },
     "Equity Return (%)": {
-        "val": "0.095"
+        "val": "0.095",
+        "popout": 0
     },
     "Bond Return (%)": {
-        "val": "0.02"
+        "val": "0.02",
+        "popout": 0
     },
     "RE Return (%)": {
-        "val": "0.11"
+        "val": "0.11",
+        "popout": 0
     },
     "International Proportion": {
-        "val": "0.404"
+        "val": "0.404",
+        "popout": 0
     },
     "Domestic Proportion": {
         "val": "0.596",
+        "popout": 0,
         "calcd": true
     },
     "RE Ratio": {
-        "val": "0.4"
+        "val": "0.4",
+        "popout": 0
     },
     "Equity Target": {
-        "val": "1400"
+        "val": "1400",
+        "popout": 0
     },
     "Current RE Alloc ($)": {
-        "val": "282"
+        "val": "282",
+        "popout": 0
     },
     "Year @ Kid #1": {
-        "val": "2025"
+        "val": "2025",
+        "popout": 0
     },
     "Year @ Kid #2": {
-        "val": ""
+        "val": "",
+        "popout": 0
     },
     "Year @ Kid #3": {
-        "val": ""
+        "val": "",
+        "popout": 0
     },
     "Cost of Kid (% Spending)": {
-        "val": "0.12"
+        "val": "0.12",
+        "popout": 0
     },
     "Monte Carlo Trials": {
-        "val": "1000"
+        "val": "1000",
+        "popout": 0
     },
     "Tax (%)": {
-        "val": "0.35"
+        "val": "0.35",
+        "popout": 0
     },
     "Inflation (%)": {
-        "val": "0.025"
+        "val": "0.025",
+        "popout": 0
     },
     "Raise (%)": {
-        "val": "0.02"
+        "val": "0.02",
+        "popout": 0
     },
     "Capital Gains tax (%)": {
-        "val": "0.15"
+        "val": "0.15",
+        "popout": 0
     },
     "Current CPI": {
-        "val": "276.589"
+        "val": "276.589",
+        "popout": 0
     },
     "Early SS": {
-        "val": "True"
+        "val": "True",
+        "popout": 0
     },
     "Early Pension": {
-        "val": "True"
+        "val": "True",
+        "popout": 0
     },
     "Pension Cashout": {
-        "val": "False"
+        "val": "False",
+        "popout": 0
     },
     "Cashout Amount": {
-        "val": "64"
+        "val": "64",
+        "popout": 0
     },
     "Current Net Worth ($)": {
-        "val": "1126" 
+        "val": "1126",
+        "popout": 0
     },
     "Total Spending (Yearly)": {
-        "val": "75.8",
-        "popper": 1
+        "val": "75.84800000000001",
+        "popout": 0,
+        "popper": 1,
+        "calcd": true
     },
     "Housing (Monthly)": {
-        "val": "2.597" ,
-        "pop-out": 1
+        "val": "2.597",
+        "popout": 1
     },
     "Groceries (Monthly)": {
-        "val": "0.525" ,
-        "pop-out": 1
+        "val": "0.525",
+        "popout": 1
     },
     "Car (Monthly)": {
-        "val": "0.285" ,
-        "pop-out": 1
+        "val": "0.285",
+        "popout": 1
     },
     "His (Monthly)": {
-        "val": "0.250" ,
-        "pop-out": 1
+        "val": "0.250",
+        "popout": 1
     },
     "Hers (Monthly)": {
-        "val": "0.400" ,
-        "pop-out": 1
+        "val": "0.400",
+        "popout": 1
     },
     "Leisure (Monthly)": {
-        "val": "0.541" ,
-        "pop-out": 1
+        "val": "0.541",
+        "popout": 1
     },
     "Expense Debt (Monthly)": {
-        "val": "0.044" ,
-        "pop-out": 1
+        "val": "0.044",
+        "popout": 1
     },
     "Other (Monthly)": {
-        "val": "0.162" ,
-        "pop-out": 1
+        "val": "0.162",
+        "popout": 1
     },
     "Travel (Yearly)": {
-        "val": "9.300" ,
-        "pop-out": 1
+        "val": "9.300",
+        "popout": 1
     },
     "Giving (Yearly)": {
         "val": "6.900",
-        "pop-out": 1
+        "popout": 1
     },
     "Health (Yearly)": {
-        "val": "2.000" ,
-        "pop-out": 1
+        "val": "2.000",
+        "popout": 1
     },
     "Retirement Change (%)": {
-        "val": "-0.14"
+        "val": "-0.14",
+        "popout": 0
     }
 }
