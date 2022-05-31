@@ -4,16 +4,22 @@
         "popout": 0
     },
     "Equity Return (%)": {
-        "val": "0.095",
-        "popout": 0
+        "val": "0.09499999999999997",
+        "popout": 0,
+        "popper": 2,
+        "calcd": "params_vals['Equity Mean']-1"
     },
     "Bond Return (%)": {
-        "val": "0.02",
-        "popout": 0
+        "val": "0.020000000000000018",
+        "popout": 0,
+        "popper": 3,
+        "calcd": "params_vals['Bond Mean']-1"
     },
     "RE Return (%)": {
-        "val": "0.11",
-        "popout": 0
+        "val": "0.1100000000000001",
+        "popout": 0,
+        "popper": 4,
+        "calcd": "params_vals['RE Mean']-1"
     },
     "International Proportion": {
         "val": "0.404",
@@ -22,7 +28,7 @@
     "Domestic Proportion": {
         "val": "0.596",
         "popout": 0,
-        "calcd": true
+        "calcd": "1 - params_vals['International Proportion']"
     },
     "RE Ratio": {
         "val": "0.4",
@@ -100,7 +106,7 @@
         "val": "75.84800000000001",
         "popout": 0,
         "popper": 1,
-        "calcd": true
+        "calcd": "12*sum([params_vals['Housing (Monthly)'],params_vals['Groceries (Monthly)'],params_vals['Car (Monthly)'], params_vals['His (Monthly)'],params_vals['Hers (Monthly)'],params_vals['Leisure (Monthly)'], params_vals['Expense Debt (Monthly)'], params_vals['Other (Monthly)']])+params_vals['Travel (Yearly)']+params_vals['Giving (Yearly)']+params_vals['Health (Yearly)']"
     },
     "Housing (Monthly)": {
         "val": "2.597",
@@ -149,5 +155,144 @@
     "Retirement Change (%)": {
         "val": "-0.14",
         "popout": 0
+    },
+    "Equity Mean": {
+        "val": "1.095",
+        "popout": 2
+    },
+    "Equity Stdev": {
+        "val": ".16",
+        "popout": 2
+    },
+    "Equity Annual High": {
+        "val": "1.09",
+        "popout": 2
+    },
+    "Equity Annual Low": {
+        "val": "1.07",
+        "popout": 2
+    },
+    "Bond Mean": {
+        "val": "1.02",
+        "popout": 3
+    },
+    "Bond Stdev": {
+        "val": ".025",
+        "popout": 3
+    },
+    "Bond Annual High": {
+        "val": "1.02",
+        "popout": 3
+    },
+    "Bond Annual Low": {
+        "val": "1.015",
+        "popout": 3
+    },
+    "RE Mean": {
+        "val": "1.11",
+        "popout": 4
+    },
+    "RE Stdev": {
+        "val": ".14",
+        "popout": 4
+    },
+    "RE Annual High": {
+        "val": "1.12",
+        "popout": 4
+    },
+    "RE Annual Low": {
+        "val": "1.08",
+        "popout": 4
+    },
+    "His Age": {
+        "val": "29",
+        "popout": 5
+    },
+    "His Salary + Bonus": {
+        "val": "195.5",
+        "popout": 5
+    },
+    "His 401k": {
+        "val": "20.5",
+        "popout": 5
+    },
+    "His HSA": {
+        "val": "5.3",
+        "popout": 5
+    },
+    "His Emplr 401k": {
+        "val": "10.25",
+        "popout": 5,
+        "calcd": "params_vals['His 401k'] *0.5"
+    },
+    "His Emplr HSA": {
+        "val": "2.0",
+        "popout": 5
+    },
+    "His Emplr Contributions": {
+        "val": "12.25",
+        "popout": 5,
+        "calcd": "params_vals['His Emplr 401k']+params_vals['His Emplr HSA']"
+    },
+    "His Tax Deferrable": {
+        "val": "38.05",
+        "popout": 5,
+        "calcd": "params_vals['His 401k']+params_vals['His HSA']+params_vals['His Emplr Contributions']"
+    },
+    "His Total Income": {
+        "val": "207.75",
+        "popout": 0,
+        "popper": 5,
+        "calcd": "params_vals['His Salary + Bonus']+params_vals['His Emplr Contributions']"
+    },
+    "Her Age": {
+        "val": "34",
+        "popout": 6,
+        "calcd": "params_vals['His Age'] + 5"
+    },
+    "Her Salary": {
+        "val": "103.5",
+        "popout": 6
+    },
+    "Her Pension Costs": {
+        "val": "-9.315",
+        "popout": 6,
+        "calcd": "params_vals['Her Salary']*-0.09"
+    },
+    "Her Tax Deferrable": {
+        "val": "41.0",
+        "popout": 6,
+        "calcd": "params_vals['Her 403b']+params_vals['Her 457b']"
+    },
+    "Her 403b": {
+        "val": "20.5",
+        "popout": 6
+    },
+    "Her 457b": {
+        "val": "20.5",
+        "popout": 6
+    },
+    "Her Total Income": {
+        "val": "94.185",
+        "popout": 0,
+        "popper": 6,
+        "calcd": "params_vals['Her Salary']+params_vals['Her Pension Costs']"
+    },
+    "Denica Pension": {
+        "val": {
+            "2043": ".0116",
+            "2044": ".0128",
+            "2045": ".0140",
+            "2046": ".0152",
+            "2047": ".0164",
+            "2048": ".0176",
+            "2049": ".0188",
+            "2050": ".0200",
+            "2051": ".0213",
+            "2052": ".0227",
+            "2053": ".0240",
+            "2054": ".0240",
+            "2055": ".0240"
+        }
     }
 }
