@@ -14,7 +14,7 @@ class Controller:
     # this function called by DWFrame whenever input string modified by user
     def update(self, *args): # *args because StringVar() gives a lot of data in callbacks
         params_vals = self.model.run_calcs(self.get_params_vals()) #feeds data from frames to model
-        self.set_params(params_vals) #... and back to frames again
+        self.update_frames(params_vals) #... and back to frames again
         self.model.save_params(self.get_params_vals()) # use this rather than params_val to keep string format for json
         
     def make_popout(self,id:int):
@@ -31,10 +31,10 @@ class Controller:
             params_vals[k]=self.param_frames[k].val_var.get()
         return params_vals
     
-    def set_params(self, params: dict):
-        """Update all calculated tk.Entries to passed-in params values"""
+    def update_frames(self, params: dict):
+        """Update all calculated tk.Entries to passed-in param:values"""
         for param,value in params.items():
-            if "calcd" in self.model.params[param]:
+            if "calcd" in self.model.params[param] and param in self.param_frames: # second condition prevents crashes if the frame of a calcd variable hasn't been loaded yet
                 self.param_frames[param].val_var.set(value)
 
 if __name__ == '__main__':

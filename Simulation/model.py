@@ -19,15 +19,11 @@ class Model:
 
     def run_calcs(self, params_vals: dict):
         """Cleans data to correct format and runs all calculations, 
-        updating the dict passed-in and returning the updated dict"""
+        updating the param:val dict passed-in and returning the updated dict"""
         params_vals = self._clean_data(params_vals)
-        params_vals["Domestic Proportion"] = 1 - \
-            params_vals["International Proportion"]
-        params_vals["Total Spending (Yearly)"] = 12*sum([params_vals["Housing (Monthly)"], params_vals["Groceries (Monthly)"],
-                                                         params_vals["Car (Monthly)"], params_vals["His (Monthly)"],
-                                                         params_vals["Hers (Monthly)"], params_vals["Leisure (Monthly)"],
-                                                         params_vals["Expense Debt (Monthly)"], params_vals["Other (Monthly)"]])+ \
-                                                params_vals["Travel (Yearly)"]+params_vals["Giving (Yearly)"]+ params_vals["Health (Yearly)"]
+        calcd_params = self.filter_params(include=True,attr="calcd")
+        for param,obj in calcd_params.items():
+            params_vals[param] = eval(obj["calcd"]) # evaluate string saved in self.params under "calcd"
         return params_vals
 
     def filter_params(self, include: bool, attr: str, attr_val: any = None):
@@ -54,7 +50,9 @@ class Model:
 
     def _clean_data(self, params: dict):
         for k, v in params.items():
-            if v.isdigit():
+            if type(v) is dict: # used for Denica pension parameter
+                continue
+            elif v.isdigit():
                 params[k] = int(v)
             elif self._is_float(v):
                 params[k] = float(v)
