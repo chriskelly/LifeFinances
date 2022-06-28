@@ -1,6 +1,6 @@
 {
-    "FI Year": {
-        "val": "2024",
+    "FI Quarter": {
+        "val": "2024.5",
         "popout": 0
     },
     "Calculate Til": {
@@ -238,7 +238,7 @@
         "popout": 5,
         "calcd": "params_vals['His Emplr 401k']+params_vals['His Emplr HSA']"
     },
-    "His Tax Deferrable": {
+    "His Tax Deferred": {
         "val": "38.05",
         "popout": 5,
         "calcd": "params_vals['His 401k']+params_vals['His HSA']+params_vals['His Emplr Contributions']"
@@ -263,7 +263,7 @@
         "popout": 6,
         "calcd": "params_vals['Her Salary']*-0.09"
     },
-    "Her Tax Deferrable": {
+    "Her Tax Deferred": {
         "val": "41.0",
         "popout": 6,
         "calcd": "params_vals['Her 403b']+params_vals['Her 457b']"
