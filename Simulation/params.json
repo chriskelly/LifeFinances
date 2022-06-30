@@ -86,12 +86,16 @@
         "val": "276.589",
         "popout": 0
     },
-    "Early SS": {
-        "val": "True",
+    "His SS Age": {
+        "val": "62",
         "popout": 0
     },
-    "Early Pension": {
-        "val": "True",
+    "Her SS Age": {
+        "val": "62",
+        "popout": 0
+    },
+    "Pension Year": {
+        "val": "2047",
         "popout": 0
     },
     "Pension Cashout": {
