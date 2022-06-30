@@ -7,48 +7,144 @@
     
 """
 import datetime as dt
+import json
+import math
 import numpy as np
+import pandas as pd
 
 TODAY = dt.date.today()
-TODAY_QUARTER = TODAY.year+((TODAY.month-1)//3)*.25
-
+TODAY_QUARTER = (TODAY.month-1)//3
+TODAY_YR = TODAY.year
+TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
+FLAT_INFLATION = 1.03 # Used for some estimations like pension
 
 class Simulator:
     def __init__(self,param_vals):
         self.params = self._clean_data(param_vals)
-        self.rows = int((param_vals['Calculate Til'] - TODAY_QUARTER)/.25)
+        self.rows = int((param_vals['Calculate Til'] - TODAY_YR_QT)/.25)
+        self.fi_date = self.params["FI Quarter"]
             
     def main(self):
 # -------------------------------- VARIABLES -------------------------------- #
 
-    # fixed values regardless
-        year_quarter_ls = self._range_len(START=TODAY_QUARTER,LEN=self.rows,INCREMENT=0.25,ADD=True)
-        working_qrts = int((self.params["FI Quarter"]-TODAY_QUARTER)/.25)
-        FI_qrts = self.rows-working_qrts
-        FI_state_ls = [0]*working_qrts +[1]*FI_qrts
-        total_income_qrt = self._val("His Total Income",MOD='dollar')+self._val("Her Total Income",MOD='dollar')
-        tax_deferred_qrt = self._val("His Tax Deferred",MOD='dollar')+self._val("Her Tax Deferred",MOD='dollar')
-        job_income_ls, tax_deferred_ls = [total_income_qrt], [tax_deferred_qrt]
-        raise_yr = 1+self._val("Raise (%)",MOD=False)
-        # income increases at beginning of each year
-        for x in self._range_len(START=((TODAY.month-1)//3)+1,LEN=working_qrts-1,INCREMENT=1,ADD=True):
+    # values that are fixed regardless
+        # Year.Quarter list
+        time_ls = self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True)
+        # Are you FI list (1 = yes, 0 = no)
+        working_qts = int((self.fi_date-TODAY_YR_QT)/.25)
+        FI_qts = self.rows-working_qts
+        FI_state_ls = [0]*working_qts +[1]*FI_qts
+        # Job Income and tax-differed list. Does not include SS/Pensions. 
+            # get quarterly income for his and her
+        his_qt_income = self._val("His Total Income",QT_MOD='dollar')
+        her_qt_income = self._val("Her Total Income",QT_MOD='dollar')
+        total_income_qt = his_qt_income+her_qt_income
+        tax_deferred_qt = self._val("His Tax Deferred",QT_MOD='dollar')+self._val("Her Tax Deferred",QT_MOD='dollar')
+        job_income_ls, tax_deferred_ls = [total_income_qt], [tax_deferred_qt]
+            # build out income lists with raises coming in steps on the first quarter of each year
+        raise_yr = 1+self._val("Raise (%)",QT_MOD=False)
+        for x in self._range_len(START=TODAY_QUARTER+1,LEN=working_qts-1,INCREMENT=1,ADD=True):
             if x%4 !=0:
                 job_income_ls.append(job_income_ls[-1])
                 tax_deferred_ls.append(tax_deferred_ls[-1])
             else:
                 job_income_ls.append(job_income_ls[-1]*raise_yr)
                 tax_deferred_ls.append(tax_deferred_ls[-1]*raise_yr)
-        job_income_ls, tax_deferred_ls = job_income_ls +[0]*FI_qrts,tax_deferred_ls +[0]*FI_qrts
+        job_income_ls, tax_deferred_ls = job_income_ls +[0]*FI_qts,tax_deferred_ls +[0]*FI_qts # add the non-working years
 
-    # varied only due to controlable adjustable parameters
-        PensionCol = 10
+    # values that are varied only due to controlable adjustable parameters
+        # Her Pension. 
+            # Calc max salary estimate
+        fi_yr = math.trunc(self.fi_date)
+        current_pension_salary_qt = her_qt_income/0.91 # Corrects for 9% taken from salary for pension
+        remaining_working_years = fi_yr-TODAY_YR-1
+        max_pension_salary_qt = current_pension_salary_qt * raise_yr ** remaining_working_years
+            # find initial pension amount (in last working year's dollars)
+        DE_ANZA_START_YEAR = 2016
+        years_worked = fi_yr-DE_ANZA_START_YEAR
+        pension_start_yr = self._val("Pension Year",False)
+        pension_multiplier = float(self._val("Denica Pension",False)[str(pension_start_yr)])
+        starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier 
+            # convert to est. value at pension_start_yr
+        starting_pension_qt = starting_pension_qt*self._pow(FLAT_INFLATION,exp=(pension_start_yr-fi_yr))
+            # build out list, add the correct number of zeros to the beginning
+        pension_ls = [starting_pension_qt]
+        for x in np.arange(pension_start_yr+0.25,time_ls[-1]+0.25,0.25):
+            if x % 1 == 0:
+                pension_ls.append(pension_ls[-1] * raise_yr)
+            else:
+                pension_ls.append(pension_ls[-1])
+        pension_ls = [0]*(self.rows-len(pension_ls))+pension_ls
+        
+        # SS columns https://www.ssa.gov/oact/cola/Benefits.html 
+        # Effect of Early or Delayed Retirement on Retirement Benefits: https://www.ssa.gov/oact/ProgData/ar_drc.html 
+        # Index factors: https://www.ssa.gov/oact/cola/awifactors.html
+        # Earnings limit: https://www.ssa.gov/benefits/retirement/planner/whileworking.html#:~:text=your%20excess%20earnings.-,How%20We%20Deduct%20Earnings%20From%20Benefits,full%20retirement%20age%20is%20%2451%2C960.
+        # Bend points: https://www.ssa.gov/oact/cola/piaformula.html
+        # PIA: https://www.ssa.gov/oact/cola/piaformula.html 
+            # pull data
+        with open("params_ss.json") as json_file:
+            ss_params = json.load(json_file)
+        ss_data = pd.read_csv('ss_earnings.csv')
+        ss_max_earnings, index_factors, ss_yrs = ss_data['SS_Max_Earnings'].tolist(), ss_data['Index_Factors'].tolist(), ss_data['Year'].tolist()
+        his_ss_earnings, her_ss_earnings = ss_data['His_SS_Earnings'].tolist(), ss_data['Her_SS_Earnings'].tolist()
+        ss_data_last_updated = ss_yrs[-1]
+            # Extend all lists with predictions till fi year, need to prevent adding more income to her_ss, so using last year
+        while ss_yrs[-1]<fi_yr-1:
+            ss_yrs.append(ss_yrs[-1]+1)
+            ss_max_earnings.append(ss_max_earnings[-1]*FLAT_INFLATION)
+            his_ss_earnings.append(his_ss_earnings[-1]*raise_yr)
+            her_ss_earnings.append(her_ss_earnings[-1]*raise_yr)
+            index_factors.append(index_factors[-1]*(2-FLAT_INFLATION))        
+            # index and limit the earnings, then sort them from high to low
+        his_ss_earnings = [min(ss_max,earning)*index for ss_max, earning, index in zip(ss_max_earnings,his_ss_earnings, index_factors)]
+        her_ss_earnings = [min(ss_max,earning)*index for ss_max, earning, index in zip(ss_max_earnings,her_ss_earnings, index_factors)]
+        his_ss_earnings.sort(reverse=True)
+        her_ss_earnings.sort(reverse=True)
+            # Find Average Indexed Monthly Earnings (AIME), only top 35 years (420 months) count
+        his_AIME, her_AIME = sum(his_ss_earnings[:35])/420, sum(her_ss_earnings[:35])/420
+            # Calculate Primary Insurance Amounts (PIA) using bend points
+        his_bend_points, her_bend_points = ss_params["Bend Points"]+[his_AIME], ss_params["Bend Points"]+[her_AIME]
+        his_bend_points.sort()
+        her_bend_points.sort()
+        his_bend_points, her_bend_points = his_bend_points[:his_bend_points.index(his_AIME)+1], her_bend_points[:her_bend_points.index(her_AIME)+1]
+        his_PIA_rates, her_PIA_rates = ss_params["His PIA Rates"], ss_params["Her PIA Rates"]
+                # for the first bracket, just the bend times the rate. After that, find the marginal income to multiple by the rate
+        his_full_PIA = sum([bend*rate if i==0 else (his_bend_points[i]-his_bend_points[i-1])*rate for (i,bend), rate 
+                   in zip(enumerate(his_bend_points),his_PIA_rates)])
+        her_full_PIA = sum([bend*rate if i==0 else (her_bend_points[i]-her_bend_points[i-1])*rate for (i,bend), rate 
+                   in zip(enumerate(her_bend_points),her_PIA_rates)])
+            # Find adjusted benefit amounts
+        his_ss_age, her_ss_age = self._val("His SS Age",QT_MOD=False), self._val("Her SS Age",QT_MOD=False) 
+        his_ss_year, her_ss_year = his_ss_age + 1993, her_ss_age + 1988 # uses 1 extra year since bday at end of year
+            # convert to est. value at ss start-year and convert to quarterly (3 x monthly)
+        his_PIA,her_PIA = his_full_PIA * ss_params['Benefit Perc'][str(his_ss_age)], her_full_PIA * ss_params['Benefit Perc'][str(her_ss_age)]
+        his_ss_qt = 3 * his_PIA*self._pow(FLAT_INFLATION,exp=(his_ss_year-ss_data_last_updated)) # index factor is neutral to last update, so PIA is in that year's dollars
+        her_ss_qt = 3 * her_PIA*self._pow(FLAT_INFLATION,exp=(her_ss_year-ss_data_last_updated))
+            # build out list, add the correct number of zeros to the beginning, optimize later into list comprehension
+        his_ss_ls = [his_ss_qt]
+        for x in np.arange(his_ss_year+0.25,time_ls[-1]+0.25,0.25):
+            if x % 1 == 0:
+                his_ss_ls.append(his_ss_ls[-1] * raise_yr)
+            else:
+                his_ss_ls.append(his_ss_ls[-1])
+        his_ss_ls = [0]*(self.rows-len(his_ss_ls))+his_ss_ls
+        her_ss_ls = [her_ss_qt]
+        for x in np.arange(her_ss_year+0.25,time_ls[-1]+0.25,0.25):
+            if x % 1 == 0:
+                her_ss_ls.append(her_ss_ls[-1] * raise_yr)
+            else:
+                her_ss_ls.append(her_ss_ls[-1])
+        her_ss_ls = [0]*(self.rows-len(her_ss_ls))+her_ss_ls
+
+        
         HisSSCol = 11
         HerSSCol = 12
         TotalIncomeCol = 13
         TaxCol = 14
 
         
-    # vary with the monte carlo randomness
+    # values that vary with the monte carlo randomness
         SavingsCol = 4
         InflationCol = 6
         SpendingCol = 15
@@ -82,13 +178,22 @@ class Simulator:
 
 # -------------------------------- HELPER FUNCTIONS -------------------------------- #
 
-    def _val(self,KEY:str,MOD):
+    def _pow(self,num,exp:int):
+        """exponential formular num^exp that should be faster for small exponents"""
+        i=1
+        result = num
+        while i<exp:
+            result = result * num
+            i+=1
+        return result
+    
+    def _val(self,KEY:str,QT_MOD):
         """MOD='rate' will return (1+r)^(1/4), MOD='dollar' will return d/4, MOD=False will return value"""
-        if MOD=="rate":
+        if QT_MOD=="rate":
             return (1+self.params[KEY]) ** (1. / 4)
-        elif MOD=='dollar':
+        elif QT_MOD=='dollar':
             return self.params[KEY] / 4
-        elif not MOD:
+        elif not QT_MOD:
             return self.params[KEY]
         else:
             raise Exception("invalid MOD")
@@ -124,89 +229,10 @@ class Simulator:
 
 # -------------------------------- JUST FOR TESTING -------------------------------- #
 
-param_vals={
-    "FI Quarter":   "2024.5",
-    "Calculate Til":   "2090",
-    "Equity Return (%)":   "0.09499999999999997",
-    "Bond Return (%)":   "0.020000000000000018",
-    "RE Return (%)":   "0.1100000000000001",
-    "International Proportion":   "0.404",
-    "Domestic Proportion":   "0.596",
-    "RE Ratio":   "0.4",
-    "Equity Target":   "1400",
-    "Current RE Alloc ($)":   "282",
-    "Year @ Kid #1":   "2025",
-    "Year @ Kid #2":   "",
-    "Year @ Kid #3":   "",
-    "Cost of Kid (% Spending)":   "0.12",
-    "Monte Carlo Trials":   "1000",
-    "Tax (%)":   "0.35",
-    "Inflation (%)":   "0.025",
-    "Raise (%)":   "0.04",
-    "Capital Gains tax (%)":   "0.15",
-    "Current CPI":   "276.589",
-    "Early SS":   "True",
-    "Early Pension":   "True",
-    "Pension Cashout":   "False",
-    "Cashout Amount":   "64",
-    "Current Net Worth ($)":   "1126",
-    "Total Spending (Yearly)":   "75.84800000000001",
-    "Housing (Monthly)":   "2.597",
-    "Groceries (Monthly)":   "0.525",
-    "Car (Monthly)":   "0.285",
-    "His (Monthly)":   "0.250",
-    "Hers (Monthly)":   "0.400",
-    "Leisure (Monthly)":   "0.541",
-    "Expense Debt (Monthly)":   "0.044",
-    "Other (Monthly)":   "0.162",
-    "Travel (Yearly)":   "9.300",
-    "Giving (Yearly)":   "6.900",
-    "Health (Yearly)":   "2.000",
-    "Retirement Change (%)":   "-0.14",
-    "Equity Mean":   "1.095",
-    "Equity Stdev":   ".16",
-    "Equity Annual High":   "1.09",
-    "Equity Annual Low":   "1.07",
-    "Bond Mean":   "1.02",
-    "Bond Stdev":   ".025",
-    "Bond Annual High":   "1.02",
-    "Bond Annual Low":   "1.015",
-    "RE Mean":   "1.11",
-    "RE Stdev":   ".14",
-    "RE Annual High":   "1.12",
-    "RE Annual Low":   "1.08",
-    "His Age":   "29",
-    "His Salary + Bonus":   "195.5",
-    "His 401k":   "20.5",
-    "His HSA":   "5.3",
-    "His Emplr 401k":   "10.25",
-    "His Emplr HSA":   "2.0",
-    "His Emplr Contributions":   "12.25",
-    "His Tax Deferred":   "38.05",
-    "His Total Income":   "207.75",
-    "Her Age":   "34",
-    "Her Salary":   "103.5",
-    "Her Pension Costs":   "-9.315",
-    "Her Tax Deferred":   "41.0",
-    "Her 403b":   "20.5",
-    "Her 457b":   "20.5",
-    "Her Total Income":   "94.185",
-    "Denica Pension":   {
-            "2043": ".0116",
-            "2044": ".0128",
-            "2045": ".0140",
-            "2046": ".0152",
-            "2047": ".0164",
-            "2048": ".0176",
-            "2049": ".0188",
-            "2050": ".0200",
-            "2051": ".0213",
-            "2052": ".0227",
-            "2053": ".0240",
-            "2054": ".0240",
-            "2055": ".0240"
-        }
-    }
+with open('params.json') as json_file:
+            params = json.load(json_file)
+param_vals = {key:obj["val"] for (key,obj) in params.items()}
+
 
 if __name__ == '__main__':
     simulator = Simulator(param_vals)
