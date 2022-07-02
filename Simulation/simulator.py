@@ -9,9 +9,10 @@
 import datetime as dt
 import json
 import math
+import random
 import numpy as np
 import pandas as pd
-import returnGenerator
+# import returnGenerator
 
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
@@ -149,6 +150,24 @@ class Simulator:
 
         
     # values that vary with the monte carlo randomness
+        inflation_arr = np.genfromtxt("Inflation.csv",skip_header=1,delimiter=',').transpose()
+        stock_return_arr = np.genfromtxt("StockReturns.csv",skip_header=1,delimiter=',').transpose()
+        bond_return_arr = np.genfromtxt("BondReturns.csv",skip_header=1,delimiter=',').transpose()
+        re_return_arr = np.genfromtxt("REReturns.csv",skip_header=1,delimiter=',').transpose()
+        # start loop here
+        col = 1
+        stock_return_ls = stock_return_arr[col].tolist()
+        bond_return_ls = bond_return_arr[col].tolist()
+        re_return_ls = re_return_arr[col].tolist()
+        inflation_ls = inflation_arr[col].tolist()
+        # Spending, make list with spending increasing by corresponding inflation and changing at FI
+        spending_qt = self._val("Total Spending (Yearly)",QT_MOD='dollar')
+        retirement_change = self._val("Retirement Change (%)",QT_MOD=False)
+        spending_ls =[spending_qt*inflation if i<working_qts else spending_qt*inflation*(1+retirement_change) 
+                      for (i,inflation) in enumerate(inflation_ls)]
+        kids = [self._val("Year @ Kid #1",QT_MOD=False),self._val("Year @ Kid #2",QT_MOD=False),
+                self._val("Year @ Kid #3",QT_MOD=False)]
+        
         SavingsCol = 4
         InflationCol = 6
         SpendingCol = 15
