@@ -11,6 +11,7 @@ import json
 import math
 import numpy as np
 import pandas as pd
+import returnGenerator
 
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
@@ -44,18 +45,11 @@ class Simulator:
         her_qt_income = self._val("Her Total Income",QT_MOD='dollar')
         total_income_qt = his_qt_income+her_qt_income
         tax_deferred_qt = self._val("His Tax Deferred",QT_MOD='dollar')+self._val("Her Tax Deferred",QT_MOD='dollar')
-        job_income_ls, tax_deferred_ls = [total_income_qt], [tax_deferred_qt]
             # build out income lists with raises coming in steps on the first quarter of each year
         raise_yr = 1+self._val("Raise (%)",QT_MOD=False)
-        for x in self._range_len(START=TODAY_QUARTER+1,LEN=working_qts-1,INCREMENT=1,ADD=True):
-            if x%4 !=0:
-                job_income_ls.append(job_income_ls[-1])
-                tax_deferred_ls.append(tax_deferred_ls[-1])
-            else:
-                job_income_ls.append(job_income_ls[-1]*raise_yr)
-                tax_deferred_ls.append(tax_deferred_ls[-1]*raise_yr)
+        job_income_ls = self._step_quarterize(total_income_qt,raise_yr,mode='working',working_qts=working_qts)
+        tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts)
         job_income_ls, tax_deferred_ls = job_income_ls +[0]*FI_qts,tax_deferred_ls +[0]*FI_qts # add the non-working years
-
 
 
     # values that are varied only due to controlable adjustable parameters
@@ -74,12 +68,7 @@ class Simulator:
             # convert to est. value at pension_start_yr
         starting_pension_qt = starting_pension_qt*self._pow(FLAT_INFLATION,exp=(pension_start_yr-fi_yr))
             # build out list, add the correct number of zeros to the beginning
-        pension_ls = [starting_pension_qt]
-        for x in np.arange(pension_start_yr+0.25,time_ls[-1]+0.25,0.25):
-            if x % 1 == 0:
-                pension_ls.append(pension_ls[-1] * raise_yr)
-            else:
-                pension_ls.append(pension_ls[-1])
+        pension_ls =self._step_quarterize(starting_pension_qt,raise_yr,mode='pension',start_yr=pension_start_yr,time_ls=time_ls)
         pension_ls = [0]*(self.rows-len(pension_ls))+pension_ls
         
         # SS columns https://www.ssa.gov/oact/cola/Benefits.html 
@@ -88,8 +77,6 @@ class Simulator:
         # Earnings limit: https://www.ssa.gov/benefits/retirement/planner/whileworking.html#:~:text=your%20excess%20earnings.-,How%20We%20Deduct%20Earnings%20From%20Benefits,full%20retirement%20age%20is%20%2451%2C960.
         # Bend points: https://www.ssa.gov/oact/cola/piaformula.html
         # PIA: https://www.ssa.gov/oact/cola/piaformula.html 
-        #TODO: There's a lot of duplicated code here (his and her). Needs to be fed to another function, but many variables are local to main(), not global
-            # pull data
         ss_data = pd.read_csv('ss_earnings.csv')
         ss_max_earnings, index_factors, ss_yrs = ss_data['SS_Max_Earnings'].tolist(), ss_data['Index_Factors'].tolist(), ss_data['Year'].tolist()
         his_ss_earnings, her_ss_earnings = ss_data['His_SS_Earnings'].tolist(), ss_data['Her_SS_Earnings'].tolist()
@@ -100,60 +87,43 @@ class Simulator:
             ss_max_earnings.append(ss_max_earnings[-1]*FLAT_INFLATION)
             his_ss_earnings.append(his_ss_earnings[-1]*raise_yr)
             her_ss_earnings.append(her_ss_earnings[-1]*raise_yr)
-            index_factors.append(index_factors[-1]*(2-FLAT_INFLATION))        
+            index_factors.append(index_factors[-1]*(2-FLAT_INFLATION))
+        def ss_calc(ss_earnings,PIA_rates,ss_age,birth_year):
             # index and limit the earnings, then sort them from high to low
-        his_ss_earnings = [min(ss_max,earning)*index for ss_max, earning, index in zip(ss_max_earnings,his_ss_earnings, index_factors)]
-        her_ss_earnings = [min(ss_max,earning)*index for ss_max, earning, index in zip(ss_max_earnings,her_ss_earnings, index_factors)]
-        his_ss_earnings.sort(reverse=True)
-        her_ss_earnings.sort(reverse=True)
+            ss_earnings = [min(ss_max,earning)*index for ss_max, earning, index in zip(ss_max_earnings,ss_earnings, index_factors)]
+            ss_earnings.sort(reverse=True)
             # Find Average Indexed Monthly Earnings (AIME), only top 35 years (420 months) count
-        his_AIME, her_AIME = sum(his_ss_earnings[:35])/420, sum(her_ss_earnings[:35])/420
+            AIME = sum(ss_earnings[:35])/420
             # Calculate Primary Insurance Amounts (PIA) using bend points. Add AIME and sort to see where the AIME ranks in the bend points
-        his_bend_points, her_bend_points = gov_params["Bend Points"]+[his_AIME], gov_params["Bend Points"]+[her_AIME]
-        his_bend_points.sort()
-        her_bend_points.sort()
-                # cut off bend points at inserted AIME
-        his_bend_points, her_bend_points = his_bend_points[:his_bend_points.index(his_AIME)+1], her_bend_points[:her_bend_points.index(her_AIME)+1]
-        his_PIA_rates, her_PIA_rates = gov_params["His PIA Rates"], gov_params["Her PIA Rates"]
-                # for the first bracket, just the bend times the rate. After that, find the marginal income to multiple by the rate
-        his_full_PIA = sum([(his_bend_points[i]-his_bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
-                   in zip(enumerate(his_bend_points),his_PIA_rates)])
-        her_full_PIA = sum([(her_bend_points[i]-her_bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
-                   in zip(enumerate(her_bend_points),her_PIA_rates)])
+            bend_points = gov_params["Bend Points"]+[AIME]
+            bend_points.sort()
+             # cut off bend points at inserted AIME
+            bend_points = bend_points[:bend_points.index(AIME)+1]
+            # for the first bracket, just the bend times the rate. After that, find the marginal income to multiple by the rate
+            full_PIA = sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
+                                in zip(enumerate(bend_points),PIA_rates)])
             # Find adjusted benefit amounts based on selected retirement age
-        his_ss_age, her_ss_age = self._val("His SS Age",QT_MOD=False), self._val("Her SS Age",QT_MOD=False) 
-        his_ss_year, her_ss_year = his_ss_age + 1993, her_ss_age + 1988 # uses 1 extra year since bday at end of year
-            # convert to est. value at ss start-year and convert to quarterly (3 x monthly)
-        his_PIA,her_PIA = his_full_PIA * gov_params['Benefit Rates'][str(his_ss_age)], her_full_PIA * gov_params['Benefit Rates'][str(her_ss_age)]
-        his_ss_qt = 3 * his_PIA*self._pow(FLAT_INFLATION,exp=(his_ss_year-ss_data_last_updated)) # index factor is neutral to last update, so PIA is in that year's dollars
-        her_ss_qt = 3 * her_PIA*self._pow(FLAT_INFLATION,exp=(her_ss_year-ss_data_last_updated))
+            ss_year = ss_age + birth_year
+                # convert to est. value at ss start-year and convert to quarterly (3 x monthly)
+            pia = full_PIA * gov_params['Benefit Rates'][str(ss_age)]
+            ss_qt = 3 * pia*self._pow(FLAT_INFLATION,exp=(ss_year-ss_data_last_updated)) # index factor is neutral to last update, so PIA is in that year's dollars
             # build out list, add the correct number of zeros to the beginning, optimize later into list comprehension
-        his_ss_ls = [his_ss_qt]
-        for x in np.arange(his_ss_year+0.25,time_ls[-1]+0.25,0.25):
-            if x % 1 == 0:
-                his_ss_ls.append(his_ss_ls[-1] * raise_yr)
-            else:
-                his_ss_ls.append(his_ss_ls[-1])
-        his_ss_ls = [0]*(self.rows-len(his_ss_ls))+his_ss_ls
-        her_ss_ls = [her_ss_qt]
-        for x in np.arange(her_ss_year+0.25,time_ls[-1]+0.25,0.25):
-            if x % 1 == 0:
-                her_ss_ls.append(her_ss_ls[-1] * raise_yr)
-            else:
-                her_ss_ls.append(her_ss_ls[-1])
-        her_ss_ls = [0]*(self.rows-len(her_ss_ls))+her_ss_ls
+            ss_ls = self._step_quarterize(ss_qt,raise_yr,mode='pension',start_yr=ss_year,time_ls=time_ls)
+            return [0]*(self.rows-len(ss_ls))+ss_ls
+        his_ss_ls = ss_calc(his_ss_earnings,gov_params["His PIA Rates"],self._val("His SS Age",QT_MOD=False),birth_year=1993) # add 1 year to birth year since date is so late in year
+        her_ss_ls = ss_calc(her_ss_earnings,gov_params["Her PIA Rates"],self._val("Her SS Age",QT_MOD=False),birth_year=1988) 
 
         # Add all income together. 
             # is list comprehension faster than converting to numpy arr and adding, then converting back?
         total_income_ls = [sum([a,b,c,d]) for a, b, c, d in zip(job_income_ls,pension_ls, his_ss_ls, her_ss_ls)]
 
         # Taxes (brackets are for yearly, not qt, so need conversion)
+        fed_std_deduction = gov_params["Fed Std Deduction"]
+        fed_tax_brackets = gov_params["Fed Bracket Rates"]
+        state_std_deduction = gov_params["CA Std Deduction"]
+        state_tax_brackets = gov_params["CA Bracket Rates"]
         def get_taxes(income_qt):
             """Returns combined federal and state taxes on non-tax-deferred income"""
-            fed_std_deduction = gov_params["Fed Std Deduction"]
-            fed_tax_brackets = gov_params["Fed Bracket Rates"]
-            state_std_deduction = gov_params["CA Std Deduction"]
-            state_tax_brackets = gov_params["CA Bracket Rates"]
             fed_taxes = bracket_math(fed_tax_brackets,max(4*income_qt-fed_std_deduction,0))
             state_taxes = bracket_math(state_tax_brackets,max(4*income_qt-state_std_deduction,0))
             return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
@@ -171,13 +141,7 @@ class Simulator:
         # fica = 0.0145*(SingleYear[HisIncomeCol]+SingleYear[HerIncomeCol])+0.062*Math.min(SSMaxEarnings,SingleYear[HisIncomeCol]) 
         medicare = [0.0145*job_income for job_income in job_income_ls]
             # need the SS Max Earnings, but in quarter form instead of the annual form I did in the SS section.
-            # I've done this three times now, need to make it a function instead
-        ss_max_earnings_qt =[0.25*ss_max_earnings[ss_yrs.index(TODAY_YR)]]
-        for x in self._range_len(START=TODAY_QUARTER+1,LEN=working_qts-1,INCREMENT=1,ADD=True):
-            if x%4 !=0:
-                ss_max_earnings_qt.append(ss_max_earnings_qt[-1])
-            else:
-                ss_max_earnings_qt.append(ss_max_earnings_qt[-1]*FLAT_INFLATION)
+        ss_max_earnings_qt = self._step_quarterize(0.25*ss_max_earnings[ss_yrs.index(TODAY_YR)],FLAT_INFLATION,mode='working',working_qts=working_qts)
         his_income_ratio = his_qt_income/(his_qt_income+her_qt_income)
         ss_tax = [0.062*min(his_income_ratio*income,ss_max) for income,ss_max in zip(job_income_ls,ss_max_earnings_qt)]
         ss_tax+= [0]*(self.rows-len(ss_tax))
@@ -218,6 +182,19 @@ class Simulator:
 
 # -------------------------------- HELPER FUNCTIONS -------------------------------- #
 
+    def _step_quarterize(self,first_val,increase,mode,**kw):
+        """Return a list with values that step up on a yearly basis rather than quarterly \n
+        mode = 'working' -> from today_qt to fi_date, needs kw['working_qts'] \n
+        mode = 'pension' -> from provided kw['start_yr'] to end of kw['time_ls']"""
+        ls = [first_val]
+        if mode == 'working':
+            custom_range = self._range_len(START=TODAY_QUARTER+1,LEN=kw["working_qts"]-1,INCREMENT=1,ADD=True)
+            [ls.append(ls[-1]) if x%4 !=0 else ls.append(ls[-1]*increase) for x in custom_range]
+        elif mode == 'pension':
+            custom_range = np.arange(kw['start_yr']+0.25,kw['time_ls'][-1]+0.25,0.25)
+            [ls.append(ls[-1]*increase) if x%1 ==0 else ls.append(ls[-1]) for x in custom_range]
+        return ls
+                
     def _catch(self, func, *args, handle=lambda e : e, **kwargs):
         # https://stackoverflow.com/questions/1528237/how-to-handle-exceptions-in-a-list-comprehensions
         try:
