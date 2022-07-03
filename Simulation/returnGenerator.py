@@ -1,6 +1,7 @@
 import math
 import pandas
 import random
+import numpy as np
 
 EQUITY_MEAN = 1.095
 EQUITY_STDEV = .16
@@ -22,7 +23,7 @@ INFLATION_STDEV = .027
 INFLATION_ANNUAL_HIGH = 1.09
 INFLATION_ANNUAL_LOW = 1.015
 
-GENERATE_QTY = 5000
+GENERATE_QTY = 500 # takes 20 seconds to run 5000. 'start = time.perf_counter(); end = time.perf_counter();  print(end-start)
 years_qty = 90
 
 
@@ -45,9 +46,10 @@ def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per
             iter += 1
         multi_returns[x] = single_returns[:qty_per_column]
     print(iter)
-    data = pandas.DataFrame(multi_returns)
-    data.to_csv(file_name)
-    return data
+    return multi_returns
+    #data = pandas.DataFrame(multi_returns)
+    #data.to_csv(file_name)
+    #return data
 
 def generate_inflation(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year, file_name):
     """similar functions, but it's easier to have inflations output be an array of the products rather than individual values"""
@@ -69,9 +71,10 @@ def generate_inflation(mean, stdev, annual_high, annual_low,qty_per_column,qty_p
             iter += 1
         multi_returns[x] = single_returns[:qty_per_column]
     print(iter)
-    data = pandas.DataFrame(multi_returns)
-    data.to_csv(file_name)
-    return data
+    return multi_returns
+    #data = pandas.DataFrame(multi_returns)
+    #data.to_csv(file_name)
+    #return data
 
 def main(qty_per_column,qty_per_year):
     generated_array =[]
@@ -85,4 +88,4 @@ def main(qty_per_column,qty_per_year):
                                     qty_per_column,qty_per_year, file_name="Inflation.csv"))
     return generated_array
 
-main(270,4)
+# main(270,4)
