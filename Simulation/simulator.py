@@ -10,10 +10,12 @@ import datetime as dt
 import json
 import math
 import random
+import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-# import returnGenerator
+import multiprocessing
+import returnGenerator
 
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
@@ -30,8 +32,7 @@ class Simulator:
         self.fi_date = self.params["FI Quarter"]
             
     def main(self):
-# -------------------------------- VARIABLES -------------------------------- #
-
+# -------------------------------- VARIABLES -------------------------------- #      
     # values that are fixed regardless
         # Year.Quarter list
         time_ls = self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True)
@@ -151,18 +152,14 @@ class Simulator:
 
         
     # values that vary with the monte carlo randomness
-        # pulling in arrays manually for now due to slowness of generating new values from returnGenerator.py
-        # eventual goal would be to generate a new set of returns once before running monte carlo/genetic algorithm
-        inflation_arr = np.genfromtxt("Inflation.csv",skip_header=1,delimiter=',').transpose()
-        stock_return_arr = np.genfromtxt("StockReturns.csv",skip_header=1,delimiter=',').transpose()
-        bond_return_arr = np.genfromtxt("BondReturns.csv",skip_header=1,delimiter=',').transpose()
-        re_return_arr = np.genfromtxt("REReturns.csv",skip_header=1,delimiter=',').transpose()
+        # bring in generated returns. Would prefer to use multiprocessing, but can't figure out how to get arrays of arrays handed back in .Value()
+        stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = returnGenerator.main(self.rows,4)
         #TODO: start monte carlo loop here
         col = 1 # manually setting column till monte carlo loop built
-        stock_return_ls = stock_return_arr[col].tolist()
-        bond_return_ls = bond_return_arr[col].tolist()
-        re_return_ls = re_return_arr[col].tolist()
-        inflation_ls = inflation_arr[col].tolist()
+        stock_return_ls = stock_return_arr[col]
+        bond_return_ls = bond_return_arr[col]
+        re_return_ls = re_return_arr[col]
+        inflation_ls = inflation_arr[col]
         # Spending, 
             # make list with spending increasing by corresponding inflation and changing at FI
         spending_qt = self._val("Total Spending (Yearly)",QT_MOD='dollar')
@@ -209,7 +206,7 @@ class Simulator:
             net_worth_ls.append(net_worth_ls[-1]+return_amt+contribution)
             i+=1
         #TODO: create diagnostic dataframe or csv with all lists side by side
-
+        
         plt.plot(net_worth_ls)
         plt.show()
         NetWorthCol = 4 # Savings Col in Google Sheets
