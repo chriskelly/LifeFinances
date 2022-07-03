@@ -12,6 +12,7 @@ import math
 import random
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 # import returnGenerator
 
 TODAY = dt.date.today()
@@ -150,37 +151,71 @@ class Simulator:
 
         
     # values that vary with the monte carlo randomness
+        # pulling in arrays manually for now due to slowness of generating new values from returnGenerator.py
+        # eventual goal would be to generate a new set of returns once before running monte carlo/genetic algorithm
         inflation_arr = np.genfromtxt("Inflation.csv",skip_header=1,delimiter=',').transpose()
         stock_return_arr = np.genfromtxt("StockReturns.csv",skip_header=1,delimiter=',').transpose()
         bond_return_arr = np.genfromtxt("BondReturns.csv",skip_header=1,delimiter=',').transpose()
         re_return_arr = np.genfromtxt("REReturns.csv",skip_header=1,delimiter=',').transpose()
-        # start loop here
-        col = 1
+        #TODO: start monte carlo loop here
+        col = 1 # manually setting column till monte carlo loop built
         stock_return_ls = stock_return_arr[col].tolist()
         bond_return_ls = bond_return_arr[col].tolist()
         re_return_ls = re_return_arr[col].tolist()
         inflation_ls = inflation_arr[col].tolist()
-        # Spending, make list with spending increasing by corresponding inflation and changing at FI
+        # Spending, 
+            # make list with spending increasing by corresponding inflation and changing at FI
         spending_qt = self._val("Total Spending (Yearly)",QT_MOD='dollar')
-        retirement_change = self._val("Retirement Change (%)",QT_MOD=False)
+        retirement_change = self._val("Retirement Change (%)",QT_MOD=False) # reduction of spending expected at retirement (less driving, less expensive cost of living, etc)
         spending_ls =[spending_qt*inflation if i<working_qts else spending_qt*inflation*(1+retirement_change) 
                       for (i,inflation) in enumerate(inflation_ls)]
-        kids = [self._val("Year @ Kid #1",QT_MOD=False),self._val("Year @ Kid #2",QT_MOD=False),
-                self._val("Year @ Kid #3",QT_MOD=False)]
-        
-        SavingsCol = 4
-        InflationCol = 6
-        SpendingCol = 15
-        KidsCol = 16
-        TotalCostsCol =17  
-        SaveRateCol = 18
-        ContributeCol = 19
+        # Kids costs   
+            # make a kids array with years of kids being planned. If GUI abilities are expanded, could save kid birth years in an unlimited array instead of limited to 3 kids
+        kid_years = [kid for kid in [self._val("Year @ Kid #1",QT_MOD=False),self._val("Year @ Kid #2",QT_MOD=False),
+                self._val("Year @ Kid #3",QT_MOD=False)] if kid != '']
+            # kids_ls should have kid_spending_rate*spending[i] for every year from each kid's birth till 22 years after
+        kids_ls = [0]*len(time_ls)
+        kid_spending_rate = self._val("Cost of Kid (% Spending)",QT_MOD=False)
+        for kid_yr in kid_years:
+            kids_ls = [other_kid_cost + spending*kid_spending_rate if yr_qt>=kid_yr and yr_qt-22<kid_yr else other_kid_cost 
+                       for other_kid_cost,spending,yr_qt in zip(kids_ls,spending_ls,time_ls) ]
+        # Total costs
+        total_costs_ls = [sum([a,b,c]) for a,b,c in zip(taxes_ls,spending_ls,kids_ls)]
+        # Net contributions to savings
+        contributions_ls = [income-costs for income, costs in zip(total_income_ls,total_costs_ls)]
+        # Allocation between equity, RE and bonds. Allows for different methods to be designed
+        def allocation(method:str,**kw):
+            """Return a dict {"Equity":EquityAlloc, "RE":REAlloc, "Bond":BondAlloc} \n
+            method = 'Life Cycle' -> needs kw['inflation'] and kw['net_worth']"""
+            if method == 'Life Cycle':
+                RERatio = self.params["RE Ratio"]
+                EquityTarget = self.params["Equity Target"] 
+                MaxRiskFactor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
+                EquityTargetPV = EquityTarget*kw['inflation'] # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
+                RiskFactor = min(max(EquityTargetPV/kw['net_worth'],0),MaxRiskFactor)
+                REAlloc = (RiskFactor*RERatio)/((1-RERatio)*(1+RiskFactor*RERatio/(1-RERatio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
+                EquityAlloc = (1-REAlloc)*RiskFactor
+                BondAlloc = max(1-REAlloc-EquityAlloc,0) 
+                return {"Equity":EquityAlloc,"RE":REAlloc,"Bond":BondAlloc}
+        # Net Worth/total savings
+        net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
+            # loop through time_ls to find net worth changes
+        i = 1 # already have 0 index value for net_worth_ls
+        while i<len(time_ls):
+            alloc = allocation(method='Life Cycle',inflation=inflation_ls[0],net_worth = net_worth_ls[-1])
+            contribution = contributions_ls[i-1]
+            return_rate = stock_return_ls[i]*alloc['Equity'] + bond_return_ls[i]*alloc['Bond'] + re_return_ls[i]*alloc['RE']
+            return_amt = return_rate*(net_worth_ls[-1]+0.5*contribution)
+            net_worth_ls.append(net_worth_ls[-1]+return_amt+contribution)
+            i+=1
+        #TODO: create diagnostic dataframe or csv with all lists side by side
+
+        plt.plot(net_worth_ls)
+        plt.show()
+        NetWorthCol = 4 # Savings Col in Google Sheets
         StockAlcCol = 20
         REAlcCol = 21
         BondAlcCol = 22
-        StockReturnPctCol = 24
-        REReturnPctCol = 25	
-        BondReturnPctCol = 26
         ReturnPctCol = 27
         ReturnAmtCol = 28
 
