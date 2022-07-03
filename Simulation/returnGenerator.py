@@ -23,17 +23,16 @@ INFLATION_STDEV = .027
 INFLATION_ANNUAL_HIGH = 1.09
 INFLATION_ANNUAL_LOW = 1.015
 
-GENERATE_QTY = 500 # takes 20 seconds to run 5000. 'start = time.perf_counter(); end = time.perf_counter();  print(end-start)
 years_qty = 90
 
 
-def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year, file_name):
+def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,generate_qty, file_name):
     stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
     mean = mean ** (1/qty_per_year)
     years_qty = math.ceil(qty_per_column/qty_per_year)
     iter = 0
     multi_returns = {}
-    for x in range(GENERATE_QTY):
+    for x in range(generate_qty):
         annualized = 0
         while annualized < annual_low or annualized > annual_high:
             single_returns = []
@@ -51,14 +50,14 @@ def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per
     #data.to_csv(file_name)
     #return data
 
-def generate_inflation(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year, file_name):
+def generate_inflation(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,generate_qty, file_name):
     """similar functions, but it's easier to have inflations output be an array of the products rather than individual values"""
     stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
     mean = mean ** (1/qty_per_year)
     years_qty = math.ceil(qty_per_column/qty_per_year)
     iter = 0
     multi_returns = {}
-    for x in range(GENERATE_QTY):
+    for x in range(generate_qty):
         annualized = 0
         while annualized < annual_low or annualized > annual_high:
             single_returns = []
@@ -76,16 +75,16 @@ def generate_inflation(mean, stdev, annual_high, annual_low,qty_per_column,qty_p
     #data.to_csv(file_name)
     #return data
 
-def main(qty_per_column,qty_per_year):
+def main(qty_per_column,qty_per_year,generate_qty):
     generated_array =[]
     generated_array.append(generate_returns(EQUITY_MEAN, EQUITY_STDEV, EQUITY_ANNUAL_HIGH, EQUITY_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year, file_name="StockReturns.csv"))
+                                    qty_per_column,qty_per_year,generate_qty, file_name="StockReturns.csv"))
     generated_array.append(generate_returns(BOND_MEAN, BOND_STDEV, BOND_ANNUAL_HIGH, BOND_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year, file_name="BondReturns.csv"))
+                                    qty_per_column,qty_per_year,generate_qty, file_name="BondReturns.csv"))
     generated_array.append(generate_returns(RE_MEAN, RE_STDEV, RE_ANNUAL_HIGH, RE_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year, file_name="REReturns.csv"))
+                                    qty_per_column,qty_per_year,generate_qty, file_name="REReturns.csv"))
     generated_array.append(generate_inflation(INFLATION_MEAN, INFLATION_STDEV, INFLATION_ANNUAL_HIGH, INFLATION_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year, file_name="Inflation.csv"))
+                                    qty_per_column,qty_per_year,generate_qty, file_name="Inflation.csv"))
     return generated_array
 
 # main(270,4)
