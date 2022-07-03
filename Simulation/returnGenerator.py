@@ -50,6 +50,7 @@ def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per
     return data
 
 def generate_inflation(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year, file_name):
+    """similar functions, but it's easier to have inflations output be an array of the products rather than individual values"""
     stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
     mean = mean ** (1/qty_per_year)
     years_qty = math.ceil(qty_per_column/qty_per_year)
