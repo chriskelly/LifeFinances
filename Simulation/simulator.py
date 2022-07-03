@@ -19,7 +19,7 @@ TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
 FLAT_INFLATION = 1.03 # Used for some estimations like pension
-MONTE_CARLO_RUNS = 500 # takes 20 seconds to run 5000. 'start = time.perf_counter(); end = time.perf_counter();  print(end-start)
+MONTE_CARLO_RUNS = 500 # takes 20 seconds to run 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
 with open("params_gov.json") as json_file:
             gov_params = json.load(json_file)
 
@@ -150,12 +150,19 @@ class Simulator:
 
         
     # ------------ MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
-        # bring in generated returns. Would prefer to use multiprocessing, but can't figure out how to get arrays of arrays handed back in .Value()
-        stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = returnGenerator.main(self.rows,4,MONTE_CARLO_RUNS)
-        #TODO: start monte carlo loop here
+        # variables that don't alter with each run
+        stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = returnGenerator.main(self.rows,4,MONTE_CARLO_RUNS) # bring in generated returns. Would prefer to use multiprocessing, but can't figure out how to get arrays of arrays handed back in .Value()
+        spending_qt = self._val("Total Spending (Yearly)",QT_MOD='dollar')
+        retirement_change = self._val("Retirement Change (%)",QT_MOD=False) # reduction of spending expected at retirement (less driving, less expensive cost of living, etc)
+            # make a kids array with years of kids being planned. If GUI abilities are expanded, could save kid birth years in an unlimited array instead of limited to 3 kids
+        kid_years = [kid for kid in [self._val("Year @ Kid #1",QT_MOD=False),self._val("Year @ Kid #2",QT_MOD=False),
+                    self._val("Year @ Kid #3",QT_MOD=False)] if kid != '']
+        kid_spending_rate = self._val("Cost of Kid (% Spending)",QT_MOD=False)
+        # performance tracking
         success_rate = 0
         worst_failure_idx = self.rows
         failure_dict ={}
+        # Monte Carlo
         for col in range(MONTE_CARLO_RUNS):
             stock_return_ls = stock_return_arr[col]
             bond_return_ls = bond_return_arr[col]
@@ -163,17 +170,11 @@ class Simulator:
             inflation_ls = inflation_arr[col]
             # Spending, 
                 # make list with spending increasing by corresponding inflation and changing at FI
-            spending_qt = self._val("Total Spending (Yearly)",QT_MOD='dollar')
-            retirement_change = self._val("Retirement Change (%)",QT_MOD=False) # reduction of spending expected at retirement (less driving, less expensive cost of living, etc)
             spending_ls =[spending_qt*inflation if i<working_qts else spending_qt*inflation*(1+retirement_change) 
                         for (i,inflation) in enumerate(inflation_ls)]
             # Kids costs   
-                # make a kids array with years of kids being planned. If GUI abilities are expanded, could save kid birth years in an unlimited array instead of limited to 3 kids
-            kid_years = [kid for kid in [self._val("Year @ Kid #1",QT_MOD=False),self._val("Year @ Kid #2",QT_MOD=False),
-                    self._val("Year @ Kid #3",QT_MOD=False)] if kid != '']
                 # kids_ls should have kid_spending_rate*spending[i] for every year from each kid's birth till 22 years after
             kids_ls = [0]*len(time_ls)
-            kid_spending_rate = self._val("Cost of Kid (% Spending)",QT_MOD=False)
             for kid_yr in kid_years:
                 kids_ls = [other_kid_cost + spending*kid_spending_rate if yr_qt>=kid_yr and yr_qt-22<kid_yr else other_kid_cost 
                         for other_kid_cost,spending,yr_qt in zip(kids_ls,spending_ls,time_ls) ]
