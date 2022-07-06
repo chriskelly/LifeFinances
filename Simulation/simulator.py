@@ -19,7 +19,7 @@ TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
 FLAT_INFLATION = 1.03 # Used for some estimations like pension
-MONTE_CARLO_RUNS = 500 # takes 20 seconds to run 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
+MONTE_CARLO_RUNS = 500 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
 with open("params_gov.json") as json_file:
             gov_params = json.load(json_file)
 
@@ -53,7 +53,7 @@ class Simulator:
         job_income_ls, tax_deferred_ls = job_income_ls +[0]*FI_qts,tax_deferred_ls +[0]*FI_qts # add the non-working years
 
 
-    # ------------ PARAMETRIC DYNAMIC LISTS: PENSIONS, TAXES ------------ $
+    # ------------ PARAMETRIC DYNAMIC LISTS: PENSIONS, TAXES ------------ #
         # Her Pension
             # Calc max salary estimate
         fi_yr = math.trunc(self.fi_date)
@@ -233,18 +233,20 @@ class Simulator:
                     "Bond Returns":bond_return_ls,
                     "Real Estate Returns":re_return_ls
                 }
+            plt.plot(time_ls,net_worth_ls)
         success_rate = success_rate/MONTE_CARLO_RUNS
         failure_df = pd.DataFrame.from_dict(failure_dict)
         failure_df.to_csv('worst failure.csv')
         print(success_rate)
-            #TODO: create diagnostic dataframe or csv with all lists side by side
         
-        ax1 = plt.gca() # get the axis
-        ax2 = ax1.twinx() # create another axis that shares the same x-axis
+        # ax1 = plt.gca() # get the axis
+        # ax2 = ax1.twinx() # create another axis that shares the same x-axis
 
-        ax1.plot(failure_df["Time"],failure_df["Net Worth"],color='#E6232E')
-        ax2.plot(failure_df["Time"],failure_df["Stock Returns"],color='skyblue')
+        # ax1.plot(failure_df["Time"],failure_df["Net Worth"],color='#E6232E')
+        # ax2.plot(failure_df["Time"],failure_df["Stock Returns"],color='skyblue')
         plt.show()
+        
+        debug = None
         
 
 # -------------------------------- HELPER FUNCTIONS -------------------------------- #
