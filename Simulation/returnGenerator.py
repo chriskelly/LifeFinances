@@ -1,8 +1,9 @@
 import math
 import time
-import pandas
+from scipy import stats
 import random
 import numpy as np
+from skewDist import createSkewDist
 
 EQUITY_MEAN = 1.095
 EQUITY_STDEV = .16
@@ -23,17 +24,18 @@ INFLATION_MEAN = 1.037  # https://fred.stlouisfed.org/series/FPCPITOTLZGUSA#
 INFLATION_STDEV = .027
 INFLATION_ANNUAL_HIGH = 1.063
 INFLATION_ANNUAL_LOW = 1.020
+INFLATION_SKEW = 1.642
 
 years_qty = 90
 
 
-def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,generate_qty, file_name):
+def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns, file_name):
     stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
     mean = mean ** (1/qty_per_year)
     years_qty = math.ceil(qty_per_column/qty_per_year)
     iter = 0
     multi_returns = []
-    for x in range(generate_qty):
+    for x in range(columns):
         annualized = 0
         while annualized < annual_low or annualized > annual_high:
             single_returns = []
@@ -52,7 +54,7 @@ def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per
     #return data
     
     # trying to make it faster
-def generate_returns_faster(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,generate_qty, file_name):
+def generate_returns_faster(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns, file_name):
     stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
     mean = mean ** (1/qty_per_year)
     years_qty = math.ceil(qty_per_column/qty_per_year)
@@ -63,17 +65,17 @@ def generate_returns_faster(mean, stdev, annual_high, annual_low,qty_per_column,
             returns_ls = [growth-1 for growth in growth_ls]
             annualized = pow(np.prod(growth_ls), 1 / years_qty)
         return returns_ls
-    multi_returns = [make_return_ls()[:qty_per_column] for _ in range(generate_qty)]
+    multi_returns = [make_return_ls()[:qty_per_column] for _ in range(columns)]
     return multi_returns
 
-def generate_inflation(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,generate_qty, file_name):
+def generate_inflation(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns, file_name):
     """similar functions, but it's easier to have inflations output be an array of the products rather than individual values"""
     stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
     mean = mean ** (1/qty_per_year)
     years_qty = math.ceil(qty_per_column/qty_per_year)
     iter = 0
     multi_returns = []
-    for x in range(generate_qty):
+    for x in range(columns):
         annualized = 0
         while annualized < annual_low or annualized > annual_high:
             single_returns = []
@@ -90,22 +92,41 @@ def generate_inflation(mean, stdev, annual_high, annual_low,qty_per_column,qty_p
     #data = pandas.DataFrame(multi_returns)
     #data.to_csv(file_name)
     #return data
+    
+def generate_skewd_inflation(mean, stdev, skew,qty_per_column,qty_per_year,columns):
+    stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
+    mean = mean ** (1/qty_per_year)
+    dist = createSkewDist(mean,stdev,skew,size=qty_per_column*columns,debug=False)
+        #TODO: 25% of generated values are negative inflation
+    random.shuffle(dist) # createSkewDist returns ordered items
+    array = np.array(dist)
+    chunked_arrays = np.array_split(array,indices_or_sections=columns)
+    multi_col_returns = [list(array) for array in chunked_arrays]
+    for multi_col_idx in range(columns):
+        single_col_idx = 1
+        while single_col_idx<qty_per_column:
+            multi_col_returns[multi_col_idx][single_col_idx] *= multi_col_returns[multi_col_idx][single_col_idx-1]
+            single_col_idx+=1
+    #TODO: inflation needs to stack 
+    return multi_col_returns
 
-def main(qty_per_column,qty_per_year,generate_qty):
+def main(qty_per_column,qty_per_year,columns):
     generated_array =[]
     generated_array.append(generate_returns(EQUITY_MEAN, EQUITY_STDEV, EQUITY_ANNUAL_HIGH, EQUITY_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year,generate_qty, file_name="StockReturns.csv"))
+                                    qty_per_column,qty_per_year,columns, file_name="StockReturns.csv"))
     generated_array.append(generate_returns(BOND_MEAN, BOND_STDEV, BOND_ANNUAL_HIGH, BOND_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year,generate_qty, file_name="BondReturns.csv"))
+                                    qty_per_column,qty_per_year,columns, file_name="BondReturns.csv"))
     start = time.perf_counter()
     generated_array.append(generate_returns(RE_MEAN, RE_STDEV, RE_ANNUAL_HIGH, RE_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year,generate_qty, file_name="REReturns.csv"))
+                                    qty_per_column,qty_per_year,columns, file_name="REReturns.csv"))
     mid = time.perf_counter()
     speed_test = generate_returns_faster(RE_MEAN, RE_STDEV, RE_ANNUAL_HIGH, RE_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year,generate_qty, file_name="REReturns.csv")
+                                    qty_per_column,qty_per_year,columns, file_name="REReturns.csv")
     end = time.perf_counter()
-    generated_array.append(generate_inflation(INFLATION_MEAN, INFLATION_STDEV, INFLATION_ANNUAL_HIGH, INFLATION_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year,generate_qty, file_name="Inflation.csv"))
+    # generated_array.append(generate_inflation(INFLATION_MEAN, INFLATION_STDEV, INFLATION_ANNUAL_HIGH, INFLATION_ANNUAL_LOW,
+    #                                 qty_per_column,qty_per_year,columns, file_name="Inflation.csv"))
+    generated_array.append(generate_skewd_inflation(INFLATION_MEAN, INFLATION_STDEV, INFLATION_SKEW,
+                                    qty_per_column,qty_per_year,columns))
     print(f"standard: {mid-start}")
     print(f"fast:     {end-mid}")
     return generated_array

@@ -9,6 +9,7 @@
 import datetime as dt
 import json
 import math
+from pickle import TRUE
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -19,7 +20,8 @@ TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
 FLAT_INFLATION = 1.03 # Used for some estimations like pension
-MONTE_CARLO_RUNS = 500 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
+MONTE_CARLO_RUNS = 100 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
+INVESTIGATE_MODE = False
 with open("params_gov.json") as json_file:
             gov_params = json.load(json_file)
 
@@ -234,10 +236,41 @@ class Simulator:
                     "Real Estate Returns":re_return_ls
                 }
             plt.plot(time_ls,net_worth_ls)
+            if INVESTIGATE_MODE:
+                plt.show()
+                usr_input = input("save (s), next (n), continue (c)?")
+                if usr_input == 's':
+                    save_dict = {
+                        "Time":time_ls,
+                        "Net Worth":net_worth_ls,
+                        "Job Income":job_income_ls,
+                        "Tax Deferred":tax_deferred_ls,
+                        "Pension":pension_ls,
+                        "His SS":his_ss_ls,
+                        "Her SS":her_ss_ls,
+                        "Total Income":total_income_ls,
+                        "Income Taxes":income_taxes,
+                        "Medicare Taxes":medicare,
+                        "SS Taxes":ss_tax,
+                        "Total Taxes":taxes_ls,
+                        "Inflation":inflation_ls,
+                        "Spending":spending_ls,
+                        "Kid Costs":kids_ls,
+                        "Total Costs":total_costs_ls,
+                        "Contributions":contributions_ls,
+                        "Stock Returns":stock_return_ls,
+                        "Bond Returns":bond_return_ls,
+                        "Real Estate Returns":re_return_ls
+                    }
+                    save_df = pd.DataFrame.from_dict(save_dict)
+                    save_df.to_csv(f'Investigation/saveData{col}.csv')
+                # elif usr_input == 'c':
+                #     global INVESTIGATE_MODE
+                #     INVESTIGATE_MODE = False
         success_rate = success_rate/MONTE_CARLO_RUNS
         failure_df = pd.DataFrame.from_dict(failure_dict)
         failure_df.to_csv('worst failure.csv')
-        print(success_rate)
+        print(f"Success Rate: {success_rate*100}%")
         
         # ax1 = plt.gca() # get the axis
         # ax2 = ax1.twinx() # create another axis that shares the same x-axis
@@ -246,7 +279,7 @@ class Simulator:
         # ax2.plot(failure_df["Time"],failure_df["Stock Returns"],color='skyblue')
         plt.show()
         
-        debug = None
+        debug_point = None
         
 
 # -------------------------------- HELPER FUNCTIONS -------------------------------- #

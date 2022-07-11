@@ -1,6 +1,6 @@
 {
     "FI Quarter": {
-        "val": "2025.5",
+        "val": "2024.5",
         "popout": 0
     },
     "Calculate Til": {
@@ -111,7 +111,7 @@
         "popout": 0
     },
     "Total Spending (Yearly)": {
-        "val": "75.84800000000001",
+        "val": "75.848",
         "popout": 0,
         "popper": 1,
         "calcd": "12*sum([params_vals['Housing (Monthly)'],params_vals['Groceries (Monthly)'],params_vals['Car (Monthly)'], params_vals['His (Monthly)'],params_vals['Hers (Monthly)'],params_vals['Leisure (Monthly)'], params_vals['Expense Debt (Monthly)'], params_vals['Other (Monthly)']])+params_vals['Travel (Yearly)']+params_vals['Giving (Yearly)']+params_vals['Health (Yearly)']"
