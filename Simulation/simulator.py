@@ -9,19 +9,18 @@
 import datetime as dt
 import json
 import math
-from pickle import TRUE
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import returnGenerator
 
+DEBUG_LVL = 1 # 1: Print success rate, save worst failure | 2: Investigate each result 1 by 1
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
 FLAT_INFLATION = 1.03 # Used for some estimations like pension
 MONTE_CARLO_RUNS = 100 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
-INVESTIGATE_MODE = False
 with open("params_gov.json") as json_file:
             gov_params = json.load(json_file)
 
@@ -211,7 +210,7 @@ class Simulator:
                 i+=1
             if net_worth_ls[-1]!=0: 
                 success_rate += 1
-            if 0 in net_worth_ls and net_worth_ls.index(0) < worst_failure_idx:
+            if 0 in net_worth_ls and net_worth_ls.index(0) < worst_failure_idx and DEBUG_LVL >= 1:
                 worst_failure_idx = net_worth_ls.index(0)
                 failure_dict = {
                     "Time":time_ls,
@@ -236,7 +235,7 @@ class Simulator:
                     "Real Estate Returns":re_return_ls
                 }
             plt.plot(time_ls,net_worth_ls)
-            if INVESTIGATE_MODE:
+            if DEBUG_LVL >= 2: 
                 plt.show()
                 usr_input = input("save (s), next (n), continue (c)?")
                 if usr_input == 's':
@@ -268,9 +267,10 @@ class Simulator:
                 #     global INVESTIGATE_MODE
                 #     INVESTIGATE_MODE = False
         success_rate = success_rate/MONTE_CARLO_RUNS
-        failure_df = pd.DataFrame.from_dict(failure_dict)
-        failure_df.to_csv('worst failure.csv')
-        print(f"Success Rate: {success_rate*100}%")
+        if DEBUG_LVL >= 1: 
+            failure_df = pd.DataFrame.from_dict(failure_dict)
+            failure_df.to_csv('worst_failure.csv')
+            print(f"Success Rate: {success_rate*100:.2f}%")
         
         # ax1 = plt.gca() # get the axis
         # ax2 = ax1.twinx() # create another axis that shares the same x-axis
