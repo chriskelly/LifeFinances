@@ -1,6 +1,5 @@
 # https://stackoverflow.com/questions/49801071/how-can-i-use-skewnorm-to-produce-a-distribution-with-the-specified-skew/58111859#58111859
 
-import csv
 import numpy as np
 from scipy.stats import skewnorm,skew,kurtosis
 from scipy import stats
@@ -51,8 +50,7 @@ def createSkewDist(mean, sd, skew, size, debug = False):
         sns.distplot(final_dist, hist=True, ax=ax, color='green', label='generated distribution')
         #sns.distplot(np.random.choice(final_dist, size=100), hist=True, ax=ax, color='red', hist_kws={'alpha':.2}, label='sample n=100')
         ax.legend()
-
-    plt.show()
+        plt.show()
 
     return final_dist
 

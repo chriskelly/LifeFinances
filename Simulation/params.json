@@ -47,11 +47,11 @@
         "popout": 0
     },
     "Year @ Kid #1": {
-        "val": "2025",
+        "val": "2026",
         "popout": 0
     },
     "Year @ Kid #2": {
-        "val": "2027",
+        "val": "",
         "popout": 0
     },
     "Year @ Kid #3": {
@@ -107,11 +107,11 @@
         "popout": 0
     },
     "Current Net Worth ($)": {
-        "val": "1126",
+        "val": "2245",
         "popout": 0
     },
     "Total Spending (Yearly)": {
-        "val": "75.848",
+        "val": "75.84800000000001",
         "popout": 0,
         "popper": 1,
         "calcd": "12*sum([params_vals['Housing (Monthly)'],params_vals['Groceries (Monthly)'],params_vals['Car (Monthly)'], params_vals['His (Monthly)'],params_vals['Hers (Monthly)'],params_vals['Leisure (Monthly)'], params_vals['Expense Debt (Monthly)'], params_vals['Other (Monthly)']])+params_vals['Travel (Yearly)']+params_vals['Giving (Yearly)']+params_vals['Health (Yearly)']"

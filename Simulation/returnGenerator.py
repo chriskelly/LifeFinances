@@ -5,6 +5,8 @@ import random
 import numpy as np
 from skewDist import createSkewDist
 
+DEBUG_LVL = 0
+
 EQUITY_MEAN = 1.095
 EQUITY_STDEV = .16
 EQUITY_ANNUAL_HIGH = 1.09 # limits for annualized return check
@@ -47,11 +49,8 @@ def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per
             annualized = pow(product, 1 / years_qty)
             iter += 1
         multi_returns.append(single_returns[:qty_per_column])
-    print(iter)
+    if DEBUG_LVL >= 1: print(iter)
     return multi_returns
-    #data = pandas.DataFrame(multi_returns)
-    #data.to_csv(file_name)
-    #return data
     
     # trying to make it faster
 def generate_returns_faster(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns, file_name):
@@ -87,11 +86,8 @@ def generate_inflation(mean, stdev, annual_high, annual_low,qty_per_column,qty_p
             annualized = pow(product, 1 / years_qty)
             iter += 1
         multi_returns.append(single_returns[:qty_per_column])
-    print(iter)
+    if DEBUG_LVL >= 1: print(iter)
     return multi_returns
-    #data = pandas.DataFrame(multi_returns)
-    #data.to_csv(file_name)
-    #return data
     
 def generate_skewd_inflation(mean, stdev, skew,qty_per_column,qty_per_year,columns):
     stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
@@ -107,7 +103,6 @@ def generate_skewd_inflation(mean, stdev, skew,qty_per_column,qty_per_year,colum
         while single_col_idx<qty_per_column:
             multi_col_returns[multi_col_idx][single_col_idx] *= multi_col_returns[multi_col_idx][single_col_idx-1]
             single_col_idx+=1
-    #TODO: inflation needs to stack 
     return multi_col_returns
 
 def main(qty_per_column,qty_per_year,columns):
@@ -116,19 +111,21 @@ def main(qty_per_column,qty_per_year,columns):
                                     qty_per_column,qty_per_year,columns, file_name="StockReturns.csv"))
     generated_array.append(generate_returns(BOND_MEAN, BOND_STDEV, BOND_ANNUAL_HIGH, BOND_ANNUAL_LOW,
                                     qty_per_column,qty_per_year,columns, file_name="BondReturns.csv"))
-    start = time.perf_counter()
+    if DEBUG_LVL >= 1: start = time.perf_counter()
     generated_array.append(generate_returns(RE_MEAN, RE_STDEV, RE_ANNUAL_HIGH, RE_ANNUAL_LOW,
                                     qty_per_column,qty_per_year,columns, file_name="REReturns.csv"))
-    mid = time.perf_counter()
-    speed_test = generate_returns_faster(RE_MEAN, RE_STDEV, RE_ANNUAL_HIGH, RE_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year,columns, file_name="REReturns.csv")
-    end = time.perf_counter()
+    if DEBUG_LVL >= 1: 
+        mid = time.perf_counter()
+        speed_test = generate_returns_faster(RE_MEAN, RE_STDEV, RE_ANNUAL_HIGH, RE_ANNUAL_LOW,
+                                        qty_per_column,qty_per_year,columns, file_name="REReturns.csv")
+        end = time.perf_counter()
     # generated_array.append(generate_inflation(INFLATION_MEAN, INFLATION_STDEV, INFLATION_ANNUAL_HIGH, INFLATION_ANNUAL_LOW,
     #                                 qty_per_column,qty_per_year,columns, file_name="Inflation.csv"))
     generated_array.append(generate_skewd_inflation(INFLATION_MEAN, INFLATION_STDEV, INFLATION_SKEW,
                                     qty_per_column,qty_per_year,columns))
-    print(f"standard: {mid-start}")
-    print(f"fast:     {end-mid}")
+    if DEBUG_LVL >= 1: 
+        print(f"standard: {mid-start}")
+        print(f"fast:     {end-mid}")
     return generated_array
 
 # main(270,4)
