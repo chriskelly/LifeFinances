@@ -1,11 +1,3 @@
-
-"""
-    First we're making a frame for the data. The frame will only be made once for each set of params (genes)
-        Even though it's only made once per params, due to the hyper-volume we'll be testing, still needs to be fast
-    Only necessary data is taken from the frame (or maybe the frame is only made of necessary data)
-    Monte Carlo is run on the necessary frame to get success rate
-    
-"""
 import datetime as dt
 import json
 import math
@@ -20,7 +12,7 @@ TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
 FLAT_INFLATION = 1.03 # Used for some estimations like pension
-MONTE_CARLO_RUNS = 100 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
+MONTE_CARLO_RUNS = 1000 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
 with open("params_gov.json") as json_file:
             gov_params = json.load(json_file)
 
