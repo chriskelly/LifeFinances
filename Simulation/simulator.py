@@ -6,13 +6,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import returnGenerator
 
-DEBUG_LVL = 1 # 1: Print success rate, save worst failure | 2: Investigate each result 1 by 1
+DEBUG_LVL = 1 # 1: Print success rate, save worst failure, show plot | 2: Investigate each result 1 by 1
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
 FLAT_INFLATION = 1.03 # Used for some estimations like pension
-MONTE_CARLO_RUNS = 1000 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
+MONTE_CARLO_RUNS = 100 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
 with open("params_gov.json") as json_file:
             gov_params = json.load(json_file)
 
@@ -226,7 +226,7 @@ class Simulator:
                     "Bond Returns":bond_return_ls,
                     "Real Estate Returns":re_return_ls
                 }
-            plt.plot(time_ls,net_worth_ls)
+            if DEBUG_LVL >= 1: plt.plot(time_ls,net_worth_ls)
             if DEBUG_LVL >= 2: 
                 plt.show()
                 usr_input = input("save (s), next (n), continue (c)?")
@@ -264,12 +264,8 @@ class Simulator:
             failure_df.to_csv('worst_failure.csv')
             print(f"Success Rate: {success_rate*100:.2f}%")
         
-        # ax1 = plt.gca() # get the axis
-        # ax2 = ax1.twinx() # create another axis that shares the same x-axis
-
-        # ax1.plot(failure_df["Time"],failure_df["Net Worth"],color='#E6232E')
-        # ax2.plot(failure_df["Time"],failure_df["Stock Returns"],color='skyblue')
-        plt.show()
+        if DEBUG_LVL >= 1: plt.show()
+        return success_rate
         
         debug_point = None
         
