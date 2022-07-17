@@ -36,11 +36,13 @@
     },
     "RE Ratio": {
         "val": "0.4",
-        "popout": 0
+        "popout": 0,
+        "range": "np.linspace(0,1,11)"
     },
     "Equity Target": {
         "val": "1600",
-        "popout": 0
+        "popout": 0,
+        "range": "range(1000,3000,50)"
     },
     "Current RE Alloc ($)": {
         "val": "282",
@@ -88,15 +90,18 @@
     },
     "His SS Age": {
         "val": "62",
-        "popout": 0
+        "popout": 0,
+        "range": "range(62,71)"
     },
     "Her SS Age": {
         "val": "62",
-        "popout": 0
+        "popout": 0,
+        "range": "range(62,71)"
     },
     "Pension Year": {
         "val": "2047",
-        "popout": 0
+        "popout": 0,
+        "range": "range(2043,2056)"
     },
     "Pension Cashout": {
         "val": "False",
