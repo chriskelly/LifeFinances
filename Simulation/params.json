@@ -1,6 +1,6 @@
 {
     "FI Quarter": {
-        "val": "2028",
+        "val": "2024.5",
         "popout": 0
     },
     "Calculate Til": {
@@ -35,14 +35,14 @@
         "calcd": "1 - params_vals['International Proportion']"
     },
     "RE Ratio": {
-        "val": "0.4",
+        "val": "0.6",
         "popout": 0,
-        "range": "np.linspace(0,1,11)"
+        "range": "np.linspace(0,.6,7)"
     },
     "Equity Target": {
-        "val": "1600",
+        "val": "2300",
         "popout": 0,
-        "range": "range(1000,3000,50)"
+        "range": "range(1000,4000,50)"
     },
     "Current RE Alloc ($)": {
         "val": "282",
@@ -94,12 +94,12 @@
         "range": "range(62,71)"
     },
     "Her SS Age": {
-        "val": "62",
+        "val": "67",
         "popout": 0,
         "range": "range(62,71)"
     },
     "Pension Year": {
-        "val": "2047",
+        "val": "2052",
         "popout": 0,
         "range": "range(2043,2056)"
     },
