@@ -1,6 +1,7 @@
 import datetime as dt
 import json
 import math
+import warnings
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -12,7 +13,7 @@ TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
 FLAT_INFLATION = 1.03 # Used for some estimations like pension
-MONTE_CARLO_RUNS = 100 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
+MONTE_CARLO_RUNS = 500 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
 with open("params_gov.json") as json_file:
             gov_params = json.load(json_file)
 
@@ -163,18 +164,26 @@ class Simulator:
             inflation_ls = inflation_arr[col]
             # Spending, 
                 # make list with spending increasing by corresponding inflation and changing at FI
-            spending_ls =[spending_qt*inflation if i<working_qts else spending_qt*inflation*(1+retirement_change) 
-                        for (i,inflation) in enumerate(inflation_ls)]
-            # Kids costs   
-                # kids_ls should have kid_spending_rate*spending[i] for every year from each kid's birth till 22 years after
+            # spending_ls =[spending_qt*inflation if i<working_qts else spending_qt*inflation*(1+retirement_change) 
+            #             for (i,inflation) in enumerate(inflation_ls)]
+            # Kid count   
+                # kids_ls should have kid for every year from each kid's birth till 22 years after
             kids_ls = [0]*len(time_ls)
             for kid_yr in kid_years:
-                kids_ls = [other_kid_cost + spending*kid_spending_rate if yr_qt>=kid_yr and yr_qt-22<kid_yr else other_kid_cost 
-                        for other_kid_cost,spending,yr_qt in zip(kids_ls,spending_ls,time_ls) ]
+                kids_ls = [other_kids + 1 if yr_qt>=kid_yr and yr_qt-22<kid_yr else other_kids 
+                        for other_kids,yr_qt in zip(kids_ls,time_ls) ]
             # Total costs
-            total_costs_ls = [sum([a,b,c]) for a,b,c in zip(taxes_ls,spending_ls,kids_ls)]
+            #total_costs_ls = [sum([a,b,c]) for a,b,c in zip(taxes_ls,spending_ls,kids_ls)]
             # Net contributions to savings
-            contributions_ls = [income-costs for income, costs in zip(total_income_ls,total_costs_ls)]
+            #contributions_ls = [income-costs for income, costs in zip(total_income_ls,total_costs_ls)]
+            
+            # Spending, kids, costs, contributions
+            def base_spending(method:str,**kw):
+                if method == 'inflation-only':
+                    inflation = kw['inflation']
+                    spending = spending_qt*inflation if kw['working'] else spending_qt*inflation*(1+retirement_change)
+                return spending
+                
             # Allocation between equity, RE and bonds. Allows for different methods to be designed
             def allocation(method:str,**kw):
                 """Return a dict {"Equity":EquityAlloc, "RE":REAlloc, "Bond":BondAlloc} \n
@@ -185,21 +194,32 @@ class Simulator:
                     MaxRiskFactor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
                     EquityTargetPV = EquityTarget*kw['inflation'] # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
                     RiskFactor = min(max(EquityTargetPV/max(kw['net_worth'],0.000001),0),MaxRiskFactor) # need to avoid ZeroDivisionError
-                    REAlloc = (RiskFactor*RERatio)/((1-RERatio)*(1+RiskFactor*RERatio/(1-RERatio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
+                    with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
+                        warnings.simplefilter("ignore")
+                        try: REAlloc = (RiskFactor*RERatio)/((1-RERatio)*(1+RiskFactor*RERatio/(1-RERatio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
+                        except ZeroDivisionError: REAlloc = (RiskFactor*RERatio)
                     EquityAlloc = (1-REAlloc)*RiskFactor
                     BondAlloc = max(1-REAlloc-EquityAlloc,0) 
                     return {"Equity":EquityAlloc,"RE":REAlloc,"Bond":BondAlloc}
             # Net Worth/total savings
-            net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
+            spending_ls = []
+            total_costs_ls = []
+            contributions_ls =[]
                 # loop through time_ls to find net worth changes
-            i = 1 # already have 0 index value for net_worth_ls
-            while i<len(time_ls):
-                alloc = allocation(method='Life Cycle',inflation=inflation_ls[0],net_worth = net_worth_ls[-1])
-                contribution = contributions_ls[i-1]
+            i = 0
+            while i<len(time_ls): 
+                if i == 0: net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
+                alloc = allocation(method='Life Cycle',inflation=inflation_ls[i],net_worth = net_worth_ls[-1])
+                working = True if i<working_qts else False
+                spending_ls.append(base_spending(method='inflation-only',inflation=inflation_ls[i],working=working))
+                kids_ls[i] = spending_ls[i] * kid_spending_rate * kids_ls[i]
+                total_costs_ls.append(taxes_ls[i] + spending_ls[i] + kids_ls[i])
+                contributions_ls.append(total_income_ls[i] - total_costs_ls[i])
                 return_rate = stock_return_ls[i]*alloc['Equity'] + bond_return_ls[i]*alloc['Bond'] + re_return_ls[i]*alloc['RE']
-                return_amt = return_rate*(net_worth_ls[-1]+0.5*contribution)
-                net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+contribution))
+                return_amt = return_rate*(net_worth_ls[-1]+0.5*contributions_ls[i])
+                net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+contributions_ls[i]))
                 i+=1
+            net_worth_ls.pop()
             if net_worth_ls[-1]!=0: 
                 success_rate += 1
             if 0 in net_worth_ls and net_worth_ls.index(0) < worst_failure_idx and DEBUG_LVL >= 1:
