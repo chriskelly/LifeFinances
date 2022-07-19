@@ -1,6 +1,6 @@
 {
     "FI Quarter": {
-        "val": "2024.5",
+        "val": "2024.75",
         "popout": 0
     },
     "Calculate Til": {
@@ -167,7 +167,15 @@
     },
     "Retirement Change (%)": {
         "val": "-0.14",
-        "popout": 0
+        "popout": 1
+    },
+    "Allowed Fluctuation (%)": {
+        "val": "0.05",
+        "popout": 1
+    },
+    "Spending Method": {
+        "val": "ceil-floor",
+        "popout": 1
     },
     "Equity Mean": {
         "val": "1.095",
