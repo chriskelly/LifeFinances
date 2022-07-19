@@ -7,33 +7,6 @@
         "val": "2090",
         "popout": 0
     },
-    "Equity Return (%)": {
-        "val": "0.09499999999999997",
-        "popout": 0,
-        "popper": 2,
-        "calcd": "params_vals['Equity Mean']-1"
-    },
-    "Bond Return (%)": {
-        "val": "0.020000000000000018",
-        "popout": 0,
-        "popper": 3,
-        "calcd": "params_vals['Bond Mean']-1"
-    },
-    "RE Return (%)": {
-        "val": "0.1100000000000001",
-        "popout": 0,
-        "popper": 4,
-        "calcd": "params_vals['RE Mean']-1"
-    },
-    "International Proportion": {
-        "val": "0.404",
-        "popout": 0
-    },
-    "Domestic Proportion": {
-        "val": "0.596",
-        "popout": 0,
-        "calcd": "1 - params_vals['International Proportion']"
-    },
     "RE Ratio": {
         "val": "0.6",
         "popout": 0,
@@ -43,10 +16,6 @@
         "val": "2300",
         "popout": 0,
         "range": "range(1000,4000,50)"
-    },
-    "Current RE Alloc ($)": {
-        "val": "282",
-        "popout": 0
     },
     "Year @ Kid #1": {
         "val": "2026",
@@ -64,28 +33,12 @@
         "val": "0.12",
         "popout": 0
     },
-    "Monte Carlo Trials": {
-        "val": "1000",
-        "popout": 0
-    },
-    "Tax (%)": {
-        "val": "0.35",
-        "popout": 0
-    },
-    "Inflation (%)": {
-        "val": "0.025",
+    "Flat Inflation (%)": {
+        "val": "1.03",
         "popout": 0
     },
     "Raise (%)": {
-        "val": "0.02",
-        "popout": 0
-    },
-    "Capital Gains tax (%)": {
-        "val": "0.15",
-        "popout": 0
-    },
-    "Current CPI": {
-        "val": "276.589",
+        "val": "0.04",
         "popout": 0
     },
     "His SS Age": {
@@ -177,54 +130,6 @@
         "val": "ceil-floor",
         "popout": 1
     },
-    "Equity Mean": {
-        "val": "1.095",
-        "popout": 2
-    },
-    "Equity Stdev": {
-        "val": ".16",
-        "popout": 2
-    },
-    "Equity Annual High": {
-        "val": "1.09",
-        "popout": 2
-    },
-    "Equity Annual Low": {
-        "val": "1.07",
-        "popout": 2
-    },
-    "Bond Mean": {
-        "val": "1.02",
-        "popout": 3
-    },
-    "Bond Stdev": {
-        "val": ".025",
-        "popout": 3
-    },
-    "Bond Annual High": {
-        "val": "1.02",
-        "popout": 3
-    },
-    "Bond Annual Low": {
-        "val": "1.015",
-        "popout": 3
-    },
-    "RE Mean": {
-        "val": "1.11",
-        "popout": 4
-    },
-    "RE Stdev": {
-        "val": ".14",
-        "popout": 4
-    },
-    "RE Annual High": {
-        "val": "1.12",
-        "popout": 4
-    },
-    "RE Annual Low": {
-        "val": "1.08",
-        "popout": 4
-    },
     "His Age": {
         "val": "29",
         "popout": 5
@@ -298,22 +203,5 @@
         "popout": 0,
         "popper": 6,
         "calcd": "params_vals['Her Salary']+params_vals['Her Pension Costs']"
-    },
-    "Denica Pension": {
-        "val": {
-            "2043": ".0116",
-            "2044": ".0128",
-            "2045": ".0140",
-            "2046": ".0152",
-            "2047": ".0164",
-            "2048": ".0176",
-            "2049": ".0188",
-            "2050": ".0200",
-            "2051": ".0213",
-            "2052": ".0227",
-            "2053": ".0240",
-            "2054": ".0240",
-            "2055": ".0240"
-        }
     }
 }
