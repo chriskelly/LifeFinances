@@ -1,12 +1,11 @@
-import datetime as dt
-import json
-import math
-import warnings
+import json, math, warnings, os, datetime as dt
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import returnGenerator
-import os
+import constants as const
+
+# For reference, something that has a 3% growth is a 0.03 return and 1.03 yield. That's how I'll define return and yield here
  
 DEBUG_LVL = 1 # 1: Print success rate, save worst failure, show plot | 2: Investigate each result 1 by 1
 SAVE_DIR = 'Saved' 
@@ -14,11 +13,10 @@ TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
-FLAT_INFLATION = 1.03 # Used for some estimations like pension
 MONTE_CARLO_RUNS = 500 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
-with open("params_gov.json") as json_file:
-            gov_params = json.load(json_file)
-for file in os.scandir(SAVE_DIR):
+# with open("params_gov.json") as json_file:
+#             gov_params = json.load(json_file)
+for file in os.scandir(SAVE_DIR): # delete previously saved files
     os.remove(file.path)
 
 class Simulator:
@@ -31,6 +29,8 @@ class Simulator:
 # -------------------------------- VARIABLES -------------------------------- #      
     # ------------STATIC LISTS: TIME, JOB INCOME------------ #
         debug_lvl = DEBUG_LVL
+        FLAT_INFLATION = self._val("Flat Inflation (%)",QT_MOD=False) # Used for some estimations like pension
+        
         # Year.Quarter list
         time_ls = self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True)
         
@@ -63,7 +63,7 @@ class Simulator:
         DE_ANZA_START_YEAR = 2016
         years_worked = fi_yr-DE_ANZA_START_YEAR
         pension_start_yr = self._val("Pension Year",False)
-        pension_multiplier = float(self._val("Denica Pension",False)[str(pension_start_yr)])
+        pension_multiplier = const.DENICA_PENSION_RATES[str(pension_start_yr)]
         starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier 
             # convert to est. value at pension_start_yr
         starting_pension_qt = starting_pension_qt*self._pow(FLAT_INFLATION,exp=(pension_start_yr-fi_yr))
@@ -95,7 +95,7 @@ class Simulator:
             # Find Average Indexed Monthly Earnings (AIME), only top 35 years (420 months) count
             AIME = sum(ss_earnings[:35])/420
             # Calculate Primary Insurance Amounts (PIA) using bend points. Add AIME and sort to see where the AIME ranks in the bend points
-            bend_points = gov_params["Bend Points"]+[AIME]
+            bend_points =const.SS_BEND_POINTS+[AIME]
             bend_points.sort()
              # cut off bend points at inserted AIME
             bend_points = bend_points[:bend_points.index(AIME)+1]
@@ -105,27 +105,23 @@ class Simulator:
             # Find adjusted benefit amounts based on selected retirement age
             ss_year = ss_age + birth_year
                 # convert to est. value at ss start-year and convert to quarterly (3 x monthly)
-            pia = full_PIA * gov_params['Benefit Rates'][str(ss_age)]
+            pia = full_PIA * const.BENEFIT_RATES[str(ss_age)]
             ss_qt = 3 * pia*self._pow(FLAT_INFLATION,exp=(ss_year-ss_data_last_updated)) # index factor is neutral to last update, so PIA is in that year's dollars
             # build out list, add the correct number of zeros to the beginning, optimize later into list comprehension
             ss_ls = self._step_quarterize(ss_qt,raise_yr,mode='pension',start_yr=ss_year,time_ls=time_ls)
             return [0]*(self.rows-len(ss_ls))+ss_ls
-        his_ss_ls = ss_calc(his_ss_earnings,gov_params["His PIA Rates"],self._val("His SS Age",QT_MOD=False),birth_year=1993) # add 1 year to birth year since date is so late in year
-        her_ss_ls = ss_calc(her_ss_earnings,gov_params["Her PIA Rates"],self._val("Her SS Age",QT_MOD=False),birth_year=1988) 
+        his_ss_ls = ss_calc(his_ss_earnings,const.HIS_PIA_RATES,self._val("His SS Age",QT_MOD=False),birth_year=1993) # add 1 year to birth year since date is so late in year
+        her_ss_ls = ss_calc(her_ss_earnings,const.HER_PIA_RATES,self._val("Her SS Age",QT_MOD=False),birth_year=1988) 
 
         # Add all income together. 
             # is list comprehension faster than converting to numpy arr and adding, then converting back?
         total_income_ls = [sum([a,b,c,d]) for a, b, c, d in zip(job_income_ls,pension_ls, his_ss_ls, her_ss_ls)]
 
         # Taxes (brackets are for yearly, not qt, so need conversion)
-        fed_std_deduction = gov_params["Fed Std Deduction"]
-        fed_tax_brackets = gov_params["Fed Bracket Rates"]
-        state_std_deduction = gov_params["CA Std Deduction"]
-        state_tax_brackets = gov_params["CA Bracket Rates"]
         def get_taxes(income_qt):
             """Returns combined federal and state taxes on non-tax-deferred income"""
-            fed_taxes = bracket_math(fed_tax_brackets,max(4*income_qt-fed_std_deduction,0))
-            state_taxes = bracket_math(state_tax_brackets,max(4*income_qt-state_std_deduction,0))
+            fed_taxes = bracket_math(const.FED_BRACKET_RATES,max(4*income_qt-const.FED_STD_DEDUCTION,0))
+            state_taxes = bracket_math(const.CA_BRACKET_RATES,max(4*income_qt-const.CA_STD_DEDUCTION,0))
             return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
         def bracket_math(bracket:list,income):
             rates,bend_points = zip(*bracket) # reverses the more readable format in the json file to the easier to use format for comprehension
@@ -173,7 +169,7 @@ class Simulator:
             #             for (i,inflation) in enumerate(inflation_ls)]
             # Kid count   
                 # kids_ls should have kid for every year from each kid's birth till 22 years after
-            kids_ls = [0]*len(time_ls)
+            kids_ls = [0]*self.rows
             for kid_yr in kid_years:
                 kids_ls = [other_kids + 1 if yr_qt>=kid_yr and yr_qt-22<kid_yr else other_kids 
                         for other_kids,yr_qt in zip(kids_ls,time_ls) ]
@@ -194,9 +190,9 @@ class Simulator:
                     # reactant to market, not sure how. Maybe try to maintain last withdrawal percentage til you reach max_flux?
                         # could use a pre-set withdrawal rate?
                         # could just swing back and forth depending if markets are above/below average
-                    equity_mean_qt = self._val("Equity Mean",QT_MOD=False) ** (1/4) - 1
-                    bond_mean_qt =  self._val("Bond Mean",QT_MOD=False) ** (1/4) - 1
-                    re_mean_qt = self._val("RE Mean",QT_MOD=False) ** (1/4) - 1
+                    equity_mean_qt = const.EQUITY_MEAN ** (1/4) - 1
+                    bond_mean_qt =  const.BOND_MEAN ** (1/4) - 1
+                    re_mean_qt = const.RE_MEAN ** (1/4) - 1
                     expected_return_rate_qt = equity_mean_qt *kw['alloc']['Equity'] + bond_mean_qt *kw['alloc']['Bond'] + re_mean_qt *kw['alloc']['RE']
                     spending = spending_qt*inflation if kw['working'] else spending_qt*inflation*(1+retirement_change)
                     if kw['return_rate'] is not None:
@@ -207,30 +203,32 @@ class Simulator:
                 """Return a dict {"Equity":EquityAlloc, "RE":REAlloc, "Bond":BondAlloc} \n
                 method = 'Life Cycle' -> needs kw['inflation'] and kw['net_worth']"""
                 if method == 'Life Cycle':
-                    RERatio = self.params["RE Ratio"]
-                    EquityTarget = self.params["Equity Target"] 
-                    MaxRiskFactor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
-                    EquityTargetPV = EquityTarget*kw['inflation'] # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
-                    RiskFactor = min(max(EquityTargetPV/max(kw['net_worth'],0.000001),0),MaxRiskFactor) # need to avoid ZeroDivisionError
+                    re_ratio = self.params["RE Ratio"]
+                    equity_target = self.params["Equity Target"] 
+                    max_risk_factor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
+                    equity_target_PV = equity_target*kw['inflation'] # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
+                    risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
                     with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
                         warnings.simplefilter("ignore")
-                        try: REAlloc = (RiskFactor*RERatio)/((1-RERatio)*(1+RiskFactor*RERatio/(1-RERatio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
-                        except ZeroDivisionError: REAlloc = (RiskFactor*RERatio)
-                    EquityAlloc = (1-REAlloc)*RiskFactor
-                    BondAlloc = max(1-REAlloc-EquityAlloc,0) 
-                    return {"Equity":EquityAlloc,"RE":REAlloc,"Bond":BondAlloc}
+                        try: re_alloc = (risk_factor*re_ratio)/((1-re_ratio)*(1+risk_factor*re_ratio/(1-re_ratio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
+                        except ZeroDivisionError: re_alloc = (risk_factor*re_ratio)
+                    equity_alloc = (1-re_alloc)*risk_factor
+                    bond_alloc = max(1-re_alloc-equity_alloc,0) 
+                    return {"Equity":equity_alloc,"RE":re_alloc,"Bond":bond_alloc}
             # Net Worth/total savings
-            spending_ls = []
-            total_costs_ls = []
-            contributions_ls =[]
+            spending_ls, total_costs_ls, contributions_ls, equity_alloc_ls, re_alloc_ls, bond_alloc_ls = [],[],[],[],[],[]
             return_rate = None
                 # loop through time_ls to find net worth changes
-            for i in range(len(time_ls)): 
+            for i in range(self.rows): 
                 if i == 0: net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
                 alloc = allocation(method='Life Cycle',inflation=inflation_ls[i],net_worth = net_worth_ls[-1])
+                equity_alloc_ls.append(alloc["Equity"])
+                re_alloc_ls.append(alloc["RE"])
+                bond_alloc_ls.append(alloc["Bond"])
                 working = True if i<working_qts else False
                 spend_method = self._val("Spending Method",QT_MOD=False)
-                spending_ls.append(base_spending(method=spend_method, inflation=inflation_ls[i], working=working, alloc=alloc,return_rate=return_rate))
+                spending_ls.append(base_spending(method=spend_method, inflation=inflation_ls[i], 
+                                                 working=working, alloc=alloc,return_rate=return_rate))
                 kids_ls[i] = spending_ls[i] * kid_spending_rate * kids_ls[i]
                 total_costs_ls.append(taxes_ls[i] + spending_ls[i] + kids_ls[i])
                 contributions_ls.append(total_income_ls[i] - total_costs_ls[i])
@@ -260,9 +258,12 @@ class Simulator:
                     "Kid Costs":kids_ls,
                     "Total Costs":total_costs_ls,
                     "Contributions":contributions_ls,
+                    "Stock Alloc":equity_alloc_ls,
+                    "Bond Alloc":bond_alloc_ls,
+                    "RE Alloc":re_alloc_ls,
                     "Stock Returns":stock_return_ls,
                     "Bond Returns":bond_return_ls,
-                    "Real Estate Returns":re_return_ls
+                    "RE Returns":re_return_ls
                 }
             if debug_lvl >= 1: plt.plot(time_ls,net_worth_ls)
             if debug_lvl >= 2: 
@@ -287,9 +288,12 @@ class Simulator:
                         "Kid Costs":kids_ls,
                         "Total Costs":total_costs_ls,
                         "Contributions":contributions_ls,
+                        "Stock Alloc":equity_alloc_ls,
+                        "Bond Alloc":bond_alloc_ls,
+                        "RE Alloc":re_alloc_ls,
                         "Stock Returns":stock_return_ls,
                         "Bond Returns":bond_return_ls,
-                        "Real Estate Returns":re_return_ls
+                        "RE Returns":re_return_ls
                     }
                     save_df = pd.DataFrame.from_dict(save_dict)
                     save_df.to_csv(f'{SAVE_DIR}/saveData{col}.csv')
@@ -341,7 +345,9 @@ class Simulator:
         return result
     
     def _val(self,KEY:str,QT_MOD):
-        """MOD='rate' will return (1+r)^(1/4), MOD='dollar' will return d/4, MOD=False will return value"""
+        """MOD='rate' will return (1+r)^(1/4) \n 
+        MOD='dollar' will return d/4 \n 
+        MOD=False will return value"""
         if QT_MOD=="rate":
             return (1+self.params[KEY]) ** (1. / 4)
         elif QT_MOD=='dollar':
@@ -364,7 +370,7 @@ class Simulator:
     
     def _clean_data(self, params: dict):
             for k, v in params.items():
-                if type(v) is dict: # used for Denica pension parameter
+                if type(v) is dict:
                     continue
                 elif v.isdigit():
                     params[k] = int(v)
