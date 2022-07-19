@@ -6,8 +6,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import returnGenerator
-
+import os
+ 
 DEBUG_LVL = 1 # 1: Print success rate, save worst failure, show plot | 2: Investigate each result 1 by 1
+SAVE_DIR = 'Saved' 
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
@@ -16,6 +18,8 @@ FLAT_INFLATION = 1.03 # Used for some estimations like pension
 MONTE_CARLO_RUNS = 500 # takes 20 seconds to generate 5000. start = time.perf_counter(); end = time.perf_counter();  print(end-start)
 with open("params_gov.json") as json_file:
             gov_params = json.load(json_file)
+for file in os.scandir(SAVE_DIR):
+    os.remove(file.path)
 
 class Simulator:
     def __init__(self,param_vals):
@@ -26,6 +30,7 @@ class Simulator:
     def main(self):
 # -------------------------------- VARIABLES -------------------------------- #      
     # ------------STATIC LISTS: TIME, JOB INCOME------------ #
+        debug_lvl = DEBUG_LVL
         # Year.Quarter list
         time_ls = self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True)
         
@@ -235,7 +240,7 @@ class Simulator:
             net_worth_ls.pop()
             if net_worth_ls[-1]!=0: 
                 success_rate += 1
-            if 0 in net_worth_ls and net_worth_ls.index(0) < worst_failure_idx and DEBUG_LVL >= 1:
+            if 0 in net_worth_ls and net_worth_ls.index(0) < worst_failure_idx and debug_lvl >= 1:
                 worst_failure_idx = net_worth_ls.index(0)
                 failure_dict = {
                     "Time":time_ls,
@@ -259,8 +264,8 @@ class Simulator:
                     "Bond Returns":bond_return_ls,
                     "Real Estate Returns":re_return_ls
                 }
-            if DEBUG_LVL >= 1: plt.plot(time_ls,net_worth_ls)
-            if DEBUG_LVL >= 2: 
+            if debug_lvl >= 1: plt.plot(time_ls,net_worth_ls)
+            if debug_lvl >= 2: 
                 plt.show()
                 usr_input = input("save (s), next (n), continue (c)?")
                 if usr_input == 's':
@@ -287,17 +292,16 @@ class Simulator:
                         "Real Estate Returns":re_return_ls
                     }
                     save_df = pd.DataFrame.from_dict(save_dict)
-                    save_df.to_csv(f'Investigation/saveData{col}.csv')
-                # elif usr_input == 'c':
-                #     global INVESTIGATE_MODE
-                #     INVESTIGATE_MODE = False
+                    save_df.to_csv(f'{SAVE_DIR}/saveData{col}.csv')
+                elif usr_input == 'c':
+                    debug_lvl = 1
         success_rate = success_rate/MONTE_CARLO_RUNS
-        if DEBUG_LVL >= 1: 
+        if debug_lvl >= 1: 
             failure_df = pd.DataFrame.from_dict(failure_dict)
             failure_df.to_csv('worst_failure.csv')
             print(f"Success Rate: {success_rate*100:.2f}%")
         
-        if DEBUG_LVL >= 1: plt.show()
+        if debug_lvl >= 1: plt.show()
         return success_rate
         
         debug_point = None
