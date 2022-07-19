@@ -9,7 +9,7 @@ import copy
 SEEDED = False
 SUCCESS_THRESH = 0.5
 OFFSPRING_QTY = 5
-TARGET_SUCCESS_RATE = 0.94
+TARGET_SUCCESS_RATE = 0.95
 ITER_LIMIT = 10 # Max number of times to run if parent is better than all children
 
 class Algorithm:
@@ -82,7 +82,8 @@ class Algorithm:
         new_dict = copy.deepcopy(mutable_params)
         for param,obj in new_dict.items():
             ls = list(eval(obj["range"]))
-            position = ls.index(float(obj['val']))
+            val = obj['val'] if not self.model._is_float(obj['val']) else float(obj['val'])
+            position = ls.index(val)
             length = len(ls)
             if  position == 0: 
                 new_position = random.randint(0,1)

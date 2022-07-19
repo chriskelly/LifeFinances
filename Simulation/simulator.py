@@ -179,11 +179,24 @@ class Simulator:
             
             # Spending, kids, costs, contributions
             def base_spending(method:str,**kw):
+                inflation = kw['inflation']
                 if method == 'inflation-only':
-                    inflation = kw['inflation']
                     spending = spending_qt*inflation if kw['working'] else spending_qt*inflation*(1+retirement_change)
+                elif method == 'ceil-floor':
+                    max_flux = self._val("Allowed Fluctuation (%)",QT_MOD=False)
+                    # real spending should not increase/decrease more than the max_flux (should it be symetric?)
+                    # only takes effect after retirement
+                    # reactant to market, not sure how. Maybe try to maintain last withdrawal percentage til you reach max_flux?
+                        # could use a pre-set withdrawal rate?
+                        # could just swing back and forth depending if markets are above/below average
+                    equity_mean_qt = self._val("Equity Mean",QT_MOD=False) ** (1/4) - 1
+                    bond_mean_qt =  self._val("Bond Mean",QT_MOD=False) ** (1/4) - 1
+                    re_mean_qt = self._val("RE Mean",QT_MOD=False) ** (1/4) - 1
+                    expected_return_rate_qt = equity_mean_qt *kw['alloc']['Equity'] + bond_mean_qt *kw['alloc']['Bond'] + re_mean_qt *kw['alloc']['RE']
+                    spending = spending_qt*inflation if kw['working'] else spending_qt*inflation*(1+retirement_change)
+                    if kw['return_rate'] is not None:
+                        spending = spending*(1+max_flux) if kw['return_rate'] > expected_return_rate_qt else spending*(1-max_flux)
                 return spending
-                
             # Allocation between equity, RE and bonds. Allows for different methods to be designed
             def allocation(method:str,**kw):
                 """Return a dict {"Equity":EquityAlloc, "RE":REAlloc, "Bond":BondAlloc} \n
@@ -205,20 +218,20 @@ class Simulator:
             spending_ls = []
             total_costs_ls = []
             contributions_ls =[]
+            return_rate = None
                 # loop through time_ls to find net worth changes
-            i = 0
-            while i<len(time_ls): 
+            for i in range(len(time_ls)): 
                 if i == 0: net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
                 alloc = allocation(method='Life Cycle',inflation=inflation_ls[i],net_worth = net_worth_ls[-1])
                 working = True if i<working_qts else False
-                spending_ls.append(base_spending(method='inflation-only',inflation=inflation_ls[i],working=working))
+                spend_method = self._val("Spending Method",QT_MOD=False)
+                spending_ls.append(base_spending(method=spend_method, inflation=inflation_ls[i], working=working, alloc=alloc,return_rate=return_rate))
                 kids_ls[i] = spending_ls[i] * kid_spending_rate * kids_ls[i]
                 total_costs_ls.append(taxes_ls[i] + spending_ls[i] + kids_ls[i])
                 contributions_ls.append(total_income_ls[i] - total_costs_ls[i])
                 return_rate = stock_return_ls[i]*alloc['Equity'] + bond_return_ls[i]*alloc['Bond'] + re_return_ls[i]*alloc['RE']
                 return_amt = return_rate*(net_worth_ls[-1]+0.5*contributions_ls[i])
                 net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+contributions_ls[i]))
-                i+=1
             net_worth_ls.pop()
             if net_worth_ls[-1]!=0: 
                 success_rate += 1
