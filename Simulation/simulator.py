@@ -57,19 +57,30 @@ class Simulator:
             # Calc max salary estimate
         fi_yr = math.trunc(self.fi_date)
         current_pension_salary_qt = her_qt_income/0.91 # Corrects for 9% taken from salary for pension
-        remaining_working_years = fi_yr-TODAY_YR-1
-        max_pension_salary_qt = current_pension_salary_qt * raise_yr ** remaining_working_years
-            # find initial pension amount (in last working year's dollars)
-        DE_ANZA_START_YEAR = 2016
-        years_worked = fi_yr-DE_ANZA_START_YEAR
-        pension_start_yr = self._val("Pension Year",False)
-        pension_multiplier = const.DENICA_PENSION_RATES[str(pension_start_yr)]
-        starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier 
-            # convert to est. value at pension_start_yr
-        starting_pension_qt = starting_pension_qt*self._pow(FLAT_INFLATION,exp=(pension_start_yr-fi_yr))
-            # build out list, add the correct number of zeros to the beginning
-        pension_ls =self._step_quarterize(starting_pension_qt,raise_yr,mode='pension',start_yr=pension_start_yr,time_ls=time_ls)
-        pension_ls = [0]*(self.rows-len(pension_ls))+pension_ls
+        if self._val('Pension Method',QT_MOD=False) == 'default':
+            remaining_working_years = fi_yr-TODAY_YR-1
+            max_pension_salary_qt = current_pension_salary_qt * raise_yr ** remaining_working_years
+                # find initial pension amount (in last working year's dollars)
+            DE_ANZA_START_YEAR = 2016
+            years_worked = fi_yr-DE_ANZA_START_YEAR
+            pension_start_yr = self._val("Pension Year",False)
+            pension_multiplier = const.DENICA_PENSION_RATES[str(pension_start_yr)]
+            starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier 
+                # convert to est. value at pension_start_yr
+            starting_pension_qt = starting_pension_qt*self._pow(FLAT_INFLATION,exp=(pension_start_yr-fi_yr))
+                # build out list, add the correct number of zeros to the beginning
+            pension_ls =self._step_quarterize(starting_pension_qt,raise_yr,mode='pension',start_yr=pension_start_yr,time_ls=time_ls)
+            pension_ls = [0]*(self.rows-len(pension_ls))+pension_ls
+        elif self._val('Pension Method',QT_MOD=False) == 'cash-out':
+            # Need to correct for out-dated info, first estimate salary at time of last update, then project forward
+            data_age_qt = int((TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25) # find age of data
+            est_prev_pension_salary_qt = current_pension_salary_qt / (raise_yr ** (data_age_qt/4)) # estimate salary at time of data
+            her_projected_income = self._step_quarterize(est_prev_pension_salary_qt,raise_yr,mode='working',working_qts=working_qts + data_age_qt) # project income from data age to FI
+            pension_bal = const.PENSION_ACCOUNT_BAL
+            pension_int_rate = const.PENSION_INTEREST_YIELD ** (1/4) - 1
+            for income in her_projected_income:
+                pension_bal += income * const.PENSION_COST + pension_bal * pension_int_rate
+            pension_ls = [0] * working_qts + [pension_bal] + [0] * (FI_qts-1)
         
         # SS columns https://www.ssa.gov/oact/cola/Benefits.html 
         # Effect of Early or Delayed Retirement on Retirement Benefits: https://www.ssa.gov/oact/ProgData/ar_drc.html 
@@ -313,17 +324,17 @@ class Simulator:
 
 # -------------------------------- HELPER FUNCTIONS -------------------------------- #
 
-    def _step_quarterize(self,first_val,increase,mode,**kw):
+    def _step_quarterize(self,first_val,increase_yield,mode,**kw):
         """Return a list with values that step up on a yearly basis rather than quarterly \n
         mode = 'working' -> from today_qt to fi_date, needs kw['working_qts'] \n
         mode = 'pension' -> from provided kw['start_yr'] to end of kw['time_ls']"""
         ls = [first_val]
         if mode == 'working':
             custom_range = self._range_len(START=TODAY_QUARTER+1,LEN=kw["working_qts"]-1,INCREMENT=1,ADD=True)
-            [ls.append(ls[-1]) if x%4 !=0 else ls.append(ls[-1]*increase) for x in custom_range]
+            [ls.append(ls[-1]) if x%4 !=0 else ls.append(ls[-1]*increase_yield) for x in custom_range]
         elif mode == 'pension':
             custom_range = np.arange(kw['start_yr']+0.25,kw['time_ls'][-1]+0.25,0.25)
-            [ls.append(ls[-1]*increase) if x%1 ==0 else ls.append(ls[-1]) for x in custom_range]
+            [ls.append(ls[-1]*increase_yield) if x%1 ==0 else ls.append(ls[-1]) for x in custom_range]
         return ls
                 
     def _catch(self, func, *args, handle=lambda e : e, **kwargs):

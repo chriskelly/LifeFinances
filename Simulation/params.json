@@ -1,6 +1,6 @@
 {
     "FI Quarter": {
-        "val": "2024.75",
+        "val": "2024.5",
         "popout": 0
     },
     "Calculate Til": {
@@ -13,7 +13,7 @@
         "range": "np.linspace(0,.6,7)"
     },
     "Equity Target": {
-        "val": "2300",
+        "val": "3600",
         "popout": 0,
         "range": "range(1000,4000,50)"
     },
@@ -42,12 +42,12 @@
         "popout": 0
     },
     "His SS Age": {
-        "val": "62",
+        "val": "64",
         "popout": 0,
         "range": "range(62,71)"
     },
     "Her SS Age": {
-        "val": "67",
+        "val": "63",
         "popout": 0,
         "range": "range(62,71)"
     },
@@ -56,13 +56,10 @@
         "popout": 0,
         "range": "range(2043,2056)"
     },
-    "Pension Cashout": {
-        "val": "False",
-        "popout": 0
-    },
-    "Cashout Amount": {
-        "val": "64",
-        "popout": 0
+    "Pension Method": {
+        "val": "default",
+        "popout": 0,
+        "range": "['default','cash-out']"
     },
     "Current Net Worth ($)": {
         "val": "1245",
@@ -127,8 +124,9 @@
         "popout": 1
     },
     "Spending Method": {
-        "val": "ceil-floor",
-        "popout": 1
+        "val": "inflation-only",
+        "popout": 1,
+        "range":"['ceil-floor','inflation-only']"
     },
     "His Age": {
         "val": "29",

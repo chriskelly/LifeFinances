@@ -68,3 +68,7 @@ DENICA_PENSION_RATES={
     "2054": .0240,
     "2055": .0240
 }
+PENSION_ACCOUNT_BAL = 56.307 # https://my.calstrs.com/
+PENSION_COST = 0.09 # 9% of income
+PENSION_ACCOUNT_BAL_UP_DATE = 2022.5
+PENSION_INTEREST_YIELD = 1.02 # varies from 1.2-3% based on Progress Reports
