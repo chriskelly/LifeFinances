@@ -6,67 +6,51 @@ import numpy as np
 from skewDist import createSkewDist
 import constants as const
 
-DEBUG_LVL = 0
+DEBUG_LVL = 1
 
-years_qty = 90
+iter = 0
 
-
-def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns, file_name):
-    stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
-    mean = mean ** (1/qty_per_year)
-    years_qty = math.ceil(qty_per_column/qty_per_year)
+def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns):
+    global iter
     iter = 0
-    multi_returns = []
-    for x in range(columns):
-        annualized = 0
-        while annualized < annual_low or annualized > annual_high:
-            single_returns = []
-            product = 1
-            for _ in range(years_qty*qty_per_year): # annualized test needs product in yearly multiples, even if years_qty*qty_per_year isn't equal to qty_per_column
-                return_yield = random.gauss(mean, stdev)
-                single_returns.append(return_yield - 1)
-                product = product * return_yield
-            annualized = pow(product, 1 / years_qty)
-            iter += 1
-        multi_returns.append(single_returns[:qty_per_column])
-    if DEBUG_LVL >= 1: print(iter)
-    return multi_returns
-    
-    # trying to make it faster
-def generate_returns_faster(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns, file_name):
     stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
     mean = mean ** (1/qty_per_year)
     years_qty = math.ceil(qty_per_column/qty_per_year)
     def make_return_ls():
         annualized = 0
         while annualized < annual_low or annualized > annual_high:
-            growth_ls = [random.gauss(mean, stdev) for _ in range(years_qty*qty_per_year)]# annualized test needs product in yearly multiples, even if years_qty*qty_per_year isn't equal to qty_per_column
-            returns_ls = [growth-1 for growth in growth_ls]
-            annualized = pow(np.prod(growth_ls), 1 / years_qty)
-        return returns_ls
+            yield_ls = np.random.default_rng().normal(mean, stdev, years_qty*qty_per_year) # annualized test needs product in yearly multiples, even if years_qty*qty_per_year isn't equal to qty_per_column
+            annualized = pow(np.prod(yield_ls), 1 / years_qty)
+            global iter
+            iter += 1
+        return yield_ls - 1
     multi_returns = [make_return_ls()[:qty_per_column] for _ in range(columns)]
+    if DEBUG_LVL >= 1:
+        print(f'iter: {iter}')
+        print(f'std mean: {abs(mean-1 - np.mean(multi_returns))}') # result should be 0.0
+        print(f'std stdev: {abs(stdev - np.std(multi_returns, ddof=1))}') # result should be 0.0
     return multi_returns
-
-def generate_inflation(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns, file_name):
-    """similar functions, but it's easier to have inflations output be an array of the products rather than individual values"""
+    
+    # trying to make it faster
+def generate_returns_faster(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns):
+    global iter
+    iter = 0
     stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
     mean = mean ** (1/qty_per_year)
     years_qty = math.ceil(qty_per_column/qty_per_year)
-    iter = 0
-    multi_returns = []
-    for x in range(columns):
+    def make_return_ls():
         annualized = 0
         while annualized < annual_low or annualized > annual_high:
-            single_returns = []
-            product = 1
-            for _ in range(years_qty*qty_per_year):
-                return_yield = random.gauss(mean, stdev)
-                product = product * return_yield
-                single_returns.append(product)
-            annualized = pow(product, 1 / years_qty)
+            yield_ls = np.random.default_rng().normal(mean, stdev, years_qty*qty_per_year) # annualized test needs product in yearly multiples, even if years_qty*qty_per_year isn't equal to qty_per_column
+            annualized = pow(np.prod(yield_ls), 1 / years_qty)
+            global iter
             iter += 1
-        multi_returns.append(single_returns[:qty_per_column])
-    if DEBUG_LVL >= 1: print(iter)
+        return yield_ls - 1
+    multi_returns = [make_return_ls()[:qty_per_column] for _ in range(columns)]
+    if DEBUG_LVL >= 1:
+        print(f'fast iter: {iter}')
+        print(f'fast mean: {abs(mean-1 - np.mean(multi_returns))}') # result should be 0.0
+        print(f'fast stdev: {abs(stdev - np.std(multi_returns, ddof=1))}') # result should be 0.0
     return multi_returns
     
 def generate_skewd_inflation(mean, stdev, skew,qty_per_column,qty_per_year,columns):
@@ -83,29 +67,30 @@ def generate_skewd_inflation(mean, stdev, skew,qty_per_column,qty_per_year,colum
         while single_col_idx<qty_per_column:
             multi_col_returns[multi_col_idx][single_col_idx] *= multi_col_returns[multi_col_idx][single_col_idx-1]
             single_col_idx+=1
+    if DEBUG_LVL >= 1:
+        print(f'inflat mean: {abs(mean - np.mean(dist))}') # result should be 0.0
+        print(f'inflat stdev: {abs(stdev - np.std(dist, ddof=1))}') # result should be 0.0
     return multi_col_returns
 
 def main(qty_per_column,qty_per_year,columns):
     generated_array =[]
     generated_array.append(generate_returns(const.EQUITY_MEAN, const.EQUITY_STDEV, const.EQUITY_ANNUAL_HIGH, const.EQUITY_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year,columns, file_name="StockReturns.csv"))
+                                    qty_per_column,qty_per_year,columns))
     generated_array.append(generate_returns(const.BOND_MEAN, const.BOND_STDEV, const.BOND_ANNUAL_HIGH, const.BOND_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year,columns, file_name="BondReturns.csv"))
+                                    qty_per_column,qty_per_year,columns))
     if DEBUG_LVL >= 1: start = time.perf_counter()
     generated_array.append(generate_returns(const.RE_MEAN, const.RE_STDEV, const.RE_ANNUAL_HIGH, const.RE_ANNUAL_LOW,
-                                    qty_per_column,qty_per_year,columns, file_name="REReturns.csv"))
+                                    qty_per_column,qty_per_year,columns))
     if DEBUG_LVL >= 1: 
         mid = time.perf_counter()
-        speed_test = generate_returns_faster(const.RE_MEAN, const.RE_STDEV, const.RE_ANNUAL_HIGH, const.RE_ANNUAL_LOW,
-                                        qty_per_column,qty_per_year,columns, file_name="REReturns.csv")
+        generate_returns_faster(const.RE_MEAN, const.RE_STDEV, const.RE_ANNUAL_HIGH, const.RE_ANNUAL_LOW,
+                                        qty_per_column,qty_per_year,columns)
         end = time.perf_counter()
-    # generated_array.append(generate_inflation(INFLATION_MEAN, INFLATION_STDEV, INFLATION_ANNUAL_HIGH, INFLATION_ANNUAL_LOW,
-    #                                 qty_per_column,qty_per_year,columns, file_name="Inflation.csv"))
     generated_array.append(generate_skewd_inflation(const.INFLATION_MEAN, const.INFLATION_STDEV, const.INFLATION_SKEW,
                                     qty_per_column,qty_per_year,columns))
     if DEBUG_LVL >= 1: 
-        print(f"standard: {mid-start}")
-        print(f"fast:     {end-mid}")
+        print(f"std speed: {mid-start}")
+        print(f"fast speed:{end-mid}")
     return generated_array
 
 # main(270,4)
