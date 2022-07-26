@@ -1,6 +1,6 @@
 {
     "FI Quarter": {
-        "val": "2024.5",
+        "val": "2022.5",
         "popout": 0
     },
     "Calculate Til": {
@@ -18,7 +18,7 @@
         "range": "range(1000,4000,50)"
     },
     "Year @ Kid #1": {
-        "val": "2026",
+        "val": "2025",
         "popout": 0
     },
     "Year @ Kid #2": {

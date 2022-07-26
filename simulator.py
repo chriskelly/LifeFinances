@@ -45,9 +45,9 @@ class Simulator:
         tax_deferred_qt = self._val("His Tax Deferred",QT_MOD='dollar')+self._val("Her Tax Deferred",QT_MOD='dollar')
             # build out income lists with raises coming in steps on the first quarter of each year
         raise_yr = 1+self._val("Raise (%)",QT_MOD=False)
-        job_income_ls = self._step_quarterize(total_income_qt,raise_yr,mode='working',working_qts=working_qts)
-        tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts)
-        job_income_ls, tax_deferred_ls = job_income_ls +[0]*FI_qts,tax_deferred_ls +[0]*FI_qts # add the non-working years
+        job_income_ls = self._step_quarterize(total_income_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
+        tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
+        job_income_ls, tax_deferred_ls = job_income_ls +[0]*FI_qts, tax_deferred_ls +[0]*FI_qts # add the non-working years
 
 
     # ------------ PARAMETRIC DYNAMIC LISTS: PENSIONS, TAXES ------------ #
@@ -91,12 +91,13 @@ class Simulator:
         his_ss_earnings, her_ss_earnings = ss_data['His_SS_Earnings'].tolist(), ss_data['Her_SS_Earnings'].tolist()
         ss_data_last_updated = ss_yrs[-1]
             # Extend all lists with predictions till fi year
-        while ss_yrs[-1]<fi_yr-1:
+        while ss_yrs[-1] < self.fi_date - 1:
             ss_yrs.append(ss_yrs[-1]+1)
             ss_max_earnings.append(ss_max_earnings[-1]*FLAT_INFLATION)
-            his_ss_earnings.append(his_ss_earnings[-1]*raise_yr)
-            her_ss_earnings.append(her_ss_earnings[-1]*raise_yr)
             index_factors.append(index_factors[-1]*(2-FLAT_INFLATION))
+            percent_of_year = 1.00 if ss_yrs[-1] != fi_yr else (self.fi_date - fi_yr) # add earnings for final partial years
+            his_ss_earnings.append(his_ss_earnings[-1] * raise_yr * percent_of_year)
+            her_ss_earnings.append(her_ss_earnings[-1] * raise_yr * percent_of_year)
         def ss_calc(ss_earnings,PIA_rates,ss_age,birth_year):
             # index and limit the earnings, then sort them from high to low
             ss_earnings = [min(ss_max,earning)*index for ss_max, earning, index in zip(ss_max_earnings,ss_earnings, index_factors)]
@@ -328,7 +329,8 @@ class Simulator:
         mode = 'pension' -> from provided kw['start_yr'] to end of kw['time_ls']"""
         ls = [first_val]
         if mode == 'working':
-            custom_range = self._range_len(START=TODAY_QUARTER+1,LEN=kw["working_qts"]-1,INCREMENT=1,ADD=True)
+            if kw["working_qts"] == 0: return [] # if fi_date = TODAY_YR_QT, the returned range should be empty
+            custom_range = self._range_len(START=TODAY_QUARTER+1,LEN=kw["working_qts"]-1,INCREMENT=1,ADD=True) # subtracing one len since you already have the first value
             [ls.append(ls[-1]) if x%4 !=0 else ls.append(ls[-1]*increase_yield) for x in custom_range]
         elif mode == 'pension':
             custom_range = np.arange(kw['start_yr']+0.25,kw['time_ls'][-1]+0.25,0.25)
