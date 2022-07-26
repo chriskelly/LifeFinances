@@ -1,0 +1,205 @@
+{
+    "FI Quarter": {
+        "val": "2024.5",
+        "popout": 0
+    },
+    "Calculate Til": {
+        "val": "2090",
+        "popout": 0
+    },
+    "RE Ratio": {
+        "val": "0.6",
+        "popout": 0,
+        "range": "np.linspace(0,.6,7)"
+    },
+    "Equity Target": {
+        "val": "3600",
+        "popout": 0,
+        "range": "range(1000,4000,50)"
+    },
+    "Year @ Kid #1": {
+        "val": "2026",
+        "popout": 0
+    },
+    "Year @ Kid #2": {
+        "val": "",
+        "popout": 0
+    },
+    "Year @ Kid #3": {
+        "val": "",
+        "popout": 0
+    },
+    "Cost of Kid (% Spending)": {
+        "val": "0.12",
+        "popout": 0
+    },
+    "Flat Inflation (%)": {
+        "val": "1.03",
+        "popout": 0
+    },
+    "Raise (%)": {
+        "val": "0.04",
+        "popout": 0
+    },
+    "His SS Age": {
+        "val": "64",
+        "popout": 0,
+        "range": "range(62,71)"
+    },
+    "Her SS Age": {
+        "val": "63",
+        "popout": 0,
+        "range": "range(62,71)"
+    },
+    "Pension Year": {
+        "val": "2052",
+        "popout": 0,
+        "range": "range(2043,2056)"
+    },
+    "Pension Method": {
+        "val": "default",
+        "popout": 0,
+        "range": "['default','cash-out']"
+    },
+    "Current Net Worth ($)": {
+        "val": "1245",
+        "popout": 0
+    },
+    "Total Spending (Yearly)": {
+        "val": "75.84800000000001",
+        "popout": 0,
+        "popper": 1,
+        "calcd": "12*sum([params_vals['Housing (Monthly)'],params_vals['Groceries (Monthly)'],params_vals['Car (Monthly)'], params_vals['His (Monthly)'],params_vals['Hers (Monthly)'],params_vals['Leisure (Monthly)'], params_vals['Expense Debt (Monthly)'], params_vals['Other (Monthly)']])+params_vals['Travel (Yearly)']+params_vals['Giving (Yearly)']+params_vals['Health (Yearly)']"
+    },
+    "Housing (Monthly)": {
+        "val": "2.597",
+        "popout": 1
+    },
+    "Groceries (Monthly)": {
+        "val": "0.525",
+        "popout": 1
+    },
+    "Car (Monthly)": {
+        "val": "0.285",
+        "popout": 1
+    },
+    "His (Monthly)": {
+        "val": "0.250",
+        "popout": 1
+    },
+    "Hers (Monthly)": {
+        "val": "0.400",
+        "popout": 1
+    },
+    "Leisure (Monthly)": {
+        "val": "0.541",
+        "popout": 1
+    },
+    "Expense Debt (Monthly)": {
+        "val": "0.044",
+        "popout": 1
+    },
+    "Other (Monthly)": {
+        "val": "0.162",
+        "popout": 1
+    },
+    "Travel (Yearly)": {
+        "val": "9.300",
+        "popout": 1
+    },
+    "Giving (Yearly)": {
+        "val": "6.900",
+        "popout": 1
+    },
+    "Health (Yearly)": {
+        "val": "2.000",
+        "popout": 1
+    },
+    "Retirement Change (%)": {
+        "val": "-0.14",
+        "popout": 1
+    },
+    "Allowed Fluctuation (%)": {
+        "val": "0.05",
+        "popout": 1
+    },
+    "Spending Method": {
+        "val": "inflation-only",
+        "popout": 1,
+        "range": "['ceil-floor','inflation-only']"
+    },
+    "His Age": {
+        "val": "29",
+        "popout": 5
+    },
+    "His Salary + Bonus": {
+        "val": "195.5",
+        "popout": 5
+    },
+    "His 401k": {
+        "val": "20.5",
+        "popout": 5
+    },
+    "His HSA": {
+        "val": "5.3",
+        "popout": 5
+    },
+    "His Emplr 401k": {
+        "val": "10.25",
+        "popout": 5,
+        "calcd": "params_vals['His 401k'] *0.5"
+    },
+    "His Emplr HSA": {
+        "val": "2.0",
+        "popout": 5
+    },
+    "His Emplr Contributions": {
+        "val": "12.25",
+        "popout": 5,
+        "calcd": "params_vals['His Emplr 401k']+params_vals['His Emplr HSA']"
+    },
+    "His Tax Deferred": {
+        "val": "38.05",
+        "popout": 5,
+        "calcd": "params_vals['His 401k']+params_vals['His HSA']+params_vals['His Emplr Contributions']"
+    },
+    "His Total Income": {
+        "val": "207.75",
+        "popout": 0,
+        "popper": 5,
+        "calcd": "params_vals['His Salary + Bonus']+params_vals['His Emplr Contributions']"
+    },
+    "Her Age": {
+        "val": "34",
+        "popout": 6,
+        "calcd": "params_vals['His Age'] + 5"
+    },
+    "Her Salary": {
+        "val": "103.5",
+        "popout": 6
+    },
+    "Her Pension Costs": {
+        "val": "-9.315",
+        "popout": 6,
+        "calcd": "params_vals['Her Salary']*-0.09"
+    },
+    "Her Tax Deferred": {
+        "val": "41.0",
+        "popout": 6,
+        "calcd": "params_vals['Her 403b']+params_vals['Her 457b']"
+    },
+    "Her 403b": {
+        "val": "20.5",
+        "popout": 6
+    },
+    "Her 457b": {
+        "val": "20.5",
+        "popout": 6
+    },
+    "Her Total Income": {
+        "val": "94.185",
+        "popout": 0,
+        "popper": 6,
+        "calcd": "params_vals['Her Salary']+params_vals['Her Pension Costs']"
+    }
+}
