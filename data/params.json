@@ -1,6 +1,6 @@
 {
     "FI Quarter": {
-        "val": "2022.5",
+        "val": "2023.5",
         "popout": 0
     },
     "Calculate Til": {
@@ -201,5 +201,13 @@
         "popout": 0,
         "popper": 6,
         "calcd": "params_vals['Her Salary']+params_vals['Her Pension Costs']"
+    },
+    "Barista Income (Total)": {
+        "val": "50",
+        "popout": 0
+    },
+    "Barista Time (Yrs)": {
+        "val": "7",
+        "popout": 0
     }
 }

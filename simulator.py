@@ -28,14 +28,13 @@ class Simulator:
     # ------------STATIC LISTS: TIME, JOB INCOME------------ #
         debug_lvl = DEBUG_LVL
         FLAT_INFLATION = self._val("Flat Inflation (%)",QT_MOD=False) # Used for some estimations like pension
+        FLAT_INFLATION_QT = FLAT_INFLATION ** (1. / 4)
         
         # Year.Quarter list
         time_ls = self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True)
-        
-        # Are you FI list (1 = yes, 0 = no)
         working_qts = int((self.fi_date-TODAY_YR_QT)/.25)
         FI_qts = self.rows-working_qts
-        FI_state_ls = [0]*working_qts +[1]*FI_qts
+        barista_qts = 4 * self._val("Barista Time (Yrs)",QT_MOD=False)
         
         # Job Income and tax-differed list. Does not include SS/Pensions. 
             # get quarterly income for his and her
@@ -43,11 +42,15 @@ class Simulator:
         her_qt_income = self._val("Her Total Income",QT_MOD='dollar')
         total_income_qt = his_qt_income+her_qt_income
         tax_deferred_qt = self._val("His Tax Deferred",QT_MOD='dollar')+self._val("Her Tax Deferred",QT_MOD='dollar')
+        total_barista_income_qt = self._val("Barista Income (Total)", QT_MOD='dollar') # Assuming no tax deferral for barista to be conservative and keep it easier
             # build out income lists with raises coming in steps on the first quarter of each year
         raise_yr = 1+self._val("Raise (%)",QT_MOD=False)
         job_income_ls = self._step_quarterize(total_income_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
         tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
-        job_income_ls, tax_deferred_ls = job_income_ls +[0]*FI_qts, tax_deferred_ls +[0]*FI_qts # add the non-working years
+        barista_income_ls = self._range_len(START=total_barista_income_qt,LEN=barista_qts,INCREMENT=FLAT_INFLATION,MULT=True) # smooth growth is probably fine rather than step_quarterizing
+            # add the non-working years
+        job_income_ls  = job_income_ls + barista_income_ls + ([0] * (FI_qts - barista_qts)) 
+        tax_deferred_ls = tax_deferred_ls + ([0]*FI_qts) 
 
 
     # ------------ PARAMETRIC DYNAMIC LISTS: PENSIONS, TAXES ------------ #
@@ -98,6 +101,22 @@ class Simulator:
             percent_of_year = 1.00 if ss_yrs[-1] != fi_yr else (self.fi_date - fi_yr) # add earnings for final partial years
             his_ss_earnings.append(his_ss_earnings[-1] * raise_yr * percent_of_year)
             her_ss_earnings.append(her_ss_earnings[-1] * raise_yr * percent_of_year)
+            # Extend all lists with predictions till barista ends
+        remaining_barista_qts = barista_qts 
+        if percent_of_year < 1 and barista_qts > 0: # If there was a partial year and we're doing barista FI
+            inflat_adj_barista_income_qt =  total_barista_income_qt * FLAT_INFLATION ** (ss_yrs[-1] - TODAY_YR)
+            his_ss_earnings[-1] += (inflat_adj_barista_income_qt / 2) * min((4 * percent_of_year), barista_qts)
+            her_ss_earnings[-1] += (total_barista_income_qt / 2) * min((4 * percent_of_year), barista_qts)
+            remaining_barista_qts -= min((4 * percent_of_year), barista_qts)
+        #while ss_yrs[-1] < self.fi_date + (barista_qts * 0.25) - 1:
+        while remaining_barista_qts > 0:
+            ss_yrs.append(ss_yrs[-1]+1)
+            inflat_adj_barista_income_qt =  total_barista_income_qt * FLAT_INFLATION ** (ss_yrs[-1] - TODAY_YR)
+            ss_max_earnings.append(ss_max_earnings[-1]*FLAT_INFLATION)
+            index_factors.append(index_factors[-1]*(2-FLAT_INFLATION))
+            his_ss_earnings.append(inflat_adj_barista_income_qt  * min(4 , remaining_barista_qts)) # quarterly barista income times remaining barista quarters
+            her_ss_earnings.append(inflat_adj_barista_income_qt  * min(4 , remaining_barista_qts))  
+            remaining_barista_qts -= 4
         def ss_calc(ss_earnings,PIA_rates,ss_age,birth_year):
             # index and limit the earnings, then sort them from high to low
             ss_earnings = [min(ss_max,earning)*index for ss_max, earning, index in zip(ss_max_earnings,ss_earnings, index_factors)]
@@ -147,7 +166,7 @@ class Simulator:
         # fica = 0.0145*(SingleYear[HisIncomeCol]+SingleYear[HerIncomeCol])+0.062*Math.min(SSMaxEarnings,SingleYear[HisIncomeCol]) 
         medicare = [0.0145*job_income for job_income in job_income_ls]
             # need the SS Max Earnings, but in quarter form instead of the annual form I did in the SS section.
-        ss_max_earnings_qt = self._step_quarterize(0.25*ss_max_earnings[ss_yrs.index(TODAY_YR)],FLAT_INFLATION,mode='working',working_qts=working_qts)
+        ss_max_earnings_qt = self._step_quarterize(0.25*ss_max_earnings[ss_yrs.index(TODAY_YR)],FLAT_INFLATION,mode='working',working_qts=working_qts + barista_qts)
         his_income_ratio = his_qt_income/(his_qt_income+her_qt_income)
         ss_tax = [0.062*min(his_income_ratio*income,ss_max) for income,ss_max in zip(job_income_ls,ss_max_earnings_qt)]
         ss_tax+= [0]*(self.rows-len(ss_tax))
@@ -370,7 +389,7 @@ class Simulator:
             
     
     def _range_len(self,START,LEN:int,INCREMENT,MULT=False,ADD=False):
-        """Provide a range with a set START and set LENgth. If MULT set to True, Increment should be in (1+rate, ei: 1.03) format."""
+        """Provide a range with a set START and set LENgth. If MULT set to True, Increment should be in yield (1+rate, ei: 1.03) format."""
         if ADD:
             return list(np.linspace(start=START,stop=START+INCREMENT*LEN,num=LEN,endpoint=False))
         elif MULT:
