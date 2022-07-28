@@ -1,6 +1,7 @@
 # Constants
 
 PARAMS_LOC = 'data/params.json'
+PARAMS_SUCCESS_LOC = 'data/param_success.json'
 
 EQUITY_MEAN = 1.095
 EQUITY_STDEV = .16
