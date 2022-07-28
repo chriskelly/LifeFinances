@@ -1,10 +1,12 @@
-import random, copy
+import random, copy, math, json
 from logging import exception
 from simulator import Simulator
 import simulator
 from models.model import Model
+import data.constants as const
 import numpy as np # used in eval() of parameter ranges
 
+RESET_SUCCESS = False
 SEEDED = False
 SUCCESS_THRESH = 0.5
 OFFSPRING_QTY = 5
@@ -15,7 +17,9 @@ class Algorithm:
     def __init__(self):
         self.model = Model()
         simulator.DEBUG_LVL = 0
-    
+        with open(const.PARAMS_SUCCESS_LOC) as json_file:
+            self.param_cnt = json.load(json_file)
+        if RESET_SUCCESS: self.param_cnt = {}
     
     # ---------------------- Initialization ---------------------- #
     def main(self):
@@ -29,6 +33,8 @@ class Algorithm:
             while success_rate <  SUCCESS_THRESH:
                 success_rate, parent_mute_params = self._make_child(full_params,mutable_params,mutate='random')
                 print(f"Success Rate: {success_rate*100:.2f}%")
+        # Plot first parameters
+        self._update_param_count(mutable_params,first_time=True)
         while success_rate <  TARGET_SUCCESS_RATE:
             # Make children
             children = []
@@ -50,6 +56,7 @@ class Algorithm:
             else: # If child better than parent, update success rate and params
                 parent_is_best_qty = 0
                 success_rate, parent_mute_params = children[0] 
+                self._update_param_count(parent_mute_params)
                 print(f"Success Rate: {success_rate*100:.2f}%")
             # If child meets target, test the results to the max before ending routine
             if success_rate >= TARGET_SUCCESS_RATE: 
@@ -62,12 +69,7 @@ class Algorithm:
                     param_vals = {key:obj["val"] for (key,obj) in parent_mute_params.items()} 
                     print(f"Final max: {success_rate*100:.2f}%\n {param_vals}")
                 simulator.MONTE_CARLO_RUNS = current_monte_carlo_runs
-            test =0
-        
-    
-    # Seeded option and random option
-
-        
+                
         debug_point = True
     
     # ---------------------- Mutation ---------------------- #
@@ -102,6 +104,19 @@ class Algorithm:
     
     
     # -------------------------------- HELPER FUNCTIONS -------------------------------- #
+    def _update_param_count(self,mutable_params:dict,first_time=False):
+        if RESET_SUCCESS and first_time:
+            for param,obj in mutable_params.items():
+                self.param_cnt[param] = {}
+                for option in eval(obj["range"]):
+                    self.param_cnt[param][str(option)] = 0
+        for param,obj in mutable_params.items():
+                for option in eval(obj["range"]):
+                    if str(option) == obj['val']:
+                        self.param_cnt[param][str(option)] += 1
+        with open(const.PARAMS_SUCCESS_LOC, 'w') as outfile:
+            json.dump(self.param_cnt, outfile, indent=4)
+    
     def _make_child(self,full_params:dict, parent_mute_params:dict,mutate:str):
         """Returns a tuple (success rate, mutable_params).\n
         Mutate can be 'step', 'random', or 'none'"""
