@@ -3,10 +3,10 @@
 PARAMS_LOC = 'data/params.json'
 PARAMS_SUCCESS_LOC = 'data/param_success.json'
 
-EQUITY_MEAN = 1.095
+EQUITY_MEAN = 1.092
 EQUITY_STDEV = .16
-EQUITY_ANNUAL_HIGH = 1.09 # limits for annualized return check
-EQUITY_ANNUAL_LOW = 1.07
+EQUITY_ANNUAL_HIGH = 1.121 
+EQUITY_ANNUAL_LOW = 1.053
 
 BOND_MEAN = 1.02
 BOND_STDEV = .025
