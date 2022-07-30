@@ -18,5 +18,5 @@ mean, var = skewnorm.stats(a, moments='mv')
 data= skewnorm.rvs(a, size=1000)
 #numpy.savetxt("foo.csv", data, delimiter=",")
 
-plt.hist(data)
+plt.hist(data, 20)
 plt.show() 

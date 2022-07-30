@@ -47,7 +47,7 @@ class Simulator:
         raise_yr = 1+self._val("Raise (%)",QT_MOD=False)
         job_income_ls = self._step_quarterize(total_income_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
         tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
-        barista_income_ls = self._range_len(START=total_barista_income_qt,LEN=barista_qts,INCREMENT=FLAT_INFLATION,MULT=True) # smooth growth is probably fine rather than step_quarterizing
+        barista_income_ls = self._range_len(START=total_barista_income_qt,LEN=barista_qts,INCREMENT=FLAT_INFLATION,MULT=True) if total_barista_income_qt != 0 else [] # smooth growth is probably fine rather than step_quarterizing
             # add the non-working years
         job_income_ls  = job_income_ls + barista_income_ls + ([0] * (FI_qts - barista_qts)) 
         tax_deferred_ls = tax_deferred_ls + ([0]*FI_qts) 
