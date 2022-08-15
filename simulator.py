@@ -108,7 +108,7 @@ class Simulator:
             his_ss_earnings[-1] += (inflat_adj_barista_income_qt / 2) * min((4 * percent_of_year), barista_qts)
             her_ss_earnings[-1] += (total_barista_income_qt / 2) * min((4 * percent_of_year), barista_qts)
             remaining_barista_qts -= min((4 * percent_of_year), barista_qts)
-        #while ss_yrs[-1] < self.fi_date + (barista_qts * 0.25) - 1:
+            #while ss_yrs[-1] < self.fi_date + (barista_qts * 0.25) - 1:
         while remaining_barista_qts > 0:
             ss_yrs.append(ss_yrs[-1]+1)
             inflat_adj_barista_income_qt =  total_barista_income_qt * FLAT_INFLATION ** (ss_yrs[-1] - TODAY_YR)
@@ -163,7 +163,6 @@ class Simulator:
             # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
         income_taxes = [sum([get_taxes(w2-deferred),0.8*get_taxes(pension+his_ss+her_ss)]) for w2,deferred, pension, his_ss, her_ss in zip(job_income_ls,tax_deferred_ls,pension_ls, his_ss_ls, her_ss_ls)]
             # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income). Her income excluded from SS due to pension
-        # fica = 0.0145*(SingleYear[HisIncomeCol]+SingleYear[HerIncomeCol])+0.062*Math.min(SSMaxEarnings,SingleYear[HisIncomeCol]) 
         medicare = [0.0145*job_income for job_income in job_income_ls]
             # need the SS Max Earnings, but in quarter form instead of the annual form I did in the SS section.
         ss_max_earnings_qt = self._step_quarterize(0.25*ss_max_earnings[ss_yrs.index(TODAY_YR)],FLAT_INFLATION,mode='working',working_qts=working_qts + barista_qts)
@@ -178,9 +177,11 @@ class Simulator:
         stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = returnGenerator.main(self.rows,4,MONTE_CARLO_RUNS) # bring in generated returns. Would prefer to use multiprocessing, but can't figure out how to get arrays of arrays handed back in .Value()
         spending_qt = self._val("Total Spending (Yearly)",QT_MOD='dollar')
         retirement_change = self._val("Retirement Change (%)",QT_MOD=False) # reduction of spending expected at retirement (less driving, less expensive cost of living, etc)
-            # make a kids array with years of kids being planned. If GUI abilities are expanded, could save kid birth years in an unlimited array instead of limited to 3 kids
-        kid_years = [kid for kid in [self._val("Year @ Kid #1",QT_MOD=False),self._val("Year @ Kid #2",QT_MOD=False),
-                    self._val("Year @ Kid #3",QT_MOD=False)] if kid != '']
+            # make a kids array with years of kids being planned
+        kid_year_qts = list(str(self._val("Kid Birth Years",QT_MOD=False)).split(",")) # have to force it to be a string if only one kid
+        if kid_year_qts != ['']:
+            kid_year_qts = [float(year_qt) for year_qt in kid_year_qts] 
+        else: kid_year_qts =[] # needs to be an empty array for kid_ls to compute
         kid_spending_rate = self._val("Cost of Kid (% Spending)",QT_MOD=False)
         # performance tracking
         success_rate = 0
@@ -192,21 +193,12 @@ class Simulator:
             bond_return_ls = bond_return_arr[col]
             re_return_ls = re_return_arr[col]
             inflation_ls = inflation_arr[col]
-            # Spending, 
-                # make list with spending increasing by corresponding inflation and changing at FI
-            # spending_ls =[spending_qt*inflation if i<working_qts else spending_qt*inflation*(1+retirement_change) 
-            #             for (i,inflation) in enumerate(inflation_ls)]
             # Kid count   
                 # kids_ls should have kid for every year from each kid's birth till 22 years after
             kids_ls = [0]*self.rows
-            for kid_yr in kid_years:
+            for kid_yr in kid_year_qts:
                 kids_ls = [other_kids + 1 if yr_qt>=kid_yr and yr_qt-22<kid_yr else other_kids 
                         for other_kids,yr_qt in zip(kids_ls,time_ls) ]
-            # Total costs
-            #total_costs_ls = [sum([a,b,c]) for a,b,c in zip(taxes_ls,spending_ls,kids_ls)]
-            # Net contributions to savings
-            #contributions_ls = [income-costs for income, costs in zip(total_income_ls,total_costs_ls)]
-            
             # Spending, kids, costs, contributions
             def base_spending(method:str,**kw):
                 inflation = kw['inflation']

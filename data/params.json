@@ -17,16 +17,8 @@
         "popout": 0,
         "range": "range(1000,4000,50)"
     },
-    "Year @ Kid #1": {
-        "val": "2025",
-        "popout": 0
-    },
-    "Year @ Kid #2": {
-        "val": "",
-        "popout": 0
-    },
-    "Year @ Kid #3": {
-        "val": "",
+    "Kid Birth Years": {
+        "val": "2025,2026,2026",
         "popout": 0
     },
     "Cost of Kid (% Spending)": {
