@@ -2,11 +2,11 @@ import json, math, warnings, os, datetime as dt
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from models import returnGenerator
+from models import returnGenerator, annuity
 from data import constants as const
 
-# For reference, something that has a 3% growth is a 0.03 return and 1.03 yield. That's how I'll define return and yield here
- 
+# For reference, something that has a 3% growth is a 0.03 return/rate and 1.03 yield. That's how I'll define return and yield here
+
 DEBUG_LVL = 1 # LVL 1: Print success rate, save worst failure, show plot | LVL 2: Investigate each result 1 by 1
 SAVE_DIR = 'diagnostics/saved' 
 TODAY = dt.date.today()
@@ -235,27 +235,55 @@ class Simulator:
                         except ZeroDivisionError: re_alloc = (risk_factor*re_ratio)
                     equity_alloc = (1-re_alloc)*risk_factor
                     bond_alloc = max(1-re_alloc-equity_alloc,0) 
-                    return {"Equity":equity_alloc,"RE":re_alloc,"Bond":bond_alloc}
+                    return {"Equity":equity_alloc,"RE":re_alloc,"Bond":bond_alloc,"Annuity":0}
+                if method == 'Life Cycle Annuity':
+                    re_ratio = self.params["RE Ratio"]
+                    equity_target = self.params["Equity Target"] 
+                    max_risk_factor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
+                    equity_target_PV = equity_target*kw['inflation'] # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
+                    risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
+                    with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
+                        warnings.simplefilter("ignore")
+                        try: re_alloc = (risk_factor*re_ratio)/((1-re_ratio)*(1+risk_factor*re_ratio/(1-re_ratio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
+                        except ZeroDivisionError: re_alloc = (risk_factor*re_ratio)
+                    equity_alloc = (1-re_alloc)*risk_factor
+                    annuity_alloc = max(1-re_alloc-equity_alloc,0) 
+                    return {"Equity":equity_alloc,"RE":re_alloc,"Bond":0,"Annuity":annuity_alloc}
             # Net Worth/total savings
-            spending_ls, total_costs_ls, contributions_ls, equity_alloc_ls, re_alloc_ls, bond_alloc_ls = [],[],[],[],[],[]
+            spending_ls, total_costs_ls, net_transaction_ls, equity_alloc_ls, re_alloc_ls, bond_alloc_ls = [],[],[],[],[],[]
             return_rate = None
+            my_annuity = annuity.Annuity(interest_yield_qt=const.ANNUITY_INT_YIELD ** (1/4),
+                                         payout_rate_qt=const.ANNUITY_PAYOUT_RATE/4,time_ls=time_ls)
                 # loop through time_ls to find net worth changes
             for i in range(self.rows): 
                 if i == 0: net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
-                alloc = allocation(method='Life Cycle',inflation=inflation_ls[i],net_worth = net_worth_ls[-1])
+                # allocations
+                alloc = allocation(method=self._val("Allocation Method",QT_MOD=False),inflation=inflation_ls[i],net_worth = net_worth_ls[-1])
                 equity_alloc_ls.append(alloc["Equity"])
                 re_alloc_ls.append(alloc["RE"])
                 bond_alloc_ls.append(alloc["Bond"])
+                # spending
                 working = True if i<working_qts else False
                 spend_method = self._val("Spending Method",QT_MOD=False)
                 spending_ls.append(base_spending(method=spend_method, inflation=inflation_ls[i], 
                                                  working=working, alloc=alloc,return_rate=return_rate))
                 kids_ls[i] = spending_ls[i] * kid_spending_rate * kids_ls[i]
                 total_costs_ls.append(taxes_ls[i] + spending_ls[i] + kids_ls[i])
-                contributions_ls.append(total_income_ls[i] - total_costs_ls[i])
+                net_transaction_ls.append(total_income_ls[i] - total_costs_ls[i])
+                # annuity contributions
+                if alloc['Annuity'] != 0: 
+                    amount = alloc['Annuity'] * net_worth_ls[-1]
+                    my_annuity.contribute(amount=amount,date=time_ls[i])
+                    net_worth_ls[-1] -= amount
+                # investment returns
                 return_rate = stock_return_ls[i]*alloc['Equity'] + bond_return_ls[i]*alloc['Bond'] + re_return_ls[i]*alloc['RE']
-                return_amt = return_rate*(net_worth_ls[-1]+0.5*contributions_ls[i])
-                net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+contributions_ls[i]))
+                return_amt = return_rate*(net_worth_ls[-1]+0.5*net_transaction_ls[i])
+                # annuity withdrawals
+                if net_worth_ls[-1]+return_amt+net_transaction_ls[i] < 0 and not my_annuity.annuitized:
+                    my_annuity.annuitize(time_ls[i])
+                if my_annuity.annuitized:
+                    net_transaction_ls[i] += my_annuity.take_payment(time_ls[i])
+                net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+net_transaction_ls[i]))
             net_worth_ls.pop()
             if net_worth_ls[-1]!=0: 
                 success_rate += 1
@@ -278,7 +306,7 @@ class Simulator:
                     "Spending":spending_ls,
                     "Kid Costs":kids_ls,
                     "Total Costs":total_costs_ls,
-                    "Contributions":contributions_ls,
+                    "Net Transaction":net_transaction_ls,
                     "Stock Alloc":equity_alloc_ls,
                     "Bond Alloc":bond_alloc_ls,
                     "RE Alloc":re_alloc_ls,
@@ -308,7 +336,7 @@ class Simulator:
                         "Spending":spending_ls,
                         "Kid Costs":kids_ls,
                         "Total Costs":total_costs_ls,
-                        "Contributions":contributions_ls,
+                        "Net Transaction":net_transaction_ls,
                         "Stock Alloc":equity_alloc_ls,
                         "Bond Alloc":bond_alloc_ls,
                         "RE Alloc":re_alloc_ls,

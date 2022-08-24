@@ -75,3 +75,6 @@ PENSION_ACCOUNT_BAL = 56.307 # https://my.calstrs.com/
 PENSION_COST = 0.09 # 9% of income
 PENSION_ACCOUNT_BAL_UP_DATE = 2022.5
 PENSION_INTEREST_YIELD = 1.02 # varies from 1.2-3% based on Progress Reports
+
+ANNUITY_INT_YIELD = 1.05 # https://digital.fidelity.com/prgw/digital/gie/
+ANNUITY_PAYOUT_RATE = 0.045
