@@ -13,7 +13,7 @@
         "range": "np.linspace(0,.6,7)"
     },
     "Equity Target": {
-        "val": "700",
+        "val": "2000",
         "popout": 0,
         "range": "range(500,4000,100)"
     },
