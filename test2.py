@@ -1,25 +1,10 @@
-import time
-from matplotlib import pyplot as plt
+import scipy.stats as ss
 import numpy as np
+import matplotlib.pyplot as plt
 
-def live_update_demo():
-
-    plt.subplot(2, 1, 1)
-    h1 = plt.imshow(np.random.randn(30, 30))
-    redraw_figure()
-    plt.subplot(2, 1, 2)
-    h2, = plt.plot(np.random.randn(50))
-    redraw_figure()
-
-    t_start = time.time()
-    for i in range(1000):
-        h1.set_data(np.random.randn(30, 30))
-        redraw_figure()
-        h2.set_ydata(np.random.randn(50))
-        redraw_figure()
-
-def redraw_figure():
-    plt.draw()
-    plt.pause(0.00001)
-
-live_update_demo()
+x = np.arange(34,35)
+xU, xL = x + 0.5, x - 0.5 
+prob = ss.norm.cdf(xU, scale =(35-34)/7) - ss.norm.cdf(xL, scale = (35-34)/7)
+prob = prob / prob.sum() # normalize the probabilities so their sum is 1
+nums = np.random.choice(x, size = 10000, p = prob)
+plt.hist(nums, bins = len(x))

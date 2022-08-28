@@ -5,11 +5,12 @@ import simulator
 from models.model import Model
 import data.constants as const
 import numpy as np # used in eval() of parameter ranges
+import scipy.stats as ss
 
 RESET_SUCCESS = False
 SEEDED = False
 SUCCESS_THRESH = 0.5
-OFFSPRING_QTY = 5
+OFFSPRING_QTY = 2
 TARGET_SUCCESS_RATE = 0.95
 ITER_LIMIT = 10 # Max number of times to run if parent is better than all children
 
@@ -39,7 +40,7 @@ class Algorithm:
             # Make children
             children = []
             for _ in range(OFFSPRING_QTY):
-                children.append(self._make_child(full_params,parent_mute_params,mutate='step'))
+                children.append(self._make_child(full_params,parent_mute_params,mutate='step',max_step=max(1,parent_is_best_qty)))
             # Breed from best child (or parent if all children worse)
             children.sort(key=lambda u: u[0], reverse=True) # Needed to avoid it sorting by the params if success rates are equal
             # Compare parent to best child
@@ -79,19 +80,14 @@ class Algorithm:
             new_dict[param]['val'] = str(random.choice(eval(obj["range"])))
         return new_dict
     
-    def _step_mutate(self,mutable_params):
+    def _step_mutate(self,mutable_params,max_step=1):
         new_dict = copy.deepcopy(mutable_params)
         for param,obj in new_dict.items():
             ls = list(eval(obj["range"]))
             val = obj['val'] if not self.model._is_float(obj['val']) else float(obj['val'])
-            position = ls.index(val)
+            old_position = ls.index(val)
             length = len(ls)
-            if  position == 0: 
-                new_position = random.randint(0,1)
-            elif position == length - 1: 
-                new_position = random.randint(position - 1,position)
-            else: 
-                new_position = random.randint(position - 1,position + 1)
+            new_position = random.randint(max(0,old_position - max_step),min(length-1,old_position + max_step))
             new_dict[param]['val'] = str(ls[new_position])
         return new_dict
     
@@ -117,11 +113,11 @@ class Algorithm:
         with open(const.PARAMS_SUCCESS_LOC, 'w') as outfile:
             json.dump(self.param_cnt, outfile, indent=4)
     
-    def _make_child(self,full_params:dict, parent_mute_params:dict,mutate:str):
+    def _make_child(self,full_params:dict, parent_mute_params:dict,mutate:str,max_step:int=1):
         """Returns a tuple (success rate, mutable_params).\n
         Mutate can be 'step', 'random', or 'none'"""
         if mutate == 'step':
-            child_mute_params = self._step_mutate(parent_mute_params) 
+            child_mute_params = self._step_mutate(parent_mute_params,max_step=max_step) 
         elif mutate == 'random':
             child_mute_params = self._random_mutate(parent_mute_params)
         elif mutate == 'none':
