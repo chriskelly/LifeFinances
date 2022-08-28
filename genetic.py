@@ -10,7 +10,7 @@ import scipy.stats as ss
 RESET_SUCCESS = False
 SEEDED = False
 SUCCESS_THRESH = 0.5
-OFFSPRING_QTY = 2
+OFFSPRING_QTY = 5
 TARGET_SUCCESS_RATE = 0.95
 ITER_LIMIT = 10 # Max number of times to run if parent is better than all children
 
