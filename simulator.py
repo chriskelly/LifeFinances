@@ -13,7 +13,7 @@ TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
-MONTE_CARLO_RUNS = 500 # takes 20 seconds to generate 5000
+MONTE_CARLO_RUNS = 250 # takes 20 seconds to generate 5000
 for file in os.scandir(SAVE_DIR): # delete previously saved files
     os.remove(file.path)
 

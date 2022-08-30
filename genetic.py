@@ -6,6 +6,8 @@ from models.model import Model
 import data.constants as const
 import numpy as np # used in eval() of parameter ranges
 import scipy.stats as ss
+RNG = np.random.default_rng()
+
 
 RESET_SUCCESS = False
 SEEDED = False
@@ -87,7 +89,8 @@ class Algorithm:
             val = obj['val'] if not self.model._is_float(obj['val']) else float(obj['val'])
             old_position = ls.index(val)
             length = len(ls)
-            new_position = random.randint(max(0,old_position - max_step),min(length-1,old_position + max_step))
+            #new_position = random.randint(max(0,old_position - max_step),min(length-1,old_position + max_step))
+            new_position = min(length-1,max(0,self._gaussian_int(center=old_position,max_deviation=max_step)))
             new_dict[param]['val'] = str(ls[new_position])
         return new_dict
     
@@ -100,6 +103,15 @@ class Algorithm:
     
     
     # -------------------------------- HELPER FUNCTIONS -------------------------------- #
+    def _gaussian_int(self,center:int,max_deviation:int): # credit: https://stackoverflow.com/questions/37411633/how-to-generate-a-random-normal-distribution-of-integers
+        """Returns an int from a random gaussian distribution"""
+        scale= max_deviation/1.5
+        x = np.arange(-max_deviation, max_deviation+1) +center
+        xU, xL = x + 0.5, x - 0.5
+        prob = ss.norm.cdf(xU,loc=center, scale = scale) - ss.norm.cdf(xL,loc=center, scale = scale)
+        prob = prob / prob.sum() # normalize the probabilities so their sum is 1
+        return np.random.choice(x, p = prob)
+    
     def _update_param_count(self,mutable_params:dict,first_time=False):
         if RESET_SUCCESS and first_time:
             for param,obj in mutable_params.items():
