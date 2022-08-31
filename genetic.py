@@ -105,7 +105,7 @@ class Algorithm:
     # -------------------------------- HELPER FUNCTIONS -------------------------------- #
     def _gaussian_int(self,center:int,max_deviation:int): # credit: https://stackoverflow.com/questions/37411633/how-to-generate-a-random-normal-distribution-of-integers
         """Returns an int from a random gaussian distribution"""
-        scale= max_deviation/1.5
+        scale= max_deviation/1.5 # decreasing the demonimator results in a flater distribution
         x = np.arange(-max_deviation, max_deviation+1) +center
         xU, xL = x + 0.5, x - 0.5
         prob = ss.norm.cdf(xU,loc=center, scale = scale) - ss.norm.cdf(xL,loc=center, scale = scale)

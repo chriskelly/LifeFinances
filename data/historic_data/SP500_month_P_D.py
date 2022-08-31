@@ -6,9 +6,9 @@
 
 import pandas as pd
 
-df = pd.read_csv('data/historicalSP500Data.csv')
+df = pd.read_csv('SP500_month_P_D.csv')
 yearly_df = df[df['Date'].astype(str).str.contains('.01',regex=False)]
-yearly_df.to_csv('data/historicalYearlySP500Data.csv')
+yearly_df.to_csv('SP500_year_P_D.csv')
 
 # Total Return: =(C3+D2)/C2
 # Annualized 40 years: =PRODUCT(E3:E42)^(1/40)
