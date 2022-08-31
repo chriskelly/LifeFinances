@@ -4,7 +4,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 import pandas as pd
 
-historical_data = pd.read_csv('HistoricalInflationData.csv')
+historical_data = pd.read_csv('inflation_year_yield.csv')
 historical_data = historical_data['Inflation'].to_list()
 a=skew(historical_data)
 kurt = kurtosis(historical_data)
