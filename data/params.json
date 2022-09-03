@@ -1,6 +1,6 @@
 {
     "FI Quarter": {
-        "val": "2023.5",
+        "val": "2025.5",
         "popout": 0
     },
     "Calculate Til": {
@@ -8,12 +8,12 @@
         "popout": 0
     },
     "RE Ratio": {
-        "val": "0.5",
+        "val": "0.6",
         "popout": 0,
         "range": "np.linspace(0,.6,7)"
     },
     "Equity Target": {
-        "val": "2000",
+        "val": "1700",
         "popout": 0,
         "range": "range(500,4000,100)"
     },
@@ -34,17 +34,17 @@
         "popout": 0
     },
     "His SS Age": {
-        "val": "69",
+        "val": "64",
         "popout": 0,
         "range": "range(62,71)"
     },
     "Her SS Age": {
-        "val": "69",
+        "val": "66",
         "popout": 0,
         "range": "range(62,71)"
     },
     "Pension Year": {
-        "val": "2048",
+        "val": "2043",
         "popout": 0,
         "range": "range(2043,2056)"
     },
@@ -116,12 +116,12 @@
         "popout": 1
     },
     "Spending Method": {
-        "val": "ceil-floor",
+        "val": "inflation-only",
         "popout": 1,
         "range": "['ceil-floor','inflation-only']"
     },
     "Allocation Method": {
-        "val": "Life Cycle Annuity",
+        "val": "Life Cycle",
         "popout": 1,
         "range": "['Life Cycle','Life Cycle Annuity']"
     },
