@@ -19,6 +19,7 @@ ITER_LIMIT = 10 # Max number of times to run if parent is better than all childr
 class Algorithm:
     def __init__(self):
         self.model = Model()
+        self.prev_used_params = []
         simulator.DEBUG_LVL = 0
         with open(const.PARAMS_SUCCESS_LOC) as json_file:
             self.param_cnt = json.load(json_file)
@@ -92,6 +93,8 @@ class Algorithm:
             #new_position = random.randint(max(0,old_position - max_step),min(length-1,old_position + max_step))
             new_position = min(length-1,max(0,self._gaussian_int(center=old_position,max_deviation=max_step)))
             new_dict[param]['val'] = str(ls[new_position])
+        if new_dict in self.prev_used_params:
+            new_dict = self._step_mutate(mutable_params,max_step)
         return new_dict
     
     
@@ -130,8 +133,11 @@ class Algorithm:
         Mutate can be 'step', 'random', or 'none'"""
         if mutate == 'step':
             child_mute_params = self._step_mutate(parent_mute_params,max_step=max_step) 
+            self.prev_used_params.append(child_mute_params)
         elif mutate == 'random':
+            self.prev_used_params = []
             child_mute_params = self._random_mutate(parent_mute_params)
+            self.prev_used_params.append(child_mute_params)
         elif mutate == 'none':
             child_mute_params = parent_mute_params
         else: exception('no valid mutation chosen')
