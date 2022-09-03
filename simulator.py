@@ -1,4 +1,4 @@
-import json, math, warnings, os, datetime as dt
+import json, math, warnings, os,statistics, datetime as dt
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -185,7 +185,7 @@ class Simulator:
         kid_spending_rate = self._val("Cost of Kid (% Spending)",QT_MOD=False)
         # performance tracking
         success_rate = 0
-        net_worth_end_ls = [] # Establish empty list to calculate net worth median. Chris: Preference on using "_ls" here or reserving "_ls" only for the lists representing each period?
+        final_net_worths = [] # Establish empty list to calculate net worth median. Chris: Preference on using "_ls" here or reserving "_ls" only for the lists representing each period?
         worst_failure_idx = self.rows
         failure_dict ={}
         # Monte Carlo
@@ -288,7 +288,7 @@ class Simulator:
             net_worth_ls.pop()
             if net_worth_ls[-1]!=0: 
                 success_rate += 1
-            net_worth_end_ls.append(net_worth_ls[-1]) # Add final net worth to list for later calculation
+            final_net_worths.append(net_worth_ls[-1]) # Add final net worth to list for later calculation
             if 0 in net_worth_ls and net_worth_ls.index(0) < worst_failure_idx and debug_lvl >= 1:
                 worst_failure_idx = net_worth_ls.index(0)
                 failure_dict = {
@@ -351,12 +351,12 @@ class Simulator:
                 elif usr_input == 'c':
                     debug_lvl = 1
         success_rate = success_rate/MONTE_CARLO_RUNS
-        median_net_worth = median(net_worth_end_ls)
+        median_net_worth = statistics.median(final_net_worths)
         if debug_lvl >= 1: 
             failure_df = pd.DataFrame.from_dict(failure_dict)
             failure_df.to_csv(f'{SAVE_DIR}/worst_failure.csv')
             print(f"Success Rate: {success_rate*100:.2f}%")
-            print(f"Median Final Net Worth: {median_net_worth}")
+            print(f"Median Final Net Worth: ${median_net_worth*1000:,.0f}")
         
         if debug_lvl >= 1: plt.show()
         return success_rate
