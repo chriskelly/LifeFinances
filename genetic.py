@@ -29,8 +29,7 @@ class Algorithm:
     def main(self):
         full_params = copy.deepcopy(self.model.params) # make a copy rather than point to the same dict # https://stackoverflow.com/a/22341377/13627745
         mutable_params = self.model.filter_params(include=True, attr='range')
-        success_rate = 0.0
-        parent_is_best_qty = 0
+        success_rate, parent_is_best_qty = 0.0 , 0
         if SEEDED:
             pass
         else: 
@@ -70,8 +69,11 @@ class Algorithm:
                 if success_rate < TARGET_SUCCESS_RATE and DEBUG_LVL>=1:
                     print(f"Couldn't stand the pressure...{success_rate*100:.2f}%")
                 else:
-                    param_vals = {key:obj["val"] for (key,obj) in parent_mute_params.items()} 
+                    param_vals = {key:obj["val"] for (key,obj) in parent_mute_params.items()}
                     print(f"Final max: {success_rate*100:.2f}%\n {param_vals}")
+                    full_params.update(parent_mute_params)
+                    with open(const.PARAMS_LOC, 'w') as outfile:
+                        json.dump(full_params, outfile, indent=4)
                 simulator.MONTE_CARLO_RUNS = current_monte_carlo_runs
                 
         debug_point = True
