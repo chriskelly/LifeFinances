@@ -9,16 +9,15 @@ import scipy.stats as ss
 
 DEBUG_LVL = 1
 RESET_SUCCESS = False
-SEEDED = False
 SUCCESS_THRESH = 0.5
 OFFSPRING_QTY = 5
 TARGET_SUCCESS_RATE = 0.95
+MAX_MONTE_RUNS = 5000
 ITER_LIMIT = 10 # Max number of times to run if parent is better than all children
 RNG = np.random.default_rng()
 
 class Algorithm:
     def __init__(self):
-        self.model = Model()
         self.prev_used_params = []
         simulator.DEBUG_LVL = 0
         with open(const.PARAMS_SUCCESS_LOC) as json_file:
@@ -26,19 +25,21 @@ class Algorithm:
         if RESET_SUCCESS: self.param_cnt = {}
     
     # ---------------------- Initialization ---------------------- #
-    def main(self):
-        full_params = copy.deepcopy(self.model.params) # make a copy rather than point to the same dict # https://stackoverflow.com/a/22341377/13627745
+    def main(self, next_loop=(False,[])):
+        self.model = Model()
         mutable_params = self.model.filter_params(include=True, attr='range')
         success_rate, parent_is_best_qty = 0.0 , 0
-        if SEEDED:
-            pass
-        else: 
+        if next_loop[0]: # check to see if this is the first loop or if the previous one was successful and we're auto-advancing
+            full_params = next_loop[1]
+            parent_mute_params = mutable_params
+        else:
+            full_params = copy.deepcopy(self.model.params) # make a copy rather than point to the same dict # https://stackoverflow.com/a/22341377/13627745
             while success_rate <  SUCCESS_THRESH:
                 success_rate, parent_mute_params = self._make_child(full_params,mutable_params,mutate='random')
                 if DEBUG_LVL>=1: print(f"Success Rate: {success_rate*100:.2f}%")
         # Plot first parameters
         self._update_param_count(mutable_params,first_time=True)
-        while success_rate <  TARGET_SUCCESS_RATE:
+        while True: # while success_rate <  TARGET_SUCCESS_RATE      if you every want to stop the auto-advance
             # Make children
             children = []
             for _ in range(OFFSPRING_QTY):
@@ -64,17 +65,21 @@ class Algorithm:
             # If child meets target, test the results to the max before ending routine
             if success_rate >= TARGET_SUCCESS_RATE: 
                 current_monte_carlo_runs = simulator.MONTE_CARLO_RUNS # save previous value
-                simulator.MONTE_CARLO_RUNS = 5000
+                simulator.MONTE_CARLO_RUNS = MAX_MONTE_RUNS
                 success_rate = self._make_child(full_params,parent_mute_params,mutate='none')[0] # test at higher monte carlo runs
-                if success_rate < TARGET_SUCCESS_RATE and DEBUG_LVL>=1:
-                    print(f"Couldn't stand the pressure...{success_rate*100:.2f}%")
+                simulator.MONTE_CARLO_RUNS = current_monte_carlo_runs
+                if success_rate < TARGET_SUCCESS_RATE: 
+                    if DEBUG_LVL>=1:
+                        print(f"Couldn't stand the pressure...{success_rate*100:.2f}%")
                 else:
                     param_vals = {key:obj["val"] for (key,obj) in parent_mute_params.items()}
                     print(f"Final max: {success_rate*100:.2f}%\n {param_vals}")
                     full_params.update(parent_mute_params)
                     with open(const.PARAMS_LOC, 'w') as outfile:
                         json.dump(full_params, outfile, indent=4)
-                simulator.MONTE_CARLO_RUNS = current_monte_carlo_runs
+                    full_params['FI Quarter']['val'] = str(float(full_params['FI Quarter']['val']) - 0.25)
+                    print(f"Date: {full_params['FI Quarter']['val']}")
+                    self.main(next_loop=(True,full_params))
                 
         debug_point = True
     
