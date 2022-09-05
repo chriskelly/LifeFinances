@@ -1,5 +1,4 @@
 import random, copy, math, json
-from logging import exception
 from simulator import Simulator
 import simulator
 from models.model import Model
@@ -10,20 +9,35 @@ import scipy.stats as ss
 DEBUG_LVL = 1 # Lvl 0 shows only local and final max param sets
 RESET_SUCCESS = False # Set to true to reset all the counts in param_success.json
 SUCCESS_THRESH = 0.5 # Initial threshold for random mutations to beat before switching to step mutations
-OFFSPRING_QTY = 5
+OFFSPRING_QTY = 10
 TARGET_SUCCESS_RATE = 0.95
 INITIAL_MONTE_RUNS = 100
 MAX_MONTE_RUNS = 5000
 ITER_LIMIT = 10 # Max number of times to run if parent is better than all children
+SEED = True # Use current params to start with
 RNG = np.random.default_rng()
 
 class Algorithm:
     def __init__(self):
         self.prev_used_params = [] # used to track and prevent reusing the same param sets during step mutation
+        self.reset_success = RESET_SUCCESS
         simulator.DEBUG_LVL = 0
-        with open(const.PARAMS_SUCCESS_LOC) as json_file:
-            self.param_cnt = json.load(json_file)
-        if RESET_SUCCESS: self.param_cnt = {}
+        # try:
+        #     with open(const.PARAMS_SUCCESS_LOC) as json_file:
+        #         self.param_cnt = json.load(json_file)
+        # except: 
+        #     with open(const.PARAMS_SUCCESS_LOC, 'w') as outfile:
+        #         json.dump(self.param_cnt, outfile, indent=4)
+        if self.reset_success: 
+            self.param_cnt = {}
+        else:
+            with open(const.PARAMS_SUCCESS_LOC, 'w') as json_file:
+                try:
+                    self.param_cnt = json.load(json_file)
+                except: 
+                    self.param_cnt = {}
+                    self.reset_success = True
+                    json.dump(self.param_cnt, json_file, indent=4)
     
     def main(self, next_loop=(False,[])):
     # ---------------------- First parameter set ---------------------- #
@@ -32,6 +46,9 @@ class Algorithm:
         success_rate, parent_is_best_qty = 0.0 , 0
         if next_loop[0]: # check to see if this is the first loop or if the previous one was successful and we're auto-advancing
             full_params = next_loop[1]
+            parent_mute_params = mutable_params
+        elif SEED: 
+            full_params = copy.deepcopy(self.model.params) # make a copy rather than point to the same dict # https://stackoverflow.com/a/22341377/13627745
             parent_mute_params = mutable_params
         else: # if not, keep random mutating till we hit SUCCESS_THRESH
             full_params = copy.deepcopy(self.model.params) # make a copy rather than point to the same dict # https://stackoverflow.com/a/22341377/13627745
@@ -103,10 +120,10 @@ class Algorithm:
             val = obj['val'] if not self.model._is_float(obj['val']) else float(obj['val'])
             old_position = ls.index(val)
             length = len(ls)
-            #new_position = random.randint(max(0,old_position - max_step),min(length-1,old_position + max_step))
             new_position = min(length-1,max(0,self._gaussian_int(center=old_position,max_deviation=max_step)))
             new_dict[param]['val'] = str(ls[new_position])
         if new_dict in self.prev_used_params:
+            print(f'Tried params: {len(self.prev_used_params)}')
             new_dict = self._step_mutate(mutable_params,max_step)
         return new_dict
     
@@ -132,7 +149,7 @@ class Algorithm:
         """Edit the param_success.json file to add another tally for each of the 
         successful mutable_param values. If first time and RESET_SUCCESS, 
         overwrite previous file and set count to 0"""
-        if RESET_SUCCESS and first_time:
+        if self.reset_success and first_time:
             for param,obj in mutable_params.items():
                 self.param_cnt[param] = {}
                 for option in eval(obj["range"]):
@@ -156,11 +173,13 @@ class Algorithm:
             self.prev_used_params.append(child_mute_params)
         elif mutate == 'none':
             child_mute_params = parent_mute_params
-        else: exception('no valid mutation chosen')
+        else: raise Exception('no valid mutation chosen')
         full_params.update(child_mute_params)
         param_vals = {key:obj["val"] for (key,obj) in full_params.items()}
+        # monte carlo runs are exponentially related to success rate. Increasing the exponent makes the curve more severe. At the TARGET_SUCCESS_RATE, you'll get the MAX_MONTE_RUNS
         override_dict = {'monte_carlo_runs' : int(max(INITIAL_MONTE_RUNS,(min(MAX_MONTE_RUNS,
                             (MAX_MONTE_RUNS * (success_rate + (1-TARGET_SUCCESS_RATE)) ** 30))))) }
+        # if we're on the first child of a set, the simulator will generate returns and feed them back. For the next children, that same set of returns will be reused
         if idx != 0:
             override_dict['returns']  = self.returns
         print(f"monte runs: {override_dict['monte_carlo_runs']}")

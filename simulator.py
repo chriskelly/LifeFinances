@@ -2,7 +2,7 @@ import json, math, warnings, os,statistics, datetime as dt
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from models import returnGenerator, annuity
+from models import returnGenerator, annuity, model
 from data import constants as const
 
 # For reference, something that has a 3% growth is a 0.03 return/rate and 1.03 yield. That's how I'll define return/rate and yield here
@@ -18,7 +18,7 @@ for file in os.scandir(SAVE_DIR): # delete previously saved files
     os.remove(file.path)
 
 class Simulator:
-    def __init__(self,param_vals,monte_carlo_runs,override_dict={}):
+    def __init__(self,param_vals,override_dict={}):
         self.params = self._clean_data(param_vals)
         self.rows = int((param_vals['Calculate Til'] - TODAY_YR_QT)/.25)
         self.fi_date = self.params["FI Quarter"]
@@ -451,8 +451,7 @@ class Simulator:
 
 # -------------------------------- JUST FOR TESTING -------------------------------- #
 
-with open(const.PARAMS_LOC) as json_file:
-            params = json.load(json_file)
+params = model.load_params()
 param_vals = {key:obj["val"] for (key,obj) in params.items()}
 
 
