@@ -43,8 +43,9 @@ class Algorithm:
         while True: # while success_rate <  TARGET_SUCCESS_RATE      if you every want to stop the auto-advance
             # Make children
             children = []
-            for _ in range(OFFSPRING_QTY):
-                children.append(self._make_child(full_params,parent_mute_params,success_rate,mutate='step',max_step=max(1,parent_is_best_qty)))
+            for idx in range(OFFSPRING_QTY):
+                children.append(self._make_child(full_params,parent_mute_params,success_rate,mutate='step',
+                                                 max_step=max(1,parent_is_best_qty),idx=idx))
             # Find best child (or use parent if all children worse)
             children.sort(key=lambda u: u[0], reverse=True) # Needed to avoid it sorting by the params if success rates are equal
             # ------ Children not improving ------ #
@@ -143,7 +144,7 @@ class Algorithm:
         with open(const.PARAMS_SUCCESS_LOC, 'w') as outfile:
             json.dump(self.param_cnt, outfile, indent=4)
     
-    def _make_child(self,full_params:dict, parent_mute_params:dict,success_rate:float,mutate:str,max_step:int=1):
+    def _make_child(self,full_params:dict, parent_mute_params:dict,success_rate:float,mutate:str,max_step:int=1,idx:int=0):
         """Returns a tuple (success rate, mutable_params).\n
         Mutate can be 'step', 'random', or 'none'"""
         if mutate == 'step':
@@ -158,12 +159,13 @@ class Algorithm:
         else: exception('no valid mutation chosen')
         full_params.update(child_mute_params)
         param_vals = {key:obj["val"] for (key,obj) in full_params.items()}
-        # calc monte carlo run qty
-        monte_carlo_runs = int(max(INITIAL_MONTE_RUNS,(min(MAX_MONTE_RUNS,
-                                (MAX_MONTE_RUNS * (success_rate + (1-TARGET_SUCCESS_RATE)) ** 30))))) 
-        print(f'monte runs: {monte_carlo_runs}')
-        new_simulator = Simulator(param_vals,monte_carlo_runs)
-        child_success_rate = new_simulator.main()
+        override_dict = {'monte_carlo_runs' : int(max(INITIAL_MONTE_RUNS,(min(MAX_MONTE_RUNS,
+                            (MAX_MONTE_RUNS * (success_rate + (1-TARGET_SUCCESS_RATE)) ** 30))))) }
+        if idx != 0:
+            override_dict['returns']  = self.returns
+        print(f"monte runs: {override_dict['monte_carlo_runs']}")
+        new_simulator = Simulator(param_vals,override_dict)
+        child_success_rate, self.returns = new_simulator.main()
         return (child_success_rate,child_mute_params)
     
         

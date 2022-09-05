@@ -18,11 +18,11 @@ for file in os.scandir(SAVE_DIR): # delete previously saved files
     os.remove(file.path)
 
 class Simulator:
-    def __init__(self,param_vals,monte_carlo_runs):
+    def __init__(self,param_vals,monte_carlo_runs,override_dict={}):
         self.params = self._clean_data(param_vals)
         self.rows = int((param_vals['Calculate Til'] - TODAY_YR_QT)/.25)
         self.fi_date = self.params["FI Quarter"]
-        self.monte_carlo_runs = monte_carlo_runs
+        self.override_dict = override_dict
             
     def main(self):
 # -------------------------------- VARIABLES -------------------------------- #      
@@ -175,7 +175,14 @@ class Simulator:
         
     # ------------ MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
         # variables that don't alter with each run
-        stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = returnGenerator.main(self.rows,4,self.monte_carlo_runs) # bring in generated returns. Would prefer to use multiprocessing, but can't figure out how to get arrays of arrays handed back in .Value()
+        if 'monte_carlo_runs' in self.override_dict:
+            monte_carlo_runs = self.override_dict['monte_carlo_runs']
+        else:
+            monte_carlo_runs = MONTE_CARLO_RUNS
+        if 'returns' in self.override_dict:
+            stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = self.override_dict['returns']
+        else:
+            stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = returnGenerator.main(self.rows,4,monte_carlo_runs) # bring in generated returns. Would prefer to use multiprocessing, but can't figure out how to get arrays of arrays handed back in .Value()
         spending_qt = self._val("Total Spending (Yearly)",QT_MOD='dollar')
         retirement_change = self._val("Retirement Change (%)",QT_MOD=False) # reduction of spending expected at retirement (less driving, less expensive cost of living, etc)
             # make a kids array with years of kids being planned
@@ -190,7 +197,7 @@ class Simulator:
         worst_failure_idx = self.rows
         failure_dict ={}
         # Monte Carlo
-        for col in range(self.monte_carlo_runs):
+        for col in range(monte_carlo_runs):
             stock_return_ls = stock_return_arr[col]
             bond_return_ls = bond_return_arr[col]
             re_return_ls = re_return_arr[col]
@@ -351,7 +358,7 @@ class Simulator:
                     save_df.to_csv(f'{SAVE_DIR}/saveData{col}.csv')
                 elif usr_input == 'c':
                     debug_lvl = 1
-        success_rate = success_rate/self.monte_carlo_runs
+        success_rate = success_rate/monte_carlo_runs
         median_net_worth = statistics.median(final_net_worths)
         if debug_lvl >= 1: 
             failure_df = pd.DataFrame.from_dict(failure_dict)
@@ -360,7 +367,7 @@ class Simulator:
             print(f"Median Final Net Worth: ${median_net_worth*1000:,.0f}")
         
         if debug_lvl >= 1: plt.show()
-        return success_rate
+        return success_rate, [stock_return_arr,bond_return_arr,re_return_arr,inflation_arr]
         
         debug_point = None
         
@@ -450,5 +457,5 @@ param_vals = {key:obj["val"] for (key,obj) in params.items()}
 
 
 if __name__ == '__main__':
-    simulator = Simulator(param_vals,MONTE_CARLO_RUNS)
+    simulator = Simulator(param_vals)
     simulator.main()
