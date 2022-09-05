@@ -109,7 +109,6 @@ class Simulator:
             his_ss_earnings[-1] += (inflat_adj_barista_income_qt / 2) * min((4 * percent_of_year), barista_qts)
             her_ss_earnings[-1] += (total_barista_income_qt / 2) * min((4 * percent_of_year), barista_qts)
             remaining_barista_qts -= min((4 * percent_of_year), barista_qts)
-            #while ss_yrs[-1] < self.fi_date + (barista_qts * 0.25) - 1:
         while remaining_barista_qts > 0:
             ss_yrs.append(ss_yrs[-1]+1)
             inflat_adj_barista_income_qt =  total_barista_income_qt * FLAT_INFLATION ** (ss_yrs[-1] - TODAY_YR)
@@ -374,7 +373,7 @@ class Simulator:
 
 # -------------------------------- HELPER FUNCTIONS -------------------------------- #
 
-    def _step_quarterize(self,first_val,increase_yield,mode,**kw):
+    def _step_quarterize(self,first_val,increase_yield,mode,**kw) -> list:
         """Return a list with values that step up on a yearly basis rather than quarterly \n
         mode = 'working' -> from today_qt to fi_date, needs kw['working_qts'] \n
         mode = 'pension' -> from provided kw['start_yr'] to end of kw['time_ls']"""
@@ -397,7 +396,7 @@ class Simulator:
             # return handle(e) 
             return 0
     
-    def _pow(self,num,exp:int):
+    def _pow(self,num,exp:int) -> int:
         """exponential formular num^exp that should be faster for small exponents"""
         i=1
         result = num
@@ -420,7 +419,7 @@ class Simulator:
             raise Exception("invalid MOD")
             
     
-    def _range_len(self,START,LEN:int,INCREMENT,MULT=False,ADD=False):
+    def _range_len(self,START,LEN:int,INCREMENT,MULT=False,ADD=False) -> list:
         """Provide a range with a set START and set LENgth. If MULT set to True, Increment should be in yield (1+rate, ei: 1.03) format."""
         if ADD:
             return list(np.linspace(start=START,stop=START+INCREMENT*LEN,num=LEN,endpoint=False))
@@ -430,7 +429,7 @@ class Simulator:
         else:
             raise Exception("Didn't declare either MULT or ADD")
     
-    def _clean_data(self, params: dict):
+    def _clean_data(self, params: dict) -> dict:
             for k, v in params.items():
                 if type(v) is dict:
                     continue
@@ -442,7 +441,7 @@ class Simulator:
                     params[k] = bool(v)
             return params
         
-    def _is_float(self, element: any):
+    def _is_float(self, element: any) -> bool:
         try:
             float(element)
             return True

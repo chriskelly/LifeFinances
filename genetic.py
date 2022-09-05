@@ -22,12 +22,6 @@ class Algorithm:
         self.prev_used_params = [] # used to track and prevent reusing the same param sets during step mutation
         self.reset_success = RESET_SUCCESS
         simulator.DEBUG_LVL = 0
-        # try:
-        #     with open(const.PARAMS_SUCCESS_LOC) as json_file:
-        #         self.param_cnt = json.load(json_file)
-        # except: 
-        #     with open(const.PARAMS_SUCCESS_LOC, 'w') as outfile:
-        #         json.dump(self.param_cnt, outfile, indent=4)
         if self.reset_success: 
             self.param_cnt = {}
         else:
@@ -104,14 +98,14 @@ class Algorithm:
         debug_point = True
     
     # ---------------------- Mutation ---------------------- #
-    def _random_mutate(self,mutable_params):
+    def _random_mutate(self,mutable_params) -> dict:
         """Return mutable params with shuffled values"""
         new_dict = copy.deepcopy(mutable_params) 
         for param,obj in new_dict.items():
             new_dict[param]['val'] = str(random.choice(eval(obj["range"])))
         return new_dict
     
-    def _step_mutate(self,mutable_params,max_step=1):
+    def _step_mutate(self,mutable_params,max_step=1) -> dict:
         """Return mutable params with values shifted in a normal distribution around 
         provided mutable_param values with a max deviation of max_step"""
         new_dict = copy.deepcopy(mutable_params)
@@ -136,7 +130,7 @@ class Algorithm:
     
     
     # -------------------------------- HELPER FUNCTIONS -------------------------------- #
-    def _gaussian_int(self,center:int,max_deviation:int): # credit: https://stackoverflow.com/questions/37411633/how-to-generate-a-random-normal-distribution-of-integers
+    def _gaussian_int(self,center:int,max_deviation:int) -> int: # credit: https://stackoverflow.com/questions/37411633/how-to-generate-a-random-normal-distribution-of-integers
         """Returns an int from a random gaussian distribution"""
         scale= max_deviation/1.5 # decreasing the demonimator results in a flater distribution
         x = np.arange(-max_deviation, max_deviation+1) +center
