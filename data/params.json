@@ -13,7 +13,7 @@
         "range": "np.linspace(0,.6,7)"
     },
     "Equity Target": {
-        "val": "2400",
+        "val": "3300",
         "popout": 0,
         "range": "range(500,4000,100)"
     },
@@ -39,12 +39,12 @@
         "range": "range(62,71)"
     },
     "Her SS Age": {
-        "val": "67",
+        "val": "65",
         "popout": 0,
         "range": "range(62,71)"
     },
     "Pension Year": {
-        "val": "2054",
+        "val": "2052",
         "popout": 0,
         "range": "range(2043,2056)"
     },
