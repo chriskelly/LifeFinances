@@ -13,7 +13,7 @@
         "range": "np.linspace(0,.6,7)"
     },
     "Equity Target": {
-        "val": "3300",
+        "val": "1500",
         "popout": 0,
         "range": "range(500,4000,100)"
     },
@@ -34,17 +34,17 @@
         "popout": 0
     },
     "His SS Age": {
-        "val": "69",
+        "val": "64",
         "popout": 0,
         "range": "range(62,71)"
     },
     "Her SS Age": {
-        "val": "65",
+        "val": "70",
         "popout": 0,
         "range": "range(62,71)"
     },
     "Pension Year": {
-        "val": "2052",
+        "val": "2043",
         "popout": 0,
         "range": "range(2043,2056)"
     },
@@ -121,7 +121,7 @@
         "range": "['ceil-floor','inflation-only']"
     },
     "Allocation Method": {
-        "val": "Life Cycle Annuity",
+        "val": "Life Cycle",
         "popout": 1,
         "range": "['Life Cycle','Life Cycle Annuity']"
     },
