@@ -5,11 +5,17 @@ import json
 # params_values_location = script_location / 'params.json'
 import data.constants as const
 
+def load_params():
+    try:
+        with open(const.PARAMS_LOC) as json_file:
+            params = json.load(json_file)
+    except:
+        raise Exception('Parameter file not found. Copy from /data/default_params and place in /data folder.')
+    return params
 
 class Model:
     def __init__(self):
-        with open(const.PARAMS_LOC) as json_file:
-            self.params = json.load(json_file)
+        self.params = load_params()
 
     def save_params(self, params_vals: dict):
         """Overwrite params.json with passed-in params_vals dict"""

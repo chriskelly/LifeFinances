@@ -1,6 +1,6 @@
 {
     "FI Quarter": {
-        "val": "2025.0",
+        "val": "2035.0",
         "popout": 0
     },
     "Calculate Til": {
@@ -34,17 +34,17 @@
         "popout": 0
     },
     "His SS Age": {
-        "val": "64",
+        "val": "62",
         "popout": 0,
         "range": "range(62,71)"
     },
     "Her SS Age": {
-        "val": "70",
+        "val": "65",
         "popout": 0,
         "range": "range(62,71)"
     },
     "Pension Year": {
-        "val": "2043",
+        "val": "2044",
         "popout": 0,
         "range": "range(2043,2056)"
     },
@@ -54,7 +54,7 @@
         "range": "['default','cash-out']"
     },
     "Current Net Worth ($)": {
-        "val": "1245",
+        "val": "1000",
         "popout": 0
     },
     "Total Spending (Yearly)": {
@@ -121,7 +121,7 @@
         "range": "['ceil-floor','inflation-only']"
     },
     "Allocation Method": {
-        "val": "Life Cycle",
+        "val": "Life Cycle Annuity",
         "popout": 1,
         "range": "['Life Cycle','Life Cycle Annuity']"
     },
@@ -130,7 +130,7 @@
         "popout": 5
     },
     "His Salary + Bonus": {
-        "val": "195.5",
+        "val": "100",
         "popout": 5
     },
     "His 401k": {
@@ -161,7 +161,7 @@
         "calcd": "params_vals['His 401k']+params_vals['His HSA']+params_vals['His Emplr Contributions']"
     },
     "His Total Income": {
-        "val": "207.75",
+        "val": "150",
         "popout": 0,
         "popper": 5,
         "calcd": "params_vals['His Salary + Bonus']+params_vals['His Emplr Contributions']"
@@ -172,7 +172,7 @@
         "calcd": "params_vals['His Age'] + 5"
     },
     "Her Salary": {
-        "val": "103.5",
+        "val": "100",
         "popout": 6
     },
     "Her Pension Costs": {
@@ -194,7 +194,7 @@
         "popout": 6
     },
     "Her Total Income": {
-        "val": "94.185",
+        "val": "100",
         "popout": 0,
         "popper": 6,
         "calcd": "params_vals['Her Salary']+params_vals['Her Pension Costs']"
