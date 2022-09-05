@@ -5,7 +5,7 @@ import json
 # params_values_location = script_location / 'params.json'
 import data.constants as const
 
-def load_params():
+def load_params() -> dict:
     try:
         with open(const.PARAMS_LOC) as json_file:
             params = json.load(json_file)
