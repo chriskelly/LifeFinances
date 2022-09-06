@@ -77,7 +77,7 @@ class Algorithm:
                 self._update_param_count(parent_mute_params)
                 if DEBUG_LVL>=1: print(f"Success Rate: {success_rate*100:.2f}%")
             # ------ Child beats target, proceed to test child ------ #
-            if success_rate >= TARGET_SUCCESS_RATE: 
+            if success_rate >= TARGET_SUCCESS_RATE * 1.01: # Add a slight buffer to prevent osccilating between barely beating it and failing upon retest 
                 current_monte_carlo_runs = simulator.MONTE_CARLO_RUNS # save previous value
                 simulator.MONTE_CARLO_RUNS = MAX_MONTE_RUNS
                 success_rate = self._make_child(full_params,parent_mute_params,success_rate,mutate='none')[0] # test at higher monte carlo runs

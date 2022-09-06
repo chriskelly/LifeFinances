@@ -1,4 +1,5 @@
 # template from https://github.com/github/gitignore/blob/main/Python.gitignore
+# guide: https://www.atlassian.com/git/tutorials/saving-changes/gitignore
 
 # LifeFinances Specific
 param_success.json
