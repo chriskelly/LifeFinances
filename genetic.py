@@ -1,6 +1,7 @@
 import random, copy, math, json
 from simulator import Simulator
 import simulator
+import models.model
 from models.model import Model
 import data.constants as const
 import numpy as np # used in eval() of parameter ranges
@@ -52,6 +53,8 @@ class Algorithm:
         self._update_param_count(mutable_params,first_time=True)
     # ---------------------- Improvement loop ---------------------- #
         while True: # while success_rate <  TARGET_SUCCESS_RATE      if you every want to stop the auto-advance
+            # Confirm if other cores have succeeded yet or not
+            self._check_if_beaten(full_params)
             # Make children
             children = []
             for idx in range(OFFSPRING_QTY):
@@ -77,7 +80,7 @@ class Algorithm:
                 self._update_param_count(parent_mute_params)
                 if DEBUG_LVL>=1: print(f"Success Rate: {success_rate*100:.2f}%")
             # ------ Child beats target, proceed to test child ------ #
-            if success_rate >= TARGET_SUCCESS_RATE * 1.01: # Add a slight buffer to prevent osccilating between barely beating it and failing upon retest 
+            if success_rate >= TARGET_SUCCESS_RATE * 1.005: # Add a slight buffer to prevent osccilating between barely beating it and failing upon retest 
                 current_monte_carlo_runs = simulator.MONTE_CARLO_RUNS # save previous value
                 simulator.MONTE_CARLO_RUNS = MAX_MONTE_RUNS
                 success_rate = self._make_child(full_params,parent_mute_params,success_rate,mutate='none')[0] # test at higher monte carlo runs
@@ -87,6 +90,7 @@ class Algorithm:
                         print(f"Couldn't stand the pressure...{success_rate*100:.2f}%")
                 else: # Print results, overwrite params, start again with more ambitious FI target date
                     param_vals = {key:obj["val"] for (key,obj) in parent_mute_params.items()}
+                    self._check_if_beaten(full_params)
                     print(f"Final max: {success_rate*100:.2f}%\n {param_vals}")
                     full_params.update(parent_mute_params)
                     with open(const.PARAMS_LOC, 'w') as outfile:
@@ -130,6 +134,11 @@ class Algorithm:
     
     
     # -------------------------------- HELPER FUNCTIONS -------------------------------- #
+    def _check_if_beaten(self,full_params):
+        if float(full_params["FI Quarter"]['val']) > float(models.model.load_params()["FI Quarter"]['val']):
+            print('got beat')
+            self.main() # start over with the new successful params.json if another core figured it out
+    
     def _gaussian_int(self,center:int,max_deviation:int) -> int: # credit: https://stackoverflow.com/questions/37411633/how-to-generate-a-random-normal-distribution-of-integers
         """Returns an int from a random gaussian distribution"""
         scale= max_deviation/1.5 # decreasing the demonimator results in a flater distribution
