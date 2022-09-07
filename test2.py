@@ -1,19 +1,24 @@
-import matplotlib.pyplot as plt
+import random, copy, math, json
+from simulator import Simulator
+import simulator
+from models.model import Model
+import data.constants as const
+import numpy as np # used in eval() of parameter ranges
 import scipy.stats as ss
-import numpy as np
-#instantiate a Generator
-rng = np.random.default_rng()
 
-while True:
-    center= 35
-    max_deviation= 1
-    scale= max_deviation/1.5
-    x = np.arange(-max_deviation, max_deviation+1) +center
-    xU, xL = x + 0.5, x - 0.5
-    prob = ss.norm.cdf(xU,loc=center, scale = scale) - ss.norm.cdf(xL,loc=center, scale = scale)
-    prob = prob / prob.sum() # normalize the probabilities so their sum is 1
-    num = np.random.choice(x, p = prob)
-    print(num)
-# nums = np.random.choice(x, size = 1000, p = prob)
-# plt.hist(nums, bins = len(x))
-# plt.show()
+TRIALS = 30
+RUN_QTYS = [100,200,500,1000,2000,3000,4000,5000,7000,10000]
+
+simulator.DEBUG_LVL = 0
+
+model = Model()
+full_params = copy.deepcopy(model.params) 
+for runs in RUN_QTYS:
+    param_vals = {key:obj["val"] for (key,obj) in full_params.items()}
+    override_dict = {'monte_carlo_runs' : runs }
+    new_simulator = Simulator(param_vals,override_dict)
+    rates = []
+    for _ in range(TRIALS):
+        success_rate, _= new_simulator.main()
+        rates.append(success_rate)
+    print(f'Runs: {runs} | Range: {np.ptp(rates)*100:.2f}%')
