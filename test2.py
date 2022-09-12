@@ -1,10 +1,8 @@
-import random, copy, math, json
+import  copy
 from simulator import Simulator
 import simulator
 from models.model import Model
-import data.constants as const
-import numpy as np # used in eval() of parameter ranges
-import scipy.stats as ss
+import numpy as np 
 
 TRIALS = 30
 RUN_QTYS = [100,200,500,1000,2000,3000,4000,5000,7000,10000]
