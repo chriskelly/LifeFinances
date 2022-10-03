@@ -4,6 +4,7 @@
 # LifeFinances Specific
 param_success.json
 **/data/params.json
+diagnostics/saved/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
