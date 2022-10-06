@@ -430,12 +430,13 @@ class Simulator:
 
         Parameters
         ----------
-        partner_qt_income : TYPE
+        partner_qt_income : int or float
             DESCRIPTION.
-        raise_yr : TYPE
+        raise_yr : int or float
             DESCRIPTION.
         options : dict
-            DESCRIPTION.
+            The required entries for the dict are flat_inflation, time_ls, 
+            working_qts, FI_qts
 
         Returns
         -------
@@ -479,6 +480,22 @@ class Simulator:
         return pension
     
     def base_spending(self,spending_qt, retirement_change,**kw):
+        """
+        Calculates base spending in a quarter
+
+        Parameters
+        ----------
+        spending_qt : numeric
+            DESCRIPTION.
+        retirement_change : numeric
+            DESCRIPTION.
+
+        Returns
+        -------
+        spending : numeric
+            Dollar value of spending for one quarter.
+
+        """
         # Spending, kids, costs, contributions
         method= self._val("Spending Method",QT_MOD=False)
         inflation = kw['inflation']
@@ -505,9 +522,7 @@ class Simulator:
 params = model.load_params()
 param_vals = {key:obj["val"] for (key,obj) in params.items()}
 
-simulator = Simulator(param_vals)
-simulator.main()
 
-# if __name__ == '__main__':
-#     simulator = Simulator(param_vals)
-#     simulator.main()
+if __name__ == '__main__':
+    simulator = Simulator(param_vals)
+    simulator.main()
