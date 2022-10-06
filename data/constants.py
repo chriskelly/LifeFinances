@@ -1,7 +1,9 @@
 # Constants
+from os import path
+this_path= path.dirname(__file__)
 
-PARAMS_LOC = 'data/params.json'
-PARAMS_SUCCESS_LOC = 'data/param_success.json'
+PARAMS_LOC = path.join(this_path,'params.json')
+PARAMS_SUCCESS_LOC = path.join(this_path,'data/param_success.json')
 
 EQUITY_MEAN = 1.092
 EQUITY_STDEV = .16

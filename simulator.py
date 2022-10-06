@@ -1,21 +1,30 @@
-import json, math, warnings, os,statistics, datetime as dt
+import math, statistics, datetime as dt
+import json, warnings, os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+import git, sys
+git_root= git.Repo(os.path.abspath(''),
+                   search_parent_directories=True).git.rev_parse('--show-toplevel')
+sys.path.append(git_root)
 from models import returnGenerator, annuity, model
 from data import constants as const
 
 # For reference, something that has a 3% growth is a 0.03 return/rate and 1.03 yield. That's how I'll define return/rate and yield here
 
 DEBUG_LVL = 1 # LVL 1: Print success rate, save worst failure, show plot | LVL 2: Investigate each result 1 by 1
-SAVE_DIR = 'diagnostics/saved' 
+SAVE_DIR = os.path.join(git_root,'diagnostics/saved')
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
 MONTE_CARLO_RUNS = 500 # takes 20 seconds to generate 5000
-for file in os.scandir(SAVE_DIR): # delete previously saved files
-    os.remove(file.path)
+if os.path.exists(SAVE_DIR):
+    for file in os.scandir(SAVE_DIR): # delete previously saved files
+        os.remove(file.path)
+else:
+    os.makedirs(SAVE_DIR)
 
 class Simulator:
     def __init__(self,param_vals,override_dict={}):
@@ -30,10 +39,19 @@ class Simulator:
         debug_lvl = DEBUG_LVL
         FLAT_INFLATION = self._val("Flat Inflation (%)",QT_MOD=False) # Used for some estimations like pension
         FLAT_INFLATION_QT = FLAT_INFLATION ** (1. / 4)
+        working_qts = int((self.fi_date-TODAY_YR_QT)/.25)
+        options= {
+            'debug_lvl': DEBUG_LVL,
+            'flat_inflation': FLAT_INFLATION,
+            'flat_inflation_qt': FLAT_INFLATION ** (1. / 4),
+            'time_ls': self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True),
+            'working_qts': working_qts,
+            'FI_qts': self.rows-working_qts,
+            'barista_qts': 4 * self._val("Barista Time (Yrs)",QT_MOD=False)
+            }
         
         # Year.Quarter list 
         time_ls = self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True) 
-        working_qts = int((self.fi_date-TODAY_YR_QT)/.25)
         FI_qts = self.rows-working_qts
         barista_qts = 4 * self._val("Barista Time (Yrs)",QT_MOD=False)
         
@@ -55,34 +73,7 @@ class Simulator:
 
 
     # ------------ PARAMETRIC DYNAMIC LISTS: PENSIONS, TAXES ------------ #
-        # Her Pension
-            # Calc max salary estimate
-        fi_yr = math.trunc(self.fi_date)
-        current_pension_salary_qt = her_qt_income/0.91 # Corrects for 9% taken from salary for pension
-        if self._val('Pension Method',QT_MOD=False) == 'default':
-            remaining_working_years = fi_yr-TODAY_YR-1
-            max_pension_salary_qt = current_pension_salary_qt * raise_yr ** remaining_working_years
-                # find initial pension amount (in last working year's dollars)
-            DE_ANZA_START_YEAR = 2016
-            years_worked = fi_yr-DE_ANZA_START_YEAR
-            pension_start_yr = self._val("Pension Year",False)
-            pension_multiplier = const.DENICA_PENSION_RATES[str(pension_start_yr)]
-            starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier 
-                # convert to est. value at pension_start_yr
-            starting_pension_qt = starting_pension_qt*self._pow(FLAT_INFLATION,exp=(pension_start_yr-fi_yr))
-                # build out list, add the correct number of zeros to the beginning
-            pension_ls =self._step_quarterize(starting_pension_qt,raise_yr,mode='pension',start_yr=pension_start_yr,time_ls=time_ls)
-            pension_ls = [0]*(self.rows-len(pension_ls))+pension_ls
-        elif self._val('Pension Method',QT_MOD=False) == 'cash-out':
-            # Need to correct for out-dated info, first estimate salary at time of last update, then project forward
-            data_age_qt = int((TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25) # find age of data
-            est_prev_pension_salary_qt = current_pension_salary_qt / (raise_yr ** (data_age_qt/4)) # estimate salary at time of data
-            her_projected_income = self._step_quarterize(est_prev_pension_salary_qt,raise_yr,mode='working',working_qts=working_qts + data_age_qt) # project income from data age to FI
-            pension_bal = const.PENSION_ACCOUNT_BAL
-            pension_int_rate = const.PENSION_INTEREST_YIELD ** (1/4) - 1
-            for income in her_projected_income:
-                pension_bal += income * const.PENSION_COST + pension_bal * pension_int_rate
-            pension_ls = [0] * working_qts + [pension_bal] + [0] * (FI_qts-1)
+        pension_ls= self.pension_over_time(her_qt_income, raise_yr, options)
         
         # SS columns https://www.ssa.gov/oact/cola/Benefits.html 
         # Effect of Early or Delayed Retirement on Retirement Benefits: https://www.ssa.gov/oact/ProgData/ar_drc.html 
@@ -94,6 +85,8 @@ class Simulator:
         ss_max_earnings, index_factors, ss_yrs = ss_data['SS_Max_Earnings'].tolist(), ss_data['Index_Factors'].tolist(), ss_data['Year'].tolist()
         his_ss_earnings, her_ss_earnings = ss_data['His_SS_Earnings'].tolist(), ss_data['Her_SS_Earnings'].tolist()
         ss_data_last_updated = ss_yrs[-1]
+            # Calc max salary estimate
+        fi_yr = math.trunc(self.fi_date)
             # Extend all lists with predictions till fi year
         while ss_yrs[-1] < self.fi_date - 1:
             ss_yrs.append(ss_yrs[-1]+1)
@@ -163,7 +156,8 @@ class Simulator:
             # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
         income_taxes = [sum([get_taxes(w2-deferred),0.8*get_taxes(pension+his_ss+her_ss)]) for w2,deferred, pension, his_ss, her_ss in zip(job_income_ls,tax_deferred_ls,pension_ls, his_ss_ls, her_ss_ls)]
             # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income). Her income excluded from SS due to pension
-        medicare = [0.0145*job_income for job_income in job_income_ls]
+        #medicare = [0.0145*job_income for job_income in job_income_ls]
+        medicare= np.array(job_income_ls)*0.0145
             # need the SS Max Earnings, but in quarter form instead of the annual form I did in the SS section.
         ss_max_earnings_qt = self._step_quarterize(0.25*ss_max_earnings[ss_yrs.index(TODAY_YR)],FLAT_INFLATION,mode='working',working_qts=working_qts + barista_qts)
         his_income_ratio = his_qt_income/(his_qt_income+her_qt_income)
@@ -207,26 +201,8 @@ class Simulator:
             for kid_yr in kid_year_qts:
                 kids_ls = [other_kids + 1 if yr_qt>=kid_yr and yr_qt-22<kid_yr else other_kids 
                         for other_kids,yr_qt in zip(kids_ls,time_ls) ]
-            # Spending, kids, costs, contributions
-            def base_spending(method:str,**kw):
-                inflation = kw['inflation']
-                if method == 'inflation-only':
-                    spending = spending_qt*inflation if kw['working'] else spending_qt*inflation*(1+retirement_change)
-                elif method == 'ceil-floor':
-                    max_flux = self._val("Allowed Fluctuation (%)",QT_MOD=False)
-                    # real spending should not increase/decrease more than the max_flux (should it be symetric?)
-                    # only takes effect after retirement
-                    # reactant to market, not sure how. Maybe try to maintain last withdrawal percentage til you reach max_flux?
-                        # could use a pre-set withdrawal rate?
-                        # could just swing back and forth depending if markets are above/below average
-                    equity_mean_qt = const.EQUITY_MEAN ** (1/4) - 1
-                    bond_mean_qt =  const.BOND_MEAN ** (1/4) - 1
-                    re_mean_qt = const.RE_MEAN ** (1/4) - 1
-                    expected_return_rate_qt = equity_mean_qt *kw['alloc']['Equity'] + bond_mean_qt *kw['alloc']['Bond'] + re_mean_qt *kw['alloc']['RE']
-                    spending = spending_qt*inflation if kw['working'] else spending_qt*inflation*(1+retirement_change)
-                    if kw['return_rate'] is not None:
-                        spending = spending*(1+max_flux) if kw['return_rate'] > expected_return_rate_qt else spending*(1-max_flux)
-                return spending
+            
+            
             # Allocation between equity, RE and bonds. Allows for different methods to be designed
             def allocation(method:str,**kw):
                 """Return a dict {"Equity":EquityAlloc, "RE":REAlloc, "Bond":BondAlloc} \n
@@ -272,8 +248,8 @@ class Simulator:
                 bond_alloc_ls.append(alloc["Bond"])
                 # spending
                 working = True if i<working_qts else False
-                spend_method = self._val("Spending Method",QT_MOD=False)
-                spending_ls.append(base_spending(method=spend_method, inflation=inflation_ls[i], 
+                spending_ls.append(self.base_spending(spending_qt, retirement_change,
+                                                      inflation=inflation_ls[i], 
                                                  working=working, alloc=alloc,return_rate=return_rate))
                 kids_ls[i] = spending_ls[i] * kid_spending_rate * kids_ls[i]
                 total_costs_ls.append(taxes_ls[i] + spending_ls[i] + kids_ls[i])
@@ -372,7 +348,7 @@ class Simulator:
         
 
 # -------------------------------- HELPER FUNCTIONS -------------------------------- #
-
+    
     def _step_quarterize(self,first_val,increase_yield,mode,**kw) -> list:
         """Return a list with values that step up on a yearly basis rather than quarterly \n
         mode = 'working' -> from today_qt to fi_date, needs kw['working_qts'] \n
@@ -447,6 +423,99 @@ class Simulator:
             return True
         except ValueError:
             return False
+    
+    def pension_over_time(self, partner_qt_income, raise_yr, options):
+        """
+        Calculates the pension for Chris's wife. Might want to generalize this
+
+        Parameters
+        ----------
+        partner_qt_income : int or float
+            DESCRIPTION.
+        raise_yr : int or float
+            DESCRIPTION.
+        options : dict
+            The required entries for the dict are flat_inflation, time_ls, 
+            working_qts, FI_qts
+
+        Returns
+        -------
+        pension_ls : list
+            Values for each quarter.
+
+        """
+        FLAT_INFLATION= options['flat_inflation']
+        time_ls= options['time_ls']
+        working_qts= options['working_qts']
+        FI_qts= options['FI_qts']
+        
+            # Calc max salary estimate
+        fi_yr = math.trunc(self.fi_date)
+        current_pension_salary_qt = partner_qt_income/0.91 # Corrects for 9% taken from salary for pension
+        if self._val('Pension Method',QT_MOD=False) == 'default':
+            remaining_working_years = fi_yr-TODAY_YR-1
+            max_pension_salary_qt = current_pension_salary_qt * raise_yr ** remaining_working_years
+                # find initial pension amount (in last working year's dollars)
+            DE_ANZA_START_YEAR = 2016
+            years_worked = fi_yr-DE_ANZA_START_YEAR
+            pension_start_yr = self._val("Pension Year",False)
+            pension_multiplier = const.DENICA_PENSION_RATES[str(pension_start_yr)]
+            starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier 
+                # convert to est. value at pension_start_yr
+            starting_pension_qt = starting_pension_qt*self._pow(FLAT_INFLATION,exp=(pension_start_yr-fi_yr))
+                # build out list, add the correct number of zeros to the beginning
+            pension =self._step_quarterize(starting_pension_qt,raise_yr,mode='pension',start_yr=pension_start_yr,time_ls=time_ls)
+            pension = [0]*(self.rows-len(pension))+pension
+        elif self._val('Pension Method',QT_MOD=False) == 'cash-out':
+            # Need to correct for out-dated info, first estimate salary at time of last update, then project forward
+            data_age_qt = int((TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25) # find age of data
+            est_prev_pension_salary_qt = current_pension_salary_qt / (raise_yr ** (data_age_qt/4)) # estimate salary at time of data
+            projected_income = self._step_quarterize(est_prev_pension_salary_qt,raise_yr,mode='working',working_qts=working_qts + data_age_qt) # project income from data age to FI
+            pension_bal = const.PENSION_ACCOUNT_BAL
+            pension_int_rate = const.PENSION_INTEREST_YIELD ** (1/4) - 1
+            for income in projected_income:
+                pension_bal += income * const.PENSION_COST + pension_bal * pension_int_rate
+            pension = [0] * working_qts + [pension_bal] + [0] * (FI_qts-1)
+        
+        return pension
+    
+    def base_spending(self,spending_qt, retirement_change,**kw):
+        """
+        Calculates base spending in a quarter
+
+        Parameters
+        ----------
+        spending_qt : numeric
+            DESCRIPTION.
+        retirement_change : numeric
+            DESCRIPTION.
+
+        Returns
+        -------
+        spending : numeric
+            Dollar value of spending for one quarter.
+
+        """
+        # Spending, kids, costs, contributions
+        method= self._val("Spending Method",QT_MOD=False)
+        inflation = kw['inflation']
+        if method == 'inflation-only':
+            spending = spending_qt*inflation if kw['working'] else spending_qt*inflation*(1+retirement_change)
+        elif method == 'ceil-floor':
+            max_flux = self._val("Allowed Fluctuation (%)",QT_MOD=False)
+            # real spending should not increase/decrease more than the max_flux (should it be symetric?)
+            # only takes effect after retirement
+            # reactant to market, not sure how. Maybe try to maintain last withdrawal percentage til you reach max_flux?
+                # could use a pre-set withdrawal rate?
+                # could just swing back and forth depending if markets are above/below average
+            equity_mean_qt = const.EQUITY_MEAN ** (1/4) - 1
+            bond_mean_qt =  const.BOND_MEAN ** (1/4) - 1
+            re_mean_qt = const.RE_MEAN ** (1/4) - 1
+            expected_return_rate_qt = equity_mean_qt *kw['alloc']['Equity'] + bond_mean_qt *kw['alloc']['Bond'] + re_mean_qt *kw['alloc']['RE']
+            spending = spending_qt*inflation if kw['working'] else spending_qt*inflation*(1+retirement_change)
+            if kw['return_rate'] is not None:
+                spending = spending*(1+max_flux) if kw['return_rate'] > expected_return_rate_qt else spending*(1-max_flux)
+        return spending
 
 # -------------------------------- JUST FOR TESTING -------------------------------- #
 
