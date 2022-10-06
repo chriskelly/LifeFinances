@@ -3,7 +3,7 @@ import json, warnings, os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from models import returnGenerator, annuity, model, socialSecurity
 import git, sys
 git_root= git.Repo(os.path.abspath(''),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
@@ -64,7 +64,9 @@ class Simulator:
         total_barista_income_qt = self._val("Barista Income (Total)", QT_MOD='dollar') # Assuming no tax deferral for barista to be conservative and keep it easier
             # build out income lists with raises coming in steps on the first quarter of each year
         raise_yr = 1+self._val("Raise (%)",QT_MOD=False)
-        job_income_ls = self._step_quarterize(total_income_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
+        usr_income_ls = self._step_quarterize(his_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
+        partner_income_ls = self._step_quarterize(her_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
+        job_income_ls = list(np.array(usr_income_ls)+np.array(partner_income_ls))
         tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
         barista_income_ls = self._range_len(START=total_barista_income_qt,LEN=barista_qts,INCREMENT=FLAT_INFLATION,MULT=True) if total_barista_income_qt != 0 else [] # smooth growth is probably fine rather than step_quarterizing
             # add the non-working years
@@ -81,6 +83,7 @@ class Simulator:
         # Earnings limit: https://www.ssa.gov/benefits/retirement/planner/whileworking.html#:~:text=your%20excess%20earnings.-,How%20We%20Deduct%20Earnings%20From%20Benefits,full%20retirement%20age%20is%20%2451%2C960.
         # Bend points: https://www.ssa.gov/oact/cola/piaformula.html
         # PIA: https://www.ssa.gov/oact/cola/piaformula.html 
+        
         ss_data = pd.read_csv('data/ss_earnings.csv')
         ss_max_earnings, index_factors, ss_yrs = ss_data['SS_Max_Earnings'].tolist(), ss_data['Index_Factors'].tolist(), ss_data['Year'].tolist()
         his_ss_earnings, her_ss_earnings = ss_data['His_SS_Earnings'].tolist(), ss_data['Her_SS_Earnings'].tolist()
@@ -132,9 +135,12 @@ class Simulator:
             # build out list, add the correct number of zeros to the beginning, optimize later into list comprehension
             ss_ls = self._step_quarterize(ss_qt,raise_yr,mode='pension',start_yr=ss_year,time_ls=time_ls)
             return [0]*(self.rows-len(ss_ls))+ss_ls
-        his_ss_ls = ss_calc(his_ss_earnings,const.HIS_PIA_RATES,self._val("His SS Age",QT_MOD=False),birth_year=1993) # add 1 year to birth year since date is so late in year
-        her_ss_ls = ss_calc(her_ss_earnings,const.HER_PIA_RATES,self._val("Her SS Age",QT_MOD=False),birth_year=1988) 
+        his_ss_ls = ss_calc(his_ss_earnings,const.PIA_RATES,self._val("His SS Age",QT_MOD=False),birth_year=1993) # add 1 year to birth year since date is so late in year
+        her_ss_ls = ss_calc(her_ss_earnings,const.PIA_RATES_PENSION,self._val("Her SS Age",QT_MOD=False),birth_year=1988) 
+        #his_ss = socialSecurity.SSCalc(self,self._val("His Age",False),FLAT_INFLATION,self._val("User Earnings Record",False))
 
+        his_ss = socialSecurity.SSCalc(self,self._val("His Age",False),FLAT_INFLATION,time_ls,usr_income_ls,self._val("User Earnings Record",QT_MOD=False))
+        
         # Add all income together. 
             # is list comprehension faster than converting to numpy arr and adding, then converting back?
         total_income_ls = [sum([a,b,c,d]) for a, b, c, d in zip(job_income_ls,pension_ls, his_ss_ls, her_ss_ls)]
@@ -195,6 +201,9 @@ class Simulator:
             bond_return_ls = bond_return_arr[col]
             re_return_ls = re_return_arr[col]
             inflation_ls = inflation_arr[col]
+            
+            his_ss_ls = his_ss.ss_ls(date=1993+self._val("His SS Age",QT_MOD=False),inflation_ls=inflation_ls)
+            
             # Kid count   
                 # kids_ls should have kid for every year from each kid's birth till 22 years after
             kids_ls = [0]*self.rows
@@ -523,6 +532,9 @@ params = model.load_params()
 param_vals = {key:obj["val"] for (key,obj) in params.items()}
 
 
+def test_unit():
+    return Simulator(param_vals)
+
 if __name__ == '__main__':
-    simulator = Simulator(param_vals)
-    simulator.main()
+    test_simulator = test_unit()
+    test_simulator.main()
