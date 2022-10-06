@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from models import returnGenerator, annuity, model, socialSecurity
-import git, sys
+import git, sys # install gitpython
 git_root= git.Repo(os.path.abspath(''),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 sys.path.append(git_root)
@@ -74,102 +74,7 @@ class Simulator:
         tax_deferred_ls = tax_deferred_ls + ([0]*FI_qts) 
 
 
-    # ------------ PARAMETRIC DYNAMIC LISTS: PENSIONS, TAXES ------------ #
-        pension_ls= self.pension_over_time(her_qt_income, raise_yr, options)
-        
-        # SS columns https://www.ssa.gov/oact/cola/Benefits.html 
-        # Effect of Early or Delayed Retirement on Retirement Benefits: https://www.ssa.gov/oact/ProgData/ar_drc.html 
-        # Index factors: https://www.ssa.gov/oact/cola/awifactors.html
-        # Earnings limit: https://www.ssa.gov/benefits/retirement/planner/whileworking.html#:~:text=your%20excess%20earnings.-,How%20We%20Deduct%20Earnings%20From%20Benefits,full%20retirement%20age%20is%20%2451%2C960.
-        # Bend points: https://www.ssa.gov/oact/cola/piaformula.html
-        # PIA: https://www.ssa.gov/oact/cola/piaformula.html 
-        
-        ss_data = pd.read_csv('data/ss_earnings.csv')
-        ss_max_earnings, index_factors, ss_yrs = ss_data['SS_Max_Earnings'].tolist(), ss_data['Index_Factors'].tolist(), ss_data['Year'].tolist()
-        his_ss_earnings, her_ss_earnings = ss_data['His_SS_Earnings'].tolist(), ss_data['Her_SS_Earnings'].tolist()
-        ss_data_last_updated = ss_yrs[-1]
-            # Calc max salary estimate
-        fi_yr = math.trunc(self.fi_date)
-            # Extend all lists with predictions till fi year
-        while ss_yrs[-1] < self.fi_date - 1:
-            ss_yrs.append(ss_yrs[-1]+1)
-            ss_max_earnings.append(ss_max_earnings[-1]*FLAT_INFLATION)
-            index_factors.append(index_factors[-1]*(2-FLAT_INFLATION))
-            percent_of_year = 1.00 if ss_yrs[-1] != fi_yr else (self.fi_date - fi_yr) # add earnings for final partial years
-            his_ss_earnings.append(his_ss_earnings[-1] * raise_yr * percent_of_year)
-            her_ss_earnings.append(her_ss_earnings[-1] * raise_yr * percent_of_year)
-            # Extend all lists with predictions till barista ends
-        remaining_barista_qts = barista_qts 
-        if percent_of_year < 1 and barista_qts > 0: # If there was a partial year and we're doing barista FI
-            inflat_adj_barista_income_qt =  total_barista_income_qt * FLAT_INFLATION ** (ss_yrs[-1] - TODAY_YR)
-            his_ss_earnings[-1] += (inflat_adj_barista_income_qt / 2) * min((4 * percent_of_year), barista_qts)
-            her_ss_earnings[-1] += (total_barista_income_qt / 2) * min((4 * percent_of_year), barista_qts)
-            remaining_barista_qts -= min((4 * percent_of_year), barista_qts)
-        while remaining_barista_qts > 0:
-            ss_yrs.append(ss_yrs[-1]+1)
-            inflat_adj_barista_income_qt =  total_barista_income_qt * FLAT_INFLATION ** (ss_yrs[-1] - TODAY_YR)
-            ss_max_earnings.append(ss_max_earnings[-1]*FLAT_INFLATION)
-            index_factors.append(index_factors[-1]*(2-FLAT_INFLATION))
-            his_ss_earnings.append(inflat_adj_barista_income_qt  * min(4 , remaining_barista_qts)) # quarterly barista income times remaining barista quarters
-            her_ss_earnings.append(inflat_adj_barista_income_qt  * min(4 , remaining_barista_qts))  
-            remaining_barista_qts -= 4
-        def ss_calc(ss_earnings,PIA_rates,ss_age,birth_year):
-            # index and limit the earnings, then sort them from high to low
-            ss_earnings = [min(ss_max,earning)*index for ss_max, earning, index in zip(ss_max_earnings,ss_earnings, index_factors)]
-            ss_earnings.sort(reverse=True)
-            # Find Average Indexed Monthly Earnings (AIME), only top 35 years (420 months) count
-            AIME = sum(ss_earnings[:35])/420
-            # Calculate Primary Insurance Amounts (PIA) using bend points. Add AIME and sort to see where the AIME ranks in the bend points
-            bend_points =const.SS_BEND_POINTS+[AIME]
-            bend_points.sort()
-             # cut off bend points at inserted AIME
-            bend_points = bend_points[:bend_points.index(AIME)+1]
-            # for the first bracket, just the bend times the rate. After that, find the marginal income to multiple by the rate
-            full_PIA = sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
-                                in zip(enumerate(bend_points),PIA_rates)])
-            # Find adjusted benefit amounts based on selected retirement age
-            ss_year = ss_age + birth_year
-                # convert to est. value at ss start-year and convert to quarterly (3 x monthly)
-            pia = full_PIA * const.BENEFIT_RATES[str(ss_age)]
-            ss_qt = 3 * pia*self._pow(FLAT_INFLATION,exp=(ss_year-ss_data_last_updated)) # index factor is neutral to last update, so PIA is in that year's dollars
-            # build out list, add the correct number of zeros to the beginning, optimize later into list comprehension
-            ss_ls = self._step_quarterize(ss_qt,raise_yr,mode='pension',start_yr=ss_year,time_ls=time_ls)
-            return [0]*(self.rows-len(ss_ls))+ss_ls
-        his_ss_ls = ss_calc(his_ss_earnings,const.PIA_RATES,self._val("His SS Age",QT_MOD=False),birth_year=1993) # add 1 year to birth year since date is so late in year
-        her_ss_ls = ss_calc(her_ss_earnings,const.PIA_RATES_PENSION,self._val("Her SS Age",QT_MOD=False),birth_year=1988) 
-        #his_ss = socialSecurity.SSCalc(self,self._val("His Age",False),FLAT_INFLATION,self._val("User Earnings Record",False))
-
-        his_ss = socialSecurity.SSCalc(self,self._val("His Age",False),FLAT_INFLATION,time_ls,usr_income_ls,self._val("User Earnings Record",QT_MOD=False))
-        
-        # Add all income together. 
-            # is list comprehension faster than converting to numpy arr and adding, then converting back?
-        total_income_ls = [sum([a,b,c,d]) for a, b, c, d in zip(job_income_ls,pension_ls, his_ss_ls, her_ss_ls)]
-
-        # Taxes (brackets are for yearly, not qt, so need conversion)
-        def get_taxes(income_qt):
-            """Returns combined federal and state taxes on non-tax-deferred income"""
-            fed_taxes = bracket_math(const.FED_BRACKET_RATES,max(4*income_qt-const.FED_STD_DEDUCTION,0))
-            state_taxes = bracket_math(const.CA_BRACKET_RATES,max(4*income_qt-const.CA_STD_DEDUCTION,0))
-            return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
-        def bracket_math(bracket:list,income):
-            rates,bend_points = zip(*bracket) # reverses the more readable format in the json file to the easier to use format for comprehension
-            rates,bend_points = list(rates), list(bend_points) # they unzip as tuples for some reason
-            bend_points += [income]
-            bend_points.sort()
-            bend_points = bend_points[:bend_points.index(income)+1]
-            return sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
-                   in zip(enumerate(bend_points),rates)])
-            # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
-        income_taxes = [sum([get_taxes(w2-deferred),0.8*get_taxes(pension+his_ss+her_ss)]) for w2,deferred, pension, his_ss, her_ss in zip(job_income_ls,tax_deferred_ls,pension_ls, his_ss_ls, her_ss_ls)]
-            # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income). Her income excluded from SS due to pension
-        #medicare = [0.0145*job_income for job_income in job_income_ls]
-        medicare= np.array(job_income_ls)*0.0145
-            # need the SS Max Earnings, but in quarter form instead of the annual form I did in the SS section.
-        ss_max_earnings_qt = self._step_quarterize(0.25*ss_max_earnings[ss_yrs.index(TODAY_YR)],FLAT_INFLATION,mode='working',working_qts=working_qts + barista_qts)
-        his_income_ratio = his_qt_income/(his_qt_income+her_qt_income)
-        ss_tax = [0.062*min(his_income_ratio*income,ss_max) for income,ss_max in zip(job_income_ls,ss_max_earnings_qt)]
-        ss_tax+= [0]*(self.rows-len(ss_tax))
-        taxes_ls = [sum([a,b,c]) for a,b,c in zip(income_taxes,medicare,ss_tax)]
+    
 
         
     # ------------ MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
@@ -202,7 +107,43 @@ class Simulator:
             re_return_ls = re_return_arr[col]
             inflation_ls = inflation_arr[col]
             
-            his_ss_ls = his_ss.ss_ls(date=1993+self._val("His SS Age",QT_MOD=False),inflation_ls=inflation_ls)
+            # Pension / SS
+            pension_ls= self.pension_over_time(her_qt_income, raise_yr, options)
+            
+            usr_ss = socialSecurity.SSCalc(self,self._val("His Age",False),FLAT_INFLATION,time_ls,usr_income_ls,self._val("User Earnings Record",QT_MOD=False))
+            usr_ss_ls = usr_ss.ss_ls(date=1993+self._val("His SS Age",QT_MOD=False),inflation_ls=inflation_ls)
+            partner_ss = socialSecurity.SSCalc(self,self._val("Her Age",False),FLAT_INFLATION,time_ls,partner_income_ls,self._val("Partner Earnings Record",QT_MOD=False),contribution_eligible=False, pension_pia=True)
+            partner_ss_ls = partner_ss.ss_ls(date=1993+self._val("Her SS Age",QT_MOD=False),inflation_ls=inflation_ls)
+            
+            # Add all income together. 
+            total_income_ls = [sum([a,b,c,d]) for a, b, c, d in zip(job_income_ls,pension_ls, usr_ss_ls, partner_ss_ls)]
+
+            # Taxes (brackets are for yearly, not qt, so need conversion)
+            def get_taxes(income_qt):
+                """Returns combined federal and state taxes on non-tax-deferred income"""
+                fed_taxes = bracket_math(const.FED_BRACKET_RATES,max(4*income_qt-const.FED_STD_DEDUCTION,0))
+                state_taxes = bracket_math(const.CA_BRACKET_RATES,max(4*income_qt-const.CA_STD_DEDUCTION,0))
+                return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
+            def bracket_math(bracket:list,income):
+                rates,bend_points = zip(*bracket) # reverses the more readable format in the json file to the easier to use format for comprehension
+                rates,bend_points = list(rates), list(bend_points) # they unzip as tuples for some reason
+                bend_points += [income]
+                bend_points.sort()
+                bend_points = bend_points[:bend_points.index(income)+1]
+                return sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
+                    in zip(enumerate(bend_points),rates)])
+                # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
+            income_taxes = [sum([get_taxes(w2-deferred),0.8*get_taxes(pension+his_ss+her_ss)]) for w2,deferred, pension, his_ss, her_ss in zip(job_income_ls,tax_deferred_ls,pension_ls, usr_ss_ls, partner_ss_ls)]
+                # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income). Her income excluded from SS due to pension
+            #medicare = [0.0145*job_income for job_income in job_income_ls]
+            medicare= np.array(job_income_ls)*0.0145
+                # need the SS Max Earnings, but in quarter form instead of the annual form I did in the SS section.
+            ss_max_earnings_qt = self._step_quarterize(0.25 * socialSecurity.est_Max_Earning(TODAY_YR),FLAT_INFLATION,mode='working',working_qts=working_qts + barista_qts)
+            his_income_ratio = his_qt_income/(his_qt_income+her_qt_income)
+            ss_tax = [0.062*min(his_income_ratio*income,ss_max) for income,ss_max in zip(job_income_ls,ss_max_earnings_qt)]
+            ss_tax+= [0]*(self.rows-len(ss_tax))
+            taxes_ls = [sum([a,b,c]) for a,b,c in zip(income_taxes,medicare,ss_tax)]
+            
             
             # Kid count   
                 # kids_ls should have kid for every year from each kid's birth till 22 years after
@@ -289,8 +230,8 @@ class Simulator:
                     "Job Income":job_income_ls,
                     "Tax Deferred":tax_deferred_ls,
                     "Pension":pension_ls,
-                    "His SS":his_ss_ls,
-                    "Her SS":her_ss_ls,
+                    "User SS":usr_ss_ls,
+                    "Partner SS":partner_ss_ls,
                     "Total Income":total_income_ls,
                     "Income Taxes":income_taxes,
                     "Medicare Taxes":medicare,
@@ -319,8 +260,8 @@ class Simulator:
                         "Job Income":job_income_ls,
                         "Tax Deferred":tax_deferred_ls,
                         "Pension":pension_ls,
-                        "His SS":his_ss_ls,
-                        "Her SS":her_ss_ls,
+                        "User SS":usr_ss_ls,
+                        "Partner SS":partner_ss_ls,
                         "Total Income":total_income_ls,
                         "Income Taxes":income_taxes,
                         "Medicare Taxes":medicare,

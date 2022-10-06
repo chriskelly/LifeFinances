@@ -4,6 +4,13 @@ from data import constants as const
 import simulator
 from models import returnGenerator
 
+# SS https://www.ssa.gov/oact/cola/Benefits.html 
+# Effect of Early or Delayed Retirement on Retirement Benefits: https://www.ssa.gov/oact/ProgData/ar_drc.html 
+# Index factors: https://www.ssa.gov/oact/cola/awifactors.html
+# Earnings limit: https://www.ssa.gov/benefits/retirement/planner/whileworking.html#:~:text=your%20excess%20earnings.-,How%20We%20Deduct%20Earnings%20From%20Benefits,full%20retirement%20age%20is%20%2451%2C960.
+# Bend points: https://www.ssa.gov/oact/cola/piaformula.html
+# PIA: https://www.ssa.gov/oact/cola/piaformula.html 
+
 SS_MAX_EARNINGS = np.transpose(np.array(const.SS_MAX_EARNINGS))
 x_M_E, y_M_E = SS_MAX_EARNINGS[0], SS_MAX_EARNINGS[1]
 fit_M_E = np.polyfit(x_M_E, np.log(y_M_E), 1)
@@ -21,13 +28,13 @@ WORK_START_AGE = 22 # Assumed age for starting work
 
 
 class SSCalc:
-    def __init__(self,simulator,current_age:int,FLAT_INFLATION,time_ls,income_ls,imported_record:dict={},eligible = True,pension_pia = False):
+    def __init__(self,simulator,current_age:int,FLAT_INFLATION,time_ls,income_ls,imported_record:dict={},contribution_eligible = True,pension_pia = False):
         self.age = current_age
         self.FLAT_INFLATION = FLAT_INFLATION
         self.simulator = simulator
         self.time_ls = time_ls
         self.earnings_record = {int(year):float(earning) for (year,earning) in imported_record.items()} # {year : earnings}
-        if eligible: # if income is eligible to contribute to social security
+        if contribution_eligible: # if income is eligible to contribute to social security
             self._add_to_earnings_record(time_ls,income_ls)
             if imported_record == {}: self._back_estimate()
         # index and limit the earnings, then sort them from high to low
