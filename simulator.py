@@ -111,9 +111,9 @@ class Simulator:
             pension_ls= self.pension_over_time(her_qt_income, raise_yr, options)
             
             usr_ss = socialSecurity.SSCalc(self,self._val("His Age",False),FLAT_INFLATION,time_ls,usr_income_ls,self._val("User Earnings Record",QT_MOD=False))
-            usr_ss_ls = usr_ss.ss_ls(date=1993+self._val("His SS Age",QT_MOD=False),inflation_ls=inflation_ls)
+            usr_ss_ls = usr_ss.ss_ls(ss_date=1993+self._val("His SS Age",QT_MOD=False),inflation_ls=inflation_ls)
             partner_ss = socialSecurity.SSCalc(self,self._val("Her Age",False),FLAT_INFLATION,time_ls,partner_income_ls,self._val("Partner Earnings Record",QT_MOD=False),contribution_eligible=False, pension_pia=True)
-            partner_ss_ls = partner_ss.ss_ls(date=1993+self._val("Her SS Age",QT_MOD=False),inflation_ls=inflation_ls)
+            partner_ss_ls = partner_ss.ss_ls(ss_date=1993+self._val("Her SS Age",QT_MOD=False),inflation_ls=inflation_ls)
             
             # Add all income together. 
             total_income_ls = [sum([a,b,c,d]) for a, b, c, d in zip(job_income_ls,pension_ls, usr_ss_ls, partner_ss_ls)]
