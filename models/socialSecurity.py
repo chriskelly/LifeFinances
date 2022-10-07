@@ -11,13 +11,16 @@ from models import returnGenerator
 # Bend points: https://www.ssa.gov/oact/cola/piaformula.html
 # PIA: https://www.ssa.gov/oact/cola/piaformula.html 
 
+# Using historical data to predict future Social Security Administration Max Earnings and Indicies
+# https://rowannicholls.github.io/python/curve_fitting/exponential.html
 SS_MAX_EARNINGS = np.transpose(np.array(const.SS_MAX_EARNINGS))
-x_M_E, y_M_E = SS_MAX_EARNINGS[0], SS_MAX_EARNINGS[1]
+x_M_E, y_M_E = SS_MAX_EARNINGS[0], SS_MAX_EARNINGS[1] # prep data for np.polyfit
 fit_M_E = np.polyfit(x_M_E, np.log(y_M_E), 1)
 a_M_E, b_M_E = np.exp(fit_M_E[1]), fit_M_E[0]
 def est_Max_Earning(year):
     return a_M_E * np.exp(b_M_E * year)
-SS_INDEXES = np.transpose(np.array(const.SS_INDEXES))
+# repeat for indicies
+SS_INDEXES = np.transpose(np.array(const.SS_INDEXES)) 
 x_I, y_I = SS_INDEXES[0], SS_INDEXES[1]
 fit_I = np.polyfit(x_I, np.log(y_I), 1)
 a_I, b_I = np.exp(fit_I[1]), fit_I[0]
@@ -30,8 +33,6 @@ WORK_START_AGE = 22 # Assumed age for starting work
 class SSCalc:
     def __init__(self,simulator,current_age:int,FLAT_INFLATION,time_ls,income_ls,imported_record:dict={},contribution_eligible = True,pension_pia = False):
         self.age = current_age
-        self.FLAT_INFLATION = FLAT_INFLATION
-        self.simulator = simulator
         self.time_ls = time_ls
         self.earnings_record = {int(year):float(earning) for (year,earning) in imported_record.items()} # {year : earnings}
         if contribution_eligible: # if income is eligible to contribute to social security
@@ -56,16 +57,14 @@ class SSCalc:
                                 in zip(enumerate(bend_points),pia_rates)])
         #TODO if no earnings given, estimate backward from age
     
-    def ss_ls(self, date, inflation_ls):
-        """return list with social security payments starting from first payment till final date"""
-        ss_age = self.age + (math.trunc(date) - simulator.TODAY_YR)
-        # convert to est. value at ss start-year and convert to quarterly (3 x monthly)
-        pia = self.full_PIA * const.BENEFIT_RATES[str(ss_age)]
-        ss_qt = 3 * pia / est_Index(date) # index factor is neutral to last update, so PIA is in that year's dollars and needs to be adjusted
-        # build out list, add the correct number of zeros to the beginning, optimize later into list comprehension
-        ss_ls = list(3 * pia * np.array(inflation_ls))
-        idx = self.time_ls.index(date)
-        ss_ls = [0]*idx + ss_ls[idx:]
+    def ss_ls(self, ss_date, inflation_ls):
+        """return list with social security payments starting from today till final date"""
+        ss_age = self.age + (math.trunc(ss_date) - simulator.TODAY_YR)
+        adjusted_PIA = self.full_PIA * const.BENEFIT_RATES[str(ss_age)] # find adjusted PIA based on benefit rates for selected age
+        # PIA is in that today's dollars and needs to be adjusted
+        ss_ls = list(3 * adjusted_PIA * np.array(inflation_ls)) # Multiple by inflation_ls
+        idx = self.time_ls.index(ss_date)
+        ss_ls = [0]*idx + ss_ls[idx:] # then trim the early years and replace with 0s
         return ss_ls
         
     def _add_to_earnings_record(self,time_ls,income_ls):
@@ -79,7 +78,7 @@ class SSCalc:
     
     
     def _back_estimate(self):
-        pass # backfill assumed earnings
+        pass # backfill assumed earnings. If you don't end up using simulator or FLAT_INFLATION, remove from init
             
     
 def test_unit():
@@ -103,4 +102,4 @@ def test_unit():
                      time_ls=test_time_ls,income_ls=test_income_ls,
                      imported_record=test_user_record)
     inflation_ls = returnGenerator.main(my_simulator.rows,4,1)[3][0]
-    return ss_calc.ss_ls(date=2061.25,inflation_ls=inflation_ls)
+    return ss_calc.ss_ls(ss_date=2061.25,inflation_ls=inflation_ls)
