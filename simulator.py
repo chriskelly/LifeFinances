@@ -31,6 +31,7 @@ class Simulator:
         self.params = self._clean_data(param_vals)
         self.rows = int((param_vals['Calculate Til'] - TODAY_YR_QT)/.25)
         self.fi_date = self.params["FI Quarter"]
+        self.admin = self.params["Admin"] # Are you Chris?
         self.override_dict = override_dict
             
     def main(self):
@@ -47,7 +48,8 @@ class Simulator:
             'time_ls': self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True),
             'working_qts': working_qts,
             'FI_qts': self.rows-working_qts,
-            'barista_qts': 4 * self._val("Barista Time (Yrs)",QT_MOD=False)
+            'barista_qts': 4 * self._val("Barista Time (Yrs)",QT_MOD=False),
+            'equity_target': self._val("Equity Target",False)
             }
         
         # Year.Quarter list 
@@ -55,7 +57,7 @@ class Simulator:
         FI_qts = self.rows-working_qts
         barista_qts = 4 * self._val("Barista Time (Yrs)",QT_MOD=False)
         
-        # Job Income and tax-differed list. Does not include SS/Pensions. 
+        # Job Income and tax-differed list. Does not include SS. 
             # get quarterly income for his and her
         his_qt_income = self._val("His Total Income",QT_MOD='dollar')
         her_qt_income = self._val("Her Total Income",QT_MOD='dollar')
@@ -108,8 +110,7 @@ class Simulator:
             re_return_ls = re_return_arr[col]
             inflation_ls = inflation_arr[col]
             
-            # Pension / SS
-            pension_ls= self.pension_over_time(her_qt_income, raise_yr, options)
+            # Social Security Initialization
             usr_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,time_ls,usr_income_ls)
             partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,time_ls,partner_income_ls)
            
@@ -184,7 +185,6 @@ class Simulator:
                 # loop through time_ls to find net worth changes
             net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
             for row in range(self.rows): 
-                #TODO: Pension also needs to be pulled in, but first modified simliar to SS to get individual payments
                 # allocations
                 alloc = allocation(method=self._val("Allocation Method",QT_MOD=False),inflation=inflation_ls[row],net_worth = net_worth_ls[-1])
                 equity_alloc_ls.append(alloc["Equity"])
@@ -193,9 +193,11 @@ class Simulator:
                 # social security 
                 usr_ss_ls.append(usr_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 partner_ss_ls.append(partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
+                if self.admin: partner_ss_ls[-1] += self.get_pension_payment(her_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) # add denica pension if you're Chris
                 # taxes
                 # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
-                income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row])+0.8*get_taxes(pension_ls[row]+usr_ss_ls[row]+ partner_ss_ls[row])
+                #TODO: #59 Why are income taxes the same for every row??
+                income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row])+0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row])
                 taxes_ls.append(income_tax + medicare[row] + ss_tax[row])
                 # spending
                 working = True if row<working_qts else False
@@ -204,7 +206,7 @@ class Simulator:
                                                  working=working, alloc=alloc,return_rate=return_rate))
                 kids_ls[row] = spending_ls[row] * kid_spending_rate * kids_ls[row]
                 total_costs_ls.append(taxes_ls[row] + spending_ls[row] + kids_ls[row])
-                total_income_ls.append(job_income_ls[row]+pension_ls[row]+ usr_ss_ls[row]+ partner_ss_ls[row])
+                total_income_ls.append(job_income_ls[row]+usr_ss_ls[row]+ partner_ss_ls[row])
                 net_transaction_ls.append(total_income_ls[row] - total_costs_ls[row])
                 # annuity contributions
                 if alloc['Annuity'] != 0: 
@@ -231,7 +233,6 @@ class Simulator:
                     "Net Worth":net_worth_ls,
                     "Job Income":job_income_ls,
                     "Tax Deferred":tax_deferred_ls,
-                    "Pension":pension_ls,
                     "User SS":usr_ss_ls,
                     "Partner SS":partner_ss_ls,
                     "Total Income":total_income_ls,
@@ -261,7 +262,6 @@ class Simulator:
                         "Net Worth":net_worth_ls,
                         "Job Income":job_income_ls,
                         "Tax Deferred":tax_deferred_ls,
-                        "Pension":pension_ls,
                         "User SS":usr_ss_ls,
                         "Partner SS":partner_ss_ls,
                         "Total Income":total_income_ls,
@@ -377,8 +377,8 @@ class Simulator:
             return True
         except ValueError:
             return False
-    
-    def pension_over_time(self, partner_qt_income, raise_yr, options):
+        
+    def get_pension_payment(self, partner_qt_income, raise_yr, row, inflation_ls, net_worth, options):
         """
         Calculates the pension for Chris's wife. Might want to generalize this
 
@@ -398,29 +398,23 @@ class Simulator:
             Values for each quarter.
 
         """
+        if hasattr(self, 'pension_ls'):
+            if row == 0: del self.pension_ls # reset for each loop
+            else: return self.pension_ls[row]
+        
+        EARLY_YEAR = 2043
+        MID_YEAR = 2049
+        LATE_YEAR = 2055
         FLAT_INFLATION= options['flat_inflation']
         time_ls= options['time_ls']
         working_qts= options['working_qts']
         FI_qts= options['FI_qts']
-        
+        equity_target = options['equity_target']
+        method = self._val('Pension Method',QT_MOD=False)
             # Calc max salary estimate
         fi_yr = math.trunc(self.fi_date)
         current_pension_salary_qt = partner_qt_income/0.91 # Corrects for 9% taken from salary for pension
-        if self._val('Pension Method',QT_MOD=False) == 'default':
-            remaining_working_years = fi_yr-TODAY_YR-1
-            max_pension_salary_qt = current_pension_salary_qt * raise_yr ** remaining_working_years
-                # find initial pension amount (in last working year's dollars)
-            DE_ANZA_START_YEAR = 2016
-            years_worked = fi_yr-DE_ANZA_START_YEAR
-            pension_start_yr = self._val("Pension Year",False)
-            pension_multiplier = const.DENICA_PENSION_RATES[str(pension_start_yr)]
-            starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier 
-                # convert to est. value at pension_start_yr
-            starting_pension_qt = starting_pension_qt*self._pow(FLAT_INFLATION,exp=(pension_start_yr-fi_yr))
-                # build out list, add the correct number of zeros to the beginning
-            pension =self._step_quarterize(starting_pension_qt,raise_yr,mode='pension',start_yr=pension_start_yr,time_ls=time_ls)
-            pension = [0]*(self.rows-len(pension))+pension
-        elif self._val('Pension Method',QT_MOD=False) == 'cash-out':
+        if method == 'cash-out':
             # Need to correct for out-dated info, first estimate salary at time of last update, then project forward
             data_age_qt = int((TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25) # find age of data
             est_prev_pension_salary_qt = current_pension_salary_qt / (raise_yr ** (data_age_qt/4)) # estimate salary at time of data
@@ -429,9 +423,33 @@ class Simulator:
             pension_int_rate = const.PENSION_INTEREST_YIELD ** (1/4) - 1
             for income in projected_income:
                 pension_bal += income * const.PENSION_COST + pension_bal * pension_int_rate
-            pension = [0] * working_qts + [pension_bal] + [0] * (FI_qts-1)
+            self.pension_ls = [0] * working_qts + [pension_bal] + [0] * (FI_qts-1)
+            return self.pension_ls[row]
+        elif method == 'net worth':
+            if (net_worth > equity_target * inflation_ls[row] and time_ls[row]<LATE_YEAR) or time_ls[row]<EARLY_YEAR:
+                return 0 # haven't triggered yet
+            else:
+                pension_start_yr = min(math.trunc(time_ls[row]),LATE_YEAR)
+        elif method == 'early':
+            pension_start_yr = EARLY_YEAR
+        elif method == 'mid':
+            pension_start_yr = MID_YEAR
+        elif method == 'late':
+            pension_start_yr = LATE_YEAR
+        remaining_working_years = fi_yr-TODAY_YR-1
+        max_pension_salary_qt = current_pension_salary_qt * raise_yr ** remaining_working_years
+            # find initial pension amount (in last working year's dollars)
+        DE_ANZA_START_YEAR = 2016
+        years_worked = fi_yr-DE_ANZA_START_YEAR
+        pension_multiplier = const.DENICA_PENSION_RATES[str(pension_start_yr)]
+        starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier 
+            # convert to est. value at pension_start_yr
+        starting_pension_qt = starting_pension_qt*self._pow(FLAT_INFLATION,exp=(pension_start_yr-fi_yr))
+            # build out list, add the correct number of zeros to the beginning
+        self.pension_ls =self._step_quarterize(starting_pension_qt,raise_yr,mode='pension',start_yr=pension_start_yr,time_ls=time_ls)
+        self.pension_ls = [0]*(self.rows-len(self.pension_ls))+self.pension_ls
         
-        return pension
+        return self.pension_ls[row]
     
     def base_spending(self,spending_qt, retirement_change,**kw):
         """
