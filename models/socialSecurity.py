@@ -1,8 +1,15 @@
 import math
 import numpy as np
 from data import constants as const
-import simulator
 from models import returnGenerator
+#from simulator import TODAY_YR
+import simulator
+
+TODAY_YR = 2022
+
+EARLY_AGE = 62
+MID_AGE = 66
+LATE_AGE = 70
 
 # SS https://www.ssa.gov/oact/cola/Benefits.html 
 # Effect of Early or Delayed Retirement on Retirement Benefits: https://www.ssa.gov/oact/ProgData/ar_drc.html 
@@ -30,12 +37,19 @@ def est_Index(year):
 WORK_START_AGE = 22 # Assumed age for starting work
 
 
-class SSCalc:
-    def __init__(self,simulator,current_age:int,FLAT_INFLATION,time_ls,income_ls,imported_record:dict={},contribution_eligible = True,pension_pia = False):
-        self.age = current_age
+class Calculator:
+    def __init__(self,sim:simulator,usr:str,inflation_ls,time_ls,income_ls):
+        """Methods include 'early', 'mid', and 'late' for age dependent retirements. 
+        The 'net worth' method triggers withdrawals if net worth drops below equity target or at last year available"""
+        self.age = sim._val(f"{usr} Age",False)
         self.time_ls = time_ls
+        self.inflation_ls = inflation_ls
+        self.method = sim._val(f"{usr} Social Security Method",False)
+        imported_record = sim._val(f"{usr} Earnings Record",False)
+        self.pension = sim.params[f"{usr} Pension"]
+        self.triggered = False # Has SS been triggered
         self.earnings_record = {int(year):float(earning) for (year,earning) in imported_record.items()} # {year : earnings}
-        if contribution_eligible: # if income is eligible to contribute to social security
+        if not self.pension: # if income is eligible to contribute to social security
             self._add_to_earnings_record(time_ls,income_ls)
             if imported_record == {}: self._back_estimate()
         # index and limit the earnings, then sort them from high to low
@@ -47,25 +61,41 @@ class SSCalc:
         # Calculate monthly Primary Insurance Amounts (PIA) using bend points. Add AIME and sort to see where the AIME ranks in the bend points
         bend_points =const.SS_BEND_POINTS+[aime]
         bend_points.sort()
-            # cut off bend points at inserted AIME
-        bend_points = bend_points[:bend_points.index(aime)+1]
+        bend_points = bend_points[:bend_points.index(aime)+1] # cut off bend points at inserted AIME
         # for the first bracket, just the bend times the rate. After that, find the marginal income to multiple by the rate
             # PIA rates are lower if you have certain pension incomes
-        if pension_pia: pia_rates = const.PIA_RATES_PENSION
+        if self.pension: pia_rates = const.PIA_RATES_PENSION
         else: pia_rates = const.PIA_RATES
         self.full_PIA = sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
                                 in zip(enumerate(bend_points),pia_rates)])
         #TODO if no earnings given, estimate backward from age
-    
-    def ss_ls(self, ss_date, inflation_ls):
+        # list methods
+        if self.method == 'early':
+            self.ss_age = EARLY_AGE
+        elif self.method == 'mid':
+            self.ss_age = MID_AGE
+        else: # method == 'late' or 'portfolio'
+            self.ss_age = LATE_AGE
+        ss_date = self.ss_age - self.age + simulator.TODAY_YR + 1 # not quarterly precise, could be improved by changing from age to birth quarter in params.json
+        self.make_list(ss_date)
+            
+    def make_list(self, ss_date):
         """return list with social security payments starting from today till final date"""
-        ss_age = self.age + (math.trunc(ss_date) - simulator.TODAY_YR)
-        adjusted_PIA = self.full_PIA * const.BENEFIT_RATES[str(ss_age)] # find adjusted PIA based on benefit rates for selected age
+        adjusted_PIA = self.full_PIA * const.BENEFIT_RATES[str(self.ss_age)] # find adjusted PIA based on benefit rates for selected age
         # PIA is in that today's dollars and needs to be adjusted
-        ss_ls = list(3 * adjusted_PIA * np.array(inflation_ls)) # Multiple by inflation_ls
+        self.ls = list(3 * adjusted_PIA * np.array(self.inflation_ls)) # Multiple by inflation_ls
         idx = self.time_ls.index(ss_date)
-        ss_ls = [0]*idx + ss_ls[idx:] # then trim the early years and replace with 0s
-        return ss_ls
+        self.ls = [0]*idx + self.ls[idx:] # then trim the early years and replace with 0s
+    
+    def get_payment(self,row,net_worth,equity_target):
+        # change self.ss_age and remake ss_ls
+        if self.method == 'net worth' and net_worth < equity_target * self.inflation_ls[row] and not self.triggered:
+            ss_date=self.time_ls[row]
+            self.ss_age = math.trunc(ss_date) + self.age - simulator.TODAY_YR
+            if self.ss_age >= EARLY_AGE and self.ss_age <= LATE_AGE:
+                self.triggered = True
+                self.make_list(ss_date)
+        return self.ls[row]
         
     def _add_to_earnings_record(self,time_ls,income_ls):
         for date, income in zip(time_ls,income_ls):
@@ -98,8 +128,8 @@ def test_unit():
             "2016":"36.440",
             "2018":"0.635"
         }
-    ss_calc =  SSCalc(my_simulator,current_age=29,FLAT_INFLATION=1.03,
+    ss_calc =  Calculator(my_simulator,current_age=29,FLAT_INFLATION=1.03,
                      time_ls=test_time_ls,income_ls=test_income_ls,
                      imported_record=test_user_record)
     inflation_ls = returnGenerator.main(my_simulator.rows,4,1)[3][0]
-    return ss_calc.ss_ls(ss_date=2061.25,inflation_ls=inflation_ls)
+    return ss_calc.make_list(ss_date=2061.25,inflation_ls=inflation_ls)

@@ -70,6 +70,7 @@ class Simulator:
         tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
         barista_income_ls = self._range_len(START=total_barista_income_qt,LEN=barista_qts,INCREMENT=FLAT_INFLATION,MULT=True) if total_barista_income_qt != 0 else [] # smooth growth is probably fine rather than step_quarterizing
             # add the non-working years
+        #TODO: #57 Remove job_income_ls and replace with list of incomes (usr_income_1, partner_income_1, usr_income_2, etc)
         job_income_ls  = job_income_ls + barista_income_ls + ([0] * (FI_qts - barista_qts)) 
         tax_deferred_ls = tax_deferred_ls + ([0]*FI_qts) 
 
@@ -109,15 +110,9 @@ class Simulator:
             
             # Pension / SS
             pension_ls= self.pension_over_time(her_qt_income, raise_yr, options)
-            
-            usr_ss = socialSecurity.SSCalc(self,self._val("His Age",False),FLAT_INFLATION,time_ls,usr_income_ls,self._val("User Earnings Record",QT_MOD=False))
-            usr_ss_ls = usr_ss.ss_ls(ss_date=1993+self._val("His SS Age",QT_MOD=False),inflation_ls=inflation_ls)
-            partner_ss = socialSecurity.SSCalc(self,self._val("Her Age",False),FLAT_INFLATION,time_ls,partner_income_ls,self._val("Partner Earnings Record",QT_MOD=False),contribution_eligible=False, pension_pia=True)
-            partner_ss_ls = partner_ss.ss_ls(ss_date=1993+self._val("Her SS Age",QT_MOD=False),inflation_ls=inflation_ls)
-            
-            # Add all income together. 
-            total_income_ls = [sum([a,b,c,d]) for a, b, c, d in zip(job_income_ls,pension_ls, usr_ss_ls, partner_ss_ls)]
-
+            usr_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,time_ls,usr_income_ls)
+            partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,time_ls,partner_income_ls)
+           
             # Taxes (brackets are for yearly, not qt, so need conversion)
             def get_taxes(income_qt):
                 """Returns combined federal and state taxes on non-tax-deferred income"""
@@ -132,8 +127,6 @@ class Simulator:
                 bend_points = bend_points[:bend_points.index(income)+1]
                 return sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
                     in zip(enumerate(bend_points),rates)])
-                # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
-            income_taxes = [sum([get_taxes(w2-deferred),0.8*get_taxes(pension+his_ss+her_ss)]) for w2,deferred, pension, his_ss, her_ss in zip(job_income_ls,tax_deferred_ls,pension_ls, usr_ss_ls, partner_ss_ls)]
                 # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income). Her income excluded from SS due to pension
             #medicare = [0.0145*job_income for job_income in job_income_ls]
             medicare= np.array(job_income_ls)*0.0145
@@ -142,7 +135,6 @@ class Simulator:
             his_income_ratio = his_qt_income/(his_qt_income+her_qt_income)
             ss_tax = [0.062*min(his_income_ratio*income,ss_max) for income,ss_max in zip(job_income_ls,ss_max_earnings_qt)]
             ss_tax+= [0]*(self.rows-len(ss_tax))
-            taxes_ls = [sum([a,b,c]) for a,b,c in zip(income_taxes,medicare,ss_tax)]
             
             
             # Kid count   
@@ -184,40 +176,50 @@ class Simulator:
                     annuity_alloc = max(1-re_alloc-equity_alloc,0) 
                     return {"Equity":equity_alloc,"RE":re_alloc,"Bond":0,"Annuity":annuity_alloc}
             # Net Worth/total savings
-            spending_ls, total_costs_ls, net_transaction_ls, equity_alloc_ls, re_alloc_ls, bond_alloc_ls = [],[],[],[],[],[]
+            spending_ls, total_costs_ls, net_transaction_ls, equity_alloc_ls = [],[],[],[]
+            re_alloc_ls, bond_alloc_ls, taxes_ls, total_income_ls, usr_ss_ls, partner_ss_ls = [],[],[],[],[],[]
             return_rate = None
             my_annuity = annuity.Annuity(interest_yield_qt=const.ANNUITY_INT_YIELD ** (1/4),
                                          payout_rate_qt=const.ANNUITY_PAYOUT_RATE/4,time_ls=time_ls)
                 # loop through time_ls to find net worth changes
-            for i in range(self.rows): 
-                if i == 0: net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
+            net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
+            for row in range(self.rows): 
+                #TODO: Pension also needs to be pulled in, but first modified simliar to SS to get individual payments
                 # allocations
-                alloc = allocation(method=self._val("Allocation Method",QT_MOD=False),inflation=inflation_ls[i],net_worth = net_worth_ls[-1])
+                alloc = allocation(method=self._val("Allocation Method",QT_MOD=False),inflation=inflation_ls[row],net_worth = net_worth_ls[-1])
                 equity_alloc_ls.append(alloc["Equity"])
                 re_alloc_ls.append(alloc["RE"])
                 bond_alloc_ls.append(alloc["Bond"])
+                # social security 
+                usr_ss_ls.append(usr_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
+                partner_ss_ls.append(partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
+                # taxes
+                # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
+                income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row])+0.8*get_taxes(pension_ls[row]+usr_ss_ls[row]+ partner_ss_ls[row])
+                taxes_ls.append(income_tax + medicare[row] + ss_tax[row])
                 # spending
-                working = True if i<working_qts else False
+                working = True if row<working_qts else False
                 spending_ls.append(self.base_spending(spending_qt, retirement_change,
-                                                      inflation=inflation_ls[i], 
+                                                      inflation=inflation_ls[row], 
                                                  working=working, alloc=alloc,return_rate=return_rate))
-                kids_ls[i] = spending_ls[i] * kid_spending_rate * kids_ls[i]
-                total_costs_ls.append(taxes_ls[i] + spending_ls[i] + kids_ls[i])
-                net_transaction_ls.append(total_income_ls[i] - total_costs_ls[i])
+                kids_ls[row] = spending_ls[row] * kid_spending_rate * kids_ls[row]
+                total_costs_ls.append(taxes_ls[row] + spending_ls[row] + kids_ls[row])
+                total_income_ls.append(job_income_ls[row]+pension_ls[row]+ usr_ss_ls[row]+ partner_ss_ls[row])
+                net_transaction_ls.append(total_income_ls[row] - total_costs_ls[row])
                 # annuity contributions
                 if alloc['Annuity'] != 0: 
                     amount = alloc['Annuity'] * net_worth_ls[-1]
-                    my_annuity.contribute(amount=amount,date=time_ls[i])
+                    my_annuity.contribute(amount=amount,date=time_ls[row])
                     net_worth_ls[-1] -= amount
                 # investment returns
-                return_rate = stock_return_ls[i]*alloc['Equity'] + bond_return_ls[i]*alloc['Bond'] + re_return_ls[i]*alloc['RE']
-                return_amt = return_rate*(net_worth_ls[-1]+0.5*net_transaction_ls[i])
+                return_rate = stock_return_ls[row]*alloc['Equity'] + bond_return_ls[row]*alloc['Bond'] + re_return_ls[row]*alloc['RE']
+                return_amt = return_rate*(net_worth_ls[-1]+0.5*net_transaction_ls[row])
                 # annuity withdrawals
-                if net_worth_ls[-1]+return_amt+net_transaction_ls[i] < 0 and not my_annuity.annuitized:
-                    my_annuity.annuitize(time_ls[i])
+                if net_worth_ls[-1]+return_amt+net_transaction_ls[row] < 0 and not my_annuity.annuitized:
+                    my_annuity.annuitize(time_ls[row])
                 if my_annuity.annuitized:
-                    net_transaction_ls[i] += my_annuity.take_payment(time_ls[i])
-                net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+net_transaction_ls[i]))
+                    net_transaction_ls[row] += my_annuity.take_payment(time_ls[row])
+                net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+net_transaction_ls[row]))
             net_worth_ls.pop()
             if net_worth_ls[-1]!=0: 
                 success_rate += 1
@@ -233,7 +235,7 @@ class Simulator:
                     "User SS":usr_ss_ls,
                     "Partner SS":partner_ss_ls,
                     "Total Income":total_income_ls,
-                    "Income Taxes":income_taxes,
+                    "Income Taxes":income_tax,
                     "Medicare Taxes":medicare,
                     "SS Taxes":ss_tax,
                     "Total Taxes":taxes_ls,
@@ -263,7 +265,7 @@ class Simulator:
                         "User SS":usr_ss_ls,
                         "Partner SS":partner_ss_ls,
                         "Total Income":total_income_ls,
-                        "Income Taxes":income_taxes,
+                        "Income Taxes":income_tax,
                         "Medicare Taxes":medicare,
                         "SS Taxes":ss_tax,
                         "Total Taxes":taxes_ls,
@@ -363,8 +365,10 @@ class Simulator:
                     params[k] = int(v)
                 elif self._is_float(v):
                     params[k] = float(v)
-                elif v == "True" or v == "False":
-                    params[k] = bool(v)
+                elif v == "True":
+                    params[k] = True
+                elif v == "False":
+                    params[k] = False
             return params
         
     def _is_float(self, element: any) -> bool:
