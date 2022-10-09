@@ -33,15 +33,13 @@
         "val": "0.04",
         "popout": 0
     },
-    "His SS Age": {
-        "val": "62",
-        "popout": 0,
-        "range": "range(62,71)"
+    "User Social Security Method": {
+        "val": "net worth",
+        "range": "['early','mid','late','net worth']"
     },
-    "Her SS Age": {
-        "val": "65",
-        "popout": 0,
-        "range": "range(62,71)"
+    "Partner Social Security Method": {
+        "val": "net worth",
+        "range": "['early','mid','late','net worth']"
     },
     "Pension Year": {
         "val": "2044",
@@ -125,9 +123,12 @@
         "popout": 1,
         "range": "['Life Cycle','Life Cycle Annuity']"
     },
-    "His Age": {
+    "User Age": {
         "val": "29",
         "popout": 5
+    },
+    "User Pension": {
+        "val": "False"
     },
     "His Salary + Bonus": {
         "val": "100",
@@ -166,10 +167,13 @@
         "popper": 5,
         "calcd": "params_vals['His Salary + Bonus']+params_vals['His Emplr Contributions']"
     },
-    "Her Age": {
+    "Partner Age": {
         "val": "34",
         "popout": 6,
-        "calcd": "params_vals['His Age'] + 5"
+        "calcd": "params_vals['User Age'] + 5"
+    },
+    "Partner Pension": {
+        "val": "False"
     },
     "Her Salary": {
         "val": "100",
