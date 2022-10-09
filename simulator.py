@@ -196,7 +196,6 @@ class Simulator:
                 if self.admin: partner_ss_ls[-1] += self.get_pension_payment(her_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) # add denica pension if you're Chris
                 # taxes
                 # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
-                #TODO: #59 Why are income taxes the same for every row??
                 income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row])+0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row])
                 taxes_ls.append(income_tax + medicare[row] + ss_tax[row])
                 # spending
@@ -236,9 +235,6 @@ class Simulator:
                     "User SS":usr_ss_ls,
                     "Partner SS":partner_ss_ls,
                     "Total Income":total_income_ls,
-                    "Income Taxes":income_tax,
-                    "Medicare Taxes":medicare,
-                    "SS Taxes":ss_tax,
                     "Total Taxes":taxes_ls,
                     "Inflation":inflation_ls,
                     "Spending":spending_ls,
@@ -265,9 +261,6 @@ class Simulator:
                         "User SS":usr_ss_ls,
                         "Partner SS":partner_ss_ls,
                         "Total Income":total_income_ls,
-                        "Income Taxes":income_tax,
-                        "Medicare Taxes":medicare,
-                        "SS Taxes":ss_tax,
                         "Total Taxes":taxes_ls,
                         "Inflation":inflation_ls,
                         "Spending":spending_ls,
