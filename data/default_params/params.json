@@ -41,15 +41,10 @@
         "val": "net worth",
         "range": "['early','mid','late','net worth']"
     },
-    "Pension Year": {
-        "val": "2044",
-        "popout": 0,
-        "range": "range(2043,2056)"
-    },
     "Pension Method": {
-        "val": "default",
+        "val": "early",
         "popout": 0,
-        "range": "['default','cash-out']"
+        "range": "['early','mid','late','net worth','cash-out']"
     },
     "Current Net Worth ($)": {
         "val": "1000",
