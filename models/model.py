@@ -63,8 +63,10 @@ class Model:
                 params[k] = int(v)
             elif self._is_float(v):
                 params[k] = float(v)
-            elif v == "True" or v == "False":
-                params[k] = bool(v)
+            elif v == "True":
+                params[k] = True
+            elif v == "False":
+                params[k] = False
         return params
 
     def _is_float(self, element: any):
