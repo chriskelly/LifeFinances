@@ -74,7 +74,7 @@ class Calculator:
             self.ss_age = EARLY_AGE
         elif self.method == 'mid':
             self.ss_age = MID_AGE
-        else: # method == 'late' or 'portfolio'
+        else: # method == 'late' or 'portfolio' List will be overwritten if portfolio triggers before late age
             self.ss_age = LATE_AGE
         ss_date = self.ss_age - self.age + simulator.TODAY_YR + 1 # not quarterly precise, could be improved by changing from age to birth quarter in params.json
         self.make_list(ss_date)
