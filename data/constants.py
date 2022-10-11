@@ -1,9 +1,10 @@
 # Constants
-from os import path
-this_path= path.dirname(__file__)
+import os, git
+git_root= git.Repo(os.path.abspath(''),search_parent_directories=True).git.rev_parse('--show-toplevel')
 
-PARAMS_LOC = path.join(this_path,'params.json')
-PARAMS_SUCCESS_LOC = path.join(this_path,'param_success.json')
+PARAMS_LOC = os.path.join(git_root,'data/params.json')
+PARAMS_SUCCESS_LOC = os.path.join(git_root,'data/param_success.json')
+SAVE_DIR = os.path.join(git_root,'diagnostics/saved')
 
 EQUITY_MEAN = 1.092
 EQUITY_STDEV = .16
