@@ -8,23 +8,21 @@ import git, sys # install gitpython
 git_root= git.Repo(os.path.abspath(''),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 sys.path.append(git_root)
-from models import returnGenerator, annuity, model
 from data import constants as const
 
 # For reference, something that has a 3% growth is a 0.03 return/rate and 1.03 yield. That's how I'll define return/rate and yield here
 
 DEBUG_LVL = 1 # LVL 1: Print success rate, save worst failure, show plot | LVL 2: Investigate each result 1 by 1
-SAVE_DIR = os.path.join(git_root,'diagnostics/saved')
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
 MONTE_CARLO_RUNS = 500 # takes 20 seconds to generate 5000
-if os.path.exists(SAVE_DIR):
-    for file in os.scandir(SAVE_DIR): # delete previously saved files
+if os.path.exists(const.SAVE_DIR):
+    for file in os.scandir(const.SAVE_DIR): # delete previously saved files
         os.remove(file.path)
 else:
-    os.makedirs(SAVE_DIR)
+    os.makedirs(const.SAVE_DIR)
 
 class Simulator:
     def __init__(self,param_vals,override_dict={}):
@@ -275,14 +273,14 @@ class Simulator:
                         "RE Returns":re_return_ls
                     }
                     save_df = pd.DataFrame.from_dict(save_dict)
-                    save_df.to_csv(f'{SAVE_DIR}/saveData{col}.csv')
+                    save_df.to_csv(f'{const.SAVE_DIR}/saveData{col}.csv')
                 elif usr_input == 'c':
                     debug_lvl = 1
         success_rate = success_rate/monte_carlo_runs
         median_net_worth = statistics.median(final_net_worths)
         if debug_lvl >= 1: 
             failure_df = pd.DataFrame.from_dict(failure_dict)
-            failure_df.to_csv(f'{SAVE_DIR}/worst_failure.csv')
+            failure_df.to_csv(f'{const.SAVE_DIR}/worst_failure.csv')
             print(f"Success Rate: {success_rate*100:.2f}%")
             print(f"Median Final Net Worth: ${median_net_worth*1000:,.0f}")
         
