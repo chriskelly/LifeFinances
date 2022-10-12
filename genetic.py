@@ -181,7 +181,7 @@ class Algorithm:
         param_vals = {key:obj["val"] for (key,obj) in full_params.items()}
         # monte carlo runs are exponentially related to success rate. Increasing the exponent makes the curve more severe. At the TARGET_SUCCESS_RATE, you'll get the MAX_MONTE_RUNS
         override_dict = {'monte_carlo_runs' : int(max(INITIAL_MONTE_RUNS,(min(MAX_MONTE_RUNS,
-                            (MAX_MONTE_RUNS * (success_rate + (1-TARGET_SUCCESS_RATE)) ** 30))))) }
+                            (MAX_MONTE_RUNS * (success_rate + (1-TARGET_SUCCESS_RATE)) ** 70))))) }
         # if we're on the first child of a set, the simulator will generate returns and feed them back. For the next children, that same set of returns will be reused
         if idx != 0:
             override_dict['returns']  = self.returns
