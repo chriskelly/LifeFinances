@@ -34,32 +34,32 @@ class Simulator:
             
     def main(self):
 # -------------------------------- VARIABLES -------------------------------- #      
-    # ------------STATIC LISTS: TIME, JOB INCOME------------ #
+    # ------------STATIC LISTS: DATE, JOB INCOME------------ #
         debug_lvl = DEBUG_LVL
         FLAT_INFLATION = self._val("Flat Inflation (%)",QT_MOD=False) # Used for some estimations like pension
         FLAT_INFLATION_QT = FLAT_INFLATION ** (1. / 4)
         working_qts = int((self.fi_date-TODAY_YR_QT)/.25)
+        
+        # Year.Quarter list 
+        date_ls = self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True) 
+        FI_qts = self.rows-working_qts
+        barista_qts = 4 * self._val("Barista Time (Yrs)",QT_MOD=False)
+        
         options= {
             'debug_lvl': DEBUG_LVL,
             'flat_inflation': FLAT_INFLATION,
             'flat_inflation_qt': FLAT_INFLATION ** (1. / 4),
-            'time_ls': self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True),
+            'date_ls': date_ls,
             'working_qts': working_qts,
             'FI_qts': self.rows-working_qts,
-            'barista_qts': 4 * self._val("Barista Time (Yrs)",QT_MOD=False),
+            'barista_qts': barista_qts,
             'equity_target': self._val("Equity Target",False)
             }
-        
-        # Year.Quarter list 
-        time_ls = self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True) 
-        FI_qts = self.rows-working_qts
-        barista_qts = 4 * self._val("Barista Time (Yrs)",QT_MOD=False)
         
         # Job Income and tax-differed list. Does not include SS. 
             # get quarterly income for his and her
         his_qt_income = self._val("His Total Income",QT_MOD='dollar')
         her_qt_income = self._val("Her Total Income",QT_MOD='dollar')
-        total_income_qt = his_qt_income+her_qt_income
         tax_deferred_qt = self._val("His Tax Deferred",QT_MOD='dollar')+self._val("Her Tax Deferred",QT_MOD='dollar')
         total_barista_income_qt = self._val("Barista Income (Total)", QT_MOD='dollar') # Assuming no tax deferral for barista to be conservative and keep it easier
             # build out income lists with raises coming in steps on the first quarter of each year
@@ -109,8 +109,8 @@ class Simulator:
             inflation_ls = inflation_arr[col]
             
             # Social Security Initialization
-            usr_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,time_ls,usr_income_ls)
-            partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,time_ls,partner_income_ls)
+            usr_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,date_ls,usr_income_ls)
+            partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,date_ls,partner_income_ls)
            
             # Taxes (brackets are for yearly, not qt, so need conversion)
             def get_taxes(income_qt):
@@ -141,7 +141,7 @@ class Simulator:
             kids_ls = [0]*self.rows
             for kid_yr in kid_year_qts:
                 kids_ls = [other_kids + 1 if yr_qt>=kid_yr and yr_qt-22<kid_yr else other_kids 
-                        for other_kids,yr_qt in zip(kids_ls,time_ls) ]
+                        for other_kids,yr_qt in zip(kids_ls,date_ls) ]
             
             
             # Allocation between equity, RE and bonds. Allows for different methods to be designed
@@ -179,8 +179,8 @@ class Simulator:
             re_alloc_ls, bond_alloc_ls, taxes_ls, total_income_ls, usr_ss_ls, partner_ss_ls = [],[],[],[],[],[]
             return_rate = None
             my_annuity = annuity.Annuity(interest_yield_qt=const.ANNUITY_INT_YIELD ** (1/4),
-                                         payout_rate_qt=const.ANNUITY_PAYOUT_RATE/4,time_ls=time_ls)
-                # loop through time_ls to find net worth changes
+                                         payout_rate_qt=const.ANNUITY_PAYOUT_RATE/4,date_ls=date_ls)
+                # loop through date_ls to find net worth changes
             net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
             for row in range(self.rows): 
                 # allocations
@@ -208,16 +208,16 @@ class Simulator:
                 # annuity contributions
                 if alloc['Annuity'] != 0: 
                     amount = alloc['Annuity'] * net_worth_ls[-1]
-                    my_annuity.contribute(amount=amount,date=time_ls[row])
+                    my_annuity.contribute(amount=amount,date=date_ls[row])
                     net_worth_ls[-1] -= amount
                 # investment returns
                 return_rate = stock_return_ls[row]*alloc['Equity'] + bond_return_ls[row]*alloc['Bond'] + re_return_ls[row]*alloc['RE']
                 return_amt = return_rate*(net_worth_ls[-1]+0.5*net_transaction_ls[row])
                 # annuity withdrawals
                 if net_worth_ls[-1]+return_amt+net_transaction_ls[row] < 0 and not my_annuity.annuitized:
-                    my_annuity.annuitize(time_ls[row])
+                    my_annuity.annuitize(date_ls[row])
                 if my_annuity.annuitized:
-                    net_transaction_ls[row] += my_annuity.take_payment(time_ls[row])
+                    net_transaction_ls[row] += my_annuity.take_payment(date_ls[row])
                 net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+net_transaction_ls[row]))
             net_worth_ls.pop()
             if net_worth_ls[-1]!=0: 
@@ -226,7 +226,7 @@ class Simulator:
             if 0 in net_worth_ls and net_worth_ls.index(0) < worst_failure_idx and debug_lvl >= 1:
                 worst_failure_idx = net_worth_ls.index(0)
                 failure_dict = {
-                    "Time":time_ls,
+                    "Date":date_ls,
                     "Net Worth":net_worth_ls,
                     "Job Income":job_income_ls,
                     "Tax Deferred":tax_deferred_ls,
@@ -246,13 +246,13 @@ class Simulator:
                     "Bond Returns":bond_return_ls,
                     "RE Returns":re_return_ls
                 }
-            if debug_lvl >= 1: plt.plot(time_ls,net_worth_ls)
+            if debug_lvl >= 1: plt.plot(date_ls,net_worth_ls)
             if debug_lvl >= 2: 
                 plt.show()
                 usr_input = input("save (s), next (n), continue (c)?")
                 if usr_input == 's':
                     save_dict = {
-                        "Time":time_ls,
+                        "Date":date_ls,
                         "Net Worth":net_worth_ls,
                         "Job Income":job_income_ls,
                         "Tax Deferred":tax_deferred_ls,
@@ -295,14 +295,14 @@ class Simulator:
     def _step_quarterize(self,first_val,increase_yield,mode,**kw) -> list:
         """Return a list with values that step up on a yearly basis rather than quarterly \n
         mode = 'working' -> from today_qt to fi_date, needs kw['working_qts'] \n
-        mode = 'pension' -> from provided kw['start_yr'] to end of kw['time_ls']"""
+        mode = 'pension' -> from provided kw['start_yr'] to end of kw['date_ls']"""
         ls = [first_val]
         if mode == 'working':
             if kw["working_qts"] == 0: return [] # if fi_date = TODAY_YR_QT, the returned range should be empty
             custom_range = self._range_len(START=TODAY_QUARTER+1,LEN=kw["working_qts"]-1,INCREMENT=1,ADD=True) # subtracing one len since you already have the first value
             [ls.append(ls[-1]) if x%4 !=0 else ls.append(ls[-1]*increase_yield) for x in custom_range]
         elif mode == 'pension':
-            custom_range = np.arange(kw['start_yr']+0.25,kw['time_ls'][-1]+0.25,0.25)
+            custom_range = np.arange(kw['start_yr']+0.25,kw['date_ls'][-1]+0.25,0.25)
             [ls.append(ls[-1]*increase_yield) if x%1 ==0 else ls.append(ls[-1]) for x in custom_range]
         return ls
                 
@@ -380,7 +380,7 @@ class Simulator:
         raise_yr : int or float
             DESCRIPTION.
         options : dict
-            The required entries for the dict are flat_inflation, time_ls, 
+            The required entries for the dict are flat_inflation, date_ls, 
             working_qts, FI_qts
 
         Returns
@@ -397,7 +397,7 @@ class Simulator:
         MID_YEAR = 2049
         LATE_YEAR = 2055
         FLAT_INFLATION= options['flat_inflation']
-        time_ls= options['time_ls']
+        date_ls= options['date_ls']
         working_qts= options['working_qts']
         FI_qts= options['FI_qts']
         equity_target = options['equity_target']
@@ -406,9 +406,9 @@ class Simulator:
         fi_yr = math.trunc(self.fi_date)
         current_pension_salary_qt = partner_qt_income/0.91 # Corrects for 9% taken from salary for pension
         if method == 'cash-out':
-            # Need to correct for out-dated info, first estimate salary at time of last update, then project forward
+            # Need to correct for out-dated info, first estimate salary at date of last update, then project forward
             data_age_qt = int((TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25) # find age of data
-            est_prev_pension_salary_qt = current_pension_salary_qt / (raise_yr ** (data_age_qt/4)) # estimate salary at time of data
+            est_prev_pension_salary_qt = current_pension_salary_qt / (raise_yr ** (data_age_qt/4)) # estimate salary at date of data
             projected_income = self._step_quarterize(est_prev_pension_salary_qt,raise_yr,mode='working',working_qts=working_qts + data_age_qt) # project income from data age to FI
             pension_bal = const.PENSION_ACCOUNT_BAL
             pension_int_rate = const.PENSION_INTEREST_YIELD ** (1/4) - 1
@@ -417,10 +417,10 @@ class Simulator:
             self.pension_ls = [0] * working_qts + [pension_bal] + [0] * (FI_qts-1)
             return self.pension_ls[row]
         elif method == 'net worth':
-            if (net_worth > equity_target * inflation_ls[row] and time_ls[row]<LATE_YEAR) or time_ls[row]<EARLY_YEAR:
+            if (net_worth > equity_target * inflation_ls[row] and date_ls[row]<LATE_YEAR) or date_ls[row]<EARLY_YEAR:
                 return 0 # haven't triggered yet
             else:
-                pension_start_yr = min(math.trunc(time_ls[row]),LATE_YEAR)
+                pension_start_yr = min(math.trunc(date_ls[row]),LATE_YEAR)
         elif method == 'early':
             pension_start_yr = EARLY_YEAR
         elif method == 'mid':
@@ -437,7 +437,7 @@ class Simulator:
             # convert to est. value at pension_start_yr
         starting_pension_qt = starting_pension_qt*self._pow(FLAT_INFLATION,exp=(pension_start_yr-fi_yr))
             # build out list, add the correct number of zeros to the beginning
-        self.pension_ls =self._step_quarterize(starting_pension_qt,raise_yr,mode='pension',start_yr=pension_start_yr,time_ls=time_ls)
+        self.pension_ls =self._step_quarterize(starting_pension_qt,raise_yr,mode='pension',start_yr=pension_start_yr,date_ls=date_ls)
         self.pension_ls = [0]*(self.rows-len(self.pension_ls))+self.pension_ls
         
         return self.pension_ls[row]
