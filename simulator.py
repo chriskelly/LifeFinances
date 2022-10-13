@@ -110,7 +110,7 @@ class Simulator:
             
             # Social Security Initialization
             usr_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,date_ls,usr_income_ls)
-            partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,date_ls,partner_income_ls)
+            partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,date_ls,partner_income_ls,spouse_calc=usr_ss_calc)
            
             # Taxes (brackets are for yearly, not qt, so need conversion)
             def get_taxes(income_qt):
