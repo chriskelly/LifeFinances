@@ -2,10 +2,7 @@ import math
 import numpy as np
 from data import constants as const
 from models import returnGenerator
-#from simulator import TODAY_YR
 import simulator
-
-TODAY_YR = 2022
 
 EARLY_AGE = 62
 MID_AGE = 66
@@ -38,20 +35,22 @@ WORK_START_AGE = 22 # Assumed age for starting work
 
 
 class Calculator:
-    def __init__(self,sim:simulator,usr:str,inflation_ls,date_ls,income_ls):
+    def __init__(self,sim:simulator.Simulator,usr:str,inflation_ls,date_ls,income_ls,spouse_calc=None):
         """Methods include 'early', 'mid', and 'late' for age dependent retirements. 
         The 'net worth' method triggers withdrawals if net worth drops below equity target or at last year available"""
+        self.sim, self.date_ls, self.inflation_ls, self.spouse_calc = sim, date_ls, inflation_ls, spouse_calc
         self.age = sim._val(f"{usr} Age",False)
-        self.date_ls = date_ls
-        self.inflation_ls = inflation_ls
+        if spouse_calc: spouse_calc.spouse_calc = self # if a spouse is added, make the spouse's spouse this calc
         self.method = sim._val(f"{usr} Social Security Method",False)
-        imported_record = sim._val(f"{usr} Earnings Record",False)
         self.pension = sim.params[f"{usr} Pension"]
         self.triggered = False # Has SS been triggered
+        imported_record = sim._val(f"{usr} Earnings Record",False)
         self.earnings_record = {int(year):float(earning) for (year,earning) in imported_record.items()} # {year : earnings}
         if not self.pension: # if income is eligible to contribute to social security
             self._add_to_earnings_record(date_ls,income_ls)
             if imported_record == {}: self._back_estimate()
+        
+        # -------- CALCULATE PIA (BASE SOCIAL SECURITY PAYMENT) -------- #
         # index and limit the earnings, then sort them from high to low
         ss_earnings = [min(est_Max_Earning(year),earning) * est_Index(year) 
                        for (year,earning) in self.earnings_record.items()]
@@ -69,7 +68,8 @@ class Calculator:
         self.full_PIA = sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
                                 in zip(enumerate(bend_points),pia_rates)])
         #TODO if no earnings given, estimate backward from age
-        # list methods
+        
+        # -------- GENERATE INITIAL LIST -------- #
         if self.method == 'early':
             self.ss_age = EARLY_AGE
         elif self.method == 'mid':
@@ -77,25 +77,41 @@ class Calculator:
         else: # method == 'late' or 'portfolio' List will be overwritten if portfolio triggers before late age
             self.ss_age = LATE_AGE
         ss_date = self.ss_age - self.age + simulator.TODAY_YR + 1 # not quarterly precise, could be improved by changing from age to birth quarter in params.json
-        self.make_list(ss_date)
+        self._make_list(ss_date)
             
-    def make_list(self, ss_date):
-        """return list with social security payments starting from today till final date"""
-        adjusted_PIA = self.full_PIA * const.BENEFIT_RATES[str(self.ss_age)] # find adjusted PIA based on benefit rates for selected age
+    def _make_list(self, ss_date):
+        """Returns list with social security payments starting from today till final date"""
+        self.benefit_rate = const.BENEFIT_RATES[str(self.ss_age)]
+        adjusted_PIA = self.full_PIA * self.benefit_rate # find adjusted PIA based on benefit rates for selected age
         # PIA is in that today's dollars and needs to be adjusted
         self.ls = list(3 * adjusted_PIA * np.array(self.inflation_ls)) # Multiple by inflation_ls
-        idx = self.date_ls.index(ss_date)
-        self.ls = [0]*idx + self.ls[idx:] # then trim the early years and replace with 0s
+        self.ss_row = self.date_ls.index(ss_date)
+        self.ls = [0]*self.ss_row + self.ls[self.ss_row:] # then trim the early years and replace with 0s
     
     def get_payment(self,row,net_worth,equity_target):
-        # change self.ss_age and remake ss_ls
+        return max(self._get_worker_payment(row,net_worth,equity_target), self._get_spousal_payment(row,net_worth,equity_target))
+    
+    def _get_worker_payment(self,row,net_worth,equity_target):
         if self.method == 'net worth' and net_worth < equity_target * self.inflation_ls[row] and not self.triggered:
+        # Have to generate new list if using 'net worth' method
             ss_date=self.date_ls[row]
             self.ss_age = math.trunc(ss_date) + self.age - simulator.TODAY_YR
-            if self.ss_age >= EARLY_AGE and self.ss_age <= LATE_AGE:
+            if self.ss_age >= EARLY_AGE and self.ss_age <= LATE_AGE: # confirm worker is of age to retire
                 self.triggered = True
-                self.make_list(ss_date)
+                self._make_list(ss_date)
         return self.ls[row]
+    
+    def _get_spousal_payment(self,row,net_worth,equity_target):
+        """Returns the eligible portion of a spouse's income the worker could receive.
+        https://www.ssa.gov/benefits/retirement/planner/applying7.html"""
+        if not self.spouse_calc or self.spouse_calc._get_worker_payment(row,net_worth,equity_target) == 0 or row < self.ss_row: # if not married or spouse not receiving payments yet or worker's social security hasn't been triggered yet (worker's SS strategy should not be overridden by spouse's strategy)
+            return 0
+        spouse_payment = self.spouse_calc._get_worker_payment(row,net_worth,equity_target)
+        inverted_spouse_payment = spouse_payment / self.spouse_calc.benefit_rate # reverse the adjustment used to calculate spouse's PIA 
+        spousal_benefit = 0.5 * inverted_spouse_payment * self.benefit_rate # Worker's can earn up to half of their spouse's PIA, adjusted by the worker's benefit rate
+        if self.pension and hasattr(self.sim, 'pension_ls'): # if this worker has a pension and that pension has started paying yet:
+            spousal_benefit = max(0,spousal_benefit - (2/3) * self.sim.pension_ls[row]) # worker's with a pension have to cut spousal benefit by 2/3 of pension payment https://www.ssa.gov/benefits/retirement/planner/gpo-calc.html
+        return spousal_benefit
         
     def _add_to_earnings_record(self,date_ls,income_ls):
         for date, income in zip(date_ls,income_ls):
@@ -105,8 +121,7 @@ class Calculator:
                 if year in self.earnings_record:
                     self.earnings_record[year] += income
                 else: self.earnings_record[year] = income
-    
-    
+        
     def _back_estimate(self):
         pass # backfill assumed earnings. If you don't end up using simulator or FLAT_INFLATION, remove from init
             
@@ -132,4 +147,4 @@ def test_unit():
                      date_ls=test_date_ls,income_ls=test_income_ls,
                      imported_record=test_user_record)
     inflation_ls = returnGenerator.main(my_simulator.rows,4,1)[3][0]
-    return ss_calc.make_list(ss_date=2061.25,inflation_ls=inflation_ls)
+    return ss_calc._make_list(ss_date=2061.25,inflation_ls=inflation_ls)
