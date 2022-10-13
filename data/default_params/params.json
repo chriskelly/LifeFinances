@@ -33,6 +33,10 @@
         "val": "0.04",
         "popout": 0
     },
+    "Pension Trust Factor": {
+        "val": "0.8",
+        "popout": 0
+    },
     "User Social Security Method": {
         "val": "net worth",
         "range": "['early','mid','late','net worth']"
