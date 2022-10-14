@@ -1,16 +1,40 @@
 import json
-# had issues with params file location between windows and macOS
-# from pathlib import Path
-# script_location = Path(__file__).absolute().parent
-# params_values_location = script_location / 'params.json'
 import data.constants as const
 
+def update_dicts(up_to_date:dict,out_of_date:dict):
+    """Looks for new keys added or keys removed from the most recently updated dict. 
+    Copys over new keys to old dict and removes keys not found in the updated version."""
+    for key in up_to_date.keys():
+        if key not in out_of_date:
+            out_of_date[key] = up_to_date[key]
+    del_keys = [] # needed since you can't delete keys while iterating through
+    for key in out_of_date.keys():
+        if key not in up_to_date:
+            del_keys.append(key)
+    for key in del_keys:
+        del out_of_date[key]
+    out_of_date['Version']['val'] = up_to_date['Version']['val']
+    print('Parameters Updated')
+    # doesn't need to return since the dicts are directly modified
+
 def load_params() -> dict:
+    """Checks that params is up-to-date, then returns params.
+    If params or default_params out of date, will update the out-of-date json and save it."""
     try:
         with open(const.PARAMS_LOC) as json_file:
             params = json.load(json_file)
+        with open(const.DEFAULT_PARAMS_LOC) as json_file:
+            default_params = json.load(json_file)
     except:
         raise Exception('Parameter file not found. Copy from /data/default_params and place in /data folder.')
+    if float(params['Version']['val']) > float(default_params['Version']['val']):
+        update_dicts(up_to_date=params, out_of_date=default_params)
+        with open(const.DEFAULT_PARAMS_LOC, 'w') as outfile:
+            json.dump(default_params, outfile, indent=4)
+    if float(default_params['Version']['val']) > float(params['Version']['val']):
+        update_dicts(up_to_date=default_params, out_of_date=params)
+        with open(const.PARAMS_LOC, 'w') as outfile:
+            json.dump(params, outfile, indent=4)
     return params
 
 class Model:
