@@ -39,7 +39,6 @@ class Simulator:
     # ------------STATIC LISTS: TIME, JOB INCOME------------ #
         debug_lvl = DEBUG_LVL
         FLAT_INFLATION = self._val("Flat Inflation (%)",QT_MOD=False) # Used for some estimations like pension
-        FLAT_INFLATION_QT = FLAT_INFLATION ** (1. / 4)
         working_qts = int((self.fi_date-TODAY_YR_QT)/.25)
         options= {
             'debug_lvl': DEBUG_LVL,
@@ -75,9 +74,6 @@ class Simulator:
         #TODO: #57 Remove job_income_ls and replace with list of incomes (usr_income_1, partner_income_1, usr_income_2, etc)
         job_income_ls  = job_income_ls + barista_income_ls + ([0] * (FI_qts - barista_qts)) 
         tax_deferred_ls = tax_deferred_ls + ([0]*FI_qts) 
-
-
-    
 
         
     # ------------ MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
@@ -146,36 +142,6 @@ class Simulator:
                         for other_kids,yr_qt in zip(kids_ls,time_ls) ]
             
             
-            # Allocation between equity, RE and bonds. Allows for different methods to be designed
-            def allocation(method:str,**kw):
-                """Return a dict {"Equity":EquityAlloc, "RE":REAlloc, "Bond":BondAlloc} \n
-                method = 'Life Cycle' -> needs kw['inflation'] and kw['net_worth']"""
-                if method == 'Life Cycle':
-                    re_ratio = self.params["RE Ratio"]
-                    equity_target = self.params["Equity Target"] 
-                    max_risk_factor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
-                    equity_target_PV = equity_target*kw['inflation'] # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
-                    risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
-                    with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
-                        warnings.simplefilter("ignore")
-                        try: re_alloc = (risk_factor*re_ratio)/((1-re_ratio)*(1+risk_factor*re_ratio/(1-re_ratio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
-                        except ZeroDivisionError: re_alloc = (risk_factor*re_ratio)
-                    equity_alloc = (1-re_alloc)*risk_factor
-                    bond_alloc = max(1-re_alloc-equity_alloc,0) 
-                    return {"Equity":equity_alloc,"RE":re_alloc,"Bond":bond_alloc,"Annuity":0}
-                if method == 'Life Cycle Annuity':
-                    re_ratio = self.params["RE Ratio"]
-                    equity_target = self.params["Equity Target"] 
-                    max_risk_factor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
-                    equity_target_PV = equity_target*kw['inflation'] # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
-                    risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
-                    with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
-                        warnings.simplefilter("ignore")
-                        try: re_alloc = (risk_factor*re_ratio)/((1-re_ratio)*(1+risk_factor*re_ratio/(1-re_ratio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
-                        except ZeroDivisionError: re_alloc = (risk_factor*re_ratio)
-                    equity_alloc = (1-re_alloc)*risk_factor
-                    annuity_alloc = max(1-re_alloc-equity_alloc,0) 
-                    return {"Equity":equity_alloc,"RE":re_alloc,"Bond":0,"Annuity":annuity_alloc}
             # Net Worth/total savings
             spending_ls, total_costs_ls, net_transaction_ls, equity_alloc_ls = [],[],[],[]
             re_alloc_ls, bond_alloc_ls, taxes_ls, total_income_ls, usr_ss_ls, partner_ss_ls = [],[],[],[],[],[]
@@ -186,14 +152,17 @@ class Simulator:
             net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
             for row in range(self.rows): 
                 # allocations
-                alloc = allocation(method=self._val("Allocation Method",QT_MOD=False),inflation=inflation_ls[row],net_worth = net_worth_ls[-1])
+                alloc = self.allocation(inflation=inflation_ls[row],
+                                        net_worth = net_worth_ls[-1])
                 equity_alloc_ls.append(alloc["Equity"])
                 re_alloc_ls.append(alloc["RE"])
                 bond_alloc_ls.append(alloc["Bond"])
                 # social security 
                 usr_ss_ls.append(usr_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 partner_ss_ls.append(partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
-                if self.admin: partner_ss_ls[-1] += self.get_pension_payment(her_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) # add denica pension if you're Chris
+                if self.admin: 
+                    # add denica pension if you're Chris
+                    partner_ss_ls[-1] += self.get_pension_payment(her_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) 
                 # taxes
                 # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
                 income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row])+0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row])
@@ -481,6 +450,62 @@ class Simulator:
             if kw['return_rate'] is not None:
                 spending = spending*(1+max_flux) if kw['return_rate'] > expected_return_rate_qt else spending*(1-max_flux)
         return spending
+    
+    def allocation(self, inflation, **kw):
+        """
+        Calculates allocation between equity, RE and bonds. 
+        Allows for different methods to be designed
+        
+        Parameters
+        ----------
+        inflation : numeric
+            quarterly rate of inflation
+        
+        Returns 
+        -------
+        output: dict 
+            {"Equity":EquityAlloc, "RE":REAlloc, "Bond":BondAlloc} 
+        """
+        method= self._val("Allocation Method",QT_MOD=False)
+        re_ratio = self.params["RE Ratio"]
+        equity_target = self.params["Equity Target"] 
+        max_risk_factor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
+        
+        if method == 'Life Cycle':
+            #method = 'Life Cycle' -> kw['net_worth']
+            equity_target_PV = equity_target*inflation # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
+            risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
+            with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
+                warnings.simplefilter("ignore")
+                try: 
+                    re_alloc = (risk_factor*re_ratio)/((1-re_ratio)*(1+risk_factor*re_ratio/(1-re_ratio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
+                except ZeroDivisionError: 
+                    re_alloc = (risk_factor*re_ratio)
+            equity_alloc = (1-re_alloc)*risk_factor
+            bond_alloc = max(1-re_alloc-equity_alloc,0) 
+            output= {"Equity":equity_alloc,
+                     "RE":re_alloc,
+                     "Bond":bond_alloc,
+                     "Annuity":0}
+        elif method == 'Life Cycle Annuity':
+            equity_target_PV = equity_target*inflation # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
+            risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
+            with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
+                warnings.simplefilter("ignore")
+                try: 
+                    re_alloc = (risk_factor*re_ratio)/((1-re_ratio)*(1+risk_factor*re_ratio/(1-re_ratio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
+                except ZeroDivisionError: 
+                    re_alloc = (risk_factor*re_ratio)
+            equity_alloc = (1-re_alloc)*risk_factor
+            annuity_alloc = max(1-re_alloc-equity_alloc,0) 
+            output= {"Equity":equity_alloc,
+                     "RE":re_alloc,
+                     "Bond":0,
+                     "Annuity":annuity_alloc}
+        else: 
+            raise ValueError("Allocation method is not defined")
+        return output
+    
 
 # -------------------------------- JUST FOR TESTING -------------------------------- #
 
