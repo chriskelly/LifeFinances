@@ -11,7 +11,6 @@ sys.path.append(git_root)
 from models import returnGenerator, annuity, model
 from data import constants as const
 
-# For reference, something that has a 3% growth is a 0.03 return/rate and 1.03 yield. That's how I'll define return/rate and yield here
 
 DEBUG_LVL = 1 # LVL 1: Print success rate, save worst failure, show plot | LVL 2: Investigate each result 1 by 1
 SAVE_DIR = os.path.join(git_root,'diagnostics/saved')
@@ -27,6 +26,29 @@ else:
     os.makedirs(SAVE_DIR)
 
 class Simulator:
+    """
+    This class can simulate the income and expenses of a user and their family
+    given the desired parameters. The adjustable parameters are all located in
+    data/params.json
+    
+    The default unit of time is a quarter of a year. Calculations are not done
+    per year.
+    
+    For reference, something that has a 3% growth is a 0.03 return/rate and 
+    1.03 yield. That's how I'll define return/rate and yield here
+    
+    Methods
+    -------
+    main()
+        Creates data and runs the Montecarlo simulations
+    get_pension_payment()
+        Calculates pension per quarter
+    base_spending()
+        Calculates quarterly expenses
+    allocation()
+        Determines the allocation of investments per quarter
+    
+    """
     def __init__(self,param_vals,override_dict={}):
         self.params = self._clean_data(param_vals)
         self.rows = int((param_vals['Calculate Til'] - TODAY_YR_QT)/.25)
