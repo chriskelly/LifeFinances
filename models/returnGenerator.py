@@ -9,9 +9,36 @@ DEBUG_LVL = 0
 iter = 0
 
 def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns):
+    """
+    What the hell is going in this function?    
+
+    Parameters
+    ----------
+    mean : TYPE
+        DESCRIPTION.
+    stdev : TYPE
+        DESCRIPTION.
+    annual_high : TYPE
+        DESCRIPTION.
+    annual_low : TYPE
+        DESCRIPTION.
+    qty_per_column : int or float
+        DESCRIPTION.
+    qty_per_year : int or float
+        Quantity per year, e.g. 4 for quarterly calculations
+    columns : int or float
+        DESCRIPTION.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
     global iter
     iter = 0
-    stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
+    # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
+    stdev = stdev / math.sqrt(qty_per_year) 
     mean = mean ** (1/qty_per_year)
     years_qty = math.ceil(qty_per_column/qty_per_year)
     def make_return_ls():
