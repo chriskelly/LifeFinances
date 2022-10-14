@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from models import returnGenerator, annuity, model, socialSecurity
-import git, sys # install gitpython
+import git, sys
 git_root= git.Repo(os.path.abspath(''),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 sys.path.append(git_root)
@@ -36,7 +36,7 @@ class Simulator:
             
     def main(self):
 # -------------------------------- VARIABLES -------------------------------- #      
-    # ------------STATIC LISTS: TIME, JOB INCOME------------ #
+    # STATIC LISTS: TIME, JOB INCOME --------------------------------------- #
         debug_lvl = DEBUG_LVL
         FLAT_INFLATION = self._val("Flat Inflation (%)",QT_MOD=False) # Used for some estimations like pension
         working_qts = int((self.fi_date-TODAY_YR_QT)/.25)
@@ -76,7 +76,7 @@ class Simulator:
         tax_deferred_ls = tax_deferred_ls + ([0]*FI_qts) 
 
         
-    # ------------ MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
+    # MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
         # variables that don't alter with each run
         if 'monte_carlo_runs' in self.override_dict:
             monte_carlo_runs = self.override_dict['monte_carlo_runs']
@@ -99,6 +99,7 @@ class Simulator:
         final_net_worths = [] # Establish empty list to calculate net worth median. Chris: Preference on using "_ls" here or reserving "_ls" only for the lists representing each period?
         worst_failure_idx = self.rows
         failure_dict ={}
+        
         # Monte Carlo
         for col in range(monte_carlo_runs):
             stock_return_ls = stock_return_arr[col]
@@ -110,20 +111,6 @@ class Simulator:
             usr_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,time_ls,usr_income_ls)
             partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,time_ls,partner_income_ls)
            
-            # Taxes (brackets are for yearly, not qt, so need conversion)
-            def get_taxes(income_qt):
-                """Returns combined federal and state taxes on non-tax-deferred income"""
-                fed_taxes = bracket_math(const.FED_BRACKET_RATES,max(4*income_qt-const.FED_STD_DEDUCTION,0))
-                state_taxes = bracket_math(const.CA_BRACKET_RATES,max(4*income_qt-const.CA_STD_DEDUCTION,0))
-                return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
-            def bracket_math(bracket:list,income):
-                rates,bend_points = zip(*bracket) # reverses the more readable format in the json file to the easier to use format for comprehension
-                rates,bend_points = list(rates), list(bend_points) # they unzip as tuples for some reason
-                bend_points += [income]
-                bend_points.sort()
-                bend_points = bend_points[:bend_points.index(income)+1]
-                return sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
-                    in zip(enumerate(bend_points),rates)])
                 # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income). Her income excluded from SS due to pension
             #medicare = [0.0145*job_income for job_income in job_income_ls]
             medicare= np.array(job_income_ls)*0.0145
@@ -133,14 +120,12 @@ class Simulator:
             ss_tax = [0.062*min(his_income_ratio*income,ss_max) for income,ss_max in zip(job_income_ls,ss_max_earnings_qt)]
             ss_tax+= [0]*(self.rows-len(ss_tax))
             
-            
             # Kid count   
                 # kids_ls should have kid for every year from each kid's birth till 22 years after
             kids_ls = [0]*self.rows
             for kid_yr in kid_year_qts:
                 kids_ls = [other_kids + 1 if yr_qt>=kid_yr and yr_qt-22<kid_yr else other_kids 
                         for other_kids,yr_qt in zip(kids_ls,time_ls) ]
-            
             
             # Net Worth/total savings
             spending_ls, total_costs_ls, net_transaction_ls, equity_alloc_ls = [],[],[],[]
@@ -261,7 +246,7 @@ class Simulator:
         debug_point = None
         
 
-# -------------------------------- HELPER FUNCTIONS -------------------------------- #
+    # HELPER FUNCTIONS ---------------------------------------------------- #
     
     def _step_quarterize(self,first_val,increase_yield,mode,**kw) -> list:
         """Return a list with values that step up on a yearly basis rather than quarterly \n
@@ -506,16 +491,44 @@ class Simulator:
             raise ValueError("Allocation method is not defined")
         return output
     
+# ADDITIONAL HELPER FUNCTIONS ------------------------------------------- #
+#These functions do not requre the class
+def get_taxes(income_qt):
+    """
+    Combines federal and state taxes on non-tax-deferred income
 
-# -------------------------------- JUST FOR TESTING -------------------------------- #
+    Parameters
+    ----------
+    income_qt : numeric
+        income for a given quarter.
+
+    Returns
+    -------
+    float
+        taxes for a given quarter.
+
+    """
+    # Taxes (brackets are for yearly, not qt, so need conversion)
+    fed_taxes = bracket_math(const.FED_BRACKET_RATES,max(4*income_qt-const.FED_STD_DEDUCTION,0))
+    state_taxes = bracket_math(const.CA_BRACKET_RATES,max(4*income_qt-const.CA_STD_DEDUCTION,0))
+    return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
+
+def bracket_math(bracket:list,income):
+    rates,bend_points = zip(*bracket) # reverses the more readable format in the json file to the easier to use format for comprehension
+    rates,bend_points = list(rates), list(bend_points) # they unzip as tuples for some reason
+    bend_points += [income]
+    bend_points.sort()
+    bend_points = bend_points[:bend_points.index(income)+1]
+    return sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
+        in zip(enumerate(bend_points),rates)])
+
+# JUST FOR TESTING ----------------------------------------------------- #
 
 params = model.load_params()
 param_vals = {key:obj["val"] for (key,obj) in params.items()}
 
 
-def test_unit():
-    return Simulator(param_vals)
-
 if __name__ == '__main__':
-    test_simulator = test_unit()
+    #instantiate a Simulator with the loaded parameters
+    test_simulator = Simulator(param_vals)
     test_simulator.main()
