@@ -1,11 +1,11 @@
 
 class Annuity:
-    def __init__(self,interest_yield_qt,payout_rate_qt,time_ls:list):
+    def __init__(self,interest_yield_qt,payout_rate_qt,date_ls:list):
         self.interest_yield = interest_yield_qt
         self.payout_rate = payout_rate_qt
-        self.time_ls = time_ls
-        self.transactions = [0 for _ in time_ls] #net contibutions/withdrawals
-        self.balances = [0 for _ in time_ls]
+        self.time_ls = date_ls
+        self.transactions = [0 for _ in date_ls] #net contibutions/withdrawals
+        self.balances = [0 for _ in date_ls]
         self.annuitized = False
     
     def contribute(self,amount,date):
@@ -34,7 +34,7 @@ class Annuity:
     
     
 if __name__ == '__main__':
-    annuity = Annuity(interest_yield_qt=1.001,payout_rate_qt=0.01,time_ls=[2022,2022.25,2022.5,2022.75,2023,2023.25,2023.5,2023.75])
+    annuity = Annuity(interest_yield_qt=1.001,payout_rate_qt=0.01,date_ls=[2022,2022.25,2022.5,2022.75,2023,2023.25,2023.5,2023.75])
     annuity.contribute(100,2022)
     annuity.contribute(100,2022.5)
     #annuity.annuitize(2023.5)
