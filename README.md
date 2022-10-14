@@ -13,7 +13,6 @@ pip install -r dependencies.txt
 - `genetic.py`: Running this starts an infinite loop. The simulator will be run over and over again with slightly randomized parameters ('Range' property of any variable in data/params.json). When a parameter set is found that meets the TARGET_SUCCESS_RATE, data/params.json will be overwritten with those params, and the loop will start over again with a more agressive FI Date target.
 
 ### Other files
-- test2.py: just a test bed for trying out code, feel free to overwrite anytime. Probably should just be put into gitignore
 - data folder
   - default_params: if anything happens to your params.json, you can grab this copy to use
   - historical_data: project to generate returns modeled heavily after old returns. Not implemented yet
@@ -30,7 +29,7 @@ pip install -r dependencies.txt
   - model.py: GUI model module
   - returnGenerator.py: Generates randomized returns for equity and real estate. Also generates random inflation data
   - skewDist.py: used by returnGenerator to skew distributions of inflation to match historical data better
-  - socialSecuity.py: Intended to replace calculating social security payments in simulator.py
+  - socialSecuity.py: Calculates social security payments in simulator.py
 - views folder: view modules for the GUI
   
   
