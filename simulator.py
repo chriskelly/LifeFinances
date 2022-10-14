@@ -544,13 +544,31 @@ def bracket_math(bracket:list,income):
     return sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
         in zip(enumerate(bend_points),rates)])
 
+def test_unit():
+    """
+    Creates a Simulator with only 1 monte carlo simulation allowed. 
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    Simulator
+        Instance of the class defined in this file. 
+
+    """
+    params = model.load_params()
+    param_vals = {key:obj["val"] for (key,obj) in params.items()}
+    
+    return Simulator(param_vals, override_dict={'monte_carlo_runs':1})
+
 # JUST FOR TESTING ----------------------------------------------------- #
 
 params = model.load_params()
 param_vals = {key:obj["val"] for (key,obj) in params.items()}
 
-
 if __name__ == '__main__':
-    #instantiate a Simulator with the loaded parameters
-    test_simulator = Simulator(param_vals)
+    #instantiate a Simulator and run at least 1 simulation
+    test_simulator = test_unit()
     test_simulator.main()
