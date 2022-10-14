@@ -31,9 +31,19 @@ class Simulator:
     
     The default unit of time is a quarter of a year. Calculations are not done
     per year.
+    The default unit for money is $1,000 USD (e.g. thousands)
     
-    Return/rate/yield definitions: something that has a 3% growth is a 0.03 return/rate and 
-    1.03 yield
+    Return/rate/yield definitions: something that has a 3% growth is a 0.03  
+    return/rate and 1.03 yield
+    
+    Attributes
+    ----------
+    params : dict
+    rows : int
+        The total number of periods per simulation
+    admin : bool
+    fi_date : ?
+    override_dict : dict
     
     Methods
     -------
@@ -47,8 +57,24 @@ class Simulator:
         Determines the allocation of investments per quarter
     
     """
-    def __init__(self,param_vals,override_dict={}):
-        self.params = self._clean_data(param_vals)
+    def __init__(self, fi_model, override_dict={}):
+        """
+        Construct a Simulator out of the params in the given model
+
+        Parameters
+        ----------
+        fi_model : Model
+            A Model from the model module.
+        override_dict : dict, optional
+            Use this input to override named parameters. The default is {}.
+
+        Returns
+        -------
+        None.
+
+        """
+        param_vals = {key:obj["val"] for (key,obj) in fi_model.params.items()}
+        self.params = fi_model._clean_data(param_vals)
         self.rows = int((param_vals['Calculate Til'] - TODAY_YR_QT)/.25)
         self.fi_date = self.params["FI Quarter"]
         self.admin = self.params["Admin"] # Are you Chris?
@@ -106,7 +132,8 @@ class Simulator:
         if 'returns' in self.override_dict:
             stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = self.override_dict['returns']
         else:
-            stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = returnGenerator.main(self.rows,4,monte_carlo_runs) # bring in generated returns. Would prefer to use multiprocessing, but can't figure out how to get arrays of arrays handed back in .Value()
+            # bring in generated returns. Would prefer to use multiprocessing, but can't figure out how to get arrays of arrays handed back in .Value()
+            stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = returnGenerator.main(self.rows,4,monte_carlo_runs) 
         spending_qt = self._val("Total Spending (Yearly)",QT_MOD='dollar')
         retirement_change = self._val("Retirement Change (%)",QT_MOD=False) # reduction of spending expected at retirement (less driving, less expensive cost of living, etc)
             # make a kids array with years of kids being planned
@@ -225,7 +252,10 @@ class Simulator:
                     "Bond Returns":bond_return_ls,
                     "RE Returns":re_return_ls
                 }
-            if debug_lvl >= 1: plt.plot(date_ls,net_worth_ls)
+            if debug_lvl >= 1: 
+                plt.plot(date_ls,net_worth_ls)
+                plt.ylabel('net worth, $1,000s')
+                plt.xlabel('time')
             if debug_lvl >= 2: 
                 plt.show()
                 usr_input = input("save (s), next (n), continue (c)?")
@@ -255,15 +285,16 @@ class Simulator:
                     save_df.to_csv(f'{const.SAVE_DIR}/saveData{col}.csv')
                 elif usr_input == 'c':
                     debug_lvl = 1
+        #Summarize the results of the simulations
         success_rate = success_rate/monte_carlo_runs
         median_net_worth = statistics.median(final_net_worths)
         if debug_lvl >= 1: 
+            plt.show()
             failure_df = pd.DataFrame.from_dict(failure_dict)
             failure_df.to_csv(f'{const.SAVE_DIR}/worst_failure.csv')
             print(f"Success Rate: {success_rate*100:.2f}%")
             print(f"Median Final Net Worth: ${median_net_worth*1000:,.0f}")
         
-        if debug_lvl >= 1: plt.show()
         return success_rate, [stock_return_arr,bond_return_arr,re_return_arr,inflation_arr]
         
         debug_point = None
@@ -326,27 +357,6 @@ class Simulator:
             return list(np.geomspace(start=START,stop=START*INCREMENT**LEN,num=LEN,endpoint=False))
         else:
             raise Exception("Didn't declare either MULT or ADD")
-    
-    def _clean_data(self, params: dict) -> dict:
-            for k, v in params.items():
-                if type(v) is dict:
-                    continue
-                elif v.isdigit():
-                    params[k] = int(v)
-                elif self._is_float(v):
-                    params[k] = float(v)
-                elif v == "True":
-                    params[k] = True
-                elif v == "False":
-                    params[k] = False
-            return params
-        
-    def _is_float(self, element: any) -> bool:
-        try:
-            float(element)
-            return True
-        except ValueError:
-            return False
         
     def get_pension_payment(self, partner_qt_income, raise_yr, row, inflation_ls, net_worth, options):
         """
@@ -559,10 +569,9 @@ def test_unit():
         Instance of the class defined in this file. 
 
     """
-    params = model.load_params()
-    param_vals = {key:obj["val"] for (key,obj) in params.items()}
+    test_mdl= model.Model()
     
-    return Simulator(param_vals, override_dict={'monte_carlo_runs':1})
+    return Simulator(test_mdl, override_dict={'monte_carlo_runs':1})
 
 # JUST FOR TESTING ----------------------------------------------------- #
 
@@ -572,4 +581,4 @@ param_vals = {key:obj["val"] for (key,obj) in params.items()}
 if __name__ == '__main__':
     #instantiate a Simulator and run at least 1 simulation
     test_simulator = test_unit()
-    test_simulator.main()
+    s_rate, arr= test_simulator.main()
