@@ -58,6 +58,7 @@ class Algorithm:
             # Make children
             children = []
             for idx in range(OFFSPRING_QTY):
+                #TODO: #62 Make a progress loading bar in the terminal for offspring
                 children.append(self._make_child(full_params,parent_mute_params,success_rate,mutate='step',
                                                  max_step=max(1,parent_is_best_qty),idx=idx))
             # Find best child (or use parent if all children worse)
