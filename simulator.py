@@ -4,13 +4,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from models import returnGenerator, annuity, model, socialSecurity
-import git, sys # install gitpython
+import git, sys
 git_root= git.Repo(os.path.abspath(''),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 sys.path.append(git_root)
 from data import constants as const
 
-# For reference, something that has a 3% growth is a 0.03 return/rate and 1.03 yield. That's how I'll define return/rate and yield here
 
 DEBUG_LVL = 1 # LVL 1: Print success rate, save worst failure, show plot | LVL 2: Investigate each result 1 by 1
 TODAY = dt.date.today()
@@ -25,6 +24,29 @@ else:
     os.makedirs(const.SAVE_DIR)
 
 class Simulator:
+    """
+    This class can simulate the income and expenses of a user and their partner
+    given the desired parameters. The adjustable parameters are all located in
+    data/params.json
+    
+    The default unit of time is a quarter of a year. Calculations are not done
+    per year.
+    
+    Return/rate/yield definitions: something that has a 3% growth is a 0.03 return/rate and 
+    1.03 yield
+    
+    Methods
+    -------
+    main()
+        Creates data and runs the Montecarlo simulations
+    get_pension_payment()
+        Calculates pension per quarter
+    base_spending()
+        Calculates quarterly expenses
+    allocation()
+        Determines the allocation of investments per quarter
+    
+    """
     def __init__(self,param_vals,override_dict={}):
         self.params = self._clean_data(param_vals)
         self.rows = int((param_vals['Calculate Til'] - TODAY_YR_QT)/.25)
@@ -34,10 +56,10 @@ class Simulator:
             
     def main(self):
 # -------------------------------- VARIABLES -------------------------------- #      
-    # ------------STATIC LISTS: DATE, JOB INCOME------------ #
+    # STATIC LISTS: TIME, JOB INCOME --------------------------------------- #
+
         debug_lvl = DEBUG_LVL
         FLAT_INFLATION = self._val("Flat Inflation (%)",QT_MOD=False) # Used for some estimations like pension
-        FLAT_INFLATION_QT = FLAT_INFLATION ** (1. / 4)
         working_qts = int((self.fi_date-TODAY_YR_QT)/.25)
         
         # Year.Quarter list 
@@ -74,11 +96,8 @@ class Simulator:
         job_income_ls  = job_income_ls + barista_income_ls + ([0] * (FI_qts - barista_qts)) 
         tax_deferred_ls = tax_deferred_ls + ([0]*FI_qts) 
 
-
-    
-
         
-    # ------------ MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
+    # MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
         # variables that don't alter with each run
         if 'monte_carlo_runs' in self.override_dict:
             monte_carlo_runs = self.override_dict['monte_carlo_runs']
@@ -101,6 +120,7 @@ class Simulator:
         final_net_worths = [] # Establish empty list to calculate net worth median. Chris: Preference on using "_ls" here or reserving "_ls" only for the lists representing each period?
         worst_failure_idx = self.rows
         failure_dict ={}
+        
         # Monte Carlo
         for col in range(monte_carlo_runs):
             stock_return_ls = stock_return_arr[col]
@@ -112,20 +132,6 @@ class Simulator:
             usr_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,date_ls,usr_income_ls)
             partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,date_ls,partner_income_ls,spouse_calc=usr_ss_calc)
            
-            # Taxes (brackets are for yearly, not qt, so need conversion)
-            def get_taxes(income_qt):
-                """Returns combined federal and state taxes on non-tax-deferred income"""
-                fed_taxes = bracket_math(const.FED_BRACKET_RATES,max(4*income_qt-const.FED_STD_DEDUCTION,0))
-                state_taxes = bracket_math(const.CA_BRACKET_RATES,max(4*income_qt-const.CA_STD_DEDUCTION,0))
-                return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
-            def bracket_math(bracket:list,income):
-                rates,bend_points = zip(*bracket) # reverses the more readable format in the json file to the easier to use format for comprehension
-                rates,bend_points = list(rates), list(bend_points) # they unzip as tuples for some reason
-                bend_points += [income]
-                bend_points.sort()
-                bend_points = bend_points[:bend_points.index(income)+1]
-                return sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
-                    in zip(enumerate(bend_points),rates)])
                 # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income). Her income excluded from SS due to pension
             #medicare = [0.0145*job_income for job_income in job_income_ls]
             medicare= np.array(job_income_ls)*0.0145
@@ -135,7 +141,6 @@ class Simulator:
             ss_tax = [0.062*min(his_income_ratio*income,ss_max) for income,ss_max in zip(job_income_ls,ss_max_earnings_qt)]
             ss_tax+= [0]*(self.rows-len(ss_tax))
             
-            
             # Kid count   
                 # kids_ls should have kid for every year from each kid's birth till 22 years after
             kids_ls = [0]*self.rows
@@ -143,37 +148,6 @@ class Simulator:
                 kids_ls = [other_kids + 1 if yr_qt>=kid_yr and yr_qt-22<kid_yr else other_kids 
                         for other_kids,yr_qt in zip(kids_ls,date_ls) ]
             
-            
-            # Allocation between equity, RE and bonds. Allows for different methods to be designed
-            def allocation(method:str,**kw):
-                """Return a dict {"Equity":EquityAlloc, "RE":REAlloc, "Bond":BondAlloc} \n
-                method = 'Life Cycle' -> needs kw['inflation'] and kw['net_worth']"""
-                if method == 'Life Cycle':
-                    re_ratio = self.params["RE Ratio"]
-                    equity_target = self.params["Equity Target"] 
-                    max_risk_factor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
-                    equity_target_PV = equity_target*kw['inflation'] # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
-                    risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
-                    with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
-                        warnings.simplefilter("ignore")
-                        try: re_alloc = (risk_factor*re_ratio)/((1-re_ratio)*(1+risk_factor*re_ratio/(1-re_ratio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
-                        except ZeroDivisionError: re_alloc = (risk_factor*re_ratio)
-                    equity_alloc = (1-re_alloc)*risk_factor
-                    bond_alloc = max(1-re_alloc-equity_alloc,0) 
-                    return {"Equity":equity_alloc,"RE":re_alloc,"Bond":bond_alloc,"Annuity":0}
-                if method == 'Life Cycle Annuity':
-                    re_ratio = self.params["RE Ratio"]
-                    equity_target = self.params["Equity Target"] 
-                    max_risk_factor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
-                    equity_target_PV = equity_target*kw['inflation'] # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
-                    risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
-                    with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
-                        warnings.simplefilter("ignore")
-                        try: re_alloc = (risk_factor*re_ratio)/((1-re_ratio)*(1+risk_factor*re_ratio/(1-re_ratio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
-                        except ZeroDivisionError: re_alloc = (risk_factor*re_ratio)
-                    equity_alloc = (1-re_alloc)*risk_factor
-                    annuity_alloc = max(1-re_alloc-equity_alloc,0) 
-                    return {"Equity":equity_alloc,"RE":re_alloc,"Bond":0,"Annuity":annuity_alloc}
             # Net Worth/total savings
             spending_ls, total_costs_ls, net_transaction_ls, equity_alloc_ls = [],[],[],[]
             re_alloc_ls, bond_alloc_ls, taxes_ls, total_income_ls, usr_ss_ls, partner_ss_ls = [],[],[],[],[],[]
@@ -184,7 +158,8 @@ class Simulator:
             net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
             for row in range(self.rows): 
                 # allocations
-                alloc = allocation(method=self._val("Allocation Method",QT_MOD=False),inflation=inflation_ls[row],net_worth = net_worth_ls[-1])
+                alloc = self.allocation(inflation=inflation_ls[row],
+                                        net_worth = net_worth_ls[-1])
                 equity_alloc_ls.append(alloc["Equity"])
                 re_alloc_ls.append(alloc["RE"])
                 bond_alloc_ls.append(alloc["Bond"])
@@ -193,6 +168,9 @@ class Simulator:
                 usr_ss_ls.append(trust * usr_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 partner_ss_ls.append(trust * partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 if self.admin: partner_ss_ls[-1] += trust * self.get_pension_payment(her_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) # add denica pension if you're Chris
+                if self.admin: 
+                    # add denica pension if you're Chris
+                    partner_ss_ls[-1] += trust * self.get_pension_payment(her_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) 
                 # taxes
                 # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
                 income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row])+0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row])
@@ -291,7 +269,7 @@ class Simulator:
         debug_point = None
         
 
-# -------------------------------- HELPER FUNCTIONS -------------------------------- #
+    # HELPER FUNCTIONS ---------------------------------------------------- #
     
     def _step_quarterize(self,first_val,increase_yield,mode,**kw) -> list:
         """Return a list with values that step up on a yearly basis rather than quarterly \n
@@ -480,16 +458,118 @@ class Simulator:
             if kw['return_rate'] is not None:
                 spending = spending*(1+max_flux) if kw['return_rate'] > expected_return_rate_qt else spending*(1-max_flux)
         return spending
+    
+    def allocation(self, inflation, **kw):
+        """
+        Calculates allocation between equity, RE and bonds. 
+        Allows for different methods to be designed
+        
+        Parameters
+        ----------
+        inflation : numeric
+            quarterly rate of inflation
+        
+        Returns 
+        -------
+        output: dict 
+            {"Equity":EquityAlloc, "RE":REAlloc, "Bond":BondAlloc} 
+        """
+        method= self._val("Allocation Method",QT_MOD=False)
+        re_ratio = self.params["RE Ratio"]
+        equity_target = self.params["Equity Target"] 
+        max_risk_factor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
+        
+        if method == 'Life Cycle':
+            #method = 'Life Cycle' -> kw['net_worth']
+            equity_target_PV = equity_target*inflation # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
+            risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
+            with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
+                warnings.simplefilter("ignore")
+                try: 
+                    re_alloc = (risk_factor*re_ratio)/((1-re_ratio)*(1+risk_factor*re_ratio/(1-re_ratio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
+                except ZeroDivisionError: 
+                    re_alloc = (risk_factor*re_ratio)
+            equity_alloc = (1-re_alloc)*risk_factor
+            bond_alloc = max(1-re_alloc-equity_alloc,0) 
+            output= {"Equity":equity_alloc,
+                     "RE":re_alloc,
+                     "Bond":bond_alloc,
+                     "Annuity":0}
+        elif method == 'Life Cycle Annuity':
+            equity_target_PV = equity_target*inflation # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
+            risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
+            with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
+                warnings.simplefilter("ignore")
+                try: 
+                    re_alloc = (risk_factor*re_ratio)/((1-re_ratio)*(1+risk_factor*re_ratio/(1-re_ratio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
+                except ZeroDivisionError: 
+                    re_alloc = (risk_factor*re_ratio)
+            equity_alloc = (1-re_alloc)*risk_factor
+            annuity_alloc = max(1-re_alloc-equity_alloc,0) 
+            output= {"Equity":equity_alloc,
+                     "RE":re_alloc,
+                     "Bond":0,
+                     "Annuity":annuity_alloc}
+        else: 
+            raise ValueError("Allocation method is not defined")
+        return output
+    
+# ADDITIONAL HELPER FUNCTIONS ------------------------------------------- #
+#These functions do not requre the class
+def get_taxes(income_qt):
+    """
+    Combines federal and state taxes on non-tax-deferred income
 
-# -------------------------------- JUST FOR TESTING -------------------------------- #
+    Parameters
+    ----------
+    income_qt : numeric
+        income for a given quarter.
+
+    Returns
+    -------
+    float
+        taxes for a given quarter.
+
+    """
+    # Taxes (brackets are for yearly, not qt, so need conversion)
+    fed_taxes = bracket_math(const.FED_BRACKET_RATES,max(4*income_qt-const.FED_STD_DEDUCTION,0))
+    state_taxes = bracket_math(const.CA_BRACKET_RATES,max(4*income_qt-const.CA_STD_DEDUCTION,0))
+    return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
+
+def bracket_math(bracket:list,income):
+    rates,bend_points = zip(*bracket) # reverses the more readable format in the json file to the easier to use format for comprehension
+    rates,bend_points = list(rates), list(bend_points) # they unzip as tuples for some reason
+    bend_points += [income]
+    bend_points.sort()
+    bend_points = bend_points[:bend_points.index(income)+1]
+    return sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
+        in zip(enumerate(bend_points),rates)])
+
+def test_unit():
+    """
+    Creates a Simulator with only 1 monte carlo simulation allowed. 
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    Simulator
+        Instance of the class defined in this file. 
+
+    """
+    params = model.load_params()
+    param_vals = {key:obj["val"] for (key,obj) in params.items()}
+    
+    return Simulator(param_vals, override_dict={'monte_carlo_runs':1})
+
+# JUST FOR TESTING ----------------------------------------------------- #
 
 params = model.load_params()
 param_vals = {key:obj["val"] for (key,obj) in params.items()}
 
-
-def test_unit():
-    return Simulator(param_vals)
-
 if __name__ == '__main__':
+    #instantiate a Simulator and run at least 1 simulation
     test_simulator = test_unit()
     test_simulator.main()
