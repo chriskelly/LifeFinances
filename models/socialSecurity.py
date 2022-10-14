@@ -35,9 +35,32 @@ WORK_START_AGE = 22 # Assumed age for starting work
 
 
 class Calculator:
-    def __init__(self,sim:simulator.Simulator,usr:str,inflation_ls,date_ls,income_ls,spouse_calc=None):
-        """Methods include 'early', 'mid', and 'late' for age dependent retirements. 
-        The 'net worth' method triggers withdrawals if net worth drops below equity target or at last year available"""
+    def __init__(self,sim,usr:str,inflation_ls,date_ls,income_ls,spouse_calc=None):
+        """
+        Methods include 'early', 'mid', and 'late' for age dependent retirements. 
+        The 'net worth' method triggers withdrawals if net worth drops below equity target or at last year available
+
+        Parameters
+        ----------
+        sim : simulator.Simulator
+            DESCRIPTION.
+        usr : str
+            DESCRIPTION.
+        inflation_ls : list or array
+            DESCRIPTION.
+        date_ls : list or array
+            DESCRIPTION.
+        income_ls : list or array
+            DESCRIPTION.
+        spouse_calc : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
+        
         self.sim, self.date_ls, self.inflation_ls, self.spouse_calc = sim, date_ls, inflation_ls, spouse_calc
         self.age = sim._val(f"{usr} Age",False)
         if spouse_calc: spouse_calc.spouse_calc = self # if a spouse is added, make the spouse's spouse this calc
