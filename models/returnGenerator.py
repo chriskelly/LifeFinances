@@ -6,11 +6,9 @@ from data import constants as const
 
 DEBUG_LVL = 0
 
-iter = 0
-
 def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns):
     """
-    What the hell is going in this function?    
+    Generate a time series of returns for each montecarlo run   
 
     Parameters
     ----------
@@ -31,45 +29,42 @@ def generate_returns(mean, stdev, annual_high, annual_low,qty_per_column,qty_per
 
     Returns
     -------
-    TYPE
-        DESCRIPTION.
+    multi_returns : list
+        2D array. column is a lifetime/montecarlo run. rows are periods of time
 
     """
-    global iter
-    iter = 0
+    n_iter = 0
     # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
     stdev = stdev / math.sqrt(qty_per_year) 
     mean = mean ** (1/qty_per_year)
     years_qty = math.ceil(qty_per_column/qty_per_year)
-    def make_return_ls():
+    def make_return_ls(n_iter):
         annualized = 0
         while annualized < annual_low or annualized > annual_high:
             yield_ls = np.random.default_rng().normal(mean, stdev, years_qty*qty_per_year) # annualized test needs product in yearly multiples, even if years_qty*qty_per_year isn't equal to qty_per_column
             annualized = pow(np.prod(yield_ls), 1 / years_qty)
-            global iter
-            iter += 1
+            n_iter += 1
         return yield_ls - 1
     multi_returns = [make_return_ls()[:qty_per_column] for _ in range(columns)]
     if DEBUG_LVL >= 1:
-        print(f'iter: {iter}')
+        print(f'n_iter: {n_iter}')
         print(f'std mean: {abs(mean-1 - np.mean(multi_returns))}') # result should be 0.0
         print(f'std stdev: {abs(stdev - np.std(multi_returns, ddof=1))}') # result should be 0.0
     return multi_returns
     
     # trying to make it faster
 def generate_returns_faster(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns):
-    global iter
-    iter = 0
+    n_iter = 0
     stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
     mean = mean ** (1/qty_per_year)
     years_qty = math.ceil(qty_per_column/qty_per_year)
-    def make_return_ls():
+    def make_return_ls(n_iter):
         annualized = 0
         while annualized < annual_low or annualized > annual_high:
             yield_ls = np.random.default_rng().normal(mean, stdev, years_qty*qty_per_year) # annualized test needs product in yearly multiples, even if years_qty*qty_per_year isn't equal to qty_per_column
             annualized = pow(np.prod(yield_ls), 1 / years_qty)
-            global iter
-            iter += 1
+            global n_iter
+            n_iter += 1
         return yield_ls - 1
     multi_returns = [make_return_ls()[:qty_per_column] for _ in range(columns)]
     if DEBUG_LVL >= 1:
