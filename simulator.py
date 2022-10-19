@@ -57,24 +57,25 @@ class Simulator:
         Determines the allocation of investments per quarter
     
     """
-    def __init__(self, fi_model, override_dict={}):
+    def __init__(self, param_vals, override_dict={}):
         """
         Construct a Simulator out of the params in the given model
 
         Parameters
         ----------
-        fi_model : Model
-            A Model from the model module.
+        param_vals : Dict
+            A dictionary with {param : val}
         override_dict : dict, optional
             Use this input to override named parameters. The default is {}.
+                'monte_carlo_runs':int : Overrides the constant MONTE_CARLO_RUNS
+                'returns':[stock_return_arr,bond_return_arr,re_return_arr,inflation_arr] : Overrides return data
 
         Returns
         -------
         None.
 
         """
-        param_vals = {key:obj["val"] for (key,obj) in fi_model.params.items()}
-        self.params = fi_model._clean_data(param_vals)
+        self.params = model._clean_data(param_vals)
         self.rows = int((param_vals['Calculate Til'] - TODAY_YR_QT)/.25)
         self.fi_date = self.params["FI Quarter"]
         self.admin = self.params["Admin"] # Are you Chris?
@@ -570,8 +571,9 @@ def test_unit(units:int=1):
 
     """
     test_mdl= model.Model()
+    param_vals = {key:obj["val"] for (key,obj) in test_mdl.params.items()}
     
-    return Simulator(test_mdl, override_dict={'monte_carlo_runs':units})
+    return Simulator(param_vals, override_dict={'monte_carlo_runs':units})
 
 # JUST FOR TESTING ----------------------------------------------------- #
 
