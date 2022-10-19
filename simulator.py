@@ -106,16 +106,16 @@ class Simulator:
             }
         
         # Job Income and tax-differed list. Does not include SS. 
-            # get quarterly income for his and her
-        his_qt_income = self._val("His Total Income",QT_MOD='dollar')
-        her_qt_income = self._val("Her Total Income",QT_MOD='dollar')
-        tax_deferred_qt = self._val("His Tax Deferred",QT_MOD='dollar')+self._val("Her Tax Deferred",QT_MOD='dollar')
+            # get quarterly income for user and partner
+        user_qt_income = self._val("User Total Income",QT_MOD='dollar')
+        partner_qt_income = self._val("Partner Total Income",QT_MOD='dollar')
+        tax_deferred_qt = self._val("User Tax Deferred",QT_MOD='dollar')+self._val("Partner Tax Deferred",QT_MOD='dollar')
         total_barista_income_qt = self._val("Barista Income (Total)", QT_MOD='dollar') # Assuming no tax deferral for barista to be conservative and keep it easier
             # build out income lists with raises coming in steps on the first quarter of each year
         raise_yr = 1+self._val("Raise (%)",QT_MOD=False)
-        usr_income_ls = self._step_quarterize(his_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
-        partner_income_ls = self._step_quarterize(her_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
-        job_income_ls = list(np.array(usr_income_ls)+np.array(partner_income_ls))
+        user_income_ls = self._step_quarterize(user_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
+        partner_income_ls = self._step_quarterize(partner_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
+        job_income_ls = list(np.array(user_income_ls)+np.array(partner_income_ls))
         tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
         barista_income_ls = self._range_len(START=total_barista_income_qt,LEN=barista_qts,INCREMENT=FLAT_INFLATION,MULT=True) if total_barista_income_qt != 0 else [] # smooth growth is probably fine rather than step_quarterizing
             # add the non-working years
@@ -157,16 +157,17 @@ class Simulator:
             inflation_ls = inflation_arr[col]
             
             # Social Security Initialization
-            usr_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,date_ls,usr_income_ls)
+            usr_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,date_ls,user_income_ls)
             partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,date_ls,partner_income_ls,spouse_calc=usr_ss_calc)
            
                 # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income). Her income excluded from SS due to pension
+                #TODO: #64 Make ss_tax dependent on pension state of user/partner
             #medicare = [0.0145*job_income for job_income in job_income_ls]
             medicare= np.array(job_income_ls)*0.0145
                 # need the SS Max Earnings, but in quarter form instead of the annual form I did in the SS section.
             ss_max_earnings_qt = self._step_quarterize(0.25 * socialSecurity.est_Max_Earning(TODAY_YR),FLAT_INFLATION,mode='working',working_qts=working_qts + barista_qts)
-            his_income_ratio = his_qt_income/(his_qt_income+her_qt_income)
-            ss_tax = [0.062*min(his_income_ratio*income,ss_max) for income,ss_max in zip(job_income_ls,ss_max_earnings_qt)]
+            user_income_ratio = user_qt_income/(user_qt_income+partner_qt_income)
+            ss_tax = [0.062*min(user_income_ratio*income,ss_max) for income,ss_max in zip(job_income_ls,ss_max_earnings_qt)]
             ss_tax+= [0]*(self.rows-len(ss_tax))
             
             # Kid count   
@@ -195,10 +196,10 @@ class Simulator:
                 trust = self._val("Pension Trust Factor",QT_MOD=False)
                 usr_ss_ls.append(trust * usr_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 partner_ss_ls.append(trust * partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
-                if self.admin: partner_ss_ls[-1] += trust * self.get_pension_payment(her_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) # add denica pension if you're Chris
+                if self.admin: partner_ss_ls[-1] += trust * self.get_pension_payment(partner_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) # add denica pension if you're Chris
                 if self.admin: 
                     # add pension to partner if you're Chris
-                    partner_ss_ls[-1] += trust * self.get_pension_payment(her_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) 
+                    partner_ss_ls[-1] += trust * self.get_pension_payment(partner_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) 
                 # taxes
                 # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
                 income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row])+0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row])
@@ -348,7 +349,6 @@ class Simulator:
         else:
             raise Exception("invalid MOD")
             
-    
     def _range_len(self,START,LEN:int,INCREMENT,MULT=False,ADD=False) -> list:
         """Provide a range with a set START and set LENgth. If MULT set to True, Increment should be in yield (1+rate, ei: 1.03) format."""
         if ADD:
