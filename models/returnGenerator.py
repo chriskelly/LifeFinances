@@ -94,24 +94,44 @@ def generate_returns(mean, stdev, annual_high, annual_low,n_rows,qty_per_year,co
     return multi_returns
     
     # trying to make it faster
-def generate_returns_faster(mean, stdev, annual_high, annual_low,qty_per_column,qty_per_year,columns):
+def generate_returns_faster(mean, stdev, annual_high, annual_low,n_rows,qty_per_year,columns):
+    """
+    Generate a time series of returns for each montecarlo run   
+
+    Parameters
+    ----------
+    mean : TYPE
+        Annualized mean.
+    stdev : TYPE
+        Annualized standard deviation.
+    annual_high : TYPE
+        DESCRIPTION.
+    annual_low : TYPE
+        DESCRIPTION.
+    n_rows : int or float
+        Number of rows per column.
+    qty_per_year : int or float
+        Quantity per year, e.g. 4 for quarterly calculations
+    columns : int or float
+        Number of columns, which means the number of monte carlo runs
+
+    Returns
+    -------
+    multi_returns : list
+        2D array. column is a lifetime/montecarlo run. rows are periods of time
+
+    """
     n_iter = 0
-    stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
+    # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
+    stdev = stdev / math.sqrt(qty_per_year) 
     mean = mean ** (1/qty_per_year)
-    years_qty = math.ceil(qty_per_column/qty_per_year)
-    def make_return_ls(n_iter):
-        annualized = 0
-        while annualized < annual_low or annualized > annual_high:
-            yield_ls = rng.normal(mean, stdev, years_qty*qty_per_year) # annualized test needs product in yearly multiples, even if years_qty*qty_per_year isn't equal to qty_per_column
-            annualized = pow(np.prod(yield_ls), 1 / years_qty)
-            global n_iter
-            n_iter += 1
-        return yield_ls - 1
-    multi_returns = [make_return_ls(n_iter)[:qty_per_column] for _ in range(columns)]
+    n_years = math.ceil(n_rows/qty_per_year)
+    multi_returns = [brute_force(n_iter, n_years, mean, stdev, annual_low, annual_high, qty_per_year)[:n_rows] 
+                     for _ in range(columns)]
     if DEBUG_LVL >= 1:
-        print(f'fast iter: {iter}')
-        print(f'fast mean: {abs(mean-1 - np.mean(multi_returns))}') # result should be 0.0
-        print(f'fast stdev: {abs(stdev - np.std(multi_returns, ddof=1))}') # result should be 0.0
+        print(f'n_iter: {n_iter}')
+        print(f'std mean: {abs(mean-1 - np.mean(multi_returns))}') # result should be 0.0
+        print(f'std stdev: {abs(stdev - np.std(multi_returns, ddof=1))}') # result should be 0.0
     return multi_returns
     
 def generate_skewd_inflation(mean, stdev, skew,qty_per_column,qty_per_year,columns):
@@ -145,7 +165,7 @@ def main(n_rows,qty_per_year,columns):
     if DEBUG_LVL >= 1: 
         mid = time.perf_counter()
         generate_returns_faster(const.RE_MEAN, const.RE_STDEV, const.RE_ANNUAL_HIGH, const.RE_ANNUAL_LOW,
-                                        n_rows,qty_per_year,columns)
+                                    n_rows,qty_per_year,columns)
         end = time.perf_counter()
     generated_array.append(generate_skewd_inflation(const.INFLATION_MEAN, const.INFLATION_STDEV, const.INFLATION_SKEW,
                                     n_rows,qty_per_year,columns))
