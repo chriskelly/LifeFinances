@@ -1,4 +1,4 @@
-import math
+import math, copy
 import numpy as np
 from data import constants as const
 from models import returnGenerator
@@ -45,7 +45,7 @@ class Calculator:
         sim : simulator.Simulator
             DESCRIPTION.
         usr : str
-            DESCRIPTION.
+            Either 'User' or 'Partner'
         inflation_ls : list or array
             DESCRIPTION.
         date_ls : list or array
@@ -137,9 +137,20 @@ class Calculator:
         return spousal_benefit
         
     def _add_to_earnings_record(self,date_ls,income_ls):
-        for date, income in zip(date_ls,income_ls):
+        """Add input date_ls and income_ls to the earnings record"""
+        # need to deepcopy to avoid editing the lists outside of this method
+        date_record = copy.deepcopy(date_ls) 
+        income_record = copy.deepcopy(income_ls)
+        # First, if the first dates are fractional, convert value to annual and delete the fractional first dates
+        if date_record[0] % 1 != 0:
+            year = math.trunc(date_record[0])
+            self.earnings_record[year] = income_record[0] * 4
+            while date_record[0] % 1 != 0:
+                del date_record[0]
+                del income_record[0]
+        # Then add the remaining dates to the earnings_record
+        for date, income in zip(date_record,income_record):
             year = math.trunc(date)
-            #TODO: Deal with fractional income years (the first year typically only gets a fraction of the actual income for that year)
             if income != 0:
                 if year in self.earnings_record:
                     self.earnings_record[year] += income
@@ -166,8 +177,7 @@ def test_unit():
             "2016":"36.440",
             "2018":"0.635"
         }
-    ss_calc =  Calculator(my_simulator,current_age=29,FLAT_INFLATION=1.03,
-                     date_ls=test_date_ls,income_ls=test_income_ls,
-                     imported_record=test_user_record)
     inflation_ls = returnGenerator.main(my_simulator.rows,4,1)[3][0]
-    return ss_calc._make_list(ss_date=2061.25,inflation_ls=inflation_ls)
+    ss_calc =  Calculator(my_simulator,'User',inflation_ls,
+                     date_ls=test_date_ls,income_ls=test_income_ls)
+    return ss_calc._make_list(ss_date=2061.25)
