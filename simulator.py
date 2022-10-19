@@ -196,7 +196,7 @@ class Simulator:
                 partner_ss_ls.append(trust * partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 if self.admin: partner_ss_ls[-1] += trust * self.get_pension_payment(her_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) # add denica pension if you're Chris
                 if self.admin: 
-                    # add denica pension if you're Chris
+                    # add pension to partner if you're Chris
                     partner_ss_ls[-1] += trust * self.get_pension_payment(her_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) 
                 # taxes
                 # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
@@ -555,7 +555,7 @@ def bracket_math(bracket:list,income):
     return sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
         in zip(enumerate(bend_points),rates)])
 
-def test_unit():
+def test_unit(units:int=1):
     """
     Creates a Simulator with only 1 monte carlo simulation allowed. 
 
@@ -571,7 +571,7 @@ def test_unit():
     """
     test_mdl= model.Model()
     
-    return Simulator(test_mdl, override_dict={'monte_carlo_runs':1})
+    return Simulator(test_mdl, override_dict={'monte_carlo_runs':units})
 
 # JUST FOR TESTING ----------------------------------------------------- #
 
@@ -580,5 +580,5 @@ param_vals = {key:obj["val"] for (key,obj) in params.items()}
 
 if __name__ == '__main__':
     #instantiate a Simulator and run at least 1 simulation
-    test_simulator = test_unit()
+    test_simulator = test_unit(units=MONTE_CARLO_RUNS)
     s_rate, arr= test_simulator.main()
