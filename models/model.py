@@ -2,8 +2,22 @@ import json
 import data.constants as const
 
 def update_dicts(up_to_date:dict,out_of_date:dict):
-    """Looks for new keys added or keys removed from the most recently updated dict. 
-    Copys over new keys to old dict and removes keys not found in the updated version."""
+    """
+    Looks for new keys added or keys removed from the most recently updated dict. 
+    Copys over new keys to old dict and removes keys not found in the updated version.
+
+    Parameters
+    ----------
+    up_to_date : dict
+        DESCRIPTION.
+    out_of_date : dict
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
     for key in up_to_date.keys():
         if key not in out_of_date:
             out_of_date[key] = up_to_date[key]
@@ -18,8 +32,19 @@ def update_dicts(up_to_date:dict,out_of_date:dict):
     # doesn't need to return since the dicts are directly modified
 
 def load_params() -> dict:
-    """Checks that params is up-to-date, then returns params.
-    If params or default_params out of date, will update the out-of-date json and save it."""
+    """
+    Checks that params is up-to-date, then returns params.
+    If params or default_params out of date, will update the out-of-date json 
+    and save it.
+
+    Returns
+    -------
+    params : dict
+        DESCRIPTION.
+
+    """
+    
+    """"""
     try:
         with open(const.PARAMS_LOC) as json_file:
             params = json.load(json_file)
@@ -38,6 +63,15 @@ def load_params() -> dict:
     return params
 
 class Model:
+    """
+    An instance of Model is used to keep track of a collection of parameters
+    
+    Attributes
+    ----------
+    params : dict
+        Named parameters that contribute to financial calculations
+    
+    """
     def __init__(self):
         self.params = load_params()
 
@@ -93,7 +127,19 @@ class Model:
                 params[k] = False
         return params
 
-    def _is_float(self, element: any):
+    def _is_float(self, element):
+        """
+        Checks whether the element can be converted to a float
+
+        Parameters
+        ----------
+        element : any
+
+        Returns
+        -------
+        bool
+
+        """
         try:
             float(element)
             return True
