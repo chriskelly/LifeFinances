@@ -85,7 +85,7 @@ class Model:
     def run_calcs(self, params_vals: dict):
         """Cleans data to correct format and runs all calculations, 
         updating the param:val dict passed-in and returning the updated dict"""
-        params_vals = self._clean_data(params_vals)
+        params_vals = _clean_data(params_vals)
         calcd_params = self.filter_params(include=True,attr="calcd")
         for param,obj in calcd_params.items():
             params_vals[param] = eval(obj["calcd"]) # evaluate string saved in self.params under "calcd"
@@ -113,35 +113,36 @@ class Model:
                     new_dict[param] = obj
         return new_dict
 
-    def _clean_data(self, params: dict):
-        for k, v in params.items():
-            if type(v) is dict: # used for Denica pension parameter
-                continue
-            elif v.isdigit():
-                params[k] = int(v)
-            elif self._is_float(v):
-                params[k] = float(v)
-            elif v == "True":
-                params[k] = True
-            elif v == "False":
-                params[k] = False
-        return params
 
-    def _is_float(self, element):
-        """
-        Checks whether the element can be converted to a float
+def _is_float(element):
+    """
+    Checks whether the element can be converted to a float
 
-        Parameters
-        ----------
-        element : any
+    Parameters
+    ----------
+    element : any
 
-        Returns
-        -------
-        bool
+    Returns
+    -------
+    bool
 
-        """
-        try:
-            float(element)
-            return True
-        except ValueError:
-            return False
+    """
+    try:
+        float(element)
+        return True
+    except ValueError:
+        return False
+
+def _clean_data(params: dict):
+    for k, v in params.items():
+        if type(v) is dict: # used for Denica pension parameter
+            continue
+        elif v.isdigit():
+            params[k] = int(v)
+        elif _is_float(v):
+            params[k] = float(v)
+        elif v == "True":
+            params[k] = True
+        elif v == "False":
+            params[k] = False
+    return params

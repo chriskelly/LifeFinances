@@ -116,7 +116,7 @@ class Algorithm:
         new_dict = copy.deepcopy(mutable_params)
         for param,obj in new_dict.items():
             ls = list(eval(obj["range"]))
-            val = obj['val'] if not self.model._is_float(obj['val']) else float(obj['val'])
+            val = obj['val'] if not models.model._is_float(obj['val']) else float(obj['val'])
             old_position = ls.index(val)
             length = len(ls)
             new_position = min(length-1,max(0,self._gaussian_int(center=old_position,max_deviation=max_step)))
