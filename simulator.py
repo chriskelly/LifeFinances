@@ -3,7 +3,7 @@ import json, warnings, os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from models import returnGenerator, annuity, model, socialSecurity
+from models import returnGenerator, annuity, model, socialSecurity, income
 import git, sys
 git_root= git.Repo(os.path.abspath(''),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
@@ -106,9 +106,10 @@ class Simulator:
             }
         
         # Job Income and tax-differed list. Does not include SS. 
+        user_income_ls = income.generate_lists(income_dicts=None,date_ls=date_ls)
             # get quarterly income for user and partner
-        user_qt_income = self._val("User Total Income",QT_MOD='dollar')
-        partner_qt_income = self._val("Partner Total Income",QT_MOD='dollar')
+        #user_qt_income = self._val("User Total Income",QT_MOD='dollar')
+        #partner_qt_income = self._val("Partner Total Income",QT_MOD='dollar')
         tax_deferred_qt = self._val("User Tax Deferred",QT_MOD='dollar')+self._val("Partner Tax Deferred",QT_MOD='dollar')
         total_barista_income_qt = self._val("Barista Income (Total)", QT_MOD='dollar') # Assuming no tax deferral for barista to be conservative and keep it easier
             # build out income lists with raises coming in steps on the first quarter of each year
@@ -119,7 +120,6 @@ class Simulator:
         tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
         barista_income_ls = self._range_len(START=total_barista_income_qt,LEN=barista_qts,INCREMENT=FLAT_INFLATION,MULT=True) if total_barista_income_qt != 0 else [] # smooth growth is probably fine rather than step_quarterizing
             # add the non-working years
-        #TODO: #57 Remove job_income_ls and replace with list of incomes (usr_income_1, partner_income_1, usr_income_2, etc)
         job_income_ls  = job_income_ls + barista_income_ls + ([0] * (FI_qts - barista_qts)) 
         tax_deferred_ls = tax_deferred_ls + ([0]*FI_qts) 
 
@@ -360,8 +360,7 @@ class Simulator:
             raise Exception("Didn't declare either MULT or ADD")
         
     def get_pension_payment(self, partner_qt_income, raise_yr, row, inflation_ls, net_worth, options):
-        """
-        Calculates the pension for Chris's wife. Might want to generalize this
+        """Calculates the pension for Chris's wife. Might want to generalize this
 
         Parameters
         ----------
@@ -433,8 +432,7 @@ class Simulator:
         return self.pension_ls[row]
     
     def base_spending(self,spending_qt, retirement_change,**kw):
-        """
-        Calculates base spending in a quarter
+        """Calculates base spending in a quarter
 
         Parameters
         ----------
@@ -471,8 +469,7 @@ class Simulator:
         return spending
     
     def allocation(self, inflation, **kw):
-        """
-        Calculates allocation between equity, RE and bonds. 
+        """Calculates allocation between equity, RE and bonds. 
         Allows for different methods to be designed
         
         Parameters
@@ -527,9 +524,29 @@ class Simulator:
     
 # ADDITIONAL HELPER FUNCTIONS ------------------------------------------- #
 #These functions do not requre the class
-def get_taxes(income_qt):
+def step_quarterize2(date_ls:list,first_val,increase_yield,start_date_idx:int,end_date_idx:int) -> list:
+    """Creates list with a value that increases only at the new year
+
+    Args:
+        date_ls (list)
+        first_val (_type_): intial value
+        increase_yield (_type_): growth expected each year in 1.04 format
+        start_date_idx (int): index of the date_ls that it starts at
+        end_date_idx (int): index of the date_ls that it ends at (inclusive)
+
+    Returns:
+        list
     """
-    Combines federal and state taxes on non-tax-deferred income
+    ls = [first_val]
+    for date in date_ls[start_date_idx+1:end_date_idx+1]:
+        if date%1 == 0:
+            ls.append(ls[-1] * increase_yield)
+        else:
+            ls.append(ls[-1])
+    return ls
+
+def get_taxes(income_qt):
+    """Combines federal and state taxes on non-tax-deferred income
 
     Parameters
     ----------
