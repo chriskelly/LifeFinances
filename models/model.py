@@ -32,8 +32,7 @@ def update_dicts(up_to_date:dict,out_of_date:dict):
     # doesn't need to return since the dicts are directly modified
 
 def load_params() -> dict:
-    """
-    Checks that params is up-to-date, then returns params.
+    """Checks that params is up-to-date, then returns params.
     If params or default_params out of date, will update the out-of-date json 
     and save it.
 
@@ -43,8 +42,6 @@ def load_params() -> dict:
         DESCRIPTION.
 
     """
-    
-    """"""
     try:
         with open(const.PARAMS_LOC) as json_file:
             params = json.load(json_file)
@@ -56,10 +53,12 @@ def load_params() -> dict:
         update_dicts(up_to_date=params, out_of_date=default_params)
         with open(const.DEFAULT_PARAMS_LOC, 'w') as outfile:
             json.dump(default_params, outfile, indent=4)
+        params = load_params()
     if float(default_params['Version']['val']) > float(params['Version']['val']):
         update_dicts(up_to_date=default_params, out_of_date=params)
         with open(const.PARAMS_LOC, 'w') as outfile:
             json.dump(params, outfile, indent=4)
+        params = load_params()
     return params
 
 class Model:
