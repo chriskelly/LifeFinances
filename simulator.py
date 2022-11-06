@@ -175,10 +175,10 @@ class Simulator:
                 trust = self._val("Pension Trust Factor",QT_MOD=False)
                 usr_ss_ls.append(trust * user_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 partner_ss_ls.append(trust * partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
-                if self.admin: partner_ss_ls[-1] += trust * self.get_pension_payment(partner_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) # add denica pension if you're Chris
-                if self.admin: 
-                    # add pension to partner if you're Chris
-                    partner_ss_ls[-1] += trust * self.get_pension_payment(partner_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) 
+                if self.admin: # add pension to partner if you're Chris
+                    partner_ss_ls[-1] += trust * self.get_pension_payment(partner_qt_income=partner_income_calc.total_income_ls[0],
+                                                                          raise_yr=FLAT_INFLATION, row=row, inflation_ls=inflation_ls, 
+                                                                          net_worth=net_worth_ls[-1], options=options) 
                 # taxes
                 # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
                 income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row])+0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row])
