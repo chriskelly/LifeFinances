@@ -9,6 +9,11 @@ class Income:
         self.last_date_idx = date_ls.index(income_obj['Last Date'])
         self.yearly_raise = income_obj['Yearly Raise'] + 1 # needs to be in yield format
         self.reduction_target:bool = income_obj['Try to Reduce'] # genetic.Algorithm will try to reduce the duration of this income stream
+        self.ss_eligible:bool = income_obj['Social Security Eligible']
+        self.income_ls = simulator.step_quarterize2(date_ls,first_val=self.income_qt,increase_yield=self.yearly_raise,
+                                                start_date_idx=self.start_date_idx(),end_date_idx=self.last_date_idx)
+        self.deferred_ls = simulator.step_quarterize2(date_ls,first_val=self.tax_deferred_qt,increase_yield=self.yearly_raise,
+                                                start_date_idx=self.start_date_idx(),end_date_idx=self.last_date_idx)
         
     def start_date_idx(self) -> int:
         """Returns the index for the date_ls"""
@@ -25,14 +30,12 @@ class Calculator:
         for i in range(1,len(income_dicts)):
             self.income_objs.append(Income(income_dicts[i],date_ls,previous_income=self.income_objs[-1]))
         # Make lists of total income & tax-deferred income
-        self.income_ls, self.deferred_ls =[], []
+        self.total_income_ls, self.total_deferred_ls =[], []
         for income in self.income_objs:
-            self.income_ls += simulator.step_quarterize2(self.date_ls,first_val=income.income_qt,increase_yield=income.yearly_raise,
-                                                start_date_idx=income.start_date_idx(),end_date_idx=income.last_date_idx)
-            self.deferred_ls += simulator.step_quarterize2(self.date_ls,first_val=income.tax_deferred_qt,increase_yield=income.yearly_raise,
-                                                start_date_idx=income.start_date_idx(),end_date_idx=income.last_date_idx)
-        self.income_ls += [0]*(len(self.date_ls)-len(self.income_ls))
-        self.deferred_ls += [0]*(len(self.date_ls)-len(self.deferred_ls))
+            self.total_income_ls += income.income_ls
+            self.total_deferred_ls += income.deferred_ls
+        self.total_income_ls += [0]*(len(self.date_ls)-len(self.total_income_ls))
+        self.total_deferred_ls += [0]*(len(self.date_ls)-len(self.total_deferred_ls))
         
 def generate_lists(user_calc:Calculator,partner_calc:Calculator = None)-> tuple[list, list]:
     """Returns one combined list of all incomes and one list of tax-deferred income.
@@ -46,11 +49,11 @@ def generate_lists(user_calc:Calculator,partner_calc:Calculator = None)-> tuple[
         tuple[list, list]
     """
     if partner_calc:
-        income_ls = list(np.array(user_calc.income_ls)+np.array(partner_calc.income_ls))
-        deferred_ls = list(np.array(user_calc.deferred_ls)+np.array(partner_calc.deferred_ls))
+        income_ls = list(np.array(user_calc.total_income_ls)+np.array(partner_calc.total_income_ls))
+        deferred_ls = list(np.array(user_calc.total_deferred_ls)+np.array(partner_calc.total_deferred_ls))
     else:
-        income_ls = user_calc.income_ls
-        deferred_ls = user_calc.deferred_ls   
+        income_ls = user_calc.total_income_ls
+        deferred_ls = user_calc.total_deferred_ls   
     return income_ls, deferred_ls
 
 
