@@ -27,7 +27,7 @@ def update_dicts(up_to_date:dict,out_of_date:dict):
             del_keys.append(key)
     for key in del_keys:
         del out_of_date[key]
-    out_of_date['Version']['val'] = up_to_date['Version']['val']
+    out_of_date['Version'] = up_to_date['Version']
     print('Parameters Updated')
     # doesn't need to return since the dicts are directly modified
 
