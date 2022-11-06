@@ -106,8 +106,10 @@ class Simulator:
             }
         
         # Job Income and tax-differed list. Does not include SS. 
-        (user_income_ls, user_deferred_ls) = income.generate_lists(self._val("User Incomes",QT_MOD=False),date_ls)
-        (partner_income_ls, partner_deferred_ls) = income.generate_lists(self._val("Partner Incomes",QT_MOD=False),date_ls)
+        user_income_calc = income.Calculator(self._val("User Incomes",QT_MOD=False),date_ls)
+        partner_income_calc = income.Calculator(self._val("Partner Incomes",QT_MOD=False),date_ls)
+        (job_income_ls, tax_deferred_ls) = income.generate_lists(user_income_calc,partner_income_calc)
+        #(partner_income_ls, partner_deferred_ls) = partner_income_calc.generate_lists()
             # get quarterly income for user and partner
         #user_qt_income = self._val("User Total Income",QT_MOD='dollar')
         #partner_qt_income = self._val("Partner Total Income",QT_MOD='dollar')
@@ -117,8 +119,8 @@ class Simulator:
         #raise_yr = 1+self._val("Raise (%)",QT_MOD=False)
         #user_income_ls = self._step_quarterize(user_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
         #partner_income_ls = self._step_quarterize(partner_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
-        job_income_ls = list(np.array(user_income_ls)+np.array(partner_income_ls))
-        tax_deferred_ls = list(np.array(user_deferred_ls)+np.array(partner_deferred_ls))
+        #job_income_ls = list(np.array(user_income_ls)+np.array(partner_income_ls))
+        #tax_deferred_ls = list(np.array(user_deferred_ls)+np.array(partner_deferred_ls))
         #tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
         #barista_income_ls = self._range_len(START=total_barista_income_qt,LEN=barista_qts,INCREMENT=FLAT_INFLATION,MULT=True) if total_barista_income_qt != 0 else [] # smooth growth is probably fine rather than step_quarterizing
             # add the non-working years
@@ -147,7 +149,7 @@ class Simulator:
         kid_spending_rate = self._val("Cost of Kid (% Spending)",QT_MOD=False)
         # performance tracking
         success_rate = 0
-        final_net_worths = [] # Establish empty list to calculate net worth median. Chris: Preference on using "_ls" here or reserving "_ls" only for the lists representing each period?
+        final_net_worths = [] # Establish empty list to calculate net worth median
         worst_failure_idx = self.rows
         failure_dict ={}
         
@@ -159,8 +161,8 @@ class Simulator:
             inflation_ls = inflation_arr[col]
             
             # Social Security Initialization
-            usr_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,date_ls,user_income_ls)
-            partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,date_ls,partner_income_ls,spouse_calc=usr_ss_calc)
+            user_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,date_ls,user_income_calc)
+            partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,date_ls,partner_income_calc,spouse_calc=user_ss_calc)
            
                 # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income). Her income excluded from SS due to pension
                 #TODO: #64 Make ss_tax dependent on pension state of user/partner
@@ -196,7 +198,7 @@ class Simulator:
                 bond_alloc_ls.append(alloc["Bond"])
                 # social security 
                 trust = self._val("Pension Trust Factor",QT_MOD=False)
-                usr_ss_ls.append(trust * usr_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
+                usr_ss_ls.append(trust * user_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 partner_ss_ls.append(trust * partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 if self.admin: partner_ss_ls[-1] += trust * self.get_pension_payment(partner_qt_income, raise_yr, row, inflation_ls, net_worth_ls[-1], options) # add denica pension if you're Chris
                 if self.admin: 
