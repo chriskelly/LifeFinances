@@ -75,7 +75,7 @@ class Simulator:
         None.
 
         """
-        self.params = model._clean_data(param_vals)
+        self.params = model.clean_data(param_vals)
         self.rows = int((param_vals['Calculate Til'] - TODAY_YR_QT)/.25)
         self.fi_date = self.params["FI Quarter"]
         self.admin = self.params["Admin"] # Are you Chris?
@@ -106,22 +106,24 @@ class Simulator:
             }
         
         # Job Income and tax-differed list. Does not include SS. 
-        user_income_ls = income.generate_lists(income_dicts=None,date_ls=date_ls)
+        (user_income_ls, user_deferred_ls) = income.generate_lists(self._val("User Incomes",QT_MOD=False),date_ls)
+        (partner_income_ls, partner_deferred_ls) = income.generate_lists(self._val("Partner Incomes",QT_MOD=False),date_ls)
             # get quarterly income for user and partner
         #user_qt_income = self._val("User Total Income",QT_MOD='dollar')
         #partner_qt_income = self._val("Partner Total Income",QT_MOD='dollar')
-        tax_deferred_qt = self._val("User Tax Deferred",QT_MOD='dollar')+self._val("Partner Tax Deferred",QT_MOD='dollar')
-        total_barista_income_qt = self._val("Barista Income (Total)", QT_MOD='dollar') # Assuming no tax deferral for barista to be conservative and keep it easier
+        #tax_deferred_qt = self._val("User Tax Deferred",QT_MOD='dollar')+self._val("Partner Tax Deferred",QT_MOD='dollar')
+        #total_barista_income_qt = self._val("Barista Income (Total)", QT_MOD='dollar') # Assuming no tax deferral for barista to be conservative and keep it easier
             # build out income lists with raises coming in steps on the first quarter of each year
-        raise_yr = 1+self._val("Raise (%)",QT_MOD=False)
-        user_income_ls = self._step_quarterize(user_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
-        partner_income_ls = self._step_quarterize(partner_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
+        #raise_yr = 1+self._val("Raise (%)",QT_MOD=False)
+        #user_income_ls = self._step_quarterize(user_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
+        #partner_income_ls = self._step_quarterize(partner_qt_income,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
         job_income_ls = list(np.array(user_income_ls)+np.array(partner_income_ls))
-        tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
-        barista_income_ls = self._range_len(START=total_barista_income_qt,LEN=barista_qts,INCREMENT=FLAT_INFLATION,MULT=True) if total_barista_income_qt != 0 else [] # smooth growth is probably fine rather than step_quarterizing
+        tax_deferred_ls = list(np.array(user_deferred_ls)+np.array(partner_deferred_ls))
+        #tax_deferred_ls = self._step_quarterize(tax_deferred_qt,raise_yr,mode='working',working_qts=working_qts) if working_qts !=0 else []
+        #barista_income_ls = self._range_len(START=total_barista_income_qt,LEN=barista_qts,INCREMENT=FLAT_INFLATION,MULT=True) if total_barista_income_qt != 0 else [] # smooth growth is probably fine rather than step_quarterizing
             # add the non-working years
-        job_income_ls  = job_income_ls + barista_income_ls + ([0] * (FI_qts - barista_qts)) 
-        tax_deferred_ls = tax_deferred_ls + ([0]*FI_qts) 
+        #job_income_ls  = job_income_ls + barista_income_ls + ([0] * (FI_qts - barista_qts)) 
+        #tax_deferred_ls = tax_deferred_ls + ([0]*FI_qts) 
 
         
     # MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
