@@ -1,3 +1,4 @@
+import numpy as np
 import simulator
 
 class Income:
@@ -16,27 +17,40 @@ class Income:
         else:
             return self.previous_income.last_date_idx + 1
         
-def generate_lists(income_dicts:list[dict],date_ls:list)-> tuple[list, list]:
-    """Return one combined list of all incomes and no-income dates
+class Calculator:
+    def __init__(self,income_dicts:list[dict],date_ls:list):
+        self.date_ls = date_ls
+        # Make list of Income objects
+        self.income_objs = [Income(income_dicts[0],date_ls,previous_income=None)]
+        for i in range(1,len(income_dicts)):
+            self.income_objs.append(Income(income_dicts[i],date_ls,previous_income=self.income_objs[-1]))
+        # Make lists of total income & tax-deferred income
+        self.income_ls, self.deferred_ls =[], []
+        for income in self.income_objs:
+            self.income_ls += simulator.step_quarterize2(self.date_ls,first_val=income.income_qt,increase_yield=income.yearly_raise,
+                                                start_date_idx=income.start_date_idx(),end_date_idx=income.last_date_idx)
+            self.deferred_ls += simulator.step_quarterize2(self.date_ls,first_val=income.tax_deferred_qt,increase_yield=income.yearly_raise,
+                                                start_date_idx=income.start_date_idx(),end_date_idx=income.last_date_idx)
+        self.income_ls += [0]*(len(self.date_ls)-len(self.income_ls))
+        self.deferred_ls += [0]*(len(self.date_ls)-len(self.deferred_ls))
+        
+def generate_lists(user_calc:Calculator,partner_calc:Calculator = None)-> tuple[list, list]:
+    """Returns one combined list of all incomes and one list of tax-deferred income.
+    \n Given list of Calculators, add them together and return sum
 
     Args:
-        income_dicts (list[dict]): list obtained from params
-        date_ls (list)
+        user_calc (income.Calculator)
+        partner_calc (income.Calculator): optional
 
     Returns:
-        list
+        tuple[list, list]
     """
-    income_objs = [Income(income_dicts[0],date_ls,previous_income=None)]
-    for i in range(1,len(income_dicts)):
-        income_objs.append(Income(income_dicts[i],date_ls,previous_income=income_objs[-1]))
-    income_ls, deferred_ls =[], []
-    for income in income_objs:
-        income_ls += simulator.step_quarterize2(date_ls,first_val=income.income_qt,increase_yield=income.yearly_raise,
-                                             start_date_idx=income.start_date_idx(),end_date_idx=income.last_date_idx)
-        deferred_ls += simulator.step_quarterize2(date_ls,first_val=income.tax_deferred_qt,increase_yield=income.yearly_raise,
-                                             start_date_idx=income.start_date_idx(),end_date_idx=income.last_date_idx)
-    income_ls += [0]*(len(date_ls)-len(income_ls))
-    deferred_ls += [0]*(len(date_ls)-len(deferred_ls))
+    if partner_calc:
+        income_ls = list(np.array(user_calc.income_ls)+np.array(partner_calc.income_ls))
+        deferred_ls = list(np.array(user_calc.deferred_ls)+np.array(partner_calc.deferred_ls))
+    else:
+        income_ls = user_calc.income_ls
+        deferred_ls = user_calc.deferred_ls   
     return income_ls, deferred_ls
 
 
