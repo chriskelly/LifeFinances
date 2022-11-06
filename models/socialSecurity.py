@@ -65,14 +65,7 @@ class Calculator:
         self.triggered = False # Has SS been triggered
         imported_record = sim._val(f"{usr} Earnings Record",False)
         self.earnings_record = {int(year):float(earning) for (year,earning) in imported_record.items()} # {year : earnings}
-        # determine which income can be used for social security
-        eligible_income_ls = []
-        for income in income_calc.income_objs:
-            if income.ss_eligible:
-                eligible_income_ls += income.income_ls
-            else:
-                eligible_income_ls += [0] * len(income.income_ls)
-        eligible_income_ls += [0]*(len(date_ls)-len(eligible_income_ls))
+        eligible_income_ls = eligible_income(date_ls,income_calc)
         self._add_to_earnings_record(date_ls,eligible_income_ls)
         
         # -------- CALCULATE PIA (BASE SOCIAL SECURITY PAYMENT) -------- #
@@ -157,6 +150,50 @@ class Calculator:
                 if year in self.earnings_record:
                     self.earnings_record[year] += income
                 else: self.earnings_record[year] = income
+
+def eligible_income(date_ls:list,income_calc:income.Calculator) -> list:
+    """Determine which income can be used for social security
+
+    Args:
+        date_ls (list)
+        income_calc (income.Calculator): a single income Calculator
+
+    Returns:
+        list: full list of incomes with 0s for non-eligible incomes and non-working years
+    """
+    ls = []
+    for income in income_calc.income_objs:
+        if income.ss_eligible:
+            ls += income.income_ls
+        else:
+            ls += [0] * len(income.income_ls)
+    ls += [0]*(len(date_ls)-len(ls))
+    return ls
+
+def taxes(date_ls:list,inflation,user_calc:income.Calculator,partner_calc:income.Calculator = None) -> list:
+    """Generate list of taxes paid for social security
+    Dependent on whether an individual income stream is social security eligible
+
+    Args:
+        date_ls (list)
+        inflation (_type_): Inflation used to estimate yearly step quarterized growth of SS Max Earnings
+        user_calc (income.Calculator)
+        partner_calc (income.Calculator, optional): Defaults to None.
+
+    Returns:
+        list
+    """    
+    # sum up social security eligible income from all usrs
+    if partner_calc:
+        total_eligible_income = list(np.array(eligible_income(date_ls,user_calc))
+                                 +np.array(eligible_income(date_ls,partner_calc)))
+    else:
+        total_eligible_income = eligible_income(date_ls,user_calc)
+    # need the SS Max Earnings, but in quarter form instead of the annual form
+    ss_max_earnings_qt_ls = simulator.step_quarterize2(date_ls,first_val=0.25 * est_Max_Earning(simulator.TODAY_YR),
+                                                       increase_yield=inflation,start_date_idx=0,end_date_idx=len(date_ls)-1)
+    ss_tax = [0.062*min(income,ss_max) for income,ss_max in zip(total_eligible_income,ss_max_earnings_qt_ls)]
+    return ss_tax
  
 """def test_unit():
     my_simulator = simulator.test_unit()
