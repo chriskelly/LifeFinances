@@ -8,9 +8,9 @@ pip install -r dependencies.txt
 
 ## Code Structure
 ### Directly runnable files
-- `controller.py`: the controller of an MVC GUI that allows you to modify the parameters used in other modules.
 - `simulator.py`: Running this provides a success rate for the parameters set through the controller.py or directly in data/params.json. Increasing the constant MONTE_CARLO_RUNS will increase accuracy, but also increase run-time.
 - `genetic.py`: Running this starts an infinite loop. The simulator will be run over and over again with slightly randomized parameters ('Range' property of any variable in data/params.json). When a parameter set is found that meets the TARGET_SUCCESS_RATE, data/params.json will be overwritten with those params, and the loop will start over again with a more agressive FI Date target.
+- `controller.py`: the controller of an MVC GUI that allows you to modify the parameters used in other modules. Needs to be updated, so advise to directly edit data/params.json instead
 
 ### Other files
 - data folder
