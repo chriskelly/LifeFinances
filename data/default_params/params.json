@@ -1,10 +1,7 @@
 {
     "Version": {
-        "val": "0.01"
-    },
-    "FI Quarter": {
-        "val": "2035.0",
-        "popout": 0
+        "notes": "Object based income modeling",
+        "val": "0.02"
     },
     "Calculate Til": {
         "val": "2090",
@@ -32,10 +29,6 @@
         "val": "1.03",
         "popout": 0
     },
-    "Raise (%)": {
-        "val": "0.04",
-        "popout": 0
-    },
     "Pension Trust Factor": {
         "val": "0.8",
         "popout": 0
@@ -48,13 +41,8 @@
         "val": "net worth",
         "range": "['early','mid','late','net worth']"
     },
-    "Pension Method": {
-        "val": "early",
-        "popout": 0,
-        "range": "['early','mid','late','net worth','cash-out']"
-    },
     "Current Net Worth ($)": {
-        "val": "1000",
+        "val": "250",
         "popout": 0
     },
     "Total Spending (Yearly)": {
@@ -73,14 +61,6 @@
     },
     "Car (Monthly)": {
         "val": "0.285",
-        "popout": 1
-    },
-    "His (Monthly)": {
-        "val": "0.250",
-        "popout": 1
-    },
-    "Hers (Monthly)": {
-        "val": "0.400",
         "popout": 1
     },
     "Leisure (Monthly)": {
@@ -132,43 +112,6 @@
     "User Pension": {
         "val": "False"
     },
-    "His Salary + Bonus": {
-        "val": "100",
-        "popout": 5
-    },
-    "His 401k": {
-        "val": "20.5",
-        "popout": 5
-    },
-    "His HSA": {
-        "val": "5.3",
-        "popout": 5
-    },
-    "His Emplr 401k": {
-        "val": "10.25",
-        "popout": 5,
-        "calcd": "params_vals['His 401k'] *0.5"
-    },
-    "His Emplr HSA": {
-        "val": "2.0",
-        "popout": 5
-    },
-    "His Emplr Contributions": {
-        "val": "12.25",
-        "popout": 5,
-        "calcd": "params_vals['His Emplr 401k']+params_vals['His Emplr HSA']"
-    },
-    "His Tax Deferred": {
-        "val": "38.05",
-        "popout": 5,
-        "calcd": "params_vals['His 401k']+params_vals['His HSA']+params_vals['His Emplr Contributions']"
-    },
-    "His Total Income": {
-        "val": "150",
-        "popout": 0,
-        "popper": 5,
-        "calcd": "params_vals['His Salary + Bonus']+params_vals['His Emplr Contributions']"
-    },
     "Partner Age": {
         "val": "34",
         "popout": 6,
@@ -176,42 +119,6 @@
     },
     "Partner Pension": {
         "val": "False"
-    },
-    "Her Salary": {
-        "val": "100",
-        "popout": 6
-    },
-    "Her Pension Costs": {
-        "val": "-9.315",
-        "popout": 6,
-        "calcd": "params_vals['Her Salary']*-0.09"
-    },
-    "Her Tax Deferred": {
-        "val": "41.0",
-        "popout": 6,
-        "calcd": "params_vals['Her 403b']+params_vals['Her 457b']"
-    },
-    "Her 403b": {
-        "val": "20.5",
-        "popout": 6
-    },
-    "Her 457b": {
-        "val": "20.5",
-        "popout": 6
-    },
-    "Her Total Income": {
-        "val": "100",
-        "popout": 0,
-        "popper": 6,
-        "calcd": "params_vals['Her Salary']+params_vals['Her Pension Costs']"
-    },
-    "Barista Income (Total)": {
-        "val": "0",
-        "popout": 0
-    },
-    "Barista Time (Yrs)": {
-        "val": "0",
-        "popout": 0
     },
     "User Earnings Record": {
         "val": {
@@ -235,7 +142,68 @@
             "2018": "130.000"
         }
     },
+    "User (Monthly)": {
+        "val": "0.250",
+        "popout": 1
+    },
+    "Partner (Monthly)": {
+        "val": "0.400",
+        "popout": 1
+    },
+    "User Incomes": {
+        "val": [
+            {
+                "Starting Income": 207.75,
+                "Tax Deferred Income": 38.05,
+                "Last Date": 2023.25,
+                "Yearly Raise": 0.04,
+                "Try to Reduce": false,
+                "Social Security Eligible": true
+            },
+            {
+                "Starting Income": 0,
+                "Tax Deferred Income": 0,
+                "Last Date": 2023.5,
+                "Yearly Raise": 0,
+                "Try to Reduce": false,
+                "Social Security Eligible": false
+            },
+            {
+                "Starting Income": 150,
+                "Tax Deferred Income": 30,
+                "Last Date": 2029.0,
+                "Yearly Raise": 0.06,
+                "Try to Reduce": true,
+                "Social Security Eligible": false
+            },
+            {
+                "Starting Income": 50,
+                "Tax Deferred Income": 0,
+                "Last Date": 2028,
+                "Yearly Raise": 0.02,
+                "Try to Reduce": false,
+                "Social Security Eligible": true
+            }
+        ]
+    },
+    "Partner Incomes": {
+        "val": [
+            {
+                "Starting Income": 94.185,
+                "Tax Deferred Income": 41.0,
+                "Last Date": 2025.0,
+                "Yearly Raise": 0.04,
+                "Try to Reduce": true,
+                "Social Security Eligible": false
+            }
+        ]
+    },
     "Admin": {
         "val": "False"
+    },
+    "Pension Method": {
+        "val": "early",
+        "popout": 0,
+        "range": "['early','mid','late','net worth','cash-out']"
     }
 }

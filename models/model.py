@@ -27,7 +27,7 @@ def update_dicts(up_to_date:dict,out_of_date:dict):
             del_keys.append(key)
     for key in del_keys:
         del out_of_date[key]
-    out_of_date['Version']['val'] = up_to_date['Version']['val']
+    out_of_date['Version'] = up_to_date['Version']
     print('Parameters Updated')
     # doesn't need to return since the dicts are directly modified
 
@@ -84,7 +84,7 @@ class Model:
     def run_calcs(self, params_vals: dict):
         """Cleans data to correct format and runs all calculations, 
         updating the param:val dict passed-in and returning the updated dict"""
-        params_vals = _clean_data(params_vals)
+        params_vals = clean_data(params_vals)
         calcd_params = self.filter_params(include=True,attr="calcd")
         for param,obj in calcd_params.items():
             params_vals[param] = eval(obj["calcd"]) # evaluate string saved in self.params under "calcd"
@@ -132,9 +132,9 @@ def _is_float(element):
     except ValueError:
         return False
 
-def _clean_data(params: dict):
+def clean_data(params: dict):
     for k, v in params.items():
-        if type(v) is dict: # used for Denica pension parameter
+        if type(v) is dict or type(v) is list:
             continue
         elif v.isdigit():
             params[k] = int(v)
