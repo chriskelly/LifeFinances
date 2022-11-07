@@ -32,7 +32,7 @@ def est_Index(year):
     return a_I * np.exp(b_I * year)
 
 class Calculator:
-    def __init__(self,sim:simulator.Simulator,usr:str,inflation_ls:list,date_ls:list,income_calc:income.Calculator,spouse_calc=None):
+    def __init__(self,sim,usr:str,inflation_ls:list,date_ls:list,income_calc:income.Calculator,spouse_calc=None):
         """
         Methods include 'early', 'mid', and 'late' for age dependent retirements. 
         The 'net worth' method triggers withdrawals if net worth drops below equity target or at last year available

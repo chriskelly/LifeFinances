@@ -15,7 +15,7 @@ TARGET_SUCCESS_RATE = 0.95
 INITIAL_MONTE_RUNS = 100
 MAX_MONTE_RUNS = 5000
 ITER_LIMIT = 10 # Max number of times to run if parent is better than all children
-SEED = True # Use current params to start with
+SEED = False # Use current params to start with
 RNG = np.random.default_rng()
 
 class Algorithm:
@@ -96,12 +96,24 @@ class Algorithm:
                     full_params.update(parent_mute_params)
                     with open(const.PARAMS_LOC, 'w') as outfile:
                         json.dump(full_params, outfile, indent=4)
-                    full_params['FI Quarter']['val'] = str(float(full_params['FI Quarter']['val']) - 0.25)
-                    print(f"Date: {full_params['FI Quarter']['val']}")
+                    # Reduce all last dates by one quarter
+                    for usr in ['User','Partner']:
+                        start_date = simulator.TODAY_YR_QT
+                        for i, income in enumerate(full_params[f'{usr} Incomes']['val']):
+                            # get info on this income
+                            last_date = income['Last Date']
+                            duration = last_date - start_date + 0.25
+                            reduce = bool(income['Try to Reduce'])
+                            if duration <= 0.25 and reduce: # check if job will start before previous job ends
+                                raise Exception(f'Income with Last Date of {income["Last Date"]} ends too early') # Not sure how to better handle this. You could delete the income item in the params, but I don't think users would prefer the income be deleted. You could add some sort of skip tag to the income that income.py then uses to ignore, but that may not be easily debuggable
+                            if reduce: 
+                                # reduce the last_date and update full_params
+                                last_date -= 0.25
+                                full_params[f'{usr} Incomes']['val'][i]['Last Date'] = last_date
+                                print(f"Now trying to reduce {usr}'s last date to {last_date}!")
+                            start_date = last_date + 0.25 # adjust start_date for next income
                     self.main(next_loop=(True,full_params))
-                
-        debug_point = True
-    
+                    
     # ---------------------- Mutation ---------------------- #
     def _random_mutate(self,mutable_params) -> dict:
         """Return mutable params with shuffled values"""
@@ -136,9 +148,11 @@ class Algorithm:
     
     # -------------------------------- HELPER FUNCTIONS -------------------------------- #
     def _check_if_beaten(self,full_params):
-        if float(full_params["FI Quarter"]['val']) > float(models.model.load_params()["FI Quarter"]['val']):
-            print('got beat')
-            self.main() # start over with the new successful params.json if another core figured it out
+        for usr in ['User','Partner']:
+            for i, income in enumerate(full_params[f'{usr} Incomes']['val']):
+                if income["Last Date"] > models.model.load_params()[f'{usr} Incomes']['val'][i]["Last Date"]:
+                    print('got beat')
+                    self.main() # start over with the new successful params.json if another core figured it out
     
     def _gaussian_int(self,center:int,max_deviation:int) -> int: # credit: https://stackoverflow.com/questions/37411633/how-to-generate-a-random-normal-distribution-of-integers
         """Returns an int from a random gaussian distribution"""
