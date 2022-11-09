@@ -1,6 +1,7 @@
 # LifeFInances
 
 ## Dependencies
+Supported for python version >= 3.9
 The code requires various packages, which are listed in `dependencies.text`. To install them all at once, run the following command in the top-level directory of this repository
 ```bash
 pip install -r dependencies.txt
