@@ -14,7 +14,7 @@ OFFSPRING_QTY = 10
 TARGET_SUCCESS_RATE = 0.95
 INITIAL_MONTE_RUNS = 100
 MAX_MONTE_RUNS = 5000
-ITER_LIMIT = 10 # Max number of times to run if parent is better than all children
+ITER_LIMIT = 5 # Max number of times to run if parent is better than all children
 SEED = False # Use current params to start with
 RNG = np.random.default_rng()
 
@@ -66,7 +66,7 @@ class Algorithm:
             # ------ Children not improving ------ #
             if success_rate >= children[0][0]: # Parent better than child
                 parent_is_best_qty += 1
-                if DEBUG_LVL>=1: print(f"No better children {parent_is_best_qty}/10")
+                if DEBUG_LVL>=1: print(f"No better children {parent_is_best_qty}/{ITER_LIMIT}")
                 if parent_is_best_qty >= ITER_LIMIT: # if children not improving, start over with random child
                     param_vals = {key:obj["val"] for (key,obj) in parent_mute_params.items()}
                     print(f"Local max: {success_rate*100:.2f}%\n {param_vals}")
