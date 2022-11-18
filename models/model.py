@@ -1,4 +1,4 @@
-import json
+import json, shutil
 import data.constants as const
 
 def update_dicts(up_to_date:dict,out_of_date:dict):
@@ -45,10 +45,12 @@ def load_params() -> dict:
     try:
         with open(const.PARAMS_LOC) as json_file:
             params = json.load(json_file)
-        with open(const.DEFAULT_PARAMS_LOC) as json_file:
-            default_params = json.load(json_file)
-    except:
-        raise Exception('Parameter file not found. Copy from /data/default_params and place in /data folder.')
+    except: # needed for the first time code is run
+        shutil.copy(const.DEFAULT_PARAMS_LOC, const.PARAMS_LOC)
+        with open(const.PARAMS_LOC) as json_file:
+            params = json.load(json_file)
+    with open(const.DEFAULT_PARAMS_LOC) as json_file:
+        default_params = json.load(json_file)
     if float(params['Version']['val']) > float(default_params['Version']['val']):
         update_dicts(up_to_date=params, out_of_date=default_params)
         with open(const.DEFAULT_PARAMS_LOC, 'w') as outfile:
