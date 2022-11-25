@@ -1,7 +1,7 @@
 {
     "Version": {
-        "notes": "Cleaned up unused params",
-        "val": "0.03"
+        "notes": "Removed flat inflation",
+        "val": "0.04"
     },
     "Calculate Til": {
         "val": "2090",
@@ -23,10 +23,6 @@
     },
     "Cost of Kid (% Spending)": {
         "val": "0.12",
-        "popout": 0
-    },
-    "Flat Inflation (%)": {
-        "val": "1.03",
         "popout": 0
     },
     "Pension Trust Factor": {
@@ -196,9 +192,8 @@
     "Admin": {
         "val": "False"
     },
-    "Pension Method": {
+    "Admin Pension Method": {
         "val": "early",
-        "popout": 0,
         "range": "['early','mid','late','net worth','cash-out']"
     }
 }
