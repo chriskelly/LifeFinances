@@ -20,7 +20,6 @@ RNG = np.random.default_rng()
 
 class Algorithm:
     def __init__(self):
-        self.prev_used_params = [] # used to track and prevent reusing the same param sets during step mutation
         self.reset_success = RESET_SUCCESS
         simulator.DEBUG_LVL = 0
         if self.reset_success: 
@@ -38,6 +37,7 @@ class Algorithm:
     # ---------------------- First parameter set ---------------------- #
         self.model = Model()
         mutable_params = self.model.filter_params(include=True, attr='range')
+        self.prev_used_params = [] # used to track and prevent reusing the same param sets during step mutation
         success_rate, parent_is_best_qty = 0.0 , 0
         if next_loop[0]: # check to see if this is the first loop or if the previous one was successful and we're auto-advancing
             full_params = next_loop[1]
@@ -115,24 +115,23 @@ class Algorithm:
                     self.main(next_loop=(True,full_params))
                     
     # ---------------------- Mutation ---------------------- #
-    def _random_mutate(self,mutable_params) -> dict:
+    def _random_mutate(self,mutable_params:dict) -> dict:
         """Return mutable params with shuffled values"""
         new_dict = copy.deepcopy(mutable_params) 
         for param,obj in new_dict.items():
             new_dict[param]['val'] = str(random.choice(eval(obj["range"])))
         return new_dict
     
-    def _step_mutate(self,mutable_params,max_step=1) -> dict:
+    def _step_mutate(self,mutable_params:dict,max_step=1) -> dict:
         """Return mutable params with values shifted in a normal distribution around 
         provided mutable_param values with a max deviation of max_step"""
         new_dict = copy.deepcopy(mutable_params)
         for param,obj in new_dict.items():
             ls = list(eval(obj["range"]))
             val = obj['val'] if not models.model._is_float(obj['val']) else float(obj['val'])
-            old_position = ls.index(val)
-            length = len(ls)
-            new_position = min(length-1,max(0,self._gaussian_int(center=old_position,max_deviation=max_step)))
-            new_dict[param]['val'] = str(ls[new_position])
+            old_idx = ls.index(val)
+            new_idx = min(len(ls)-1,max(0,self._gaussian_int(center=old_idx,max_deviation=max_step)))
+            new_dict[param]['val'] = str(ls[new_idx])
         if new_dict in self.prev_used_params:
             print(f'Tried params: {len(self.prev_used_params)}')
             new_dict = self._step_mutate(mutable_params,max_step)
