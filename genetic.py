@@ -6,6 +6,7 @@ from models.model import Model
 import data.constants as const
 import numpy as np # used in eval() of parameter ranges
 import scipy.stats as ss
+import time
 
 DEBUG_LVL = 1 # Lvl 0 shows only local and final max param sets
 RESET_SUCCESS = False # Set to true to reset all the counts in param_success.json
@@ -179,9 +180,10 @@ class Algorithm:
         with open(const.PARAMS_SUCCESS_LOC, 'w') as outfile:
             json.dump(self.param_cnt, outfile, indent=4)
     
-    def _make_child(self,full_params:dict, parent_mute_params:dict,success_rate:float,mutate:str,max_step:int=1,idx:int=0):
+    def _make_child(self,full_params:dict, parent_mute_params:dict,success_rate:float,mutate:str,max_step:int=1,idx:int=0,benchmark=True):
         """Returns a tuple (success rate, mutable_params).\n
         Mutate can be 'step', 'random', or 'none'"""
+        child_Start_Time = time.time()
         if mutate == 'step':
             child_mute_params = self._step_mutate(parent_mute_params,max_step=max_step) 
             self.prev_used_params.append(child_mute_params)
@@ -203,6 +205,9 @@ class Algorithm:
         print(f"monte runs: {override_dict['monte_carlo_runs']}")
         new_simulator = Simulator(param_vals,override_dict)
         child_success_rate, self.returns = new_simulator.main()
+        child_End_Time = time.time()
+        if(benchmark):
+            print(f"child generation time: {round(child_End_Time-child_Start_Time,2)}")
         return (child_success_rate,child_mute_params)
     
         
