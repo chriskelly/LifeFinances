@@ -97,6 +97,11 @@ class Algorithm:
                     with open(const.PARAMS_LOC, 'w') as outfile:
                         json.dump(full_params, outfile, indent=4)
                     # Reduce all last dates by one quarter
+                        # Assuming dates for bond tent also needs to be reduced with earlier retire date
+                    full_params["Bond Tent Start Date"]['val'] -= 0.25
+                    full_params["Bond Tent Peak Date"]['val'] -= 0.25 
+                    full_params["Bond Tent End Date"]['val'] -= 0.25 
+                        # Reduce income stop dates
                     for usr in ['User','Partner']:
                         start_date = simulator.TODAY_YR_QT
                         for i, income in enumerate(full_params[f'{usr} Incomes']['val']):

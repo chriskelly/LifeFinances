@@ -153,8 +153,7 @@ class Simulator:
             
             for row in range(self.rows): 
                 # allocations
-                alloc = self.allocation(inflation=inflation_ls[row],
-                                        net_worth = net_worth_ls[-1])
+                alloc = self._allocation(inflation_ls[row],net_worth_ls[-1],date_ls,row)
                 equity_alloc_ls.append(alloc["Equity"])
                 re_alloc_ls.append(alloc["RE"])
                 bond_alloc_ls.append(alloc["Bond"])
@@ -170,7 +169,7 @@ class Simulator:
                 if job_income_ls[row] == 0:
                     working = False
                 else: working = True
-                spending_ls.append(self.base_spending(spending_qt, retirement_change,
+                spending_ls.append(self._base_spending(spending_qt, retirement_change,
                                                       inflation=inflation_ls[row], 
                                                  working=working, alloc=alloc,return_rate=return_rate))
                 kids_ls[row] = spending_ls[row] * kid_spending_rate * kids_ls[row]
@@ -179,9 +178,10 @@ class Simulator:
                 net_transaction_ls.append(total_income_ls[row] - total_costs_ls[row])
                 # annuity contributions
                 if alloc['Annuity'] != 0: 
-                    amount = alloc['Annuity'] * net_worth_ls[-1]
-                    my_annuity.contribute(amount=amount,date=date_ls[row])
-                    net_worth_ls[-1] -= amount
+                    target_balance = alloc['Annuity'] * net_worth_ls[-1]
+                    contribution = max(0, target_balance - my_annuity.balances[max(0,row-1)])
+                    my_annuity.contribute(amount=contribution,date=date_ls[row])
+                    net_worth_ls[-1] -= contribution
                 # investment returns
                 return_rate = stock_return_ls[row]*alloc['Equity'] + bond_return_ls[row]*alloc['Bond'] + re_return_ls[row]*alloc['RE']
                 return_amt = return_rate*(net_worth_ls[-1]+0.5*net_transaction_ls[row])
@@ -323,7 +323,7 @@ class Simulator:
         else:
             raise Exception("Didn't declare either MULT or ADD")
         
-    def base_spending(self,spending_qt, retirement_change,**kw):
+    def _base_spending(self,spending_qt, retirement_change,**kw):
         """Calculates base spending in a quarter
 
         Parameters
@@ -360,29 +360,30 @@ class Simulator:
                 spending = spending*(1+max_flux) if kw['return_rate'] > expected_return_rate_qt else spending*(1-max_flux)
         return spending
     
-    def allocation(self, inflation, **kw):
-        """Calculates allocation between equity, RE and bonds. 
-        Allows for different methods to be designed
-        
-        Parameters
-        ----------
-        inflation : numeric
-            quarterly rate of inflation
-        
-        Returns 
-        -------
-        output: dict 
-            {"Equity":EquityAlloc, "RE":REAlloc, "Bond":BondAlloc} 
+    def _allocation(self, inflation:float, net_worth:float, date_ls:list, row:int):
+        """Calculates allocation between equity, RE, bonds, and annuities. 
+        Allows for different methods to be used
+
+        Args:
+            inflation (float): Inflation value at this row
+            net_worth (float): Net worth at this row
+            date_ls (list): List of dates
+            row (int)
+
+        Raises:
+            ValueError: If a valid method is not provided
+
+        Returns:
+            dict: {'Equity':Equity Allocation,'RE':Real Estate Allocations,'Bond':Bond Allocation,'Annuity':Annuity Allocation}
         """
+        # variables used in multiple method
         method= self._val("Allocation Method",QT_MOD=False)
-        re_ratio = self.params["RE Ratio"]
-        equity_target = self.params["Equity Target"] 
-        max_risk_factor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
-        
+        re_ratio = self._val("RE Ratio",QT_MOD=False)
         if method == 'Life Cycle':
-            #method = 'Life Cycle' -> kw['net_worth']
+            equity_target = self._val("Equity Target",QT_MOD=False) 
             equity_target_PV = equity_target*inflation # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
-            risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
+            max_risk_factor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
+            risk_factor = min(max(equity_target_PV/max(net_worth,0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
             with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
                 warnings.simplefilter("ignore")
                 try: 
@@ -391,27 +392,49 @@ class Simulator:
                     re_alloc = (risk_factor*re_ratio)
             equity_alloc = (1-re_alloc)*risk_factor
             bond_alloc = max(1-re_alloc-equity_alloc,0) 
-            output= {"Equity":equity_alloc,
-                     "RE":re_alloc,
-                     "Bond":bond_alloc,
-                     "Annuity":0}
-        elif method == 'Life Cycle Annuity':
-            equity_target_PV = equity_target*inflation # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
-            risk_factor = min(max(equity_target_PV/max(kw['net_worth'],0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
-            with warnings.catch_warnings(): # https://stackoverflow.com/a/14463362/13627745 # another way to avoid ZeroDivisionError, but also avoid printing out exceptions
-                warnings.simplefilter("ignore")
-                try: 
-                    re_alloc = (risk_factor*re_ratio)/((1-re_ratio)*(1+risk_factor*re_ratio/(1-re_ratio))) # derived with fun algebra! ReAlloc = RERatio*(ReAlloc+EquityTotal); EquityTotal = RiskFactor*OriginalEquity; ReAlloc+OriginalEquity=100%
-                except ZeroDivisionError: 
-                    re_alloc = (risk_factor*re_ratio)
-            equity_alloc = (1-re_alloc)*risk_factor
-            annuity_alloc = max(1-re_alloc-equity_alloc,0) 
-            output= {"Equity":equity_alloc,
-                     "RE":re_alloc,
-                     "Bond":0,
-                     "Annuity":annuity_alloc}
+        elif method == 'Flat':
+            bond_alloc = self._val("Flat Bond Target",QT_MOD=False) 
+            re_alloc = re_ratio * (1-bond_alloc)
+            equity_alloc = 1 - bond_alloc - re_alloc
+        elif method == '120 Minus Age' or method == '110 Minus Age' or method == '100 Minus Age':
+            risk_val = int(method[0:3])
+            average_age = (self._val("User Age",False) + self._val("Partner Age",False))/2 + row/4
+            bond_alloc = max(0, 1 - (risk_val - average_age)/100)
+            re_alloc = re_ratio * (1-bond_alloc)
+            equity_alloc = 1 - bond_alloc - re_alloc
+        elif method == 'Bond Tent':
+            start_bond_alloc = self._val("Bond Tent Start Allocation",QT_MOD=False) 
+            start_date = self._val("Bond Tent Start Date",QT_MOD=False) 
+            peak_bond_alloc = self._val("Bond Tent Peak Allocation",QT_MOD=False) 
+            peak_date = self._val("Bond Tent Peak Date",QT_MOD=False) 
+            end_bond_alloc = self._val("Bond Tent End Allocation",QT_MOD=False) 
+            end_date = self._val("Bond Tent End Date",QT_MOD=False) 
+            start_date = max(TODAY_YR_QT,start_date) # prevent start date from going too low due to genetic improvement trials
+            start_row, peak_row, end_row = date_ls.index(start_date), date_ls.index(peak_date), date_ls.index(end_date)
+            if row <= start_row: # Initial flat period
+                bond_alloc = start_bond_alloc
+            elif row < peak_row: # Climb to peak
+                bond_alloc = np.interp(row, [start_row,peak_row], [start_bond_alloc,peak_bond_alloc])
+            elif row == peak_row: # Peak point
+                bond_alloc = peak_bond_alloc
+            elif row < end_row: # Descend to new flat
+                bond_alloc = np.interp(row, [peak_row,end_row], [peak_bond_alloc,end_bond_alloc])
+            elif row >= end_row: # Flat period
+                bond_alloc = end_bond_alloc
+            re_alloc = re_ratio * (1-bond_alloc)
+            equity_alloc = 1 - bond_alloc - re_alloc
         else: 
             raise ValueError("Allocation method is not defined")
+        # Convert bonds to annuities depending on params
+        if self._val("Annuities Instead of Bonds",QT_MOD=False):
+            annuity_alloc = bond_alloc
+            bond_alloc = 0
+        else:
+            annuity_alloc = 0
+        output= {"Equity":equity_alloc,
+                "RE":re_alloc,
+                "Bond":bond_alloc,
+                "Annuity":annuity_alloc}
         return output
     
 # ADDITIONAL HELPER FUNCTIONS ------------------------------------------- #
