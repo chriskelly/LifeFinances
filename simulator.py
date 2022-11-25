@@ -85,14 +85,11 @@ class Simulator:
     # STATIC LISTS: TIME, JOB INCOME --------------------------------------- #
 
         debug_lvl = DEBUG_LVL
-        FLAT_INFLATION = self._val("Flat Inflation (%)",QT_MOD=False) # Used for some estimations like pension
         
         # Year.Quarter list 
         date_ls = self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True) 
         
         options= {
-            'flat_inflation': FLAT_INFLATION,
-            'flat_inflation_qt': FLAT_INFLATION ** (1. / 4),
             'date_ls': date_ls,
             'equity_target': self._val("Equity Target",False)
             }
@@ -103,7 +100,7 @@ class Simulator:
         (job_income_ls, tax_deferred_ls) = income.generate_lists(user_income_calc,partner_income_calc)
         # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income)
         medicare= np.array(job_income_ls)*0.0145
-        ss_tax = socialSecurity.taxes(date_ls,FLAT_INFLATION,user_income_calc,partner_income_calc)
+        ss_tax = socialSecurity.taxes(date_ls,const.PENSION_INFLATION,user_income_calc,partner_income_calc)
         
     # MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
         # variables that don't alter with each run
@@ -165,10 +162,6 @@ class Simulator:
                 trust = self._val("Pension Trust Factor",QT_MOD=False)
                 usr_ss_ls.append(trust * user_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 partner_ss_ls.append(trust * partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
-                if self.admin: # add pension to partner if you're Chris
-                    partner_ss_ls[-1] += trust * self.get_pension_payment(pension_income=partner_income_calc.income_objs[0],
-                                                                          raise_yr=FLAT_INFLATION, row=row, inflation_ls=inflation_ls, 
-                                                                          net_worth=net_worth_ls[-1], options=options) 
                 # taxes
                 # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
                 income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row])+0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row])
@@ -330,69 +323,6 @@ class Simulator:
         else:
             raise Exception("Didn't declare either MULT or ADD")
         
-    def get_pension_payment(self, pension_income, raise_yr, row, inflation_ls, net_worth, options):
-        """Calculates the pension for Chris's partner if admin is selected.
-
-        Args:
-            pension_income (income.Income): The income stream from partner's work
-            raise_yr (float): raise to expect each year
-            row (int): date_ls index
-            inflation_ls (list): 
-            net_worth (float): net worth at this date
-            options (dict): _description_
-
-        Returns:
-            float: pension payout for given date
-        """
-        if hasattr(self, 'pension_ls'):
-            if row == 0: del self.pension_ls # reset for each loop
-            else: return self.pension_ls[row]
-        EARLY_YEAR = 2043
-        MID_YEAR = 2049
-        LATE_YEAR = 2055
-        FLAT_INFLATION= options['flat_inflation']
-        date_ls= options['date_ls']
-        equity_target = options['equity_target']
-        method = self._val('Pension Method',QT_MOD=False)
-            # Calc max salary estimate
-        current_pension_salary_qt = pension_income.income_qt/0.91 # Corrects for 9% taken from salary for pension
-        working_qts = pension_income.last_date_idx - pension_income.start_date_idx()
-        if method == 'cash-out':
-            # Need to correct for out-dated info, first estimate salary at date of last update, then project forward
-            data_age_qt = int((TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25) # find age of data
-            est_prev_pension_salary_qt = current_pension_salary_qt / (raise_yr ** (data_age_qt/4)) # estimate salary at date of data
-            projected_income = self._step_quarterize(est_prev_pension_salary_qt,raise_yr,mode='working',working_qts=working_qts + data_age_qt) # project income from data age to FI
-            pension_bal = const.PENSION_ACCOUNT_BAL
-            pension_int_rate = const.PENSION_INTEREST_YIELD ** (1/4) - 1
-            for income in projected_income:
-                pension_bal += income * const.PENSION_COST + pension_bal * pension_int_rate
-            self.pension_ls = [0] * working_qts + [pension_bal] + [0] * (len(date_ls) - working_qts - 1)
-            return self.pension_ls[row]
-        elif method == 'net worth':
-            if (net_worth > equity_target * inflation_ls[row] and date_ls[row]<LATE_YEAR) or date_ls[row]<EARLY_YEAR:
-                return 0 # haven't triggered yet
-            else:
-                pension_start_yr = min(math.trunc(date_ls[row]),LATE_YEAR)
-        elif method == 'early':
-            pension_start_yr = EARLY_YEAR
-        elif method == 'mid':
-            pension_start_yr = MID_YEAR
-        elif method == 'late':
-            pension_start_yr = LATE_YEAR
-        max_pension_salary_qt = current_pension_salary_qt * raise_yr ** (working_qts/4)
-            # find initial pension amount (in last working year's dollars)
-        PENSION_JOB_START_YEAR = 2016
-        pension_job_last_year = math.trunc(date_ls[pension_income.last_date_idx])
-        years_worked = pension_job_last_year - PENSION_JOB_START_YEAR
-        pension_multiplier = const.DENICA_PENSION_RATES[str(pension_start_yr)]
-        starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier 
-            # convert to est. value at pension_start_yr
-        starting_pension_qt = starting_pension_qt*self._pow(FLAT_INFLATION,exp=(pension_start_yr-pension_job_last_year))
-            # build out list, add the correct number of zeros to the beginning
-        self.pension_ls =self._step_quarterize(starting_pension_qt,raise_yr,mode='pension',start_yr=pension_start_yr,date_ls=date_ls)
-        self.pension_ls = [0]*(self.rows-len(self.pension_ls))+self.pension_ls
-        return self.pension_ls[row]
-    
     def base_spending(self,spending_qt, retirement_change,**kw):
         """Calculates base spending in a quarter
 
@@ -500,7 +430,7 @@ def step_quarterize2(date_ls:list,first_val,increase_yield,start_date_idx:int,en
         list
     """
     ls = [first_val]
-    for date in date_ls[start_date_idx+1:end_date_idx+1]:
+    for date in date_ls[start_date_idx+1:end_date_idx+1]: # +1 on end_date_idx due to non-inclusivity of list splicing
         if date%1 == 0:
             ls.append(ls[-1] * increase_yield)
         else:
