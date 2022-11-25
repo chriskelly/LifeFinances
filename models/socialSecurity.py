@@ -57,7 +57,8 @@ class Calculator:
         None.
 
         """
-        self.sim, self.date_ls, self.inflation_ls, self.spouse_calc = sim, date_ls, inflation_ls, spouse_calc
+        self.sim, self.date_ls, self.inflation_ls, self.spouse_calc, self.income_calc, self.usr \
+                = sim, date_ls, inflation_ls, spouse_calc, income_calc, usr
         self.age = sim._val(f"{usr} Age",False)
         if self.spouse_calc: spouse_calc.spouse_calc = self # if a spouse is added, make the spouse's spouse this calc
         self.method = sim._val(f"{usr} Social Security Method",False)
@@ -85,7 +86,6 @@ class Calculator:
         else: pia_rates = const.PIA_RATES
         self.full_PIA = sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
                                 in zip(enumerate(bend_points),pia_rates)])
-        #TODO if no earnings given, estimate backward from age
         
         # -------- GENERATE INITIAL LIST -------- #
         if self.method == 'early':
@@ -107,7 +107,10 @@ class Calculator:
         self.ls = [0]*self.ss_row + self.ls[self.ss_row:] # then trim the early years and replace with 0s
     
     def get_payment(self,row,net_worth,equity_target):
-        return max(self._get_worker_payment(row,net_worth,equity_target), self._get_spousal_payment(row,net_worth,equity_target))
+        res =  max(self._get_worker_payment(row,net_worth,equity_target), self._get_spousal_payment(row,net_worth,equity_target))
+        if self.sim.admin and self.usr == 'Partner':
+            res += self._admin_pension_payment(row,equity_target,net_worth)
+        return res
     
     def _get_worker_payment(self,row,net_worth,equity_target):
         if self.method == 'net worth' and net_worth < equity_target * self.inflation_ls[row] and not self.triggered:
@@ -150,6 +153,65 @@ class Calculator:
                 if year in self.earnings_record:
                     self.earnings_record[year] += income
                 else: self.earnings_record[year] = income
+
+    def _admin_pension_payment(self,row:int,equity_target:float,net_worth:float) -> float:
+        """Calculates the pension for Admin's partner if admin is selected.
+        
+        Args:
+            row (int): date_ls index
+            net_worth (float): net worth at this date
+            equity_target (float): equity target at this date
+
+        Returns:
+            float: pension payout for given date
+        """
+            # if pension list has already been calculated, just return the value for the current row
+        if hasattr(self, 'pension_ls'):
+            if row == 0: del self.pension_ls # reset for each loop
+            else: return self.pension_ls[row]
+            # set variables
+        EARLY_PENSION_YEAR,MID_PENSION_YEAR,LATE_PENSION_YEAR = 2043,2049,2055
+        method = self.sim._val('Admin Pension Method',QT_MOD=False)
+        pension_income = self.income_calc.income_objs[0]
+        current_pension_salary_qt = pension_income.income_qt/(1-const.PENSION_COST) # Corrects for 9% taken from salary for pension
+        working_qts = pension_income.last_date_idx - pension_income.start_date_idx()
+        max_pension_salary_qt = current_pension_salary_qt * pension_income.yearly_raise ** (working_qts/4)
+        if method == 'cash-out':
+            # Need to correct for out-dated info, first estimate salary at date of last update, then project forward
+            data_age_qt = int((simulator.TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25) # find age of data
+            est_prev_pension_salary_qt = current_pension_salary_qt / (pension_income.yearly_raise ** (data_age_qt/4)) # estimate salary at date of data
+            # rough estimate of historical earnings + projected future earnings (corrected for pension cost)
+            projected_income = np.concatenate((simulator.step_quarterize2(self.date_ls,est_prev_pension_salary_qt,pension_income.yearly_raise,start_date_idx=0,end_date_idx=data_age_qt)
+                                              ,np.array(pension_income.income_ls)/(1-const.PENSION_COST))) 
+            pension_bal = const.PENSION_ACCOUNT_BAL
+            pension_int_rate_qt = const.PENSION_INTEREST_YIELD ** (1/4) - 1
+            for income in projected_income:
+                pension_bal += income * const.PENSION_COST + pension_bal * pension_int_rate_qt
+            self.pension_ls = [0]*working_qts + [pension_bal] + [0]*(len(self.date_ls) - working_qts - 1)
+            return self.pension_ls[row]
+        elif method == 'net worth':
+            if (net_worth > equity_target * self.inflation_ls[row] and self.date_ls[row]<LATE_PENSION_YEAR) or self.date_ls[row]<EARLY_PENSION_YEAR:
+                return 0 # haven't triggered yet or passed the late pension year
+            else:
+                pension_start_yr = min(math.trunc(self.date_ls[row]),LATE_PENSION_YEAR)
+        elif method == 'early':
+            pension_start_yr = EARLY_PENSION_YEAR
+        elif method == 'mid':
+            pension_start_yr = MID_PENSION_YEAR
+        elif method == 'late':
+            pension_start_yr = LATE_PENSION_YEAR
+            # find initial pension amount (in last working year's dollars)
+        PENSION_JOB_FIRST_YEAR = 2016
+        pension_job_last_year = math.trunc(self.date_ls[pension_income.last_date_idx])
+        years_worked = pension_job_last_year - PENSION_JOB_FIRST_YEAR
+        pension_multiplier = const.ADMIN_PENSION_RATES[str(pension_start_yr)]
+        starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier 
+        starting_pension_qt *= pension_income.yearly_raise**(pension_start_yr-pension_job_last_year) # convert to est. value at pension_start_yr
+            # build out list with the correct number of zeros to the beginning
+        start_date_idx = self.date_ls.index(pension_start_yr)
+        self.pension_ls = [0]*(start_date_idx) \
+                        + simulator.step_quarterize2(self.date_ls,starting_pension_qt,pension_income.yearly_raise,start_date_idx,end_date_idx=self.sim.rows-1)
+        return self.pension_ls[row]
 
 def eligible_income(date_ls:list,income_calc:income.Calculator) -> list:
     """Determine which income can be used for social security
