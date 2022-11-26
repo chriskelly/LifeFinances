@@ -180,7 +180,7 @@ class Algorithm:
         with open(const.PARAMS_SUCCESS_LOC, 'w') as outfile:
             json.dump(self.param_cnt, outfile, indent=4)
     
-    def _make_child(self,full_params:dict, parent_mute_params:dict,success_rate:float,mutate:str,max_step:int=1,idx:int=0,benchmark=True):
+    def _make_child(self,full_params:dict, parent_mute_params:dict,success_rate:float,mutate:str,max_step:int=1,idx:int=0):
         """Returns a tuple (success rate, mutable_params).\n
         Mutate can be 'step', 'random', or 'none'"""
         child_Start_Time = time.time()
@@ -206,7 +206,7 @@ class Algorithm:
         new_simulator = Simulator(param_vals,override_dict)
         child_success_rate, self.returns = new_simulator.main()
         child_End_Time = time.time()
-        if(benchmark):
+        if(simulator.DEBUG_LVL==2):
             print(f"child generation time: {round(child_End_Time-child_Start_Time,2)}")
         return (child_success_rate,child_mute_params)
     
