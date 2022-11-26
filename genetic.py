@@ -206,7 +206,7 @@ class Algorithm:
         new_simulator = Simulator(param_vals,override_dict)
         child_success_rate, self.returns = new_simulator.main()
         child_End_Time = time.time()
-        if(simulator.DEBUG_LVL==2):
+        if(simulator.DEBUG_LVL>=2):
             print(f"child generation time: {round(child_End_Time-child_Start_Time,2)}")
         return (child_success_rate,child_mute_params)
     
