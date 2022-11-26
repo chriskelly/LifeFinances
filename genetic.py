@@ -8,7 +8,7 @@ import numpy as np # used in eval() of parameter ranges
 import scipy.stats as ss
 import time
 
-DEBUG_LVL = 1 # Lvl 0 shows only local and final max param sets
+DEBUG_LVL = 2 # Lvl 0 shows only local and final max param sets
 RESET_SUCCESS = False # Set to true to reset all the counts in param_success.json
 SUCCESS_THRESH = 0.5 # Initial threshold for random mutations to beat before switching to step mutations
 OFFSPRING_QTY = 10
@@ -206,7 +206,7 @@ class Algorithm:
         new_simulator = Simulator(param_vals,override_dict)
         child_success_rate, self.returns = new_simulator.main()
         child_End_Time = time.time()
-        if(simulator.DEBUG_LVL>=2):
+        if(DEBUG_LVL>=2):
             print(f"child generation time: {round(child_End_Time-child_Start_Time,2)}")
         return (child_success_rate,child_mute_params)
     
