@@ -124,7 +124,10 @@ class Simulator:
             kid_year_qts = [float(year_qt) for year_qt in kid_year_qts] 
         else: kid_year_qts =[] # needs to be an empty array for kid_ls to compute
         kid_spending_rate = self._val("Cost of Kid (% Spending)",QT_MOD=False)
-        # performance tracking
+            # Social Security Initialization
+        user_ss_calc = socialSecurity.Calculator(self,'User',date_ls,user_income_calc)
+        partner_ss_calc = socialSecurity.Calculator(self,'Partner',date_ls,partner_income_calc,spouse_calc=user_ss_calc)
+            # performance tracking
         success_rate = 0
         final_net_worths = [] # Establish empty list to calculate net worth median
         worst_failure_idx = self.rows
@@ -136,9 +139,9 @@ class Simulator:
             bond_return_ls = bond_return_arr[col]
             re_return_ls = re_return_arr[col]
             inflation_ls = inflation_arr[col]
-            # Social Security Initialization
-            user_ss_calc = socialSecurity.Calculator(self,'User',inflation_ls,date_ls,user_income_calc)
-            partner_ss_calc = socialSecurity.Calculator(self,'Partner',inflation_ls,date_ls,partner_income_calc,spouse_calc=user_ss_calc)
+            # Social Security List Creation
+            user_ss_calc.make_list(inflation_ls)
+            partner_ss_calc.make_list(inflation_ls)
             # Kid count   
                 # kids_ls should have kid for every year from each kid's birth till 22 years after
             kids_ls = [0]*self.rows
