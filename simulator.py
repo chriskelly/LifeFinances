@@ -152,8 +152,7 @@ class Simulator:
             spending_ls, total_costs_ls, net_transaction_ls, equity_alloc_ls = [],[],[],[]
             re_alloc_ls, bond_alloc_ls, taxes_ls, total_income_ls, usr_ss_ls, partner_ss_ls = [],[],[],[],[],[]
             return_rate = None
-            my_annuity = annuity.Annuity(interest_yield_qt=const.ANNUITY_INT_YIELD ** (1/4),
-                                         payout_rate_qt=const.ANNUITY_PAYOUT_RATE/4,date_ls=date_ls)
+            my_annuity = annuity.Annuity()
                 # loop through date_ls to find net worth changes
             net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
             
@@ -190,16 +189,15 @@ class Simulator:
                 # annuity contributions
                 if alloc['Annuity'] != 0: 
                     amount = alloc['Annuity'] * net_worth_ls[-1]
-                    my_annuity.contribute(amount=amount,date=date_ls[row])
+                    my_annuity.contribute(amount,row)
                     net_worth_ls[-1] -= amount
                 # investment returns
                 return_rate = stock_return_ls[row]*alloc['Equity'] + bond_return_ls[row]*alloc['Bond'] + re_return_ls[row]*alloc['RE']
                 return_amt = return_rate*(net_worth_ls[-1]+0.5*net_transaction_ls[row])
                 # annuity withdrawals
-                if net_worth_ls[-1]+return_amt+net_transaction_ls[row] < 0 and not my_annuity.annuitized:
-                    my_annuity.annuitize(date_ls[row])
-                if my_annuity.annuitized:
-                    net_transaction_ls[row] += my_annuity.take_payment(date_ls[row])
+                if net_worth_ls[-1]+return_amt+net_transaction_ls[row] < 0 and not my_annuity.annuitized: # annuity is started when user runs out of money
+                    my_annuity.annuitize(row)
+                net_transaction_ls[row] += my_annuity.take_payment()
                 net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+net_transaction_ls[row]))
             net_worth_ls.pop()
             if net_worth_ls[-1]!=0: 
