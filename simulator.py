@@ -476,6 +476,11 @@ def get_taxes(income_qt):
 
     """
     # Taxes (brackets are for yearly, not qt, so need conversion)
+
+    #Occasionally, income_qt is 0. No need to run through the expensive bracket math if our tax burden is also 0.
+    if(income_qt == 0.0):
+        return 0
+    
     fed_taxes = bracket_math(const.FED_BRACKET_RATES,max(4*income_qt-const.FED_STD_DEDUCTION,0))
     state_taxes = bracket_math(const.CA_BRACKET_RATES,max(4*income_qt-const.CA_STD_DEDUCTION,0))
     return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
