@@ -164,8 +164,8 @@ class Simulator:
                 usr_ss_ls.append(trust * user_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 partner_ss_ls.append(trust * partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
                 # taxes
-                # taxes are 80% for pension and social security. Could optimze by skipping when sum of income is 0
-                income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row])+0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row])
+                    # taxes are 80% for pension and social security
+                income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row],inflation_ls[row])+0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row],inflation_ls[row])
                 taxes_ls.append(income_tax + medicare[row] + ss_tax[row])
                 # spending
                 if job_income_ls[row] == 0:
@@ -461,38 +461,40 @@ def step_quarterize2(date_ls:list,first_val,increase_yield,start_date_idx:int,en
             ls.append(ls[-1])
     return ls
 
-def get_taxes(income_qt):
+def get_taxes(income_qt:float,inflation:float) -> float:
     """Combines federal and state taxes on non-tax-deferred income
 
-    Parameters
-    ----------
-    income_qt : numeric
-        income for a given quarter.
+    Args:
+        income_qt (float): income in quarterly amount
+        inflation (float): inflation at specific date
 
-    Returns
-    -------
-    float
-        taxes for a given quarter.
-
+    Returns:
+        (float): federal and state tax burden for that quarter
     """
-    # Taxes (brackets are for yearly, not qt, so need conversion)
-
-    #Occasionally, income_qt is 0. No need to run through the expensive bracket math if our tax burden is also 0.
-    if(income_qt == 0.0):
-        return 0
+    if(income_qt == 0.0): return 0 # avoid bracket math if no income
     
-    fed_taxes = bracket_math(const.FED_BRACKET_RATES,max(4*income_qt-const.FED_STD_DEDUCTION,0))
-    state_taxes = bracket_math(const.CA_BRACKET_RATES,max(4*income_qt-const.CA_STD_DEDUCTION,0))
+    adj_income = 4*income_qt / inflation # convert income to yearly and adjust backward for inflation    
+    fed_taxes = bracket_math(const.FED_BRACKET_RATES,max(adj_income-const.FED_STD_DEDUCTION,0))
+    state_taxes = bracket_math(const.CA_BRACKET_RATES,max(adj_income-const.CA_STD_DEDUCTION,0))
     return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
 
-def bracket_math(bracket:list,income):
-    rates,bend_points = zip(*bracket) # reverses the more readable format in the json file to the easier to use format for comprehension
-    rates,bend_points = list(rates), list(bend_points) # they unzip as tuples for some reason
-    bend_points += [income]
-    bend_points.sort()
-    bend_points = bend_points[:bend_points.index(income)+1]
-    return sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
-        in zip(enumerate(bend_points),rates)])
+def bracket_math(brackets:list,yr_income:float) -> float:
+    """Calculates and returns taxes owed
+
+    Args:
+        brackets (list): List of brackets in format: [rate,highest dollar that rate applies to,sum of tax owed in previous brackets]
+        yr_income (float): income in yearly amount
+
+    Returns:
+        (float): tax owed
+    """
+    rate_idx, cap_idx, sum_idx = 0, 1, 2
+    prev_bracket_cap = 0
+    for bracket in brackets:
+        if yr_income < bracket[cap_idx]:
+            return(bracket[sum_idx] + # tax owed up to prev bracket
+                   bracket[rate_idx]*(yr_income-prev_bracket_cap)) # tax owed in this bracket
+        prev_bracket_cap = bracket[cap_idx]
 
 def test_unit(units:int=1):
     """
