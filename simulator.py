@@ -181,7 +181,7 @@ class Simulator:
                 # annuity contributions
                 if alloc['Annuity'] != 0: 
                     target_balance = alloc['Annuity'] * net_worth_ls[-1]
-                    contribution = max(0, target_balance - my_annuity.balances[max(0,row-1)])
+                    contribution = max(0, target_balance - my_annuity.balance_update(row))
                     my_annuity.contribute(contribution,row)
                     net_worth_ls[-1] -= contribution
                 # investment returns

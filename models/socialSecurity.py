@@ -57,7 +57,7 @@ class Calculator:
         None.
 
         """
-        self.sim, self.date_ls, self.spouse_calc, self.usr = sim, date_ls, spouse_calc, usr
+        self.sim, self.date_ls, self.spouse_calc, self.usr, self.income_calc = sim, date_ls, spouse_calc, usr, income_calc
         self.age = sim._val(f"{usr} Age",False)
         if self.spouse_calc: spouse_calc.spouse_calc = self # if a spouse is added, make the spouse's spouse this calc
         self.method = sim._val(f"{usr} Social Security Method",False)
