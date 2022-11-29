@@ -8,25 +8,53 @@ PARAMS_SUCCESS_LOC = os.path.join(git_root,'data/param_success.json')
 SAVE_DIR = os.path.join(git_root,'diagnostics/saved')
 
 EQUITY_MEAN = 1.092
+"""Geometric average yield for stock invesments"""
 EQUITY_STDEV = .16
+"""Standard deviation of yield for stock invesments"""
 EQUITY_ANNUAL_HIGH = 1.121 
+"""Highest allowed annualized lifetime yield for stock investments,
+based on historical data of rolling time periods"""
 EQUITY_ANNUAL_LOW = 1.053
+"""Lowest allowed annualized lifetime yield for stock investments,
+based on historical data of rolling time periods"""
 
 BOND_MEAN = 1.02
+"""Geometric average yield for bond invesments"""
 BOND_STDEV = .025
+"""Standard deviation of yield for bond invesments"""
 BOND_ANNUAL_HIGH = 1.02
+"""Highest allowed annualized lifetime yield for bond investments,
+based on historical data of rolling time periods"""
 BOND_ANNUAL_LOW = 1.015
+"""Lowest allowed annualized lifetime yield for bond investments,
+based on historical data of rolling time periods"""
 
 RE_MEAN = 1.11
+"""Geometric average yield for real estate invesments"""
 RE_STDEV = .14
+"""Standard deviation of yield for real estate invesments"""
 RE_ANNUAL_HIGH = 1.12
+"""Highest allowed annualized lifetime yield for real estate investments,
+based on estimated data of rolling time periods"""
 RE_ANNUAL_LOW = 1.08
+"""Lowest allowed annualized lifetime yield for real estate investments,
+based on estimated data of rolling time periods"""
 
 INFLATION_MEAN = 1.037  # https://fred.stlouisfed.org/series/FPCPITOTLZGUSA#
+"""Geometric average inflation yield"""
 INFLATION_STDEV = .027
+"""Standard deviation of inflation yield"""
 INFLATION_ANNUAL_HIGH = 1.063
+"""Highest allowed annualized inflation yield,
+based on historical data of rolling time periods"""
 INFLATION_ANNUAL_LOW = 1.020
+"""Lowest allowed annualized inflation yield,
+based on historical data of rolling time periods"""
 INFLATION_SKEW = 1.642
+"""Historic skew of inflation yield"""
+
+PENSION_INFLATION = 1.03 
+"""Expected increase yield to Social Security and Pension figures"""
 
 SS_MAX_EARNINGS = [ 
     [2002,84.900],
@@ -50,6 +78,7 @@ SS_MAX_EARNINGS = [
     [2020,137.700],
     [2021,142.800],
 ]
+"""List of historic data in format: [year,social security max earnings]"""
 SS_INDEXES = [ 
     [2002,1.7665978],
     [2003,1.7244432],
@@ -72,9 +101,14 @@ SS_INDEXES = [
     [2020,1.0559868],
     [2021,1.0000000]
  ]
+"""List of historic data in format: [year,social security indicies]"""
 SS_BEND_POINTS=[1.024,6.172]
+"""Bend points in $1000s in format: [low bend point, high bend point]"""
 PIA_RATES=[0.9,0.32,0.15]
+"""PIA rates in format: [rate below low bend point, rate between bend points,
+rate above high bend point]"""
 PIA_RATES_PENSION=[0.4,0.32,0.15]
+"""Same as PIA rates, but the rate below the low bend point is 40% instead of 90%"""
 BENEFIT_RATES= {
     "62":0.7,
     "63":0.75,
@@ -86,7 +120,9 @@ BENEFIT_RATES= {
     "69":1.16,
     "70":1.24
 }
+"""Dictionary of {age:benefit rate}. Benefit rate generally rises the longer you wait to pull SS """
 FED_STD_DEDUCTION=	 25.900
+"""2022 federal standard deduction"""
 FED_BRACKET_RATES= [
     [0.1, 20.500],
     [0.12, 83.550],  
@@ -95,7 +131,9 @@ FED_BRACKET_RATES= [
     [0.32, 431.900], 
     [0.35, 647.850]  
 ]
+"""2022 federal brackets for income tax in format [rate,highest dollar that rate applies to]"""
 CA_STD_DEDUCTION= 9.606
+"""2022 california standard deduction"""
 CA_BRACKET_RATES= [
     [0.01, 18.649],
     [0.02, 44.213],  
@@ -104,7 +142,15 @@ CA_BRACKET_RATES= [
     [0.08, 122.427], 
     [0.093, 625.371]
 ]
-DENICA_PENSION_RATES={
+"""2022 CA brackets for income tax in format [rate,highest dollar that rate applies to]"""
+
+ANNUITY_INT_YIELD = 1.05 
+"""Interest yield on annuity (Fidelity used as benchmark). https://digital.fidelity.com/prgw/digital/gie/"""
+ANNUITY_PAYOUT_RATE = 0.045
+"""Payout rate on annuity (Fidelity used as benchmark). https://digital.fidelity.com/prgw/digital/gie/"""
+
+# Admin's pension details, ignore!
+ADMIN_PENSION_RATES={
     "2043": .0116,
     "2044": .0128,
     "2045": .0140,
@@ -119,10 +165,12 @@ DENICA_PENSION_RATES={
     "2054": .0240,
     "2055": .0240
 }
-PENSION_ACCOUNT_BAL = 56.307 # https://my.calstrs.com/
+"""Please ignore. Pension details for admin. Format: {year:rate}"""
+PENSION_ACCOUNT_BAL = 56.307 # lastpass 'pension bal'
+"""Please ignore. Pension details for admin."""
 PENSION_COST = 0.09 # 9% of income
+"""Please ignore. Pension details for admin."""
 PENSION_ACCOUNT_BAL_UP_DATE = 2022.5
+"""Please ignore. Pension details for admin. Last date of update"""
 PENSION_INTEREST_YIELD = 1.02 # varies from 1.2-3% based on Progress Reports
-
-ANNUITY_INT_YIELD = 1.05 # https://digital.fidelity.com/prgw/digital/gie/
-ANNUITY_PAYOUT_RATE = 0.045
+"""Please ignore. Pension details for admin."""

@@ -1,7 +1,7 @@
 {
     "Version": {
-        "notes": "Cleaned up unused params",
-        "val": "0.03"
+        "notes": "Added more allocation methods",
+        "val": "0.05"
     },
     "Calculate Til": {
         "val": "2090",
@@ -23,10 +23,6 @@
     },
     "Cost of Kid (% Spending)": {
         "val": "0.12",
-        "popout": 0
-    },
-    "Flat Inflation (%)": {
-        "val": "1.03",
         "popout": 0
     },
     "Pension Trust Factor": {
@@ -84,7 +80,7 @@
         "popout": 1
     },
     "Retirement Change (%)": {
-        "val": "-0.14",
+        "val": "-0.15",
         "popout": 1
     },
     "Allowed Fluctuation (%)": {
@@ -97,9 +93,38 @@
         "range": "['ceil-floor','inflation-only']"
     },
     "Allocation Method": {
-        "val": "Life Cycle Annuity",
+        "val": "Flat",
         "popout": 1,
-        "range": "['Life Cycle','Life Cycle Annuity']"
+        "range": "['Life Cycle','Flat','120 Minus Age','110 Minus Age','100 Minus Age','Bond Tent']"
+    },
+    "Annuities Instead of Bonds": {
+        "val": "False",
+        "range": "['True','False']"
+    },
+    "Flat Bond Target": {
+        "val": "0.2",
+        "range": "[0.2, 0.3, 0.4, 0.5, 0.6]"
+    },
+    "Bond Tent Start Allocation": {
+        "val": "0.0",
+        "range": "[0.0, 0.1, 0.2, 0.3, 0.4]"
+    },
+    "Bond Tent Start Date": {
+        "val": 2035
+    },
+    "Bond Tent Peak Allocation": {
+        "val": "0.8",
+        "range": "[0.4, 0.5, 0.6, 0.7, 0.8]"
+    },
+    "Bond Tent Peak Date": {
+        "val": 2040
+    },
+    "Bond Tent End Allocation": {
+        "val": "0.0",
+        "range": "[0.0, 0.1, 0.2, 0.3, 0.4]"
+    },
+    "Bond Tent End Date": {
+        "val": 2060
     },
     "User Age": {
         "val": "29",
@@ -196,9 +221,8 @@
     "Admin": {
         "val": "False"
     },
-    "Pension Method": {
+    "Admin Pension Method": {
         "val": "early",
-        "popout": 0,
         "range": "['early','mid','late','net worth','cash-out']"
     }
 }
