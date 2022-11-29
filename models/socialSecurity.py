@@ -112,9 +112,10 @@ class Calculator:
     def _get_worker_payment(self,row,net_worth,equity_target):
         if self.method == 'net worth' and net_worth < equity_target * self.inflation_ls[row] and not self.triggered:
         # Have to generate new list if using 'net worth' method
-            self.ss_date=self.date_ls[row]
-            self.ss_age = math.trunc(self.ss_date) + self.age - simulator.TODAY_YR
-            if self.ss_age >= EARLY_AGE and self.ss_age <= LATE_AGE: # confirm worker is of age to retire
+            current_date = self.date_ls[row]
+            current_age = math.trunc(current_date) + self.age - simulator.TODAY_YR
+            if current_age >= EARLY_AGE and current_age <= LATE_AGE: # confirm worker is of age to retire
+                self.ss_date, self.ss_age = current_date, current_age
                 self.triggered = True
                 self.make_list(self.inflation_ls)
         return self.ls[row]
