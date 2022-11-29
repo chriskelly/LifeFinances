@@ -124,25 +124,40 @@ BENEFIT_RATES= {
 FED_STD_DEDUCTION=	 25.900
 """2022 federal standard deduction"""
 FED_BRACKET_RATES= [
-    [0.1, 20.500],
-    [0.12, 83.550],  
-    [0.22, 178.150],
-    [0.24, 340.100], 
-    [0.32, 431.900], 
-    [0.35, 647.850]  
+    [0.1, 20.500, 0],
+    [0.12, 83.550, 2.05],  
+    [0.22, 178.150, 9.616],
+    [0.24, 340.100, 30.428], 
+    [0.32, 431.900, 69.296], 
+    [0.35, 647.850, 98.672],
+    [0.37, float('inf'), 174.254]  
 ]
-"""2022 federal brackets for income tax in format [rate,highest dollar that rate applies to]"""
+"""2022 federal brackets for income tax in format [rate,highest dollar that rate applies to,sum of tax owed in previous brackets]"""
+
+""" Code to calc third column of bracket rates
+from data import constants as const
+brackets = const.FED_BRACKET_RATES
+rate_idx, cap_idx = 0, 1
+res = [0,brackets[0][rate_idx] * brackets[0][cap_idx]] # first 2
+for i in range(1,len(brackets)-1):
+    res.append(res[-1] + brackets[i][rate_idx]*(brackets[i][cap_idx]-brackets[i-1][cap_idx]))
+print(res)
+"""
+
 CA_STD_DEDUCTION= 9.606
 """2022 california standard deduction"""
 CA_BRACKET_RATES= [
-    [0.01, 18.649],
-    [0.02, 44.213],  
-    [0.04, 69.783],
-    [0.06, 96.869], 
-    [0.08, 122.427], 
-    [0.093, 625.371]
+    [0.01, 18.649, 0],
+    [0.02, 44.213, 0.186],  
+    [0.04, 69.783, 0.698],
+    [0.06, 96.869, 1.720], 
+    [0.08, 122.427, 3.346], 
+    [0.093, 625.371, 5.390],
+    [0.103, 750.442, 52.164],
+    [0.113, 1250.738, 65.046],
+    [0.123, float('inf'), 121.580]
 ]
-"""2022 CA brackets for income tax in format [rate,highest dollar that rate applies to]"""
+"""2022 CA brackets for income tax in format [rate,highest dollar that rate applies to,sum of tax owed in previous brackets]"""
 
 ANNUITY_INT_YIELD = 1.05 
 """Interest yield on annuity (Fidelity used as benchmark). https://digital.fidelity.com/prgw/digital/gie/"""
