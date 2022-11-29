@@ -32,7 +32,7 @@ def est_Index(year):
     return a_I * np.exp(b_I * year)
 
 class Calculator:
-    def __init__(self,sim,usr:str,inflation_ls:list,date_ls:list,income_calc:income.Calculator,spouse_calc=None):
+    def __init__(self,sim,usr:str,date_ls:list,income_calc:income.Calculator,spouse_calc=None):
         """
         Methods include 'early', 'mid', and 'late' for age dependent retirements. 
         The 'net worth' method triggers withdrawals if net worth drops below equity target or at last year available
@@ -57,8 +57,7 @@ class Calculator:
         None.
 
         """
-        self.sim, self.date_ls, self.inflation_ls, self.spouse_calc, self.income_calc, self.usr \
-                = sim, date_ls, inflation_ls, spouse_calc, income_calc, usr
+        self.sim, self.date_ls, self.spouse_calc, self.usr = sim, date_ls, spouse_calc, usr
         self.age = sim._val(f"{usr} Age",False)
         if self.spouse_calc: spouse_calc.spouse_calc = self # if a spouse is added, make the spouse's spouse this calc
         self.method = sim._val(f"{usr} Social Security Method",False)
@@ -68,7 +67,6 @@ class Calculator:
         self.earnings_record = {int(year):float(earning) for (year,earning) in imported_record.items()} # {year : earnings}
         eligible_income_ls = eligible_income(date_ls,income_calc)
         self._add_to_earnings_record(date_ls,eligible_income_ls)
-        
         # -------- CALCULATE PIA (BASE SOCIAL SECURITY PAYMENT) -------- #
         # index and limit the earnings, then sort them from high to low
         ss_earnings = [min(est_Max_Earning(year),earning) * est_Index(year) 
@@ -86,24 +84,23 @@ class Calculator:
         else: pia_rates = const.PIA_RATES
         self.full_PIA = sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
                                 in zip(enumerate(bend_points),pia_rates)])
-        
-        # -------- GENERATE INITIAL LIST -------- #
+        # -------- FIND SS AGE AND DATE -------- #
         if self.method == 'early':
             self.ss_age = EARLY_AGE
         elif self.method == 'mid':
             self.ss_age = MID_AGE
         else: # method == 'late' or 'portfolio' List will be overwritten if portfolio triggers before late age
             self.ss_age = LATE_AGE
-        ss_date = self.ss_age - self.age + simulator.TODAY_YR + 1 # not quarterly precise, could be improved by changing from age to birth quarter in params.json
-        self._make_list(ss_date)
+        self.ss_date = self.ss_age - self.age + simulator.TODAY_YR + 1 # not quarterly precise, could be improved by changing from age to birth quarter in params.json
             
-    def _make_list(self, ss_date):
+    def make_list(self, inflation_ls):
         """Returns list with social security payments starting from today till final date"""
+        self.inflation_ls = inflation_ls
         self.benefit_rate = const.BENEFIT_RATES[str(self.ss_age)]
         adjusted_PIA = self.full_PIA * self.benefit_rate # find adjusted PIA based on benefit rates for selected age
         # PIA is in that today's dollars and needs to be adjusted
         self.ls = list(3 * adjusted_PIA * np.array(self.inflation_ls)) # Multiple by inflation_ls
-        self.ss_row = self.date_ls.index(ss_date)
+        self.ss_row = self.date_ls.index(self.ss_date)
         self.ls = [0]*self.ss_row + self.ls[self.ss_row:] # then trim the early years and replace with 0s
     
     def get_payment(self,row,net_worth,equity_target):
@@ -115,11 +112,11 @@ class Calculator:
     def _get_worker_payment(self,row,net_worth,equity_target):
         if self.method == 'net worth' and net_worth < equity_target * self.inflation_ls[row] and not self.triggered:
         # Have to generate new list if using 'net worth' method
-            ss_date=self.date_ls[row]
-            self.ss_age = math.trunc(ss_date) + self.age - simulator.TODAY_YR
+            self.ss_date=self.date_ls[row]
+            self.ss_age = math.trunc(self.ss_date) + self.age - simulator.TODAY_YR
             if self.ss_age >= EARLY_AGE and self.ss_age <= LATE_AGE: # confirm worker is of age to retire
                 self.triggered = True
-                self._make_list(ss_date)
+                self.make_list(self.inflation_ls)
         return self.ls[row]
     
     def _get_spousal_payment(self,row,net_worth,equity_target):
