@@ -4,3 +4,4 @@ scipy
 gitpython
 matplotlib
 seaborn
+numba

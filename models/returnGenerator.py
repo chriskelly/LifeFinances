@@ -2,6 +2,7 @@ import math, time, random
 from scipy import stats
 import numpy as np, pandas as pd
 from os import path
+# from numba import jit
 
 import git, sys
 git_root= git.Repo(path.abspath(''),
@@ -133,7 +134,8 @@ def generate_returns_faster(mean, stdev, annual_high, annual_low,n_rows,qty_per_
         print(f'std mean: {abs(mean-1 - np.mean(multi_returns))}') # result should be 0.0
         print(f'std stdev: {abs(stdev - np.std(multi_returns, ddof=1))}') # result should be 0.0
     return multi_returns
-    
+
+# @jit    
 def generate_skewd_inflation(mean, stdev, skew,qty_per_column,qty_per_year,columns):
     stdev = stdev / math.sqrt(qty_per_year) # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
     mean = mean ** (1/qty_per_year)
