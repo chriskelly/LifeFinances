@@ -18,9 +18,21 @@ class Annuity:
         Yields:
             no return: Annuity's balance is updated for interest and contribution
         """
-        self.balance *= self.interest_yield ** (row - self.prev_transaction_row) # Update balance for interest gained. Interest yield will be 1 when annuitized.
-        self.prev_transaction_row = row
+        self.balance_update(row)
         self.balance += amount
+        
+    def balance_update(self,row:int) -> float:
+        """Update and return balance for interest gained. Interest yield will be 1 when annuitized.
+
+        Args:
+            row (int): index of date_ls
+
+        Returns:
+            float: Balance as of input date index
+        """
+        self.balance *= self.interest_yield ** (row - self.prev_transaction_row)
+        self.prev_transaction_row = row
+        return self.balance
             
     def annuitize(self,row:int):
         """Annuitize this annuity
@@ -31,7 +43,7 @@ class Annuity:
         Yields:
             no return: Balance is updated for interest gained. No interest gained after this point
         """
-        self.balance *= self.interest_yield ** (row - self.prev_transaction_row) # add interest for last time
+        self.balance_update(row) # add interest for last time
         self.annuitized = True
         self.interest_yield = 1 # After annuitization, balance does not grow anymore except for contributions.
     
