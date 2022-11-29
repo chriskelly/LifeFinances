@@ -136,14 +136,15 @@ def _is_float(element):
 
 def clean_data(params: dict):
     for k, v in params.items():
-        if type(v) is dict or type(v) is list:
+        try:
+            if v.isdigit():
+                params[k] = int(v)
+            elif _is_float(v):
+                params[k] = float(v)
+            elif v == "True":
+                params[k] = True
+            elif v == "False":
+                params[k] = False
+        except:
             continue
-        elif v.isdigit():
-            params[k] = int(v)
-        elif _is_float(v):
-            params[k] = float(v)
-        elif v == "True":
-            params[k] = True
-        elif v == "False":
-            params[k] = False
     return params
