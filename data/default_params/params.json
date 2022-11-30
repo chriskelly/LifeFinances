@@ -1,0 +1,228 @@
+{
+    "Version": {
+        "notes": "Added more allocation methods",
+        "val": "0.05"
+    },
+    "Calculate Til": {
+        "val": "2090",
+        "popout": 0
+    },
+    "RE Ratio": {
+        "val": "0.6",
+        "popout": 0,
+        "range": "np.linspace(0,.6,7)"
+    },
+    "Equity Target": {
+        "val": "1500",
+        "popout": 0,
+        "range": "range(500,4000,100)"
+    },
+    "Kid Birth Years": {
+        "val": "2024",
+        "popout": 0
+    },
+    "Cost of Kid (% Spending)": {
+        "val": "0.12",
+        "popout": 0
+    },
+    "Pension Trust Factor": {
+        "val": "0.8",
+        "popout": 0
+    },
+    "User Social Security Method": {
+        "val": "net worth",
+        "range": "['early','mid','late','net worth']"
+    },
+    "Partner Social Security Method": {
+        "val": "net worth",
+        "range": "['early','mid','late','net worth']"
+    },
+    "Current Net Worth ($)": {
+        "val": "250",
+        "popout": 0
+    },
+    "Total Spending (Yearly)": {
+        "val": "54.4",
+        "popout": 0,
+        "popper": 1,
+        "calcd": "12*sum([params_vals['Housing (Monthly)'],params_vals['Groceries (Monthly)'],params_vals['Car (Monthly)'],params_vals['Leisure (Monthly)'], params_vals['Other (Monthly)']])+params_vals['Travel (Yearly)']+params_vals['Giving (Yearly)']+params_vals['Health (Yearly)']"
+    },
+    "Housing (Monthly)": {
+        "val": "2.300",
+        "popout": 1
+    },
+    "Groceries (Monthly)": {
+        "val": "0.400",
+        "popout": 1
+    },
+    "Car (Monthly)": {
+        "val": "0.300",
+        "popout": 1
+    },
+    "Leisure (Monthly)": {
+        "val": "0.300",
+        "popout": 1
+    },
+    "Other (Monthly)": {
+        "val": "0.150",
+        "popout": 1
+    },
+    "Travel (Yearly)": {
+        "val": "5.000",
+        "popout": 1
+    },
+    "Giving (Yearly)": {
+        "val": "6.000",
+        "popout": 1
+    },
+    "Health (Yearly)": {
+        "val": "2.000",
+        "popout": 1
+    },
+    "Retirement Change (%)": {
+        "val": "-0.15",
+        "popout": 1
+    },
+    "Allowed Fluctuation (%)": {
+        "val": "0.05",
+        "popout": 1
+    },
+    "Spending Method": {
+        "val": "ceil-floor",
+        "popout": 1,
+        "range": "['ceil-floor','inflation-only']"
+    },
+    "Allocation Method": {
+        "val": "Flat",
+        "popout": 1,
+        "range": "['Life Cycle','Flat','120 Minus Age','110 Minus Age','100 Minus Age','Bond Tent']"
+    },
+    "Annuities Instead of Bonds": {
+        "val": "False",
+        "range": "['True','False']"
+    },
+    "Flat Bond Target": {
+        "val": "0.2",
+        "range": "[0.2, 0.3, 0.4, 0.5, 0.6]"
+    },
+    "Bond Tent Start Allocation": {
+        "val": "0.0",
+        "range": "[0.0, 0.1, 0.2, 0.3, 0.4]"
+    },
+    "Bond Tent Start Date": {
+        "val": 2035
+    },
+    "Bond Tent Peak Allocation": {
+        "val": "0.8",
+        "range": "[0.4, 0.5, 0.6, 0.7, 0.8]"
+    },
+    "Bond Tent Peak Date": {
+        "val": 2040
+    },
+    "Bond Tent End Allocation": {
+        "val": "0.0",
+        "range": "[0.0, 0.1, 0.2, 0.3, 0.4]"
+    },
+    "Bond Tent End Date": {
+        "val": 2060
+    },
+    "User Age": {
+        "val": "29",
+        "popout": 5
+    },
+    "User Pension": {
+        "val": "False"
+    },
+    "Partner Age": {
+        "val": "34",
+        "popout": 6
+    },
+    "Partner Pension": {
+        "val": "False"
+    },
+    "User Earnings Record": {
+        "val": {
+            "2012": "30.000",
+            "2013": "35.000",
+            "2014": "40.000",
+            "2015": "45.000",
+            "2016": "50.000",
+            "2017": "55.000",
+            "2018": "60.000",
+            "2019": "65.000",
+            "2020": "70.000",
+            "2021": "75.000"
+        }
+    },
+    "Partner Earnings Record": {
+        "val": {
+            "2014": "110.000",
+            "2015": "120.000",
+            "2016": "120.000",
+            "2018": "130.000"
+        }
+    },
+    "User (Monthly)": {
+        "val": "0.250",
+        "popout": 1
+    },
+    "Partner (Monthly)": {
+        "val": "0.400",
+        "popout": 1
+    },
+    "User Incomes": {
+        "val": [
+            {
+                "Starting Income": 120,
+                "Tax Deferred Income": 12,
+                "Last Date": 2035.25,
+                "Yearly Raise": 0.04,
+                "Try to Reduce": false,
+                "Social Security Eligible": true
+            },
+            {
+                "Starting Income": 0,
+                "Tax Deferred Income": 0,
+                "Last Date": 2036,
+                "Yearly Raise": 0,
+                "Try to Reduce": false,
+                "Social Security Eligible": false
+            },
+            {
+                "Starting Income": 150,
+                "Tax Deferred Income": 30,
+                "Last Date": 2040.0,
+                "Yearly Raise": 0.06,
+                "Try to Reduce": true,
+                "Social Security Eligible": false
+            },
+            {
+                "Starting Income": 50,
+                "Tax Deferred Income": 0,
+                "Last Date": 2045,
+                "Yearly Raise": 0.02,
+                "Try to Reduce": false,
+                "Social Security Eligible": true
+            }
+        ]
+    },
+    "Partner Incomes": {
+        "val": [
+            {
+                "Starting Income": 100,
+                "Tax Deferred Income": 30,
+                "Last Date": 2040.0,
+                "Yearly Raise": 0.04,
+                "Try to Reduce": true,
+                "Social Security Eligible": false
+            }
+        ]
+    },
+    "Admin": {
+        "val": "False"
+    },
+    "Admin Pension Method": {
+        "val": "early",
+        "range": "['early','mid','late','net worth','cash-out']"
+    }
+}
