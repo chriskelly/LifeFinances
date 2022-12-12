@@ -1,10 +1,8 @@
-import json, shutil
+import json, shutil, copy
 import data.constants as const
 
-def update_dicts(up_to_date:dict,out_of_date:dict):
-    """
-    Looks for new keys added or keys removed from the most recently updated dict. 
-    Copys over new keys to old dict and removes keys not found in the updated version.
+def update_dicts(up_to_date:dict,out_of_date:dict) -> dict:
+    """Temporarily stores values and range of out_of_date dict, then creates copy of up_to_date dict, but over-writes vals and ranges.
 
     Parameters
     ----------
@@ -15,21 +13,20 @@ def update_dicts(up_to_date:dict,out_of_date:dict):
 
     Returns
     -------
-    None.
+    Updated Dict.
 
     """
-    for key in up_to_date.keys():
-        if key not in out_of_date:
-            out_of_date[key] = up_to_date[key]
-    del_keys = [] # needed since you can't delete keys while iterating through
-    for key in out_of_date.keys():
-        if key not in up_to_date:
-            del_keys.append(key)
-    for key in del_keys:
-        del out_of_date[key]
-    out_of_date['Version'] = up_to_date['Version']
+    temp_param_val = {k:v["val"] for k,v in out_of_date.items()} # save all the old vals
+    temp_param_range = {k:v["range"] for k,v in out_of_date.items() if ("range" in v)} # save all the old vals
+    del temp_param_val["Version"]
+    updated_dict = copy.deepcopy(up_to_date) # deepcopy to avoid referencing the same dict
+    for key in updated_dict.keys():
+        if key in temp_param_val:
+            updated_dict[key]['val'] = temp_param_val[key] # replace copied val
+        if key in temp_param_range:
+            updated_dict[key]['range'] = temp_param_range[key]
     print('Parameters Updated')
-    # doesn't need to return since the dicts are directly modified
+    return updated_dict
 
 def load_params() -> dict:
     """Checks that params is up-to-date, then returns params.
@@ -52,15 +49,13 @@ def load_params() -> dict:
     with open(const.DEFAULT_PARAMS_LOC) as json_file:
         default_params = json.load(json_file)
     if float(params['Version']['val']) > float(default_params['Version']['val']):
-        update_dicts(up_to_date=params, out_of_date=default_params)
+        default_params = update_dicts(up_to_date=params, out_of_date=default_params)
         with open(const.DEFAULT_PARAMS_LOC, 'w') as outfile:
             json.dump(default_params, outfile, indent=4)
-        params = load_params()
     if float(default_params['Version']['val']) > float(params['Version']['val']):
-        update_dicts(up_to_date=default_params, out_of_date=params)
+        params = update_dicts(up_to_date=default_params, out_of_date=params)
         with open(const.PARAMS_LOC, 'w') as outfile:
             json.dump(params, outfile, indent=4)
-        params = load_params()
     return params
 
 class Model:
