@@ -1,176 +1,30 @@
 {
     "Version": {
-        "notes": "Added more allocation methods",
-        "val": "0.05"
-    },
-    "Calculate Til": {
-        "val": "2090",
-        "popout": 0
-    },
-    "RE Ratio": {
-        "val": "0.6",
-        "popout": 0,
-        "range": "np.linspace(0,.6,7)"
-    },
-    "Equity Target": {
-        "val": "1500",
-        "popout": 0,
-        "range": "range(500,4000,100)"
-    },
-    "Kid Birth Years": {
-        "val": "2024",
-        "popout": 0
-    },
-    "Cost of Kid (% Spending)": {
-        "val": "0.12",
-        "popout": 0
-    },
-    "Pension Trust Factor": {
-        "val": "0.8",
-        "popout": 0
-    },
-    "User Social Security Method": {
-        "val": "net worth",
-        "range": "['early','mid','late','net worth']"
-    },
-    "Partner Social Security Method": {
-        "val": "net worth",
-        "range": "['early','mid','late','net worth']"
-    },
-    "Current Net Worth ($)": {
-        "val": "250",
-        "popout": 0
-    },
-    "Total Spending (Yearly)": {
-        "val": "54.4",
-        "popout": 0,
-        "popper": 1,
-        "calcd": "12*sum([params_vals['Housing (Monthly)'],params_vals['Groceries (Monthly)'],params_vals['Car (Monthly)'],params_vals['Leisure (Monthly)'], params_vals['Other (Monthly)']])+params_vals['Travel (Yearly)']+params_vals['Giving (Yearly)']+params_vals['Health (Yearly)']"
-    },
-    "Housing (Monthly)": {
-        "val": "2.300",
-        "popout": 1
-    },
-    "Groceries (Monthly)": {
-        "val": "0.400",
-        "popout": 1
-    },
-    "Car (Monthly)": {
-        "val": "0.300",
-        "popout": 1
-    },
-    "Leisure (Monthly)": {
-        "val": "0.300",
-        "popout": 1
-    },
-    "Other (Monthly)": {
-        "val": "0.150",
-        "popout": 1
-    },
-    "Travel (Yearly)": {
-        "val": "5.000",
-        "popout": 1
-    },
-    "Giving (Yearly)": {
-        "val": "6.000",
-        "popout": 1
-    },
-    "Health (Yearly)": {
-        "val": "2.000",
-        "popout": 1
-    },
-    "Retirement Change (%)": {
-        "val": "-0.15",
-        "popout": 1
-    },
-    "Allowed Fluctuation (%)": {
-        "val": "0.05",
-        "popout": 1
-    },
-    "Spending Method": {
-        "val": "ceil-floor",
-        "popout": 1,
-        "range": "['ceil-floor','inflation-only']"
-    },
-    "Allocation Method": {
-        "val": "Flat",
-        "popout": 1,
-        "range": "['Life Cycle','Flat','120 Minus Age','110 Minus Age','100 Minus Age','Bond Tent']"
-    },
-    "Annuities Instead of Bonds": {
-        "val": "False",
-        "range": "['True','False']"
-    },
-    "Flat Bond Target": {
-        "val": "0.2",
-        "range": "[0.2, 0.3, 0.4, 0.5, 0.6]"
-    },
-    "Bond Tent Start Allocation": {
-        "val": "0.0",
-        "range": "[0.0, 0.1, 0.2, 0.3, 0.4]"
-    },
-    "Bond Tent Start Date": {
-        "val": 2035
-    },
-    "Bond Tent Peak Allocation": {
-        "val": "0.8",
-        "range": "[0.4, 0.5, 0.6, 0.7, 0.8]"
-    },
-    "Bond Tent Peak Date": {
-        "val": 2040
-    },
-    "Bond Tent End Allocation": {
-        "val": "0.0",
-        "range": "[0.0, 0.1, 0.2, 0.3, 0.4]"
-    },
-    "Bond Tent End Date": {
-        "val": 2060
+        "notes": "Added descriptions",
+        "val": "0.06"
     },
     "User Age": {
+        "description":"Current age of user",
         "val": "29",
         "popout": 5
     },
-    "User Pension": {
-        "val": "False"
-    },
     "Partner Age": {
+        "description":"Current age of partner",
         "val": "34",
         "popout": 6
     },
-    "Partner Pension": {
-        "val": "False"
+    "Calculate Til": {
+        "description":"Final year for simulation. Recommended val: birth year + 90",
+        "val": "2090",
+        "popout": 0
     },
-    "User Earnings Record": {
-        "val": {
-            "2012": "30.000",
-            "2013": "35.000",
-            "2014": "40.000",
-            "2015": "45.000",
-            "2016": "50.000",
-            "2017": "55.000",
-            "2018": "60.000",
-            "2019": "65.000",
-            "2020": "70.000",
-            "2021": "75.000"
-        }
-    },
-    "Partner Earnings Record": {
-        "val": {
-            "2014": "110.000",
-            "2015": "120.000",
-            "2016": "120.000",
-            "2018": "130.000"
-        }
-    },
-    "User (Monthly)": {
-        "val": "0.250",
-        "popout": 1
-    },
-    "Partner (Monthly)": {
-        "val": "0.400",
-        "popout": 1
+    "Current Net Worth ($)": {
+        "description":"Current net worth in $1000s",
+        "val": "250",
+        "popout": 0
     },
     "User Incomes": {
+        "description":"Each item in the list is a different income stream. Start date of each is assumed to be the last date of the previous item. Employment gaps should be represented as 0 income. Try to reduce: This means the genetic optimization algorithm will try to reduce this income stream end date anytime it finds a parameter combination that meets the success threshold. Social Security Eligible: If this income makes payments to social security (generally any job without a pension)",
         "val": [
             {
                 "Starting Income": 120,
@@ -207,6 +61,7 @@
         ]
     },
     "Partner Incomes": {
+        "description":"Each item in the list is a different income stream. Start date of each is assumed to be the last date of the previous item. Employment gaps should be represented as 0 income. Try to reduce: This means the genetic optimization algorithm will try to reduce this income stream end date anytime it finds a parameter combination that meets the success threshold. Social Security Eligible: If this income makes payments to social security (generally any job without a pension)",
         "val": [
             {
                 "Starting Income": 100,
@@ -218,10 +73,146 @@
             }
         ]
     },
+    "Total Spending (Yearly)": {
+        "description":"Yearly spending in $1000s",
+        "val": "60",
+        "popout": 0,
+        "popper": 1
+    },
+    "Kid Birth Years": {
+        "description":"List of years for additional children. Do not put in past birth years (future feature). Each child is modeled to produce an additional cost for 22 years after birth",
+        "val": "2026,2029",
+        "popout": 0
+    },
+    "Cost of Kid (% Spending)": {
+        "description":"Estimate for average cost of kid as a percentage of spending. A val of 0.12 increases spending by 12% for each child for 22 years after their birth.",
+        "val": "0.12",
+        "popout": 0
+    },
+    "Spending Method": {
+        "description":"Controls spending amount each year. Inflation-only: increases spending by the inflation rate for that year. Ceil-floor allows spending to increase when market returns are higher than expected, while lower than expected market returns require decreased spending.",
+        "val": "ceil-floor",
+        "popout": 1,
+        "range": "['ceil-floor','inflation-only']"
+    },
+    "Allowed Fluctuation (%)": {
+        "description":"If using the ceil-floor method of spending, spending fluctuates by +/-5% (for val of 0.05) depending on market returns.",
+        "val": "0.05",
+        "popout": 1
+    },
+    "Allocation Method": {
+        "description":"Equity / Bond allocation. Life Cycle: uses the lifecycle investing method of 100% equities allocation until equity target met. Flat: Keeps a constant ratio between bonds and equities. x minus age: equity allocation decreases with age linearly (120 minus age: at age 40, equity allocation is 80%). Bond tent: increase bonds till peak year, decrease bonds afterwards.",
+        "val": "Flat",
+        "popout": 1,
+        "range": "['Life Cycle','Flat','120 Minus Age','110 Minus Age','100 Minus Age','Bond Tent']"
+    },
+    "RE Ratio": {
+        "description":"Ratio of real estate within equity allocation. If val set to 0.5, but bonds are 20%, allocation will be 40% real estate, 40% stock, 20% bonds.",
+        "val": "0.6",
+        "popout": 0,
+        "range": "np.linspace(0,.6,7)"
+    },
+    "Equity Target": {
+        "description":"When using lifecycle allocation or net-worth targets for social security, this val acts as a pivot point for the portfolio. If set to 1500 and using lifecycle allocation, portfolio will be in 100% equities until net worth hits $1.5M, then any additonal net worth will be invested in bonds. To learn more, read about lifecycle investing: https://www.lifecycleinvesting.net/, but know this method does not use leverage.",
+        "val": "1500",
+        "popout": 0,
+        "range": "range(500,4000,100)"
+    },
+    "Annuities Instead of Bonds": {
+        "description":"Decide to use annuities instead of bonds for portfolio allocation.",
+        "val": "False",
+        "range": "['True','False']"
+    },
+    "Flat Bond Target": {
+        "description":"When using the Flat allocation method, this val determines the ratio of bonds in the portfolio",
+        "val": "0.2",
+        "range": "[0.2, 0.3, 0.4, 0.5, 0.6]"
+    },
+    "Bond Tent Start Allocation": {
+        "description":"When using the bond tent allocation method, this val determines the initial allocation of bonds",
+        "val": "0.0",
+        "range": "[0.0, 0.1, 0.2, 0.3, 0.4]"
+    },
+    "Bond Tent Start Date": {
+        "description":"When using the bond tent allocation method, this val determines the year bond allocation starts to increase",
+        "val": 2035
+    },
+    "Bond Tent Peak Allocation": {
+        "description":"When using the bond tent allocation method, this val determines the peak allocation of bonds",
+        "val": "0.8",
+        "range": "[0.4, 0.5, 0.6, 0.7, 0.8]"
+    },
+    "Bond Tent Peak Date": {
+        "description":"When using the bond tent allocation method, this val determines the year bond allocation peaks",
+        "val": 2040
+    },
+    "Bond Tent End Allocation": {
+        "description":"When using the bond tent allocation method, this val determines the final allocation of bonds",
+        "val": "0.0",
+        "range": "[0.0, 0.1, 0.2, 0.3, 0.4]"
+    },
+    "Bond Tent End Date": {
+        "description":"When using the bond tent allocation method, this val determines the year bond allocation gets to final value",
+        "val": 2060
+    },
+    "User Social Security Method": {
+        "description":"Models the date at which you take social security. Early age = 62, mid age = 66, late age = 70. Net worth method triggers social security if you haven't met your equity target or at the late age if you have.",
+        "val": "mid",
+        "range": "['early','mid','late','net worth']"
+    },
+    "Partner Social Security Method": {
+        "description":"Models the date at which your partner takes social security. Early age = 62, mid age = 66, late age = 70. Net worth method triggers social security if you haven't met your equity target or at the late age if you have.",
+        "val": "mid",
+        "range": "['early','mid','late','net worth']"
+    },
+    "Pension Trust Factor": {
+        "description":"Many people are skeptical of relying on social security. A val of 0.8 models your social security payment as 80% of what the current social security administration would provide given your earnings record.",
+        "val": "0.8",
+        "popout": 0
+    },
+    "Retirement Change (%)": {
+        "description":"Many people decrease spending in retirement. A val of -0.15 decreases spending by 15% once neither you nor partner are earning income.",
+        "val": "-0.15",
+        "popout": 1
+    },
+    "User Pension": {
+        "description":"Is the user going to receive a pension? If so, social security payment is decreased",
+        "val": "False"
+    },
+    "Partner Pension": {
+        "description":"Is the partner going to receive a pension? If so, social security payment is decreased",
+        "val": "False"
+    },
+    "User Earnings Record": {
+        "description":"Historical earnings for user in $1000s. These values are used to calculate social security payments",
+        "val": {
+            "2012": "30.000",
+            "2013": "35.000",
+            "2014": "40.000",
+            "2015": "45.000",
+            "2016": "50.000",
+            "2017": "55.000",
+            "2018": "60.000",
+            "2019": "65.000",
+            "2020": "70.000",
+            "2021": "75.000"
+        }
+    },
+    "Partner Earnings Record": {
+        "description":"Historical earnings for partner in $1000s. These values are used to calculate social security payments",
+        "val": {
+            "2014": "110.000",
+            "2015": "120.000",
+            "2016": "120.000",
+            "2018": "130.000"
+        }
+    },
     "Admin": {
+        "description":"Only applies for admin. Keep False.",
         "val": "False"
     },
     "Admin Pension Method": {
+        "description":"Only applies for admin",
         "val": "early",
         "range": "['early','mid','late','net worth','cash-out']"
     }
