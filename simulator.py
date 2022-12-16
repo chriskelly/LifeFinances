@@ -78,6 +78,7 @@ class Simulator:
         self.params = model.clean_data(param_vals)
         self.rows = int((param_vals['Calculate Til'] - TODAY_YR_QT)/.25)
         self.admin = self.params["Admin"] # Are you Chris?
+        self.partner = self.params["Partner"]
         self.override_dict = override_dict
             
     def main(self):
@@ -96,7 +97,7 @@ class Simulator:
         
         # Job Income and tax-differed list. Does not include SS. 
         user_income_calc = income.Calculator(self._val("User Incomes",QT_MOD=False),date_ls)
-        partner_income_calc = income.Calculator(self._val("Partner Incomes",QT_MOD=False),date_ls)
+        partner_income_calc = income.Calculator(self._val("Partner Incomes",QT_MOD=False),date_ls) if self.partner else None
         (job_income_ls, tax_deferred_ls) = income.generate_lists(user_income_calc,partner_income_calc)
         # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income)
         medicare= np.array(job_income_ls)*0.0145
@@ -123,7 +124,7 @@ class Simulator:
         kid_spending_rate = self._val("Cost of Kid (% Spending)",QT_MOD=False)
             # Social Security Initialization
         user_ss_calc = socialSecurity.Calculator(self,'User',date_ls,user_income_calc)
-        partner_ss_calc = socialSecurity.Calculator(self,'Partner',date_ls,partner_income_calc,spouse_calc=user_ss_calc)
+        partner_ss_calc = socialSecurity.Calculator(self,'Partner',date_ls,partner_income_calc,spouse_calc=user_ss_calc) if self.partner else None
             # performance tracking
         success_rate = 0
         final_net_worths = [] # Establish empty list to calculate net worth median
@@ -138,7 +139,7 @@ class Simulator:
             inflation_ls = inflation_arr[col]
             # Social Security List Creation
             user_ss_calc.make_list(inflation_ls)
-            partner_ss_calc.make_list(inflation_ls)
+            if self.partner: partner_ss_calc.make_list(inflation_ls)
             # Kid count   
                 # kids_ls should have kid for every year from each kid's birth till 22 years after
             kids_ls = [0]*self.rows
@@ -162,10 +163,13 @@ class Simulator:
                 # social security 
                 trust = self._val("Pension Trust Factor",QT_MOD=False)
                 usr_ss_ls.append(trust * user_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
-                partner_ss_ls.append(trust * partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
+                if self.partner:
+                    partner_ss_ls.append(trust * partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
+                else: partner_ss_ls.append(0)
                 # taxes
                     # taxes are 80% for pension and social security
-                income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row],inflation_ls[row])+0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row],inflation_ls[row])
+                income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row],inflation_ls[row],self.partner) \
+                            + 0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row],inflation_ls[row],self.partner)
                 taxes_ls.append(income_tax + medicare[row] + ss_tax[row])
                 # spending
                 if job_income_ls[row] == 0:
@@ -461,12 +465,13 @@ def step_quarterize2(date_ls:list,first_val,increase_yield,start_date_idx:int,en
             ls.append(ls[-1])
     return ls
 
-def get_taxes(income_qt:float,inflation:float) -> float:
+def get_taxes(income_qt:float,inflation:float,married_state:bool) -> float:
     """Combines federal and state taxes on non-tax-deferred income
 
     Args:
         income_qt (float): income in quarterly amount
         inflation (float): inflation at specific date
+        married_state (bool): True if married, False if single
 
     Returns:
         (float): federal and state tax burden for that quarter
@@ -474,8 +479,8 @@ def get_taxes(income_qt:float,inflation:float) -> float:
     if(income_qt == 0.0): return 0 # avoid bracket math if no income
     
     adj_income = 4*income_qt / inflation # convert income to yearly and adjust backward for inflation    
-    fed_taxes = bracket_math(const.FED_BRACKET_RATES,max(adj_income-const.FED_STD_DEDUCTION,0))
-    state_taxes = bracket_math(const.CA_BRACKET_RATES,max(adj_income-const.CA_STD_DEDUCTION,0))
+    fed_taxes = bracket_math(const.FED_BRACKET_RATES[married_state],max(adj_income-const.FED_STD_DEDUCTION[married_state],0))
+    state_taxes = bracket_math(const.STATE_BRACKET_RATES[married_state],max(adj_income-const.STATE_STD_DEDUCTION[married_state],0))
     return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
 
 def bracket_math(brackets:list,yr_income:float) -> float:

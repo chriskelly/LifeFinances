@@ -6,6 +6,7 @@ param_success.json
 **/data/params.json
 diagnostics/saved/
 test*
+*.prof
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
