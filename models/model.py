@@ -1,4 +1,4 @@
-import json, shutil, copy
+import shutil, copy
 import data.constants as const
 
 def update_dicts(up_to_date:dict,out_of_date:dict) -> dict:

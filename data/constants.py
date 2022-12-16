@@ -1,11 +1,23 @@
 # Constants
-import os, git
+import os, git, json
 git_root= git.Repo(os.path.abspath(''),search_parent_directories=True).git.rev_parse('--show-toplevel')
 
 PARAMS_LOC = os.path.join(git_root,'data/params.json')
 DEFAULT_PARAMS_LOC = os.path.join(git_root,'data/default_params/params.json')
 PARAMS_SUCCESS_LOC = os.path.join(git_root,'data/param_success.json')
 SAVE_DIR = os.path.join(git_root,'diagnostics/saved')
+
+"""Naively looks through params.json - searches for false and true flags expressed as strings and un-stringifies them"""
+def Validate_ParamsJSON(configFile = PARAMS_LOC):
+    Jsontxt = []
+    with open(configFile,'r+') as f:
+        Jsontxtorig = f.readlines()
+        for l in Jsontxtorig:
+           new = l.replace('\"False\"','false').replace('\"True\"','true')
+           Jsontxt.append(new)
+
+    with open(configFile,'w') as f:
+        f.writelines(Jsontxt)
 
 EQUITY_MEAN = 1.092
 """Geometric average yield for stock invesments"""
@@ -214,3 +226,10 @@ PENSION_ACCOUNT_BAL_UP_DATE = 2022.5
 """Please ignore. Pension details for admin. Last date of update"""
 PENSION_INTEREST_YIELD = 1.02 # varies from 1.2-3% based on Progress Reports
 """Please ignore. Pension details for admin."""
+
+try:
+    Validate_ParamsJSON()
+    Validate_ParamsJSON(DEFAULT_PARAMS_LOC)
+    Validate_ParamsJSON(PARAMS_SUCCESS_LOC)
+except Exception as e:
+    print("Warning validating params.json - {}".format(e))
