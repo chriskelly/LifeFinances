@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from models import returnGenerator, annuity, model, socialSecurity, income
 import git, sys
+import json
 git_root= git.Repo(os.path.abspath(''),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 sys.path.append(git_root)
