@@ -124,7 +124,7 @@
     },
     "Annuities Instead of Bonds": {
         "description": "Decide to use annuities instead of bonds for portfolio allocation.",
-        "val": "False",
+        "val": false,
         "range": "['True','False']"
     },
     "Flat Bond Target": {
@@ -181,11 +181,11 @@
     },
     "User Pension": {
         "description": "Is the user going to receive a pension? If so, social security payment is decreased",
-        "val": "False"
+        "val": false
     },
     "Partner Pension": {
         "description": "Is the partner going to receive a pension? If so, social security payment is decreased",
-        "val": "False"
+        "val": false
     },
     "User Earnings Record": {
         "description": "Historical earnings for user in $1000s. These values are used to calculate social security payments",
@@ -213,7 +213,7 @@
     },
     "Admin": {
         "description": "Only applies for admin. Keep False.",
-        "val": "False"
+        "val": false
     },
     "Admin Pension Method": {
         "description": "Only applies for admin",
