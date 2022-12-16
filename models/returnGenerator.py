@@ -5,7 +5,7 @@ from os import path
 # from numba import jit
 
 import git, sys
-git_root= git.Repo(path.abspath(''),
+git_root= git.Repo(path.abspath(__file__),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 sys.path.append(git_root)
 from models.skewDist import createSkewDist
