@@ -1,8 +1,9 @@
 import math, statistics, datetime as dt
-import json, warnings, os
+import warnings, os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import json
 import git, sys
 git_root= git.Repo(os.path.abspath(__file__),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
