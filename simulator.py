@@ -3,13 +3,13 @@ import warnings, os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from models import returnGenerator, annuity, model, socialSecurity, income
-import git, sys
 import json
-git_root= git.Repo(os.path.abspath(''),
+import git, sys
+git_root= git.Repo(os.path.abspath(__file__),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 sys.path.append(git_root)
 from data import constants as const
+from models import returnGenerator, annuity, model, socialSecurity, income
 
 
 DEBUG_LVL = 1 # LVL 1: Print success rate, save worst failure, show plot | LVL 2: Investigate each result 1 by 1
@@ -40,11 +40,13 @@ class Simulator:
     Attributes
     ----------
     params : dict
+        A clean set of parameters and their values
     rows : int
         The total number of periods per simulation
     admin : bool
     fi_date : ?
     override_dict : dict
+        A dictionary for parameters that you want to override
     
     Methods
     -------
