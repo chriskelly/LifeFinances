@@ -143,3 +143,23 @@ def clean_data(params: dict):
         except:
             continue
     return params
+
+"""Naively looks through params.json - searches for false and true flags expressed as strings and un-stringifies them"""
+def Validate_ParamsJSON(configFile):
+    Jsontxt = []
+    with open(configFile,'r+') as f:
+        Jsontxtorig = f.readlines()
+        for l in Jsontxtorig:
+           new = l.replace('\"False\"','false').replace('\"True\"','true')
+           Jsontxt.append(new)
+
+    with open(configFile,'w') as f:
+        f.writelines(Jsontxt)
+
+#This executes whenever model.py is loaded as a module. Automatically fix JSON naming.    
+try:
+    Validate_ParamsJSON(const.PARAMS_LOC)
+    Validate_ParamsJSON(const.DEFAULT_PARAMS_LOC)
+    Validate_ParamsJSON(const.PARAMS_SUCCESS_LOC)
+except Exception as e:
+    print("Warning validating params.json - {}".format(e))
