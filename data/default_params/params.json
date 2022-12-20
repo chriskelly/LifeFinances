@@ -1,7 +1,7 @@
 {
     "Version": {
-        "notes": "Added partner",
-        "val": "0.07"
+        "notes": "Added Portfolio Tax Rate",
+        "val": "0.08"
     },
     "User Age": {
         "description": "Current age of user",
@@ -82,6 +82,10 @@
         "val": "60",
         "popout": 0,
         "popper": 1
+    },
+    "Portfolio Tax Rate": {
+        "description": "Assumed average rate of tax on portfolio drawdown. 15% and 20% are the marginal capital gains rates, but the average rate will depend on your mix of tax-advantaged accounts at the point of retirement.",
+        "val": 0.1
     },
     "Kid Birth Years": {
         "description": "List of years for additional children. Do not put in past birth years (future feature). Each child is modeled to produce an additional cost for 22 years after birth",

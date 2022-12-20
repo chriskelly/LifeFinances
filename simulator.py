@@ -197,7 +197,12 @@ class Simulator:
                 # annuity withdrawals
                 if net_worth_ls[-1]+return_amt+net_transaction_ls[row] < 0 and not my_annuity.annuitized: # annuity is started when user runs out of money
                     my_annuity.annuitize(row)
-                net_transaction_ls[row] += my_annuity.take_payment()
+                net_transaction_ls[row] += my_annuity.take_payment()                
+                # if net withdrawal, apply portfolio tax before pulling from net worth
+                if net_transaction_ls[row] < 0:
+                    portfolio_tax = -net_transaction_ls[row] * (1/(1-self._val("Portfolio Tax Rate",QT_MOD=False)) - 1)
+                    taxes_ls[row] += portfolio_tax
+                    net_transaction_ls[row] -= portfolio_tax
                 net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+net_transaction_ls[row]))
             net_worth_ls.pop()
             if net_worth_ls[-1]!=0: 
@@ -496,6 +501,7 @@ def bracket_math(brackets:list,yr_income:float) -> float:
     Returns:
         (float): tax owed
     """
+    if(yr_income == 0.0): return 0 # avoid bracket math if no income
     rate_idx, cap_idx, sum_idx = 0, 1, 2
     prev_bracket_cap = 0
     for bracket in brackets:
