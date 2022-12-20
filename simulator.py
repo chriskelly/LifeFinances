@@ -206,7 +206,10 @@ class Simulator:
                     portfolio_tax = -net_transaction_ls[row] * (1/(1-self._val("Portfolio Tax Rate",QT_MOD=False)) - 1)
                     taxes_ls[row] += portfolio_tax
                     net_transaction_ls[row] -= portfolio_tax
-                net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+net_transaction_ls[row]))
+                if net_worth_ls[-1] >= 0: # prevent net worth from exponentially decreasing below 0
+                    net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+net_transaction_ls[row]))
+                else: # if net worth started negative, assume no investing until positive net worth
+                    net_worth_ls.append(net_worth_ls[-1]+net_transaction_ls[row])
             net_worth_ls.pop()
             if net_worth_ls[-1]!=0: 
                 success_rate += 1
