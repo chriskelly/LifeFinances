@@ -154,6 +154,7 @@ class Simulator:
             re_alloc_ls, bond_alloc_ls, taxes_ls, total_income_ls, usr_ss_ls, partner_ss_ls = [],[],[],[],[],[]
             return_rate = None
             my_annuity = annuity.Annuity()
+            annuity_ls = np.zeros(self.rows)
                 # loop through date_ls to find net worth changes
             net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
             
@@ -190,6 +191,7 @@ class Simulator:
                     target_balance = alloc['Annuity'] * net_worth_ls[-1]
                     contribution = max(0, target_balance - my_annuity.balance_update(row))
                     my_annuity.contribute(contribution,row)
+                    annuity_ls[row] -= contribution
                     net_worth_ls[-1] -= contribution
                 # investment returns
                 return_rate = stock_return_ls[row]*alloc['Equity'] + bond_return_ls[row]*alloc['Bond'] + re_return_ls[row]*alloc['RE']
@@ -197,6 +199,7 @@ class Simulator:
                 # annuity withdrawals
                 if net_worth_ls[-1]+return_amt+net_transaction_ls[row] < 0 and not my_annuity.annuitized: # annuity is started when user runs out of money
                     my_annuity.annuitize(row)
+                annuity_ls[row] += my_annuity.take_payment() 
                 net_transaction_ls[row] += my_annuity.take_payment()                
                 # if net withdrawal, apply portfolio tax before pulling from net worth
                 if net_transaction_ls[row] < 0:
@@ -224,6 +227,7 @@ class Simulator:
                     "Kid Costs":kids_ls,
                     "Total Costs":total_costs_ls,
                     "Net Transaction":net_transaction_ls,
+                    "Annuity":annuity_ls,
                     "Stock Alloc":equity_alloc_ls,
                     "Bond Alloc":bond_alloc_ls,
                     "RE Alloc":re_alloc_ls,
@@ -253,6 +257,7 @@ class Simulator:
                         "Kid Costs":kids_ls,
                         "Total Costs":total_costs_ls,
                         "Net Transaction":net_transaction_ls,
+                        "Annuity":annuity_ls,
                         "Stock Alloc":equity_alloc_ls,
                         "Bond Alloc":bond_alloc_ls,
                         "RE Alloc":re_alloc_ls,
