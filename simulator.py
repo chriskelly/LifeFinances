@@ -287,31 +287,7 @@ class Simulator:
         debug_point = None
         
 
-    # HELPER FUNCTIONS ---------------------------------------------------- #
-    
-    def _step_quarterize(self,first_val,increase_yield,mode,**kw) -> list:
-        """Return a list with values that step up on a yearly basis rather than quarterly \n
-        mode = 'working' -> from today_qt to fi_date, needs kw['working_qts'] \n
-        mode = 'pension' -> from provided kw['start_yr'] to end of kw['date_ls']"""
-        ls = [first_val]
-        if mode == 'working':
-            if kw["working_qts"] == 0: return [] # if fi_date = TODAY_YR_QT, the returned range should be empty
-            custom_range = self._range_len(START=TODAY_QUARTER+1,LEN=kw["working_qts"]-1,INCREMENT=1,ADD=True) # subtracing one len since you already have the first value
-            [ls.append(ls[-1]) if x%4 !=0 else ls.append(ls[-1]*increase_yield) for x in custom_range]
-        elif mode == 'pension':
-            custom_range = np.arange(kw['start_yr']+0.25,kw['date_ls'][-1]+0.25,0.25)
-            [ls.append(ls[-1]*increase_yield) if x%1 ==0 else ls.append(ls[-1]) for x in custom_range]
-        return ls
-                
-    def _catch(self, func, *args, handle=lambda e : e, **kwargs):
-        # https://stackoverflow.com/questions/1528237/how-to-handle-exceptions-in-a-list-comprehensions
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            # not sure how to implement this, so just hardcoding in return 0 for now, probably need to learn lambdas better
-            # return handle(e) 
-            return 0
-    
+    # HELPER FUNCTIONS ---------------------------------------------------- #     
     def _pow(self,num,exp:int) -> int:
         """exponential formular num^exp that should be faster for small exponents"""
         i=1
@@ -460,7 +436,7 @@ class Simulator:
     
 # ADDITIONAL HELPER FUNCTIONS ------------------------------------------- #
 #These functions do not requre the class
-def step_quarterize2(date_ls:list,first_val,increase_yield,start_date_idx:int,end_date_idx:int) -> list:
+def step_quarterize(date_ls:list,first_val,increase_yield,start_date_idx:int,end_date_idx:int) -> list:
     """Creates list with a value that increases only at the new year
 
     Args:

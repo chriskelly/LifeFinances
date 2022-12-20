@@ -179,7 +179,7 @@ class Calculator:
             data_age_qt = int((simulator.TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25) # find age of data
             est_prev_pension_salary_qt = current_pension_salary_qt / (pension_income.yearly_raise ** (data_age_qt/4)) # estimate salary at date of data
             # rough estimate of historical earnings + projected future earnings (corrected for pension cost)
-            projected_income = np.concatenate((simulator.step_quarterize2(self.date_ls,est_prev_pension_salary_qt,pension_income.yearly_raise,start_date_idx=0,end_date_idx=data_age_qt)
+            projected_income = np.concatenate((simulator.step_quarterize(self.date_ls,est_prev_pension_salary_qt,pension_income.yearly_raise,start_date_idx=0,end_date_idx=data_age_qt)
                                               ,np.array(pension_income.income_ls)/(1-const.PENSION_COST))) 
             pension_bal = const.PENSION_ACCOUNT_BAL
             pension_int_rate_qt = const.PENSION_INTEREST_YIELD ** (1/4) - 1
@@ -208,7 +208,7 @@ class Calculator:
             # build out list with the correct number of zeros to the beginning
         start_date_idx = self.date_ls.index(pension_start_yr)
         self.pension_ls = [0]*(start_date_idx) \
-                        + simulator.step_quarterize2(self.date_ls,starting_pension_qt,pension_income.yearly_raise,start_date_idx,end_date_idx=self.sim.rows-1)
+                        + simulator.step_quarterize(self.date_ls,starting_pension_qt,pension_income.yearly_raise,start_date_idx,end_date_idx=self.sim.rows-1)
         return self.pension_ls[row]
 
 def eligible_income(date_ls:list,income_calc:income.Calculator) -> list:
@@ -250,7 +250,7 @@ def taxes(date_ls:list,inflation,user_calc:income.Calculator,partner_calc:income
     else:
         total_eligible_income = eligible_income(date_ls,user_calc)
     # need the SS Max Earnings, but in quarter form instead of the annual form
-    ss_max_earnings_qt_ls = simulator.step_quarterize2(date_ls,first_val=0.25 * est_Max_Earning(simulator.TODAY_YR),
+    ss_max_earnings_qt_ls = simulator.step_quarterize(date_ls,first_val=0.25 * est_Max_Earning(simulator.TODAY_YR),
                                                        increase_yield=inflation,start_date_idx=0,end_date_idx=len(date_ls)-1)
     ss_tax = [0.062*min(income,ss_max) for income,ss_max in zip(total_eligible_income,ss_max_earnings_qt_ls)]
     return ss_tax

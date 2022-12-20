@@ -10,9 +10,9 @@ class Income:
         self.yearly_raise = income_obj['Yearly Raise'] + 1 # needs to be in yield format
         self.reduction_target:bool = income_obj['Try to Reduce'] # genetic.Algorithm will try to reduce the duration of this income stream
         self.ss_eligible:bool = income_obj['Social Security Eligible']
-        self.income_ls = simulator.step_quarterize2(date_ls,first_val=self.income_qt,increase_yield=self.yearly_raise,
+        self.income_ls = simulator.step_quarterize(date_ls,first_val=self.income_qt,increase_yield=self.yearly_raise,
                                                 start_date_idx=self.start_date_idx(),end_date_idx=self.last_date_idx)
-        self.deferred_ls = simulator.step_quarterize2(date_ls,first_val=self.tax_deferred_qt,increase_yield=self.yearly_raise,
+        self.deferred_ls = simulator.step_quarterize(date_ls,first_val=self.tax_deferred_qt,increase_yield=self.yearly_raise,
                                                 start_date_idx=self.start_date_idx(),end_date_idx=self.last_date_idx)
         
     def start_date_idx(self) -> int:
