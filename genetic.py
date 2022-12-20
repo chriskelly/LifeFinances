@@ -26,13 +26,7 @@ class Algorithm:
         if self.reset_success: 
             self.param_cnt = {}
         else:
-            with open(const.PARAMS_SUCCESS_LOC, 'r+') as json_file:
-                try:
-                    self.param_cnt = json.load(json_file)
-                except: 
-                    self.param_cnt = {}
-                    self.reset_success = True
-                    json.dump(self.param_cnt, json_file, indent=4)
+            self._load_param_success()
     
     def main(self, next_loop=(False,[])):
     # ---------------------- First parameter set ---------------------- #
@@ -143,15 +137,19 @@ class Algorithm:
             new_dict = self._step_mutate(mutable_params,max_step)
         return new_dict
     
-    
-    # ---------------------- Crossover ---------------------- #
-    
-    
-    # ---------------------- Selection ---------------------- #
-    
-    
-    
     # -------------------------------- HELPER FUNCTIONS -------------------------------- #
+    def _load_param_success(self):
+        """Load from json file and update self.param_cnt.
+        If it fails, dumps an empty json file.
+        """
+        with open(const.PARAMS_SUCCESS_LOC, 'r+') as json_file:
+                try:
+                    self.param_cnt = json.load(json_file)
+                except: 
+                    self.param_cnt = {}
+                    self.reset_success = True
+                    json.dump(self.param_cnt, json_file, indent=4)
+    
     def _check_if_beaten(self,full_params):
         for usr in ['User','Partner']:
             for i, income in enumerate(full_params[f'{usr} Incomes']['val']):
@@ -172,6 +170,7 @@ class Algorithm:
         """Edit the param_success.json file to add another tally for each of the 
         successful mutable_param values. If first time and RESET_SUCCESS, 
         overwrite previous file and set count to 0"""
+        self._load_param_success()
         if self.reset_success and first_time:
             for param,obj in mutable_params.items():
                 self.param_cnt[param] = {}
