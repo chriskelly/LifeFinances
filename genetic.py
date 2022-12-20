@@ -26,7 +26,7 @@ class Algorithm:
         if self.reset_success: 
             self.param_cnt = {}
         else:
-            with open(const.PARAMS_SUCCESS_LOC, 'w') as json_file:
+            with open(const.PARAMS_SUCCESS_LOC, 'r+') as json_file:
                 try:
                     self.param_cnt = json.load(json_file)
                 except: 

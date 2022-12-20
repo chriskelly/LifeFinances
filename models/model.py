@@ -160,6 +160,5 @@ def Validate_ParamsJSON(configFile):
 try:
     Validate_ParamsJSON(const.PARAMS_LOC)
     Validate_ParamsJSON(const.DEFAULT_PARAMS_LOC)
-    Validate_ParamsJSON(const.PARAMS_SUCCESS_LOC)
 except Exception as e:
     print("Warning validating params.json - {}".format(e))
