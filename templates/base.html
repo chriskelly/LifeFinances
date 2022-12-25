@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %} {% endblock %} - LifeFInances</title>
+    <!--https://colorhunt.co/palette/f0ebe3e4dccf7d9d9c576f72-->
+    <style>
+        .links {
+            padding: 10px;
+            margin: 5px;
+            background-color: #F0EBE3
+        }
+        nav a {
+            color: #576F72;
+            font-size: 3em;
+            margin-left: 50px;
+            text-decoration: none;
+        }
+
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="{{ url_for('index') }}">LifeFInances</a>
+        <a href="https://github.com/chriskelly/LifeFinances">GitHub</a>
+    </nav>
+    <hr>
+    <div class="content">
+        {% block content %} {% endblock %}
+    </div>
+</body>
+</html>

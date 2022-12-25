@@ -73,6 +73,7 @@ class Model:
 
     def save_params(self, params_vals: dict):
         """Overwrite params.json with passed-in params_vals dict"""
+        params_vals = clean_data(params_vals)
         for param, obj in self.params.items():
             obj["val"] = params_vals[param]
         with open(const.PARAMS_LOC, 'w') as outfile:
@@ -129,20 +130,20 @@ def _is_float(element):
     except ValueError:
         return False
 
-def clean_data(params: dict):
-    for k, v in params.items():
+def clean_data(param_vals: dict):
+    for k, v in param_vals.items():
         try:
             if v.isdigit():
-                params[k] = int(v)
+                param_vals[k] = int(v)
             elif _is_float(v):
-                params[k] = float(v)
+                param_vals[k] = float(v)
             elif v == "True":
-                params[k] = True
+                param_vals[k] = True
             elif v == "False":
-                params[k] = False
+                param_vals[k] = False
         except:
             continue
-    return params
+    return param_vals
 
 """Naively looks through params.json - searches for false and true flags expressed as strings and un-stringifies them"""
 def Validate_ParamsJSON(configFile):

@@ -5,3 +5,4 @@ gitpython
 matplotlib
 seaborn
 numba
+flask
