@@ -119,7 +119,7 @@ class Algorithm:
         """Return mutable params with shuffled values"""
         new_dict = copy.deepcopy(mutable_params) 
         for param,obj in new_dict.items():
-            new_dict[param]['val'] = str(random.choice(eval(obj["range"])))
+            new_dict[param]['val'] = str(random.choice(eval(str(obj["range"]))))
         return new_dict
     
     def _step_mutate(self,mutable_params:dict,max_step=1) -> dict:
@@ -127,7 +127,7 @@ class Algorithm:
         provided mutable_param values with a max deviation of max_step"""
         new_dict = copy.deepcopy(mutable_params)
         for param,obj in new_dict.items():
-            ls = list(eval(obj["range"]))
+            ls = list(eval(str(obj["range"])))
             val = obj['val'] if not models.model._is_float(obj['val']) else float(obj['val'])
             old_idx = ls.index(val)
             new_idx = min(len(ls)-1,max(0,self._gaussian_int(center=old_idx,max_deviation=max_step)))
@@ -174,10 +174,10 @@ class Algorithm:
         if self.reset_success and first_time:
             for param,obj in mutable_params.items():
                 self.param_cnt[param] = {}
-                for option in eval(obj["range"]):
+                for option in eval(str(obj["range"])):
                     self.param_cnt[param][str(option)] = 0
         for param,obj in mutable_params.items():
-                for option in eval(obj["range"]):
+                for option in eval(str(obj["range"])):
                     if str(option) == obj['val']:
                         self.param_cnt[param][str(option)] += 1
         with open(const.PARAMS_SUCCESS_LOC, 'w') as outfile:
