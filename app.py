@@ -1,6 +1,6 @@
 import flask
 import webbrowser
-import simulator
+import simulator, genetic
 from models import model
 
 mdl = model.Model()
@@ -32,6 +32,12 @@ def simulation():
         test_simulator = simulator.test_unit(units=simulator.MONTE_CARLO_RUNS)
         s_rate, arr= test_simulator.main()
     return flask.render_template('simulation.html')
+
+@app.route('/optimizer', methods=('GET', 'POST'))
+def optimizer():
+    if flask.request.method == 'POST':
+        genetic.Algorithm().main()
+    return flask.render_template('optimizer.html')
 
 @app.route("/test", methods=('GET', 'POST'))
 def test():
