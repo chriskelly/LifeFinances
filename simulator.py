@@ -136,6 +136,10 @@ class Simulator:
         
         # Monte Carlo
         for col in range(monte_carlo_runs):
+            # check for cancellation
+            if os.path.exists(const.QUIT_LOC):
+                os.remove(const.QUIT_LOC)
+                return (None,None)
             stock_return_ls = stock_return_arr[col]
             bond_return_ls = bond_return_arr[col]
             re_return_ls = re_return_arr[col]

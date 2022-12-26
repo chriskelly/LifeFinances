@@ -2,6 +2,7 @@ import flask
 import webbrowser
 import simulator, genetic
 from models import model
+from data import constants as const
 
 mdl = model.Model()
 app = flask.Flask(__name__)
@@ -36,7 +37,11 @@ def simulation():
 @app.route('/optimizer', methods=('GET', 'POST'))
 def optimizer():
     if flask.request.method == 'POST':
-        genetic.Algorithm().main()
+        if flask.request.form['submit_button'] == 'Start Optimizing!':
+            genetic.Algorithm().main()
+        elif flask.request.form['submit_button'] == 'Stop Optimizing':
+            with open(const.QUIT_LOC, 'w') as file:
+                pass # close
     return flask.render_template('optimizer.html')
 
 @app.route("/test", methods=('GET', 'POST'))
