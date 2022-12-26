@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import json
-import git, sys
+import git, sys, io, base64
 git_root= git.Repo(os.path.abspath(__file__),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 sys.path.append(git_root)
@@ -12,7 +12,7 @@ from data import constants as const
 from models import returnGenerator, annuity, model, socialSecurity, income
 
 
-DEBUG_LVL = 1 # LVL 1: Print success rate, save worst failure, show plot | LVL 2: Investigate each result 1 by 1
+DEBUG_LVL = 1 # LVL 1: Generate plot | LVL 2: Print success rate, save worst failure, show plot | LVL 3: Investigate each result 1 by 1
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
@@ -84,19 +84,25 @@ class Simulator:
         self.partner = self.params["Partner"]
         self.override_dict = override_dict
             
-    def main(self):
+    def main(self) -> dict:
+        """Runs a simulation with the parameters in data/params.json
+
+        Returns:
+            dict: {
+                's_rate':success_rate, 
+                'returns':[stock_return_arr,bond_return_arr,re_return_arr,inflation_arr], 
+                'img_data':base64 encoded image of simulation results
+                }
+        """
 # -------------------------------- VARIABLES -------------------------------- #      
     # STATIC LISTS: TIME, JOB INCOME --------------------------------------- #
 
         debug_lvl = DEBUG_LVL
         
+        if debug_lvl >= 1: fig = plt.figure()
+        
         # Year.Quarter list 
         date_ls = self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True) 
-        
-        options= {
-            'date_ls': date_ls,
-            'equity_target': self._val("Equity Target",False)
-            }
         
         # Job Income and tax-differed list. Does not include SS. 
         user_income_calc = income.Calculator(self._val("User Incomes",QT_MOD=False),date_ls)
@@ -136,6 +142,10 @@ class Simulator:
         
         # Monte Carlo
         for col in range(monte_carlo_runs):
+            # check for cancellation
+            if os.path.exists(const.QUIT_LOC):
+                os.remove(const.QUIT_LOC)
+                return {}
             stock_return_ls = stock_return_arr[col]
             bond_return_ls = bond_return_arr[col]
             re_return_ls = re_return_arr[col]
@@ -214,7 +224,7 @@ class Simulator:
             if net_worth_ls[-1]!=0: 
                 success_rate += 1
             final_net_worths.append(net_worth_ls[-1]) # Add final net worth to list for later calculation
-            if 0 in net_worth_ls and net_worth_ls.index(0) < worst_failure_idx and debug_lvl >= 1:
+            if 0 in net_worth_ls and net_worth_ls.index(0) < worst_failure_idx and debug_lvl >= 2:
                 worst_failure_idx = net_worth_ls.index(0)
                 failure_dict = {
                     "Date":date_ls,
@@ -242,7 +252,7 @@ class Simulator:
                 plt.plot(date_ls,net_worth_ls)
                 plt.ylabel('net worth, $1,000s')
                 plt.xlabel('time')
-            if debug_lvl >= 2: 
+            if debug_lvl >= 3: 
                 plt.show()
                 usr_input = input("save (s), next (n), continue (c)?")
                 if usr_input == 's':
@@ -271,18 +281,23 @@ class Simulator:
                     save_df = pd.DataFrame.from_dict(save_dict)
                     save_df.to_csv(f'{const.SAVE_DIR}/saveData{col}.csv')
                 elif usr_input == 'c':
-                    debug_lvl = 1
+                    debug_lvl = 2
         #Summarize the results of the simulations
         success_rate = success_rate/monte_carlo_runs
         median_net_worth = statistics.median(final_net_worths)
-        if debug_lvl >= 1: 
+        img_data = None
+        if debug_lvl >= 1: # embed image for flask https://matplotlib.org/stable/gallery/user_interfaces/web_application_server_sgskip.html
+            buf = io.BytesIO() # Save it to a temporary buffer.
+            fig.savefig(buf, format="png")
+            img_data = base64.b64encode(buf.getbuffer()).decode("ascii") # Embed the result in the html output.
+        if debug_lvl >= 2:
             plt.show()
             failure_df = pd.DataFrame.from_dict(failure_dict)
             failure_df.to_csv(f'{const.SAVE_DIR}/worst_failure.csv')
             print(f"Success Rate: {success_rate*100:.2f}%")
             print(f"Median Final Net Worth: ${median_net_worth*1000:,.0f}")
         
-        return success_rate, [stock_return_arr,bond_return_arr,re_return_arr,inflation_arr]
+        return {'s_rate':success_rate, 'returns':[stock_return_arr,bond_return_arr,re_return_arr,inflation_arr], 'img_data':img_data}
         
         debug_point = None
         
@@ -521,4 +536,4 @@ param_vals = {key:obj["val"] for (key,obj) in params.items()}
 if __name__ == '__main__':
     #instantiate a Simulator and run at least 1 simulation
     test_simulator = test_unit(units=MONTE_CARLO_RUNS)
-    s_rate, arr= test_simulator.main()
+    test_simulator.main()

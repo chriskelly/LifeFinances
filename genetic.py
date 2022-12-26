@@ -44,6 +44,7 @@ class Algorithm:
             full_params = copy.deepcopy(self.model.params) # make a copy rather than point to the same dict # https://stackoverflow.com/a/22341377/13627745
             while success_rate <  SUCCESS_THRESH:
                 success_rate, parent_mute_params = self._make_child(full_params,mutable_params,success_rate,mutate='random')
+                if not success_rate: return None # if cancelled
                 if DEBUG_LVL>=1: print(f"Success Rate: {success_rate*100:.2f}%")
         self._update_param_count(mutable_params,first_time=True)
     # ---------------------- Improvement loop ---------------------- #
@@ -56,6 +57,7 @@ class Algorithm:
                 #TODO: #62 Make a progress loading bar in the terminal for offspring
                 children.append(self._make_child(full_params,parent_mute_params,success_rate,mutate='step',
                                                  max_step=max(1,parent_is_best_qty),idx=idx))
+                if not children[-1][0]: return None # if cancelled
             # Find best child (or use parent if all children worse)
             children.sort(key=lambda u: u[0], reverse=True) # Needed to avoid it sorting by the params if success rates are equal
             # ------ Children not improving ------ #
@@ -69,6 +71,7 @@ class Algorithm:
                     success_rate = 0.0
                     while success_rate <  SUCCESS_THRESH:
                         success_rate, parent_mute_params = self._make_child(full_params,mutable_params,success_rate,mutate='random')
+                        if not success_rate: return None # if cancelled
             # ------ Child is better ------ #
             else: # If child better than parent, update success rate and params
                 parent_is_best_qty = 0
@@ -80,6 +83,7 @@ class Algorithm:
                 current_monte_carlo_runs = simulator.MONTE_CARLO_RUNS # save previous value
                 simulator.MONTE_CARLO_RUNS = MAX_MONTE_RUNS
                 success_rate = self._make_child(full_params,parent_mute_params,success_rate,mutate='none')[0] # test at higher monte carlo runs
+                if not success_rate: return None # if cancelled
                 simulator.MONTE_CARLO_RUNS = current_monte_carlo_runs
                 if success_rate < TARGET_SUCCESS_RATE: 
                     if DEBUG_LVL>=1:
@@ -119,7 +123,7 @@ class Algorithm:
         """Return mutable params with shuffled values"""
         new_dict = copy.deepcopy(mutable_params) 
         for param,obj in new_dict.items():
-            new_dict[param]['val'] = str(random.choice(eval(obj["range"])))
+            new_dict[param]['val'] = str(random.choice(eval(str(obj["range"]))))
         return new_dict
     
     def _step_mutate(self,mutable_params:dict,max_step=1) -> dict:
@@ -127,7 +131,7 @@ class Algorithm:
         provided mutable_param values with a max deviation of max_step"""
         new_dict = copy.deepcopy(mutable_params)
         for param,obj in new_dict.items():
-            ls = list(eval(obj["range"]))
+            ls = list(eval(str(obj["range"])))
             val = obj['val'] if not models.model._is_float(obj['val']) else float(obj['val'])
             old_idx = ls.index(val)
             new_idx = min(len(ls)-1,max(0,self._gaussian_int(center=old_idx,max_deviation=max_step)))
@@ -174,10 +178,10 @@ class Algorithm:
         if self.reset_success and first_time:
             for param,obj in mutable_params.items():
                 self.param_cnt[param] = {}
-                for option in eval(obj["range"]):
+                for option in eval(str(obj["range"])):
                     self.param_cnt[param][str(option)] = 0
         for param,obj in mutable_params.items():
-                for option in eval(obj["range"]):
+                for option in eval(str(obj["range"])):
                     if str(option) == obj['val']:
                         self.param_cnt[param][str(option)] += 1
         with open(const.PARAMS_SUCCESS_LOC, 'w') as outfile:
@@ -207,11 +211,14 @@ class Algorithm:
             override_dict['returns']  = self.returns
         print(f"monte runs: {override_dict['monte_carlo_runs']}")
         new_simulator = Simulator(param_vals,override_dict)
-        child_success_rate, self.returns = new_simulator.main()
+        sim_results = new_simulator.main()
+        if not sim_results: # Simulator returns empty dict when quit commmand given
+            return (None,None)
+        self.returns = sim_results['returns']
         child_End_Time = time.time()
         if(DEBUG_LVL>=2):
             print(f"child generation time: {round(child_End_Time-child_Start_Time,2)}")
-        return (child_success_rate,child_mute_params)
+        return (sim_results['s_rate'],child_mute_params)
     
         
     

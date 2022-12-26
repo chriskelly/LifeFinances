@@ -73,19 +73,11 @@ class Model:
 
     def save_params(self, params_vals: dict):
         """Overwrite params.json with passed-in params_vals dict"""
+        params_vals = clean_data(params_vals)
         for param, obj in self.params.items():
             obj["val"] = params_vals[param]
         with open(const.PARAMS_LOC, 'w') as outfile:
             json.dump(self.params, outfile, indent=4)
-
-    def run_calcs(self, params_vals: dict):
-        """Cleans data to correct format and runs all calculations, 
-        updating the param:val dict passed-in and returning the updated dict"""
-        params_vals = clean_data(params_vals)
-        calcd_params = self.filter_params(include=True,attr="calcd")
-        for param,obj in calcd_params.items():
-            params_vals[param] = eval(obj["calcd"]) # evaluate string saved in self.params under "calcd"
-        return params_vals
 
     def filter_params(self, include: bool, attr: str, attr_val: any = None):
         """returns dict with params that include/exclude specified attributes
@@ -129,36 +121,17 @@ def _is_float(element):
     except ValueError:
         return False
 
-def clean_data(params: dict):
-    for k, v in params.items():
+def clean_data(param_vals: dict):
+    for k, v in param_vals.items():
         try:
             if v.isdigit():
-                params[k] = int(v)
+                param_vals[k] = int(v)
             elif _is_float(v):
-                params[k] = float(v)
+                param_vals[k] = float(v)
             elif v == "True":
-                params[k] = True
+                param_vals[k] = True
             elif v == "False":
-                params[k] = False
+                param_vals[k] = False
         except:
             continue
-    return params
-
-"""Naively looks through params.json - searches for false and true flags expressed as strings and un-stringifies them"""
-def Validate_ParamsJSON(configFile):
-    Jsontxt = []
-    with open(configFile,'r+') as f:
-        Jsontxtorig = f.readlines()
-        for l in Jsontxtorig:
-           new = l.replace('\"False\"','false').replace('\"True\"','true')
-           Jsontxt.append(new)
-
-    with open(configFile,'w') as f:
-        f.writelines(Jsontxt)
-
-#This executes whenever model.py is loaded as a module. Automatically fix JSON naming.    
-try:
-    Validate_ParamsJSON(const.PARAMS_LOC)
-    Validate_ParamsJSON(const.DEFAULT_PARAMS_LOC)
-except Exception as e:
-    print("Warning validating params.json - {}".format(e))
+    return param_vals

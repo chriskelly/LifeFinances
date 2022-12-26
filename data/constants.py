@@ -5,6 +5,7 @@ git_root= git.Repo(os.path.abspath(''),search_parent_directories=True).git.rev_p
 PARAMS_LOC = os.path.join(git_root,'data/params.json')
 DEFAULT_PARAMS_LOC = os.path.join(git_root,'data/default_params/params.json')
 PARAMS_SUCCESS_LOC = os.path.join(git_root,'data/param_success.json')
+QUIT_LOC = os.path.join(git_root,'cancel.quit')
 SAVE_DIR = os.path.join(git_root,'diagnostics/saved')
 
 EQUITY_MEAN = 1.092

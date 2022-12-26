@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>{% block title %} Parameters {% endblock %}</h1>
+  <form method="post">
+    <button type="submit">Save</button>
+    <ul>
+      {% for param, obj in params.items() %}
+        {% if obj.type != 'hide' %}
+        <li>
+          <label for="{{ param }}">{{ param }}:</label> 
+          {% if obj.type == 'bool' %}
+            <!--https://stackoverflow.com/questions/1809494/post-unchecked-html-checkboxes-->
+            {% if obj.val == True %}
+              <input type="checkbox" name="{{ param }}"
+              id="{{ param }}" value='True' checked></input>
+            {% else %}
+              <input type="checkbox" name="{{ param }}"
+              id="{{ param }}" value='True'></input>
+            {% endif %}
+              <input type='hidden' value='False' name='{{ param }}'>
+
+          {% elif obj.type == 'options' %}
+          <select name="{{ param }}" id="{{ param }}">
+            {% for option in obj.range %}
+              {% if obj.val == option %}
+                <option value="{{ option }}" selected>{{ option }}</option>
+              {% else %}
+                <option value="{{ option }}">{{ option }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+
+          {% else %}
+          <input type="text" name="{{ param }}"
+          value="{{ obj.val }}"></input>
+          {% endif %}
+          <span title="{{ obj.description }}">&#9432</span>
+        </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+    <button type="submit">Save</button>
+  </form>
+{% endblock %}
