@@ -3,6 +3,8 @@ import webbrowser
 import simulator, genetic
 from models import model
 from data import constants as const
+from matplotlib.figure import Figure
+
 
 mdl = model.Model()
 app = flask.Flask(__name__)
@@ -29,10 +31,13 @@ def parameters():
 
 @app.route('/simulation', methods=('GET', 'POST'))
 def simulation():
+    context = {'results':False}
     if flask.request.method == 'POST':
+        context['results'] = True
         test_simulator = simulator.test_unit(units=simulator.MONTE_CARLO_RUNS)
-        s_rate, arr= test_simulator.main()
-    return flask.render_template('simulation.html')
+        s_rate, _, context['img_data'] = test_simulator.main()
+        context['s_rate'] = f"Success Rate: {s_rate*100:.2f}%"
+    return flask.render_template('simulation.html', **context)
 
 @app.route('/optimizer', methods=('GET', 'POST'))
 def optimizer():

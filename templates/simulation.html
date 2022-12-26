@@ -5,5 +5,9 @@
   <form method="post">
     <input type="submit" name="submit_button" value="Run Simulation!">
   </form>
+  {% if results %}
+    <p>{{ s_rate }}</p>
+    <img src="data:image/png;base64,{{ img_data }}"\>
+  {% endif %}
 
 {% endblock %}

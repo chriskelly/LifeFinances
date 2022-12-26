@@ -211,7 +211,7 @@ class Algorithm:
             override_dict['returns']  = self.returns
         print(f"monte runs: {override_dict['monte_carlo_runs']}")
         new_simulator = Simulator(param_vals,override_dict)
-        child_success_rate, self.returns = new_simulator.main()
+        child_success_rate, self.returns, _ = new_simulator.main()
         if not child_success_rate: # Simulator returns None when quit commmand given
             return (None,None)
         child_End_Time = time.time()
