@@ -84,7 +84,16 @@ class Simulator:
         self.partner = self.params["Partner"]
         self.override_dict = override_dict
             
-    def main(self):
+    def main(self) -> dict:
+        """Runs a simulation with the parameters in data/params.json
+
+        Returns:
+            dict: {
+                's_rate':success_rate, 
+                'returns':[stock_return_arr,bond_return_arr,re_return_arr,inflation_arr], 
+                'img_data':base64 encoded image of simulation results
+                }
+        """
 # -------------------------------- VARIABLES -------------------------------- #      
     # STATIC LISTS: TIME, JOB INCOME --------------------------------------- #
 
@@ -136,7 +145,7 @@ class Simulator:
             # check for cancellation
             if os.path.exists(const.QUIT_LOC):
                 os.remove(const.QUIT_LOC)
-                return (None,None)
+                return {}
             stock_return_ls = stock_return_arr[col]
             bond_return_ls = bond_return_arr[col]
             re_return_ls = re_return_arr[col]
@@ -288,7 +297,7 @@ class Simulator:
             print(f"Success Rate: {success_rate*100:.2f}%")
             print(f"Median Final Net Worth: ${median_net_worth*1000:,.0f}")
         
-        return success_rate, [stock_return_arr,bond_return_arr,re_return_arr,inflation_arr], img_data
+        return {'s_rate':success_rate, 'returns':[stock_return_arr,bond_return_arr,re_return_arr,inflation_arr], 'img_data':img_data}
         
         debug_point = None
         
@@ -527,4 +536,4 @@ param_vals = {key:obj["val"] for (key,obj) in params.items()}
 if __name__ == '__main__':
     #instantiate a Simulator and run at least 1 simulation
     test_simulator = test_unit(units=MONTE_CARLO_RUNS)
-    s_rate, arr, _= test_simulator.main()
+    test_simulator.main()
