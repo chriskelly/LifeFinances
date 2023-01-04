@@ -6,3 +6,4 @@ matplotlib
 seaborn
 numba
 flask
+Gunicorn
