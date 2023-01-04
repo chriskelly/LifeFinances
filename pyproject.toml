@@ -1,0 +1,11 @@
+python = "^3.9"
+dependencies = [
+  "numpy",
+  "pandas",
+  "scipy",
+  "gitpython",
+  "matplotlib",
+  "seaborn",
+  "numba",
+  "flask"
+]
