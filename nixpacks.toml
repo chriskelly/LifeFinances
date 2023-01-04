@@ -6,4 +6,4 @@ nixPkgs = [
 ]
 
 [start]
-cmd = 'pip install -r dependencies.txt'
+cmds = ['pip install -r dependencies.txt']
