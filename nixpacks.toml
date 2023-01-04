@@ -2,15 +2,7 @@ providers = ["python"]
 
 [phases.setup]
 nixPkgs = [
-  "python39", 
-  "numpy",
-  "pandas",
-  "scipy",
-  "gitpython",
-  "matplotlib",
-  "seaborn",
-  "numba",
-  "flask"
+  "python39"
 ]
 
 [start]
