@@ -1,5 +1,8 @@
-python = "^3.9"
-dependencies = [
+providers = ["python"]
+
+[phases.setup]
+nixPkgs = [
+  "python39", 
   "numpy",
   "pandas",
   "scipy",
@@ -9,3 +12,6 @@ dependencies = [
   "numba",
   "flask"
 ]
+
+[start]
+cmd = 'pip install -r dependencies.txt'
