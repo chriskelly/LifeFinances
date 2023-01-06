@@ -1,9 +1,0 @@
-numpy
-pandas
-scipy
-gitpython
-matplotlib
-seaborn
-numba
-flask
-Gunicorn

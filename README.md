@@ -5,7 +5,7 @@ Supported for python version >= 3.9.
 
 The code requires various packages, which are listed in `dependencies.text`. To install them all at once, run the following command in the top-level directory of this repository
 ```bash
-pip install -r dependencies.txt
+pip install -r requirements.txt
 ```
 ## First Time Usage
 - After installing dependencies, run `python simulator.py`. After a few moments, you should see a chart pop up with hundreds of lines. These are all the individual results of a simulation based on the default parameters. After closing the chart, you'll see the success rate and median final net worth in the terminal window. The success rate represents what percentage of the time you did not run out of money before the final year (default: 2090) without running out of money.
