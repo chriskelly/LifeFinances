@@ -1,10 +1,6 @@
 import flask
-import webbrowser
-import simulator, genetic
-from models import model
-from data import constants as const
+import webbrowser, os
 
-mdl = model.Model()
 app = flask.Flask(__name__)
 
 @app.route('/')
@@ -13,6 +9,8 @@ def index():
 
 @app.route("/parameters", methods=('GET', 'POST'))
 def parameters():
+    from models import model
+    mdl = model.Model()
     context = {
         "params": mdl.params
     }
@@ -30,6 +28,7 @@ def parameters():
 
 @app.route('/simulation', methods=('GET', 'POST'))
 def simulation():
+    import simulator
     context = {'results':False} # used to avoid loading the result image before a simulation has been run
     if flask.request.method == 'POST':
         context['results'] = True
@@ -41,6 +40,8 @@ def simulation():
 
 @app.route('/optimizer', methods=('GET', 'POST'))
 def optimizer():
+    import genetic
+    from data import constants as const
     if flask.request.method == 'POST':
         if flask.request.form['submit_button'] == 'Start Optimizing!':
             genetic.Algorithm().main()
