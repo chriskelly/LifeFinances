@@ -33,6 +33,7 @@ def simulation():
     context = {'results':False} # used to avoid loading the result image before a simulation has been run
     if flask.request.method == 'POST':
         context['results'] = True
+        simulator.DEBUG_LVL = 1
         sim_results = simulator.test_unit(units=simulator.MONTE_CARLO_RUNS).main()
         context.update(sim_results) # add s_rate, returns, and img_data
         context['s_rate'] = f"Success Rate: {context['s_rate']*100:.2f}%" # change s_rate to string with correct formatting
