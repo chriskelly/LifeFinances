@@ -113,7 +113,10 @@
         "description": "Controls spending amount each year. Inflation-only: increases spending by the inflation rate for that year. Ceil-floor allows spending to increase when market returns are higher than expected, while lower than expected market returns require decreased spending.",
         "val": "ceil-floor",
         "popout": 1,
-        "range": "['ceil-floor','inflation-only']",
+        "range": [
+            "ceil-floor",
+            "inflation-only"
+        ],
         "type": "options"
     },
     "Allowed Fluctuation (%)": {
@@ -126,7 +129,14 @@
         "description": "Equity / Bond allocation. Life Cycle: uses the lifecycle investing method of 100% equities allocation until equity target met. Flat: Keeps a constant ratio between bonds and equities. x minus age: equity allocation decreases with age linearly (120 minus age: at age 40, equity allocation is 80%). Bond tent: increase bonds till peak year, decrease bonds afterwards.",
         "val": "Flat",
         "popout": 1,
-        "range": "['Life Cycle','Flat','120 Minus Age','110 Minus Age','100 Minus Age','Bond Tent']",
+        "range": [
+            "Life Cycle",
+            "Flat",
+            "120 Minus Age",
+            "110 Minus Age",
+            "100 Minus Age",
+            "Bond Tent"
+        ],
         "type": "options"
     },
     "RE Ratio": {
@@ -191,13 +201,23 @@
     "User Social Security Method": {
         "description": "Models the date at which you take social security. Early age = 62, mid age = 66, late age = 70. Net worth method triggers social security if you haven't met your equity target or at the late age if you have.",
         "val": "mid",
-        "range": "['early','mid','late','net worth']",
+        "range": [
+            "early",
+            "mid",
+            "late",
+            "net worth"
+        ],
         "type": "options"
     },
     "Partner Social Security Method": {
         "description": "Models the date at which your partner takes social security. Early age = 62, mid age = 66, late age = 70. Net worth method triggers social security if you haven't met your equity target or at the late age if you have.",
         "val": "mid",
-        "range": "['early','mid','late','net worth']",
+        "range": [
+            "early",
+            "mid",
+            "late",
+            "net worth"
+        ],
         "type": "options"
     },
     "Pension Trust Factor": {
@@ -256,7 +276,13 @@
     "Admin Pension Method": {
         "description": "Only applies for admin",
         "val": "early",
-        "range": "['early','mid','late','net worth','cash-out']",
+        "range": [
+            "early",
+            "mid",
+            "late",
+            "net worth",
+            "cash-out"
+        ],
         "type": "hide"
     }
 }
