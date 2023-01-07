@@ -5,7 +5,7 @@
 param_success.json
 **/data/params.json
 diagnostics/saved/
-test*
+temp*
 *.prof
 .vscode/
 
