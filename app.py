@@ -11,19 +11,12 @@ def index():
 def parameters():
     from models import model
     mdl = model.Model()
-    context = {
-        "params": mdl.params
-    }
     if flask.request.method == 'POST':
-        for k,v in flask.request.form.items():
-            # update the parameters in the model()
-            if mdl.params[k]['type'] == "bool":
-                # correct stringified booleans to regular booleans
-                if v == 'True': mdl.params[k]['val'] = True
-                else: mdl.params[k]['val'] = False
-            else:
-                mdl.params[k]['val'] = v
-            mdl.save_params({param:obj['val'] for (param,obj) in mdl.params.items()}) # save to JSON
+        mdl.save_params(flask.request.form)
+    context = {
+        "param_vals": mdl.param_vals,
+        "param_details":mdl.param_details
+    }
     return flask.render_template("parameters.html", **context)
 
 @app.route('/simulation', methods=('GET', 'POST'))

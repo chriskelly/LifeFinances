@@ -28,6 +28,8 @@ import data.constants as const
 #     print('Parameters Updated')
 #     return updated_dict
 
+USER_ID = 1 # Default ID is 1
+
 def load_params():
     """Pulls parameter values from the SQL DB, then pulls parameter details from the param_detail.json file
 
@@ -35,54 +37,34 @@ def load_params():
         dict: param_vals = {param:val} \n
         dict: param_details = {param:detail object}
     """
-    user_id = 1 # Default ID is 1
-    user_cmd = f'SELECT * FROM users WHERE user_id == {user_id}'
+    user_cmd = f'SELECT * FROM users WHERE user_id == {USER_ID}'
     values, descriptions = db_query(user_cmd)
     param_vals = {description[0]:value for description, value in zip(descriptions[1:],values[0][1:])}
         # historic earnings for social security
-    usr_earnings_cmd = f'SELECT * from earnings_records WHERE user_id == {user_id} AND is_partner_earnings == 0'
+    usr_earnings_cmd = f'SELECT * from earnings_records WHERE user_id == {USER_ID} AND is_partner_earnings == 0'
     partner_earnings_cmd = usr_earnings_cmd[:-1]+'1' # look for is_partner_earnings == 1
     usr_earnings, _ = db_query(usr_earnings_cmd)
     partner_earnings, _ = db_query(partner_earnings_cmd)
-    year_idx, earnings_idx = 3, 4
-    param_vals['user_earnings_record'] = {entry[year_idx]:entry[earnings_idx] for entry in usr_earnings}
-    param_vals['partner_earnings_record'] = {entry[year_idx]:entry[earnings_idx] for entry in partner_earnings}
+    param_vals['user_earnings_record'] = [[idx,year,earnings] for idx,_,_,year,earnings in usr_earnings]
+    param_vals['partner_earnings_record'] = [[idx,year,earnings] for idx,_,_,year,earnings in partner_earnings]
         # kid birth years
-    birth_years, _ = db_query(sql_cmd=f'SELECT * from kids WHERE user_id == {user_id}')
-    param_vals['kid_birth_years'] = [entry[2] for entry in birth_years]
+    birth_years, _ = db_query(sql_cmd=f'SELECT * from kids WHERE user_id == {USER_ID}')
+    param_vals['kid_birth_years'] = [[idx,year] for idx,_,year in birth_years]
         # income from jobs
-    usr_job_incomes_cmd = f'SELECT * from job_incomes WHERE user_id == {user_id} AND is_partner_income == 0'
+    usr_job_incomes_cmd = f'SELECT * from job_incomes WHERE user_id == {USER_ID} AND is_partner_income == 0'
     partner_job_incomes_cmd = usr_job_incomes_cmd[:-1]+'1' # look for is_partner_income == 1
     usr_job_incomes, descriptions = db_query(usr_job_incomes_cmd)
     partner_job_incomes, _ = db_query(partner_job_incomes_cmd)
             # Using a dict comprehension (to get sub-parameters) in a list comprehension (to get all jobs)
-    param_vals['user_jobs'] = [{key[0]:val for key,val in zip(descriptions[3:],job[3:])} \
-                            for job in usr_job_incomes] # 3 is the first index that isn't an ID or partner check
-    param_vals['partner_jobs'] = [{key[0]:val for key,val in zip(descriptions[3:],job[3:])} \
+    param_vals['user_jobs'] = [{key[0]:val for key,val in zip(descriptions[:-2],job[:-2])} \
+                            for job in usr_job_incomes] # ignore the last two columns: user_id and is_partner
+    param_vals['partner_jobs'] = [{key[0]:val for key,val in zip(descriptions[:-2],job[:-2])} \
                             for job in partner_job_incomes]
     # get param details
     with open(const.PARAM_DETAILS_LOC) as json_file:
         param_details:dict = json.load(json_file)
     return param_vals, param_details
     
-    # try:
-    #     with open(const.PARAM_DETAILS_LOC) as json_file:
-    #         params = json.load(json_file)
-    # except: # needed for the first time code is run
-    #     shutil.copy(const.DEFAULT_PARAMS_LOC, const.PARAM_DETAILS_LOC)
-    #     with open(const.PARAM_DETAILS_LOC) as json_file:
-    #         params = json.load(json_file)
-    # with open(const.DEFAULT_PARAMS_LOC) as json_file:
-    #     default_params = json.load(json_file)
-    # if float(params['Version']['val']) > float(default_params['Version']['val']):
-    #     default_params = update_dicts(up_to_date=params, out_of_date=default_params)
-    #     with open(const.DEFAULT_PARAMS_LOC, 'w') as outfile:
-    #         json.dump(default_params, outfile, indent=4)
-    # if float(default_params['Version']['val']) > float(params['Version']['val']):
-    #     params = update_dicts(up_to_date=default_params, out_of_date=params)
-    #     with open(const.PARAM_DETAILS_LOC, 'w') as outfile:
-    #         json.dump(params, outfile, indent=4)
-    # return params
 
 class Model:
     """
@@ -97,14 +79,41 @@ class Model:
     def __init__(self):
         self.param_vals, self.param_details = load_params()
 
-    def save_params(self, params_vals: dict):
-        """Overwrite params.json with passed-in params_vals dict"""
-        raise Exception('save param method not updated')
-        # params_vals = clean_data(params_vals)
-        # for param, obj in self.params.items():
-        #     obj["val"] = params_vals[param]
-        # with open(const.PARAM_DETAILS_LOC, 'w') as outfile:
-        #     json.dump(self.params, outfile, indent=4)
+    def save_params(self, form: dict[str,str]):
+        form_set = set()
+        for k,v in form.items(): 
+            if k in form_set: continue # avoid duplicates from checkboxes. Only the first should be counted
+            else: form_set.add(k)
+            if v.isdigit(): 
+                v = int(v)
+            elif _is_float(v):
+                v = float(v)
+            elif v == "True":
+                v = 1
+            elif v == "False":
+                v = 0
+                
+            if k in self.param_vals: # the key matches the db name exactly, therefore isn't a job income
+                #self.param_vals[k] = v
+                cmd = f'UPDATE users SET {k} = ? WHERE user_id = ?' # Can't use SQL objects as placeholders https://stackoverflow.com/a/25387570/13627745
+                db_query(cmd,(v,USER_ID))
+                continue
+            else:
+                try: k, idx, sub_k = k.split('@')
+                except: k, idx = k.split('@')
+            # job incomes
+            if k in {'user_jobs','partner_jobs'}:
+                cmd = f'UPDATE job_incomes SET {sub_k} = ? WHERE user_id = ? AND job_income_id = ?'
+            # kid birth years
+            elif k == 'kid_birth_years':
+                cmd = f'UPDATE kids SET birth_year = ? WHERE user_id = ? AND kid_id = ?'
+            # earnings record
+            elif k in {'user_earnings_record','partner_earnings_record'}:
+                cmd = f'UPDATE earnings_records SET {sub_k} = ? WHERE user_id = ? AND earnings_id = ?' 
+            db_query(cmd,(v,USER_ID,idx))
+        self.param_vals, _ = load_params()
+            
+        
 
     def filter_params(self, include: bool, attr: str, attr_val: any = None):
         """returns dict with params that include/exclude specified attributes
@@ -128,7 +137,7 @@ class Model:
                     new_dict[param] = obj
         return new_dict
 
-def db_query(sql_cmd:str):
+def db_query(sql_cmd:str,cmd_args:tuple=None):
     """Provide the query result to the provided command string
 
     Args:
@@ -143,11 +152,12 @@ def db_query(sql_cmd:str):
         with open(const.DB_LOC): pass 
     except FileNotFoundError:
         shutil.copy(const.DEFAULT_DB_LOC, const.DB_LOC)
-        return db_query(sql_cmd)
-    
     with contextlib.closing(sqlite3.connect(const.DB_LOC)) as con, con,  \
             contextlib.closing(con.cursor()) as cursor:
-        cursor.execute(sql_cmd)
+        if cmd_args: # Used to avoid SQL injection attacks
+            cursor.execute(sql_cmd,cmd_args)
+        else:
+            cursor.execute(sql_cmd)
         return cursor.fetchall(), cursor.description
     
 

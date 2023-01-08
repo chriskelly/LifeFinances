@@ -106,7 +106,7 @@
         "description": "List of years for additional children (comma seperated). Do not put in past birth years (future feature). Each child is modeled to produce an additional cost for 22 years after birth",
         "val": "2026,2029",
         "popout": 0,
-        "type": ""
+        "type": "kids"
     },
     "cost_of_kid": {
         "label":"Cost of Kid (% Spending)",
@@ -282,7 +282,7 @@
             "2020": "70.000",
             "2021": "75.000"
         },
-        "type": "hide"
+        "type": "earnings_record"
     },
     "partner_earnings_record": {
         "label":"Partner Earnings Record",
@@ -293,7 +293,7 @@
             "2016": "120.000",
             "2018": "130.000"
         },
-        "type": "hide"
+        "type": "earnings_record"
     },
     "admin": {
         "label":"Admin",
