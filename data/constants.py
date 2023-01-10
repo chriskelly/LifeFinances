@@ -2,8 +2,9 @@
 import os, git, json
 git_root= git.Repo(os.path.abspath(''),search_parent_directories=True).git.rev_parse('--show-toplevel')
 
-PARAMS_LOC = os.path.join(git_root,'data/params.json')
-DEFAULT_PARAMS_LOC = os.path.join(git_root,'data/default_params/params.json')
+PARAM_DETAILS_LOC = os.path.join(git_root,'data/param_details.json')
+DB_LOC = os.path.join(git_root,'data/data.db')
+DEFAULT_DB_LOC = os.path.join(git_root,'data/default_values/data.db')
 PARAMS_SUCCESS_LOC = os.path.join(git_root,'data/param_success.json')
 QUIT_LOC = os.path.join(git_root,'cancel.quit')
 SAVE_DIR = os.path.join(git_root,'diagnostics/saved')

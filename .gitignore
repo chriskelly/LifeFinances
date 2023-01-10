@@ -3,7 +3,7 @@
 
 # LifeFinances Specific
 param_success.json
-**/data/params.json
+**/data/data.db
 diagnostics/saved/
 temp*
 *.prof

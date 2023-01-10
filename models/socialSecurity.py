@@ -1,7 +1,7 @@
 import math, copy
 import numpy as np
 from data import constants as const
-from models import income
+from models import income, model
 import simulator
 
 EARLY_AGE = 62
@@ -58,13 +58,12 @@ class Calculator:
 
         """
         self.sim, self.date_ls, self.spouse_calc, self.usr, self.income_calc = sim, date_ls, spouse_calc, usr, income_calc
-        self.age = sim._val(f"{usr} Age",False)
+        self.age = sim._val(f"{usr}_age",False)
         if self.spouse_calc: spouse_calc.spouse_calc = self # if a spouse is added, make the spouse's spouse this calc
-        self.method = sim._val(f"{usr} Social Security Method",False)
-        self.pension = sim.params[f"{usr} Pension"]
+        self.method = sim._val(f"{usr}_social_security_method",False)
+        self.pension = sim.params[f"{usr}_pension"]
         self.triggered = False # Has SS been triggered
-        imported_record = sim._val(f"{usr} Earnings Record",False)
-        self.earnings_record = {int(year):float(earning) for (year,earning) in imported_record.items()} # {year : earnings}
+        self.earnings_record = {year:earning for _,year,earning in sim._val(f"{usr}_earnings_record",False)} # {year : earnings}
         eligible_income_ls = eligible_income(date_ls,income_calc)
         self._add_to_earnings_record(date_ls,eligible_income_ls)
         # -------- CALCULATE PIA (BASE SOCIAL SECURITY PAYMENT) -------- #
@@ -91,7 +90,7 @@ class Calculator:
             self.ss_age = MID_AGE
         else: # method == 'late' or 'portfolio' List will be overwritten if portfolio triggers before late age
             self.ss_age = LATE_AGE
-        self.ss_date = self.ss_age - self.age + simulator.TODAY_YR + 1 # not quarterly precise, could be improved by changing from age to birth quarter in params.json
+        self.ss_date = self.ss_age - self.age + model.TODAY_YR + 1 # not quarterly precise, could be improved by changing from age to birth quarter in params.json
             
     def make_list(self, inflation_ls):
         """Returns list with social security payments starting from today till final date"""
@@ -105,7 +104,7 @@ class Calculator:
     
     def get_payment(self,row,net_worth,equity_target):
         res =  max(self._get_worker_payment(row,net_worth,equity_target), self._get_spousal_payment(row,net_worth,equity_target))
-        if self.sim.admin and self.usr == 'Partner':
+        if self.sim.admin and self.usr == 'partner':
             res += self._admin_pension_payment(row,equity_target,net_worth)
         return res
     
@@ -113,7 +112,7 @@ class Calculator:
         if self.method == 'net worth' and net_worth < equity_target * self.inflation_ls[row] and not self.triggered:
         # Have to generate new list if using 'net worth' method
             current_date = self.date_ls[row]
-            current_age = math.trunc(current_date) + self.age - simulator.TODAY_YR
+            current_age = math.trunc(current_date) + self.age - model.TODAY_YR
             if current_age >= EARLY_AGE and current_age <= LATE_AGE: # confirm worker is of age to retire
                 self.ss_date, self.ss_age = current_date, current_age
                 self.triggered = True
@@ -169,14 +168,14 @@ class Calculator:
             else: return self.pension_ls[row]
             # set variables
         EARLY_PENSION_YEAR,MID_PENSION_YEAR,LATE_PENSION_YEAR = 2043,2049,2055
-        method = self.sim._val('Admin Pension Method',QT_MOD=False)
+        method = self.sim._val('admin_pension_method',QT_MOD=False)
         pension_income = self.income_calc.income_objs[0]
         current_pension_salary_qt = pension_income.income_qt/(1-const.PENSION_COST) # Corrects for 9% taken from salary for pension
         working_qts = pension_income.last_date_idx - pension_income.start_date_idx()
         max_pension_salary_qt = current_pension_salary_qt * pension_income.yearly_raise ** (working_qts/4)
         if method == 'cash-out':
             # Need to correct for out-dated info, first estimate salary at date of last update, then project forward
-            data_age_qt = int((simulator.TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25) # find age of data
+            data_age_qt = int((model.TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25) # find age of data
             est_prev_pension_salary_qt = current_pension_salary_qt / (pension_income.yearly_raise ** (data_age_qt/4)) # estimate salary at date of data
             # rough estimate of historical earnings + projected future earnings (corrected for pension cost)
             projected_income = np.concatenate((simulator.step_quarterize(self.date_ls,est_prev_pension_salary_qt,pension_income.yearly_raise,start_date_idx=0,end_date_idx=data_age_qt)
@@ -250,7 +249,7 @@ def taxes(date_ls:list,inflation,user_calc:income.Calculator,partner_calc:income
     else:
         total_eligible_income = eligible_income(date_ls,user_calc)
     # need the SS Max Earnings, but in quarter form instead of the annual form
-    ss_max_earnings_qt_ls = simulator.step_quarterize(date_ls,first_val=0.25 * est_Max_Earning(simulator.TODAY_YR),
+    ss_max_earnings_qt_ls = simulator.step_quarterize(date_ls,first_val=0.25 * est_Max_Earning(model.TODAY_YR),
                                                        increase_yield=inflation,start_date_idx=0,end_date_idx=len(date_ls)-1)
     ss_tax = [0.062*min(income,ss_max) for income,ss_max in zip(total_eligible_income,ss_max_earnings_qt_ls)]
     return ss_tax

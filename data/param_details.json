@@ -1,0 +1,317 @@
+{
+    "user_age": {
+        "label":"User Age",
+        "description": "Current age of user",
+        "default_val": "29",
+        "popout": 5,
+        "type": ""
+    },
+    "partner": {
+        "label":"Partner",
+        "description": "Do you have a partner? If marked 0, all partner related parameters will be ignored",
+        "default_val": 1,
+        "type": "bool"
+    },
+    "partner_age": {
+        "label":"Partner Age",
+        "description": "Current age of partner",
+        "default_val": "34",
+        "popout": 6,
+        "type": ""
+    },
+    "calculate_til": {
+        "label":"Calculate Til",
+        "description": "Final year for simulation. Recommended value: birth year + 90",
+        "default_val": "2090",
+        "popout": 0,
+        "type": ""
+    },
+    "current_net_worth": {
+        "label":"Current Net Worth (in $1000s)",
+        "description": "Current net worth in $1000s",
+        "default_val": "250",
+        "popout": 0,
+        "type": ""
+    },
+    "user_jobs": {
+        "label":"User Jobs",
+        "description": "Each item in the list is a different job income stream. Start date of each is assumed to be the last date of the previous item. Employment gaps should be represented as 0 income. Try to reduce: This means the genetic optimization algorithm will try to reduce this income stream end date anytime it finds a parameter combination that meets the success threshold. Social Security Eligible: If this income makes payments to social security (generally any job without a pension)",
+        "default_val": [
+            {
+                "Starting Income": 120,
+                "Tax Deferred Income": 12,
+                "Last Date": 2035.25,
+                "Yearly Raise": 0.04,
+                "Try to Reduce": 0,
+                "Social Security Eligible": 1
+            },
+            {
+                "Starting Income": 0,
+                "Tax Deferred Income": 0,
+                "Last Date": 2036,
+                "Yearly Raise": 0,
+                "Try to Reduce": 0,
+                "Social Security Eligible": 0
+            },
+            {
+                "Starting Income": 150,
+                "Tax Deferred Income": 30,
+                "Last Date": 2040.0,
+                "Yearly Raise": 0.06,
+                "Try to Reduce": 1,
+                "Social Security Eligible": 0
+            },
+            {
+                "Starting Income": 50,
+                "Tax Deferred Income": 0,
+                "Last Date": 2045,
+                "Yearly Raise": 0.02,
+                "Try to Reduce": 0,
+                "Social Security Eligible": 1
+            }
+        ],
+        "type": "incomes"
+    },
+    "partner_jobs": {
+        "label":"Partner Jobs",
+        "description": "Each item in the list is a different income stream. Start date of each is assumed to be the last date of the previous item. Employment gaps should be represented as 0 income. Try to reduce: This means the genetic optimization algorithm will try to reduce this income stream end date anytime it finds a parameter combination that meets the success threshold. Social Security Eligible: If this income makes payments to social security (generally any job without a pension)",
+        "default_val": [
+            {
+                "Starting Income": 100,
+                "Tax Deferred Income": 30,
+                "Last Date": 2040.0,
+                "Yearly Raise": 0.04,
+                "Try to Reduce": 1,
+                "Social Security Eligible": 0
+            }
+        ],
+        "type": "incomes"
+    },
+    "yearly_spending": {
+        "label":"Yearly Spending (in $1000s)",
+        "description": "Yearly spending in $1000s",
+        "default_val": "60",
+        "popout": 0,
+        "popper": 1,
+        "type": ""
+    },
+    "drawdown_tax_rate": {
+        "label":"Drawdown Tax Rate",
+        "description": "Assumed average rate of tax on portfolio drawdown. 15% and 20% are the marginal capital gains rates, but the average rate will depend on your mix of tax-advantaged accounts at the point of retirement.",
+        "default_val": 0.1,
+        "type": ""
+    },
+    "kid_birth_years": {
+        "label":"Kid Birth Years",
+        "description": "List of years for additional children (comma seperated). Do not put in past birth years (future feature). Each child is modeled to produce an additional cost for 22 years after birth",
+        "default_val": "2026,2029",
+        "popout": 0,
+        "type": "kids"
+    },
+    "cost_of_kid": {
+        "label":"Cost of Kid (% Spending)",
+        "description": "Estimate for average cost of kid as a percentage of spending. A value of 0.12 increases spending by 12% for each child for 22 years after their birth.",
+        "default_val": "0.12",
+        "popout": 0,
+        "type": ""
+    },
+    "spending_method": {
+        "label":"Spending Method",
+        "description": "Controls spending amount each year. Inflation-only: increases spending by the inflation rate for that year. Ceil-floor allows spending to increase when market returns are higher than expected, while lower than expected market returns require decreased spending.",
+        "default_val": "ceil-floor",
+        "popout": 1,
+        "range": [
+            "ceil-floor",
+            "inflation-only"
+        ],
+        "type": "options"
+    },
+    "allowed_fluctuation": {
+        "label":"Allowed Fluctuation (% of Spending)",
+        "description": "If using the ceil-floor method of spending, spending fluctuates by +/-5% (for valueof 0.05) depending on market returns.",
+        "default_val": "0.05",
+        "popout": 1,
+        "type": ""
+    },
+    "allocation_method": {
+        "label":"Portfolio Allocation Method",
+        "description": "Equity / Bond allocation. Life Cycle: uses the lifecycle investing method of 100% equities allocation until equity target met. Flat: Keeps a constant ratio between bonds and equities. x minus age: equity allocation decreases with age linearly (120 minus age: at age 40, equity allocation is 80%). Bond tent: increase bonds till peak year, decrease bonds afterwards.",
+        "default_val": "Flat",
+        "popout": 1,
+        "range": [
+            "Life Cycle",
+            "Flat",
+            "120 Minus Age",
+            "110 Minus Age",
+            "100 Minus Age",
+            "Bond Tent"
+        ],
+        "type": "options"
+    },
+    "real_estate_equity_ratio": {
+        "label":"Real Estate Ratio",
+        "description": "Ratio of real estate within equity allocation. If value set to 0.5, but bonds are 20%, allocation will be 40% real estate, 40% stock, 20% bonds.",
+        "default_val": "0.6",
+        "popout": 0,
+        "range": "np.linspace(0,.6,7)",
+        "type": ""
+    },
+    "equity_target": {
+        "label":"Equity Target",
+        "description": "When using lifecycle allocation or net-worth targets for social security, this value acts as a pivot point for the portfolio. If set to 1500 and using lifecycle allocation, portfolio will be in 100% equities until net worth hits $1.5M, then any additonal net worth will be invested in bonds. To learn more, read about lifecycle investing: https://www.lifecycleinvesting.net/, but know this method does not use leverage.",
+        "default_val": "1500",
+        "popout": 0,
+        "range": "range(500,4000,100)",
+        "type": ""
+    },
+    "annuities_instead_of_bonds": {
+        "label":"Annuities Instead of Bonds?",
+        "description": "Decide to use annuities instead of bonds for portfolio allocation.",
+        "default_val": 0,
+        "range": [1,0],
+        "type": "bool"
+    },
+    "flat_bond_target": {
+        "label":"Flat Bond Target",
+        "description": "When using the Flat allocation method, this value determines the ratio of bonds in the portfolio",
+        "default_val": "0.2",
+        "range": "[0.2, 0.3, 0.4, 0.5, 0.6]",
+        "type": ""
+    },
+    "bond_tent_start_allocation": {
+        "label":"Bond Tent Start Allocation",
+        "description": "When using the bond tent allocation method, this value determines the initial allocation of bonds",
+        "default_val": "0.0",
+        "range": "[0.0, 0.1, 0.2, 0.3, 0.4]",
+        "type": ""
+    },
+    "bond_tent_start_date": {
+        "label":"Bond Tent Start Date",
+        "description": "When using the bond tent allocation method, this value determines the year bond allocation starts to increase",
+        "default_val": 2035,
+        "type": ""
+    },
+    "bond_tent_peak_allocation": {
+        "label":"Bond Tent Peak Allocation",
+        "description": "When using the bond tent allocation method, this value determines the peak allocation of bonds",
+        "default_val": "0.8",
+        "range": "[0.4, 0.5, 0.6, 0.7, 0.8]",
+        "type": ""
+    },
+    "bond_tent_peak_date": {
+        "label":"Bond Tent Peak Date",
+        "description": "When using the bond tent allocation method, this value determines the year bond allocation peaks",
+        "default_val": 2040,
+        "type": ""
+    },
+    "bond_tent_end_allocation": {
+        "label":"Bond Tent End Allocation",
+        "description": "When using the bond tent allocation method, this value determines the final allocation of bonds",
+        "default_val": "0.0",
+        "range": "[0.0, 0.1, 0.2, 0.3, 0.4]",
+        "type": ""
+    },
+    "bond_tent_end_date": {
+        "label":"Bond Tent End Date",
+        "description": "When using the bond tent allocation method, this value determines the year bond allocation gets to final default_value",
+        "default_val": 2060,
+        "type": ""
+    },
+    "user_social_security_method": {
+        "label":"User Social Security Method",
+        "description": "Models the date at which you take social security. Early age = 62, mid age = 66, late age = 70. Net worth method triggers social security if you haven't met your equity target or at the late age if you have.",
+        "default_val": "mid",
+        "range": [
+            "early",
+            "mid",
+            "late",
+            "net worth"
+        ],
+        "type": "options"
+    },
+    "partner_social_security_method": {
+        "label":"Partner Social Security Method",
+        "description": "Models the date at which your partner takes social security. Early age = 62, mid age = 66, late age = 70. Net worth method triggers social security if you haven't met your equity target or at the late age if you have.",
+        "default_val": "mid",
+        "range": [
+            "early",
+            "mid",
+            "late",
+            "net worth"
+        ],
+        "type": "options"
+    },
+    "pension_trust_factor": {
+        "label":"Pension Trust Factor",
+        "description": "Many people are skeptical of relying on social security. A value of 0.8 models your social security payment as 80% of what the current social security administration would provide given your earnings record.",
+        "default_val": "0.8",
+        "popout": 0,
+        "type": ""
+    },
+    "retirement_spending_change": {
+        "label":"Retirement Change (% of Spending)",
+        "description": "Many people decrease spending in retirement. A value of -0.15 decreases spending by 15% once neither you nor partner are earning income.",
+        "default_val": "-0.15",
+        "popout": 1,
+        "type": ""
+    },
+    "user_pension": {
+        "label":"User Pension",
+        "description": "Is the user going to receive a pension? If so, social security payment is decreased",
+        "default_val": 0,
+        "type": "bool"
+    },
+    "partner_pension": {
+        "label":"Partner Pension",
+        "description": "Is the partner going to receive a pension? If so, social security payment is decreased",
+        "default_val": 0,
+        "type": "bool"
+    },
+    "user_earnings_record": {
+        "label":"User Earnings Record",
+        "description": "Historical earnings for user in $1000s. These default_values are used to calculate social security payments",
+        "default_val": {
+            "2012": "30.000",
+            "2013": "35.000",
+            "2014": "40.000",
+            "2015": "45.000",
+            "2016": "50.000",
+            "2017": "55.000",
+            "2018": "60.000",
+            "2019": "65.000",
+            "2020": "70.000",
+            "2021": "75.000"
+        },
+        "type": "earnings_record"
+    },
+    "partner_earnings_record": {
+        "label":"Partner Earnings Record",
+        "description": "Historical earnings for partner in $1000s. These default_values are used to calculate social security payments",
+        "default_val": {
+            "2014": "110.000",
+            "2015": "120.000",
+            "2016": "120.000",
+            "2018": "130.000"
+        },
+        "type": "earnings_record"
+    },
+    "admin": {
+        "label":"Admin",
+        "description": "Only applies for admin. Keep 0.",
+        "default_val": 0,
+        "type": "hide"
+    },
+    "admin_pension_method": {
+        "label":"Admin Pension Method",
+        "description": "Only applies for admin",
+        "default_val": "early",
+        "range": [
+            "early",
+            "mid",
+            "late",
+            "net worth",
+            "cash-out"
+        ],
+        "type": "hide"
+    }
+}

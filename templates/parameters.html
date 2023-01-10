@@ -5,13 +5,72 @@
   <form method="post">
     <button type="submit">Save</button>
     <ul>
-      {% for param, obj in params.items() %}
-        {% if obj.type != 'hide' %}
+      {# Iterating through all the parameters #}
+      {% for param, obj in param_details.items() %} 
+        {% if obj.type == 'incomes' %} {# if this is an job income parameter, go through each element of the job obj #}
+          <li><label for="{{ param }}">{{ obj.label }}:</label> 
+          <span title="{{ obj.description }}">&#9432</span></li>
+          {% for job in param_vals[param] %}
+            <li>
+              <label for="{{ param }}@{{ job.job_income_id }}@starting_income"> Starting Income:</label>
+              <input type="text" name="{{ param }}@{{ job.job_income_id }}@starting_income" value="{{ job.starting_income }}"></input>
+            </li>
+            <li>
+              <label for="{{ param }}@{{ job.job_income_id }}@tax_deferred_income"> Tax Deferred Income:</label>
+              <input type="text" name="{{ param }}@{{ job.job_income_id }}@tax_deferred_income" value="{{ job.tax_deferred_income }}"></input>
+            </li>
+            <li>
+              <label for="{{ param }}@{{ job.job_income_id }}@last_date"> Last Date:</label>
+              <input type="text" name="{{ param }}@{{ job.job_income_id }}@last_date" value="{{ job.last_date }}"></input>
+            </li>
+            <li>
+              <label for="{{ param }}@{{ job.job_income_id }}@yearly_raise">Yearly Raise:</label>
+              <input type="text" name="{{ param }}@{{ job.job_income_id }}@yearly_raise" value="{{ job.yearly_raise }}"></input>
+            </li>
+            <li>
+              <label for="{{ param }}@{{ job.job_income_id }}try_to_optimize">Try to Optimize:</label>
+              {% if job.try_to_optimize == 1 %}
+                <input type="checkbox" name="{{ param }}@{{ job.job_income_id }}try_to_optimize" id="{{ param }}@{{ job.job_income_id }}try_to_optimize" value='True' checked></input>
+              {% else %}
+                <input type="checkbox" name="{{ param }}@{{ job.job_income_id }}try_to_optimize" id="{{ param }}@{{ job.job_income_id }}try_to_optimize" value='True'></input>
+              {% endif %}
+                <input type='hidden' value='False' name='{{ param }}@{{ job.job_income_id }}try_to_optimize'>
+            </li>
+            <li>
+              <label for="{{ param }}@{{ job.job_income_id }}@social_security_eligible">Social Security Eligible:</label>
+              {% if job.social_security_eligible == 1 %}
+                <input type="checkbox" name="{{ param }}@{{ job.job_income_id }}@social_security_eligible" id="{{ param }}@{{ job.job_income_id }}@social_security_eligible" value='True' checked></input>
+              {% else %}
+                <input type="checkbox" name="{{ param }}@{{ job.job_income_id }}@social_security_eligible" id="{{ param }}@{{ job.job_income_id }}@social_security_eligible" value='True'></input>
+              {% endif %}
+                <input type='hidden' value='False' name='{{ param }}@{{ job.job_income_id }}@social_security_eligible'>
+            </li>
+          {% endfor %}
+
+        {% elif obj.type == 'kids' %}
+          <li><label for="{{ param }}">{{ obj.label }}:</label> 
+          <span title="{{ obj.description }}">&#9432</span></li>
+          {% for i in range(param_vals[param]|length) %}
+            <li><input type="text" name="{{ param }}@{{param_vals[param][i][0]}}" value="{{ param_vals[param][i][1] }}"></input></li>
+          {% endfor %}
+
+        {% elif obj.type == 'earnings_record' %}
+          <li><label for="{{ param }}">{{ obj.label }}:</label> 
+          <span title="{{ obj.description }}">&#9432</span></li>
+          {% for i in range(param_vals[param]|length) %}
+            <li>
+              <input type="text" name="{{ param }}@{{param_vals[param][i][0]}}@year" value="{{ param_vals[param][i][1] }}"></input>
+              <input type="text" name="{{ param }}@{{param_vals[param][i][0]}}@earnings" value="{{ param_vals[param][i][2] }}"></input>
+            </li>
+          {% endfor %}
+
+        {% elif obj.type != 'hide' %}
         <li>
-          <label for="{{ param }}">{{ param }}:</label> 
+          <label for="{{ param }}">{{ obj.label }}:</label> 
+
           {% if obj.type == 'bool' %}
-            <!--https://stackoverflow.com/questions/1809494/post-unchecked-html-checkboxes-->
-            {% if obj.val == True %}
+            {# https://stackoverflow.com/questions/1809494/post-unchecked-html-checkboxes #}
+            {% if param_vals[param] == 1 %}
               <input type="checkbox" name="{{ param }}"
               id="{{ param }}" value='True' checked></input>
             {% else %}
@@ -23,7 +82,7 @@
           {% elif obj.type == 'options' %}
           <select name="{{ param }}" id="{{ param }}">
             {% for option in obj.range %}
-              {% if obj.val == option %}
+              {% if param_vals[param] == option %}
                 <option value="{{ option }}" selected>{{ option }}</option>
               {% else %}
                 <option value="{{ option }}">{{ option }}</option>
@@ -33,7 +92,7 @@
 
           {% else %}
           <input type="text" name="{{ param }}"
-          value="{{ obj.val }}"></input>
+          value="{{ param_vals[param] }}"></input>
           {% endif %}
           <span title="{{ obj.description }}">&#9432</span>
         </li>
