@@ -116,7 +116,7 @@ class Algorithm:
         """Load from json file and update self.param_cnt.
         If it fails, dumps an empty json file.
         """
-        with open(const.PARAMS_SUCCESS_LOC, 'r+') as json_file:
+        with open(const.PARAMS_SUCCESS_LOC, 'w+') as json_file:
                 try:
                     self.param_cnt = json.load(json_file)
                 except: 
