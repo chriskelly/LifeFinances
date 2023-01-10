@@ -1,22 +1,16 @@
-import math, statistics, datetime as dt
-import warnings, os
+import statistics, warnings, os, sys, io, base64
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import json
-import git, sys, io, base64
+from data import constants as const
+from models import returnGenerator, annuity, model, socialSecurity, income
+import git
 git_root= git.Repo(os.path.abspath(__file__),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 sys.path.append(git_root)
-from data import constants as const
-from models import returnGenerator, annuity, model, socialSecurity, income
 
 
-DEBUG_LVL = 1 # LVL 1: Generate plot | LVL 2: Print success rate, save worst failure, show plot | LVL 3: Investigate each result 1 by 1
-TODAY = dt.date.today()
-TODAY_QUARTER = (TODAY.month-1)//3
-TODAY_YR = TODAY.year
-TODAY_YR_QT = TODAY_YR+TODAY_QUARTER*.25
+DEBUG_LVL = 2 # LVL 1: Generate plot | LVL 2: Print success rate, save worst failure, show plot | LVL 3: Investigate each result 1 by 1
 MONTE_CARLO_RUNS = 500 # takes 20 seconds to generate 5000
 if os.path.exists(const.SAVE_DIR):
     for file in os.scandir(const.SAVE_DIR): # delete previously saved files
@@ -78,10 +72,10 @@ class Simulator:
         None.
 
         """
-        self.params = model.clean_data(param_vals)
-        self.rows = int((param_vals['Calculate Til'] - TODAY_YR_QT)/.25)
-        self.admin = self.params["Admin"] # Are you Chris?
-        self.partner = self.params["Partner"]
+        self.params = param_vals
+        self.rows = int((param_vals['calculate_til'] - model.TODAY_YR_QT)/.25)
+        self.admin = self.params["admin"] # Are you Chris?
+        self.partner = self.params["partner"]
         self.override_dict = override_dict
             
     def main(self) -> dict:
@@ -98,15 +92,14 @@ class Simulator:
     # STATIC LISTS: TIME, JOB INCOME --------------------------------------- #
 
         debug_lvl = DEBUG_LVL
-        
         if debug_lvl >= 1: fig = plt.figure()
         
         # Year.Quarter list 
-        date_ls = self._range_len(START=TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True) 
+        date_ls = self._range_len(START=model.TODAY_YR_QT,LEN=self.rows,INCREMENT=0.25,ADD=True) 
         
         # Job Income and tax-differed list. Does not include SS. 
-        user_income_calc = income.Calculator(self._val("User Incomes",QT_MOD=False),date_ls)
-        partner_income_calc = income.Calculator(self._val("Partner Incomes",QT_MOD=False),date_ls) if self.partner else None
+        user_income_calc = income.Calculator(self._val("user_jobs",QT_MOD=False),date_ls)
+        partner_income_calc = income.Calculator(self._val("partner_jobs",QT_MOD=False),date_ls) if self.partner else None
         (job_income_ls, tax_deferred_ls) = income.generate_lists(user_income_calc,partner_income_calc)
         # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income)
         medicare= np.array(job_income_ls)*0.0145
@@ -123,17 +116,14 @@ class Simulator:
         else:
             # bring in generated returns. Would prefer to use multiprocessing, but can't figure out how to get arrays of arrays handed back in .Value()
             stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = returnGenerator.main(self.rows,4,monte_carlo_runs) 
-        spending_qt = self._val("Total Spending (Yearly)",QT_MOD='dollar')
-        retirement_change = self._val("Retirement Change (%)",QT_MOD=False) # reduction of spending expected at retirement (less driving, less expensive cost of living, etc)
+        spending_qt = self._val("yearly_spending",QT_MOD='dollar')
+        retirement_change = self._val("retirement_spending_change",QT_MOD=False) # reduction of spending expected at retirement (less driving, less expensive cost of living, etc)
             # make a kids array with years of kids being planned
-        kid_year_qts = list(str(self._val("Kid Birth Years",QT_MOD=False)).split(",")) # have to force it to be a string if only one kid
-        if kid_year_qts != ['']:
-            kid_year_qts = [float(year_qt) for year_qt in kid_year_qts] 
-        else: kid_year_qts =[] # needs to be an empty array for kid_ls to compute
-        kid_spending_rate = self._val("Cost of Kid (% Spending)",QT_MOD=False)
+        kid_year_qts = [year_qt for _,year_qt in self._val("kid_birth_years",QT_MOD=False)]
+        kid_spending_rate = self._val("cost_of_kid",QT_MOD=False)
             # Social Security Initialization
-        user_ss_calc = socialSecurity.Calculator(self,'User',date_ls,user_income_calc)
-        partner_ss_calc = socialSecurity.Calculator(self,'Partner',date_ls,partner_income_calc,spouse_calc=user_ss_calc) if self.partner else None
+        user_ss_calc = socialSecurity.Calculator(self,'user',date_ls,user_income_calc)
+        partner_ss_calc = socialSecurity.Calculator(self,'partner',date_ls,partner_income_calc,spouse_calc=user_ss_calc) if self.partner else None
             # performance tracking
         success_rate = 0
         final_net_worths = [] # Establish empty list to calculate net worth median
@@ -166,7 +156,7 @@ class Simulator:
             my_annuity = annuity.Annuity()
             annuity_ls = np.zeros(self.rows)
                 # loop through date_ls to find net worth changes
-            net_worth_ls = [self._val('Current Net Worth ($)',QT_MOD=False)]
+            net_worth_ls = [self._val('current_net_worth',QT_MOD=False)]
             
             for row in range(self.rows): 
                 # allocations
@@ -175,10 +165,10 @@ class Simulator:
                 re_alloc_ls.append(alloc["RE"])
                 bond_alloc_ls.append(alloc["Bond"])
                 # social security 
-                trust = self._val("Pension Trust Factor",QT_MOD=False)
-                usr_ss_ls.append(trust * user_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
+                trust = self._val("pension_trust_factor",QT_MOD=False)
+                usr_ss_ls.append(trust * user_ss_calc.get_payment(row,net_worth_ls[-1],self._val("equity_target",QT_MOD=False)))
                 if self.partner:
-                    partner_ss_ls.append(trust * partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("Equity Target",QT_MOD=False)))
+                    partner_ss_ls.append(trust * partner_ss_calc.get_payment(row,net_worth_ls[-1],self._val("equity_target",QT_MOD=False)))
                 else: partner_ss_ls.append(0)
                 # taxes
                     # taxes are 80% for pension and social security
@@ -213,7 +203,7 @@ class Simulator:
                 net_transaction_ls[row] += my_annuity.take_payment()                
                 # if net withdrawal, apply portfolio tax before pulling from net worth
                 if net_transaction_ls[row] < 0:
-                    portfolio_tax = -net_transaction_ls[row] * (1/(1-self._val("Portfolio Tax Rate",QT_MOD=False)) - 1)
+                    portfolio_tax = -net_transaction_ls[row] * (1/(1-self._val("drawdown_tax_rate",QT_MOD=False)) - 1)
                     taxes_ls[row] += portfolio_tax
                     net_transaction_ls[row] -= portfolio_tax
                 if net_worth_ls[-1] >= 0: # prevent net worth from exponentially decreasing below 0
@@ -352,12 +342,12 @@ class Simulator:
 
         """
         # Spending, kids, costs, contributions
-        method= self._val("Spending Method",QT_MOD=False)
+        method= self._val("spending_method",QT_MOD=False)
         inflation = kw['inflation']
         if method == 'inflation-only':
             spending = spending_qt*inflation if kw['working'] else spending_qt*inflation*(1+retirement_change)
         elif method == 'ceil-floor':
-            max_flux = self._val("Allowed Fluctuation (%)",QT_MOD=False)
+            max_flux = self._val("allowed_fluctuation",QT_MOD=False)
             # real spending should not increase/decrease more than the max_flux (should it be symetric?)
             # only takes effect after retirement
             # reactant to market, not sure how. Maybe try to maintain last withdrawal percentage til you reach max_flux?
@@ -389,10 +379,10 @@ class Simulator:
             dict: {'Equity':Equity Allocation,'RE':Real Estate Allocations,'Bond':Bond Allocation,'Annuity':Annuity Allocation}
         """
         # variables used in multiple method
-        method= self._val("Allocation Method",QT_MOD=False)
-        re_ratio = self._val("RE Ratio",QT_MOD=False)
+        method= self._val("allocation_method",QT_MOD=False)
+        re_ratio = self._val("real_estate_equity_ratio",QT_MOD=False)
         if method == 'Life Cycle':
-            equity_target = self._val("Equity Target",QT_MOD=False) 
+            equity_target = self._val("equity_target",QT_MOD=False) 
             equity_target_PV = equity_target*inflation # going to differ to from the Google Sheet since equity target was pegged to FI years rather than today's dollars
             max_risk_factor = 1 # You could put this in params if you wanted to be able to modify max risk (in the case of using margin) 
             risk_factor = min(max(equity_target_PV/max(net_worth,0.000001),0),max_risk_factor) # need to avoid ZeroDivisionError
@@ -405,23 +395,23 @@ class Simulator:
             equity_alloc = (1-re_alloc)*risk_factor
             bond_alloc = max(1-re_alloc-equity_alloc,0) 
         elif method == 'Flat':
-            bond_alloc = self._val("Flat Bond Target",QT_MOD=False) 
+            bond_alloc = self._val("flat_bond_target",QT_MOD=False) 
             re_alloc = re_ratio * (1-bond_alloc)
             equity_alloc = 1 - bond_alloc - re_alloc
         elif method == '120 Minus Age' or method == '110 Minus Age' or method == '100 Minus Age':
             risk_val = int(method[0:3])
-            average_age = (self._val("User Age",False) + self._val("Partner Age",False))/2 + row/4
+            average_age = (self._val("user_age",False) + self._val("partner_age",False))/2 + row/4
             bond_alloc = max(0, 1 - (risk_val - average_age)/100)
             re_alloc = re_ratio * (1-bond_alloc)
             equity_alloc = 1 - bond_alloc - re_alloc
         elif method == 'Bond Tent':
-            start_bond_alloc = self._val("Bond Tent Start Allocation",QT_MOD=False) 
-            start_date = self._val("Bond Tent Start Date",QT_MOD=False) 
-            peak_bond_alloc = self._val("Bond Tent Peak Allocation",QT_MOD=False) 
-            peak_date = self._val("Bond Tent Peak Date",QT_MOD=False) 
-            end_bond_alloc = self._val("Bond Tent End Allocation",QT_MOD=False) 
-            end_date = self._val("Bond Tent End Date",QT_MOD=False) 
-            start_date = max(TODAY_YR_QT,start_date) # prevent start date from going too low due to genetic improvement trials
+            start_bond_alloc = self._val("bond_tent_start_allocation",QT_MOD=False) 
+            start_date = self._val("bond_tent_start_date",QT_MOD=False) 
+            peak_bond_alloc = self._val("bond_tent_peak_allocation",QT_MOD=False) 
+            peak_date = self._val("bond_tent_peak_date",QT_MOD=False) 
+            end_bond_alloc = self._val("bond_tent_end_allocation",QT_MOD=False) 
+            end_date = self._val("bond_tent_end_date",QT_MOD=False) 
+            start_date = max(model.TODAY_YR_QT,start_date) # prevent start date from going too low due to genetic improvement trials
             start_row, peak_row, end_row = date_ls.index(start_date), date_ls.index(peak_date), date_ls.index(end_date)
             if row <= start_row: # Initial flat period
                 bond_alloc = start_bond_alloc
@@ -438,7 +428,7 @@ class Simulator:
         else: 
             raise ValueError("Allocation method is not defined")
         # Convert bonds to annuities depending on params
-        if self._val("Annuities Instead of Bonds",QT_MOD=False):
+        if self._val("annuities_instead_of_bonds",QT_MOD=False):
             annuity_alloc = bond_alloc
             bond_alloc = 0
         else:
@@ -524,14 +514,8 @@ def test_unit(units:int=1):
 
     """
     test_mdl= model.Model()
-    param_vals = {key:obj["val"] for (key,obj) in test_mdl.params.items()}
     
-    return Simulator(param_vals, override_dict={'monte_carlo_runs':units})
-
-# JUST FOR TESTING ----------------------------------------------------- #
-
-params = model.load_params()
-param_vals = {key:obj["val"] for (key,obj) in params.items()}
+    return Simulator(test_mdl.param_vals, override_dict={'monte_carlo_runs':units})
 
 if __name__ == '__main__':
     #instantiate a Simulator and run at least 1 simulation

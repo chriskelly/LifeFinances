@@ -1,4 +1,4 @@
-import random, copy, math, json
+import copy, json, time
 from simulator import Simulator
 import simulator
 import models.model
@@ -6,7 +6,6 @@ from models.model import Model
 import data.constants as const
 import numpy as np # used in eval() of parameter ranges
 import scipy.stats as ss
-import time
 
 DEBUG_LVL = 2 # Lvl 0 shows only local and final max param sets
 RESET_SUCCESS = False # Set to true to reset all the counts in param_success.json
@@ -31,31 +30,30 @@ class Algorithm:
     def main(self, next_loop=(False,[])):
     # ---------------------- First parameter set ---------------------- #
         self.model = Model()
-        mutable_params = self.model.filter_params(include=True, attr='range')
+        self.mutable_param_ranges:dict[str,list] = {param:list(eval(str(obj['range']))) for param,obj in self.model.param_details.items() if 'range' in obj}
+        mute_param_vals = {param:val for param,val in self.model.param_vals.items() if 'range' in self.model.param_details[param]}
+        full_param_vals = copy.deepcopy(self.model.param_vals) # make a copy rather than point to the same dict # https://stackoverflow.com/a/22341377/13627745
         self.prev_used_params = [] # used to track and prevent reusing the same param sets during step mutation
         success_rate, parent_is_best_qty = 0.0 , 0
         if next_loop[0]: # check to see if this is the first loop or if the previous one was successful and we're auto-advancing
-            full_params = next_loop[1]
-            parent_mute_params = mutable_params
+            full_param_vals = next_loop[1]
+            parent_mute_param_vals = mute_param_vals
         elif SEED: 
-            full_params = copy.deepcopy(self.model.params) # make a copy rather than point to the same dict # https://stackoverflow.com/a/22341377/13627745
-            parent_mute_params = mutable_params
+            parent_mute_param_vals = mute_param_vals
         else: # if not, keep random mutating till we hit SUCCESS_THRESH
-            full_params = copy.deepcopy(self.model.params) # make a copy rather than point to the same dict # https://stackoverflow.com/a/22341377/13627745
             while success_rate <  SUCCESS_THRESH:
-                success_rate, parent_mute_params = self._make_child(full_params,mutable_params,success_rate,mutate='random')
-                if not success_rate: return None # if cancelled
+                success_rate, parent_mute_param_vals = self._make_child(full_param_vals,success_rate,'random')
+                if type(success_rate) != float: return None # if cancelled
                 if DEBUG_LVL>=1: print(f"Success Rate: {success_rate*100:.2f}%")
-        self._update_param_count(mutable_params,first_time=True)
+        self._update_param_count(parent_mute_param_vals,first_time=True)
     # ---------------------- Improvement loop ---------------------- #
-        while True: # while success_rate <  TARGET_SUCCESS_RATE      if you every want to stop the auto-advance
+        while True: 
             # Confirm if other cores have succeeded yet or not
-            self._check_if_beaten(full_params)
+            self._check_if_beaten(full_param_vals)
             # Make children
             children = []
             for idx in range(OFFSPRING_QTY):
-                #TODO: #62 Make a progress loading bar in the terminal for offspring
-                children.append(self._make_child(full_params,parent_mute_params,success_rate,mutate='step',
+                children.append(self._make_child(full_param_vals,success_rate,'step',parent_mute_param_vals,
                                                  max_step=max(1,parent_is_best_qty),idx=idx))
                 if not children[-1][0]: return None # if cancelled
             # Find best child (or use parent if all children worse)
@@ -65,81 +63,53 @@ class Algorithm:
                 parent_is_best_qty += 1
                 if DEBUG_LVL>=1: print(f"No better children {parent_is_best_qty}/{ITER_LIMIT}")
                 if parent_is_best_qty >= ITER_LIMIT: # if children not improving, start over with random child
-                    param_vals = {key:obj["val"] for (key,obj) in parent_mute_params.items()}
-                    print(f"Local max: {success_rate*100:.2f}%\n {param_vals}")
+                    print(f"Local max: {success_rate*100:.2f}%\n {parent_mute_param_vals}")
                     parent_is_best_qty = 0
                     success_rate = 0.0
                     while success_rate <  SUCCESS_THRESH:
-                        success_rate, parent_mute_params = self._make_child(full_params,mutable_params,success_rate,mutate='random')
+                        success_rate, parent_mute_param_vals = self._make_child(full_param_vals,success_rate,'random')
                         if not success_rate: return None # if cancelled
             # ------ Child is better ------ #
             else: # If child better than parent, update success rate and params
                 parent_is_best_qty = 0
-                success_rate, parent_mute_params = children[0] 
-                self._update_param_count(parent_mute_params)
+                success_rate, parent_mute_param_vals = children[0] 
+                self._update_param_count(parent_mute_param_vals)
                 if DEBUG_LVL>=1: print(f"Success Rate: {success_rate*100:.2f}%")
             # ------ Child beats target, proceed to test child ------ #
             if success_rate >= TARGET_SUCCESS_RATE * 1.005: # Add a slight buffer to prevent osccilating between barely beating it and failing upon retest 
                 current_monte_carlo_runs = simulator.MONTE_CARLO_RUNS # save previous value
                 simulator.MONTE_CARLO_RUNS = MAX_MONTE_RUNS
-                success_rate = self._make_child(full_params,parent_mute_params,success_rate,mutate='none')[0] # test at higher monte carlo runs
+                success_rate, _ = self._make_child(full_param_vals,success_rate,'identical',parent_mute_param_vals) # test at higher monte carlo runs
                 if not success_rate: return None # if cancelled
                 simulator.MONTE_CARLO_RUNS = current_monte_carlo_runs
                 if success_rate < TARGET_SUCCESS_RATE: 
                     if DEBUG_LVL>=1:
                         print(f"Couldn't stand the pressure...{success_rate*100:.2f}%")
                 else: # Print results, overwrite params, start again with more ambitious FI target date
-                    param_vals = {key:obj["val"] for (key,obj) in parent_mute_params.items()}
-                    self._check_if_beaten(full_params)
-                    print(f"Final max: {success_rate*100:.2f}%\n {param_vals}")
-                    full_params.update(parent_mute_params)
-                    with open(const.PARAMS_LOC, 'w') as outfile:
-                        json.dump(full_params, outfile, indent=4)
-                    # Reduce all last dates by one quarter
-                        # Assuming dates for bond tent also needs to be reduced with earlier retire date
-                    full_params["Bond Tent Start Date"]['val'] -= 0.25
-                    full_params["Bond Tent Peak Date"]['val'] -= 0.25 
-                    full_params["Bond Tent End Date"]['val'] -= 0.25 
-                        # Reduce income stop dates
-                    for usr in ['User','Partner']:
-                        start_date = simulator.TODAY_YR_QT
-                        for i, income in enumerate(full_params[f'{usr} Incomes']['val']):
-                            # get info on this income
-                            last_date = income['Last Date']
-                            duration = last_date - start_date + 0.25
-                            reduce = bool(income['Try to Reduce'])
-                            if duration <= 0.25 and reduce: # check if job will start before previous job ends
-                                raise Exception(f'Income with Last Date of {income["Last Date"]} ends too early') # Not sure how to better handle this. You could delete the income item in the params, but I don't think users would prefer the income be deleted. You could add some sort of skip tag to the income that income.py then uses to ignore, but that may not be easily debuggable
-                            if reduce: 
-                                # reduce the last_date and update full_params
-                                last_date -= 0.25
-                                full_params[f'{usr} Incomes']['val'][i]['Last Date'] = last_date
-                                print(f"Now trying to reduce {usr}'s last date to {last_date}!")
-                            start_date = last_date + 0.25 # adjust start_date for next income
-                    self.main(next_loop=(True,full_params))
+                    self._check_if_beaten(full_param_vals)
+                    print(f"Final max: {success_rate*100:.2f}%\n {parent_mute_param_vals}")
+                    full_param_vals.update(parent_mute_param_vals)
+                    self.model.save_from_genetic(parent_mute_param_vals,reduce_dates = next_loop[0])
+                    full_param_vals = copy.deepcopy(self.model.param_vals)
+                    self.main(next_loop=(True,full_param_vals))
                     
     # ---------------------- Mutation ---------------------- #
-    def _random_mutate(self,mutable_params:dict) -> dict:
-        """Return mutable params with shuffled values"""
-        new_dict = copy.deepcopy(mutable_params) 
-        for param,obj in new_dict.items():
-            new_dict[param]['val'] = str(random.choice(eval(str(obj["range"]))))
-        return new_dict
+    def _random_mutate(self) -> dict:
+        """Return mutable params_vals with shuffled values"""
+        return {param:np.random.choice(param_range) for (param,param_range) in self.mutable_param_ranges.items()} # random.choice doesn't always work on np.arrays, so np.random.choice is used https://github.com/python/cpython/issues/100805
     
-    def _step_mutate(self,mutable_params:dict,max_step=1) -> dict:
-        """Return mutable params with values shifted in a normal distribution around 
-        provided mutable_param values with a max deviation of max_step"""
-        new_dict = copy.deepcopy(mutable_params)
-        for param,obj in new_dict.items():
-            ls = list(eval(str(obj["range"])))
-            val = obj['val'] if not models.model._is_float(obj['val']) else float(obj['val'])
-            old_idx = ls.index(val)
-            new_idx = min(len(ls)-1,max(0,self._gaussian_int(center=old_idx,max_deviation=max_step)))
-            new_dict[param]['val'] = str(ls[new_idx])
-        if new_dict in self.prev_used_params:
-            print(f'Tried params: {len(self.prev_used_params)}')
-            new_dict = self._step_mutate(mutable_params,max_step)
-        return new_dict
+    def _step_mutate(self,mutable_param_values:dict,max_step=1) -> dict:
+        """Return mutable param_vals with values shifted in a normal distribution around 
+        provided mutable_param_values with a max deviation of max_step"""
+        res = {}
+        for param,param_range in self.mutable_param_ranges.items():
+            old_idx = param_range.index(mutable_param_values[param])
+            new_idx = min(len(param_range)-1,max(0,self._gaussian_int(center=old_idx,max_deviation=max_step)))
+            res[param] = param_range[new_idx]
+        if res in self.prev_used_params:
+            if DEBUG_LVL>=1: print(f'Tried params: {len(self.prev_used_params)}')
+            res = self._step_mutate(mutable_param_values,max_step)
+        return res
     
     # -------------------------------- HELPER FUNCTIONS -------------------------------- #
     def _load_param_success(self):
@@ -154,10 +124,10 @@ class Algorithm:
                     self.reset_success = True
                     json.dump(self.param_cnt, json_file, indent=4)
     
-    def _check_if_beaten(self,full_params):
-        for usr in ['User','Partner']:
-            for i, income in enumerate(full_params[f'{usr} Incomes']['val']):
-                if income["Last Date"] > models.model.load_params()[f'{usr} Incomes']['val'][i]["Last Date"]:
+    def _check_if_beaten(self,full_param_vals):
+        for usr in ['user','partner']:
+            for i, income in enumerate(full_param_vals[f'{usr}_jobs']):
+                if income["last_date"] > models.model.load_params()[0][f'{usr}_jobs'][i]["last_date"]:
                     print('got beat')
                     self.main() # start over with the new successful params.json if another core figured it out
     
@@ -170,39 +140,36 @@ class Algorithm:
         prob = prob / prob.sum() # normalize the probabilities so their sum is 1
         return np.random.choice(x, p = prob)
     
-    def _update_param_count(self,mutable_params:dict,first_time=False):
+    # def _update_param_count(self,mutable_params:dict,first_time=False):
+    def _update_param_count(self,param_vals:dict,first_time=False):
         """Edit the param_success.json file to add another tally for each of the 
         successful mutable_param values. If first time and RESET_SUCCESS, 
         overwrite previous file and set count to 0"""
         self._load_param_success()
         if self.reset_success and first_time:
-            for param,obj in mutable_params.items():
-                self.param_cnt[param] = {}
-                for option in eval(str(obj["range"])):
-                    self.param_cnt[param][str(option)] = 0
-        for param,obj in mutable_params.items():
-                for option in eval(str(obj["range"])):
-                    if str(option) == obj['val']:
-                        self.param_cnt[param][str(option)] += 1
+            self.param_cnt = {}
+            for param,param_range in self.mutable_param_ranges.items():
+                self.param_cnt[param] = [0]*len(param_range)
+        for param,param_range in self.mutable_param_ranges.items():
+            self.param_cnt[param][param_range.index(param_vals[param])] += 1
         with open(const.PARAMS_SUCCESS_LOC, 'w') as outfile:
             json.dump(self.param_cnt, outfile, indent=4)
     
-    def _make_child(self,full_params:dict, parent_mute_params:dict,success_rate:float,mutate:str,max_step:int=1,idx:int=0):
-        """Returns a tuple (success rate, mutable_params).\n
-        Mutate can be 'step', 'random', or 'none'"""
-        child_Start_Time = time.time()
+    def _make_child(self,full_param_vals:dict,success_rate:float,mutate:str,parent_mute_param_vals:dict=None,max_step:int=1,idx:int=0) -> tuple[float,dict]:
+        """Returns a tuple (success rate, mutable_param_vals).\n
+        Mutate can be 'step', 'random', or 'identical'"""
+        if(DEBUG_LVL>=2):child_Start_Time = time.time()
         if mutate == 'step':
-            child_mute_params = self._step_mutate(parent_mute_params,max_step=max_step) 
-            self.prev_used_params.append(child_mute_params)
+            child_mute_param_vals = self._step_mutate(parent_mute_param_vals,max_step=max_step) 
+            self.prev_used_params.append(child_mute_param_vals)
         elif mutate == 'random':
             self.prev_used_params = []
-            child_mute_params = self._random_mutate(parent_mute_params)
-            self.prev_used_params.append(child_mute_params)
-        elif mutate == 'none':
-            child_mute_params = parent_mute_params
+            child_mute_param_vals = self._random_mutate()
+            self.prev_used_params.append(child_mute_param_vals)
+        elif mutate == 'identical':
+            child_mute_param_vals = parent_mute_param_vals
         else: raise Exception('no valid mutation chosen')
-        full_params.update(child_mute_params)
-        param_vals = {key:obj["val"] for (key,obj) in full_params.items()}
+        full_param_vals.update(child_mute_param_vals)
         # monte carlo runs are exponentially related to success rate. Increasing the exponent makes the curve more severe. At the TARGET_SUCCESS_RATE, you'll get the MAX_MONTE_RUNS
         override_dict = {'monte_carlo_runs' : int(max(INITIAL_MONTE_RUNS,(min(MAX_MONTE_RUNS,
                             (MAX_MONTE_RUNS * (success_rate + (1-TARGET_SUCCESS_RATE)) ** 70))))) }
@@ -210,18 +177,17 @@ class Algorithm:
         if idx != 0:
             override_dict['returns']  = self.returns
         print(f"monte runs: {override_dict['monte_carlo_runs']}")
-        new_simulator = Simulator(param_vals,override_dict)
+        new_simulator = Simulator(full_param_vals,override_dict)
         sim_results = new_simulator.main()
         if not sim_results: # Simulator returns empty dict when quit commmand given
             return (None,None)
         self.returns = sim_results['returns']
-        child_End_Time = time.time()
+        if(DEBUG_LVL>=2):child_End_Time = time.time()
         if(DEBUG_LVL>=2):
             print(f"child generation time: {round(child_End_Time-child_Start_Time,2)}")
-        return (sim_results['s_rate'],child_mute_params)
-    
-        
-    
+        return sim_results['s_rate'],child_mute_param_vals
+      
+      
 if __name__ == '__main__':
     algorithm = Algorithm()
     algorithm.main()

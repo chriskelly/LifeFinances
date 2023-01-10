@@ -8,6 +8,8 @@
       {# Iterating through all the parameters #}
       {% for param, obj in param_details.items() %} 
         {% if obj.type == 'incomes' %} {# if this is an job income parameter, go through each element of the job obj #}
+          <li><label for="{{ param }}">{{ obj.label }}:</label> 
+          <span title="{{ obj.description }}">&#9432</span></li>
           {% for job in param_vals[param] %}
             <li>
               <label for="{{ param }}@{{ job.job_income_id }}@starting_income"> Starting Income:</label>
@@ -46,13 +48,15 @@
           {% endfor %}
 
         {% elif obj.type == 'kids' %}
-          <li><label for="{{ param }}">{{ obj.label }}:</label> </li>
+          <li><label for="{{ param }}">{{ obj.label }}:</label> 
+          <span title="{{ obj.description }}">&#9432</span></li>
           {% for i in range(param_vals[param]|length) %}
             <li><input type="text" name="{{ param }}@{{param_vals[param][i][0]}}" value="{{ param_vals[param][i][1] }}"></input></li>
           {% endfor %}
 
         {% elif obj.type == 'earnings_record' %}
-          <li><label for="{{ param }}">{{ obj.label }}:</label> </li>
+          <li><label for="{{ param }}">{{ obj.label }}:</label> 
+          <span title="{{ obj.description }}">&#9432</span></li>
           {% for i in range(param_vals[param]|length) %}
             <li>
               <input type="text" name="{{ param }}@{{param_vals[param][i][0]}}@year" value="{{ param_vals[param][i][1] }}"></input>

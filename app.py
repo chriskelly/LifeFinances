@@ -12,7 +12,7 @@ def parameters():
     from models import model
     mdl = model.Model()
     if flask.request.method == 'POST':
-        mdl.save_params(flask.request.form)
+        mdl.save_from_flask(flask.request.form)
     context = {
         "param_vals": mdl.param_vals,
         "param_details":mdl.param_details

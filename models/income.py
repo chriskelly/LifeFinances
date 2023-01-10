@@ -4,12 +4,12 @@ import simulator
 class Income:
     def __init__(self,income_obj:dict,date_ls:list,previous_income):
         self.previous_income:Income = previous_income
-        self.income_qt = income_obj['Starting Income'] / 4
-        self.tax_deferred_qt = income_obj['Tax Deferred Income'] / 4
-        self.last_date_idx = date_ls.index(income_obj['Last Date'])
-        self.yearly_raise = income_obj['Yearly Raise'] + 1 # needs to be in yield format
-        self.reduction_target:bool = income_obj['Try to Reduce'] # genetic.Algorithm will try to reduce the duration of this income stream
-        self.ss_eligible:bool = income_obj['Social Security Eligible']
+        self.income_qt = income_obj['starting_income'] / 4
+        self.tax_deferred_qt = income_obj['tax_deferred_income'] / 4
+        self.last_date_idx = date_ls.index(income_obj['last_date'])
+        self.yearly_raise = income_obj['yearly_raise'] + 1 # needs to be in yield format
+        self.optimization_target:bool = bool(income_obj['try_to_optimize']) # genetic.Algorithm will try to reduce the duration of this income stream
+        self.ss_eligible:bool = bool(income_obj['social_security_eligible'])
         self.income_ls = simulator.step_quarterize(date_ls,first_val=self.income_qt,increase_yield=self.yearly_raise,
                                                 start_date_idx=self.start_date_idx(),end_date_idx=self.last_date_idx)
         self.deferred_ls = simulator.step_quarterize(date_ls,first_val=self.tax_deferred_qt,increase_yield=self.yearly_raise,
