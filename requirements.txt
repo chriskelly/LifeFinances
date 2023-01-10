@@ -7,3 +7,4 @@ seaborn
 numba
 flask
 Gunicorn
+sqlalchemy
