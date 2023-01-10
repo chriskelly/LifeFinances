@@ -1,4 +1,4 @@
-import copy, json, time
+import copy, json, time,os
 from simulator import Simulator
 import simulator
 import models.model
@@ -6,6 +6,9 @@ from models.model import Model
 import data.constants as const
 import numpy as np # used in eval() of parameter ranges
 import scipy.stats as ss
+
+if not os.path.exists(const.PARAMS_SUCCESS_LOC):
+    with open(const.PARAMS_SUCCESS_LOC, 'w'): pass
 
 DEBUG_LVL = 2 # Lvl 0 shows only local and final max param sets
 RESET_SUCCESS = False # Set to true to reset all the counts in param_success.json
@@ -22,10 +25,6 @@ class Algorithm:
     def __init__(self):
         self.reset_success = RESET_SUCCESS
         simulator.DEBUG_LVL = 0
-        if self.reset_success: 
-            self.param_cnt = {}
-        else:
-            self._load_param_success()
     
     def main(self, next_loop=(False,[])):
     # ---------------------- First parameter set ---------------------- #
@@ -45,7 +44,7 @@ class Algorithm:
                 success_rate, parent_mute_param_vals = self._make_child(full_param_vals,success_rate,'random')
                 if type(success_rate) != float: return None # if cancelled
                 if DEBUG_LVL>=1: print(f"Success Rate: {success_rate*100:.2f}%")
-        self._update_param_count(parent_mute_param_vals,first_time=True)
+        self._update_param_count(parent_mute_param_vals)
     # ---------------------- Improvement loop ---------------------- #
         while True: 
             # Confirm if other cores have succeeded yet or not
@@ -116,7 +115,7 @@ class Algorithm:
         """Load from json file and update self.param_cnt.
         If it fails, dumps an empty json file.
         """
-        with open(const.PARAMS_SUCCESS_LOC, 'w+') as json_file:
+        with open(const.PARAMS_SUCCESS_LOC, 'r+') as json_file:
                 try:
                     self.param_cnt = json.load(json_file)
                 except: 
@@ -140,16 +139,20 @@ class Algorithm:
         prob = prob / prob.sum() # normalize the probabilities so their sum is 1
         return np.random.choice(x, p = prob)
     
-    # def _update_param_count(self,mutable_params:dict,first_time=False):
-    def _update_param_count(self,param_vals:dict,first_time=False):
+    def _update_param_count(self,param_vals:dict):
         """Edit the param_success.json file to add another tally for each of the 
         successful mutable_param values. If first time and RESET_SUCCESS, 
         overwrite previous file and set count to 0"""
-        self._load_param_success()
-        if self.reset_success and first_time:
-            self.param_cnt = {}
-            for param,param_range in self.mutable_param_ranges.items():
-                self.param_cnt[param] = [0]*len(param_range)
+        with open(const.PARAMS_SUCCESS_LOC, 'r+') as json_file:
+                try:
+                    self.param_cnt = json.load(json_file)
+                except: 
+                    self.param_cnt = {}
+                    self.reset_success = True
+                    json.dump(self.param_cnt, json_file, indent=4)
+        if self.reset_success:
+            self.reset_success = False
+            self.param_cnt = {param:[0]*len(param_range) for param,param_range in self.mutable_param_ranges.items()}
         for param,param_range in self.mutable_param_ranges.items():
             self.param_cnt[param][param_range.index(param_vals[param])] += 1
         with open(const.PARAMS_SUCCESS_LOC, 'w') as outfile:
