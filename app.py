@@ -1,5 +1,5 @@
 import flask
-import webbrowser, os
+import webbrowser
 
 app = flask.Flask(__name__)
 
@@ -13,6 +13,10 @@ def parameters():
     mdl = model.Model()
     if flask.request.method == 'POST':
         mdl.save_from_flask(flask.request.form)
+        if 'remove_row' in flask.request.form:
+            mdl.remove_from_special_tables(flask.request.form['remove_row'])
+        elif 'add_row' in flask.request.form:
+            mdl.add_to_special_tables(flask.request.form['add_row'])
     context = {
         "param_vals": mdl.param_vals,
         "param_details":mdl.param_details

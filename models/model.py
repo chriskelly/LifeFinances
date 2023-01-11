@@ -72,6 +72,7 @@ class Model:
         """
         form_set = set()
         for k,v in form.items(): 
+            if k in ['save', 'remove_row', 'add_row']: continue    
             if k in form_set: continue # avoid duplicates from checkboxes. Only the first should be counted
             else: form_set.add(k)
             if v.isdigit(): 
@@ -82,7 +83,7 @@ class Model:
                 v = 1
             elif v == "False":
                 v = 0
-                
+            
             if k in self.param_vals: # the key matches the db name exactly, therefore isn't a special key
                 cmd = f'UPDATE users SET {k} = ? WHERE user_id = ?' # Can't use SQL objects as placeholders https://stackoverflow.com/a/25387570/13627745
                 db_cmd(cmd,(v,USER_ID))
@@ -101,6 +102,42 @@ class Model:
                 cmd = f'UPDATE earnings_records SET {sub_k} = ? WHERE user_id = ? AND earnings_id = ?' 
             db_cmd(cmd,(v,USER_ID,idx))
         self.param_vals, _ = load_params()
+    
+    def add_to_special_tables(self,param:str):
+        """Inserts one row into the table related to the passed in param and reloads the param_vals
+
+        Args:
+            param (str): parameter to determine table and partner status
+        """
+        if param == 'user_jobs':
+            db_cmd(db.text('INSERT INTO job_incomes DEFAULT VALUES'))
+        elif param == 'partner_jobs':
+            db_cmd(db.text('INSERT INTO job_incomes (is_partner_income) VALUES (1)'))
+        elif param == 'kid_birth_years':
+            db_cmd(db.text('INSERT INTO kids DEFAULT VALUES'))
+        elif param == 'user_earnings_record':
+            db_cmd(db.text('INSERT INTO earnings_records DEFAULT VALUES'))
+        elif param == 'partner_earnings_record':
+            db_cmd(db.text('INSERT INTO earnings_records (is_partner_earnings) VALUES (1)'))
+        self.param_vals, _ = load_params()
+    
+    def remove_from_special_tables(self,table_id:str):
+        """Remove a row from a specific table and reloads the param_vals
+
+        Args:
+            table_id (str): 'table@id': str that combines the table being accessed and the id of the row in the table 
+        """
+        table, idx = table_id.split('@')
+        if table == 'job_incomes':
+            cmd = db.text(f'DELETE FROM job_incomes WHERE job_income_id = {idx}')
+        elif table == 'kids':
+            cmd = db.text(f'DELETE FROM kids WHERE kid_id = {idx}')
+        elif table == 'earnings_records':
+            cmd = db.text(f'DELETE FROM earnings_records WHERE earnings_id = {idx}')
+        #db_cmd(cmd,(idx,)) # can't get to work. Keeps giving error for not enough binding arguements
+        db_cmd(cmd)
+        self.param_vals, _ = load_params()
+        
             
 def load_params():
     """Pulls parameter values from the SQL DB, then pulls parameter details from the param_detail.json file
@@ -149,7 +186,8 @@ def db_cmd(cmd,cmd_args:tuple=None):
             res = conn.execute(cmd,cmd_args)
         else:
             res = conn.execute(cmd)
-            return res.fetchall(), res.keys() # when cmd_args aren't used, it's for a SELECT command. If you try to return for an UPDATE command, it'll crash
+        try: return res.fetchall(), res.keys() 
+        except: pass # some commands won't have a return
     
 def _is_float(element):
     """Checks whether the element can be converted to a float
