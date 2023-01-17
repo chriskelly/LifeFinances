@@ -1,5 +1,5 @@
 import flask
-import webbrowser
+import webbrowser, os
 from models import model
 
 app = flask.Flask(__name__)
@@ -7,7 +7,7 @@ app.secret_key = 'dev' # default value during development
 
 @app.route('/')
 def index():
-    if "user_in_session" not in flask.session:
+    if ("user_in_session" not in flask.session) and ('deployed' in os.environ):
         flask.session["user_in_session"] = True
         model.copy_default_values()
     return flask.render_template('index.html')
