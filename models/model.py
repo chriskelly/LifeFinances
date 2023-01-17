@@ -2,10 +2,14 @@ import shutil, json, datetime as dt
 import data.constants as const
 import sqlalchemy as db
 
+def copy_default_values():
+    """Overwrite the user database with the default database"""
+    shutil.copy(const.DEFAULT_DB_LOC, const.DB_LOC)
+
 try: # check for database not in data folder yet
     with open(const.DB_LOC): pass 
 except FileNotFoundError:
-    shutil.copy(const.DEFAULT_DB_LOC, const.DB_LOC) 
+    copy_default_values() 
 
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
@@ -188,7 +192,7 @@ def db_cmd(cmd,cmd_args:tuple=None):
             res = conn.execute(cmd)
         try: return res.fetchall(), res.keys() 
         except: pass # some commands won't have a return
-    
+   
 def _is_float(element):
     """Checks whether the element can be converted to a float
 

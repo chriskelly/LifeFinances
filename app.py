@@ -1,15 +1,19 @@
 import flask
 import webbrowser
+from models import model
 
 app = flask.Flask(__name__)
+app.secret_key = 'dev' # default value during development
 
 @app.route('/')
 def index():
+    if "user_in_session" not in flask.session:
+        flask.session["user_in_session"] = True
+        model.copy_default_values()
     return flask.render_template('index.html')
 
 @app.route("/parameters", methods=('GET', 'POST'))
 def parameters():
-    from models import model
     mdl = model.Model()
     if flask.request.method == 'POST':
         mdl.save_from_flask(flask.request.form)
