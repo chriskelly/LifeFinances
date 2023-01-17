@@ -65,6 +65,7 @@
           <li><label for="{{ param }}">{{ obj.label }}:</label> 
           <span title="{{ obj.description }}">&#9432</span></li>
           <ul>
+            <ul><li>Year | Earnings (in $1000s)</li></ul>
             {% for i in range(param_vals[param]|length) %}
               <li>
                 <button type="submit" name="remove_row" value="earnings_records@{{param_vals[param][i][0]}}">-</button>
