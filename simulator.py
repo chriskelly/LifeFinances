@@ -1,9 +1,14 @@
-import statistics, warnings, os, sys, io, base64
+import statistics
+import warnings
+import os
+import sys
+import io
+import base64
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from data import constants as const
-from models import returnGenerator, annuity, model, socialSecurity, income
+from models import return_generator, annuity, model, social_security, income
 import git
 git_root= git.Repo(os.path.abspath(__file__),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
@@ -79,7 +84,7 @@ class Simulator:
         self.override_dict = override_dict
             
     def main(self) -> dict:
-        """Runs a simulation with the parameters in data/params.json
+        """Runs a simulation with the parameters in data/data.db
 
         Returns:
             dict: {
@@ -103,7 +108,7 @@ class Simulator:
         (job_income_ls, tax_deferred_ls) = income.generate_lists(user_income_calc,partner_income_calc)
         # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income)
         medicare= np.array(job_income_ls)*0.0145
-        ss_tax = socialSecurity.taxes(date_ls,const.PENSION_INFLATION,user_income_calc,partner_income_calc)
+        ss_tax = social_security.taxes(date_ls,const.PENSION_INFLATION,user_income_calc,partner_income_calc)
         
     # MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
         # variables that don't alter with each run
@@ -115,15 +120,15 @@ class Simulator:
             stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = self.override_dict['returns']
         else:
             # bring in generated returns. Would prefer to use multiprocessing, but can't figure out how to get arrays of arrays handed back in .Value()
-            stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = returnGenerator.main(self.rows,4,monte_carlo_runs) 
+            stock_return_arr,bond_return_arr,re_return_arr,inflation_arr = return_generator.main(self.rows,4,monte_carlo_runs) 
         spending_qt = self._val("yearly_spending",QT_MOD='dollar')
         retirement_change = self._val("retirement_spending_change",QT_MOD=False) # reduction of spending expected at retirement (less driving, less expensive cost of living, etc)
             # make a kids array with years of kids being planned
         kid_year_qts = [year_qt for _,year_qt in self._val("kid_birth_years",QT_MOD=False)]
         kid_spending_rate = self._val("cost_of_kid",QT_MOD=False)
             # Social Security Initialization
-        user_ss_calc = socialSecurity.Calculator(self,'user',date_ls,user_income_calc)
-        partner_ss_calc = socialSecurity.Calculator(self,'partner',date_ls,partner_income_calc,spouse_calc=user_ss_calc) if self.partner else None
+        user_ss_calc = social_security.Calculator(self,'user',date_ls,user_income_calc)
+        partner_ss_calc = social_security.Calculator(self,'partner',date_ls,partner_income_calc,spouse_calc=user_ss_calc) if self.partner else None
             # performance tracking
         success_rate = 0
         final_net_worths = [] # Establish empty list to calculate net worth median
