@@ -1,13 +1,16 @@
-import shutil, json, datetime as dt
-import data.constants as const
+import shutil
+import json
+import datetime as dt
 import sqlalchemy as db
+from flask_socketio import SocketIO
+import data.constants as const
 
 def copy_default_values():
     """Overwrite the user database with the default database"""
     shutil.copy(const.DEFAULT_DB_LOC, const.DB_LOC)
 
 try: # check for database not in data folder yet
-    with open(const.DB_LOC): pass 
+    with open(const.DB_LOC, encoding="utf-8"): pass 
 except FileNotFoundError:
     copy_default_values() 
 
@@ -29,12 +32,23 @@ class Model:
         {Named parameter:detail obj} that shows details for a parameter such as type and range of options 
     
     """
-    def __init__(self):
+    def __init__(self, socketio:SocketIO = None):
         self.param_vals, self.param_details = load_params()
-        
+        self.socketio = socketio
+
+    def log_to_optimize_page(self, log:str):
+        """Emit a log message to the optimize page using SocketIO
+
+        Args:
+            log (str): Message for logging
+        """
+        if self.socketio:
+            self.socketio.emit('new_log', {'log': log}, namespace='/optimize')
+
     def save_from_genetic(self, mute_param_vals:dict, reduce_dates:bool):
         """Save the mutable paramater values into the database.
-        If reduce_dates: reduce all the job last_dates by one quarter if they're marked try_to_optimize
+        If reduce_dates: reduce all the job last_dates by 
+        one quarter if they're marked try_to_optimize
 
         Args:
             mute_param_vals (dict): {param:value} for mutable params, assumes they're only in the 'users' Table of the database
@@ -62,9 +76,10 @@ class Model:
                     if duration <= 0.25 and reduce: # check if job will start before previous job ends
                         raise Exception(f'Income with Last Date of {job["last_date"]} ends too early') # Not sure how to better handle this. You could delete the income item in the params, but I don't think users would prefer the income be deleted. You could add some sort of skip tag to the income that income.py then uses to ignore, but that may not be easily debuggable
                     if reduce:
-                        cmd = f'UPDATE job_incomes SET last_date = ? WHERE user_id = ? AND job_income_id = ?'
+                        cmd = 'UPDATE job_incomes SET last_date = ? WHERE user_id = ? AND job_income_id = ?'
                         db_cmd(cmd,(job['last_date']-0.25, USER_ID, job['job_income_id']))
                         print(f"Now trying to reduce {usr}'s last date to {last_date-0.25}!")
+                        self.log_to_optimize_page(f"Now trying to reduce {usr}'s last date to {last_date-0.25}!")
                     start_date = last_date + 0.25 # adjust start_date for next income
         self.param_vals, _ = load_params()
 
@@ -93,20 +108,22 @@ class Model:
                 db_cmd(cmd,(v,USER_ID))
                 continue
             else:
-                try: k, idx, sub_k = k.split('@')
-                except: k, idx = k.split('@')
+                try:
+                    k, idx, sub_k = k.split('@')
+                except:
+                    k, idx = k.split('@')
             # job incomes
             if k in ['user_jobs','partner_jobs']:
                 cmd = f'UPDATE job_incomes SET {sub_k} = ? WHERE user_id = ? AND job_income_id = ?'
             # kid birth years
             elif k == 'kid_birth_years':
-                cmd = f'UPDATE kids SET birth_year = ? WHERE user_id = ? AND kid_id = ?'
+                cmd = 'UPDATE kids SET birth_year = ? WHERE user_id = ? AND kid_id = ?'
             # earnings record
             elif k in ['user_earnings_record','partner_earnings_record']:
                 cmd = f'UPDATE earnings_records SET {sub_k} = ? WHERE user_id = ? AND earnings_id = ?' 
             db_cmd(cmd,(v,USER_ID,idx))
         self.param_vals, _ = load_params()
-    
+
     def add_to_special_tables(self,param:str):
         """Inserts one row into the table related to the passed in param and reloads the param_vals
 
@@ -124,7 +141,7 @@ class Model:
         elif param == 'partner_earnings_record':
             db_cmd(db.text('INSERT INTO earnings_records (is_partner_earnings) VALUES (1)'))
         self.param_vals, _ = load_params()
-    
+
     def remove_from_special_tables(self,table_id:str):
         """Remove a row from a specific table and reloads the param_vals
 
@@ -141,8 +158,7 @@ class Model:
         #db_cmd(cmd,(idx,)) # can't get to work. Keeps giving error for not enough binding arguements
         db_cmd(cmd)
         self.param_vals, _ = load_params()
-        
-            
+
 def load_params():
     """Pulls parameter values from the SQL DB, then pulls parameter details from the param_detail.json file
 
@@ -170,7 +186,7 @@ def load_params():
     param_vals['partner_jobs'] = [{key:val for key,val in zip(descriptions,job) if key not in {'user_id','is_partner_income'}} \
                             for job in partner_job_incomes]
     # get param details
-    with open(const.PARAM_DETAILS_LOC) as json_file:
+    with open(const.PARAM_DETAILS_LOC, encoding="utf-8") as json_file:
         param_details:dict = json.load(json_file)
     return param_vals, param_details
 
@@ -190,8 +206,10 @@ def db_cmd(cmd,cmd_args:tuple=None):
             res = conn.execute(cmd,cmd_args)
         else:
             res = conn.execute(cmd)
-        try: return res.fetchall(), res.keys() 
-        except: pass # some commands won't have a return
+        try:
+            return res.fetchall(), res.keys() 
+        except:
+            pass # some commands won't have a return
    
 def _is_float(element):
     """Checks whether the element can be converted to a float

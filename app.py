@@ -1,9 +1,28 @@
+import os
+import webbrowser
 import flask
-import webbrowser, os
 from models import model
+from flask_socketio import SocketIO, emit
+
 
 app = flask.Flask(__name__)
 app.secret_key = 'dev' # default value during development
+socketio = SocketIO(app)
+mdl = model.Model(socketio)
+
+def randomNumberGenerator():
+    """
+    Generate a random number every 2 seconds and emit to a socketio instance (broadcast)
+    Ideally to be run in a separate thread?
+    """
+    #infinite loop of magical random numbers
+    print("Making random numbers")
+    num = 0
+    while True:
+        num += 1
+        print(num)
+        socketio.emit('newnumber', {'number': num}, namespace='/test')
+        socketio.sleep(2)
 
 @app.route('/')
 def index():
@@ -12,9 +31,22 @@ def index():
         model.copy_default_values()
     return flask.render_template('index.html')
 
+# @socketio.on('connect', namespace='/test')
+# def test_connect():
+#     print('Client connected')
+#     #randomNumberGenerator()
+    # thread = socketio.start_background_task(randomNumberGenerator)
+
+    
+@socketio.on('start_optimizer', namespace='/optimize')
+def start_optimizer():
+    emit('new_log', {'log': 'Loading Optimizer'}, namespace='/optimize')
+    import genetic
+    emit('new_log', {'log': 'Starting Optimizer'}, namespace='/optimize')
+    socketio.start_background_task(genetic.Algorithm(mdl).main)
+
 @app.route("/parameters", methods=('GET', 'POST'))
 def parameters():
-    mdl = model.Model()
     if flask.request.method == 'POST':
         mdl.save_from_flask(flask.request.form)
         if 'remove_row' in flask.request.form:
@@ -30,7 +62,7 @@ def parameters():
 @app.route('/simulation', methods=('GET', 'POST'))
 def simulation():
     import simulator
-    context = {'results':False} # used to avoid loading the result image before a simulation has been run
+    context = {'results':False} # avoid loading the result image before a simulation has been run
     if flask.request.method == 'POST':
         context['results'] = True
         simulator.DEBUG_LVL = 1
@@ -41,14 +73,15 @@ def simulation():
 
 @app.route('/optimizer', methods=('GET', 'POST'))
 def optimizer():
-    import genetic
+    #import genetic
     from data import constants as const
     if flask.request.method == 'POST':
-        if flask.request.form['submit_button'] == 'Start Optimizing!':
-            genetic.Algorithm().main()
-        elif flask.request.form['submit_button'] == 'Stop Optimizing':
-            # Create a file called cancel.quit that's then captured by the running simulator.main() and causes genetic.main() to stop
-            with open(const.QUIT_LOC, 'w') as file:
+        # if flask.request.form['submit_button'] == 'Start Optimizing!':
+        #     genetic.Algorithm().main()
+        if flask.request.form['submit_button'] == 'Stop Optimizing':
+            # Create a file called cancel.quit that's then captured 
+            # by the running simulator.main() and causes genetic.main() to stop
+            with open(const.QUIT_LOC, 'w', encoding="utf-8"):
                 pass # close file
     return flask.render_template('optimizer.html')
 
@@ -57,6 +90,6 @@ def test():
     return flask.render_template('test.html')
 
 if __name__ == "__main__":
-    url = "http://127.0.0.1:5000/"
-    webbrowser.open(url)
-    app.run(debug=True)
+    URL = "http://127.0.0.1:5000/"
+    webbrowser.open(URL)
+    socketio.run(app, debug=True)

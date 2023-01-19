@@ -2,9 +2,45 @@
 
 {% block content %}
   <h1>{% block title %} Optimizer {% endblock %}</h1>
+  <form id="start_optimizer" method="POST" action='#'>
+        <input type="submit" value="Start Optimizing!">
+    </form>
   <form method="post">
-    <input type="submit" name="submit_button" value="Start Optimizing!">
     <input type="submit" name="submit_button" value="Stop Optimizing">
   </form>
+  <h2>Log</h2>
+  <div id="log">
+  </div>
 
+{% endblock %}
+
+{% block style_script %}   
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            //connect to the socket server.
+            var socket = io.connect('http://' + document.domain + ':' + location.port + '/optimize');
+            var logs_received = [];
+
+            //receive details from server
+            socket.on('new_log', function(msg) {
+                console.log("Received log" + msg.log);
+                //maintain a list of ten numbers
+                if (logs_received.length >= 10){
+                    logs_received.shift()
+                }            
+                logs_received.push(msg.log);
+                logs_string = '';
+                for (var i = 0; i < logs_received.length; i++){
+                    logs_string = logs_string + '<p>' + logs_received[i].toString() + '</p>';
+                }
+                $('#log').html(logs_string);
+            });
+             $('form#start_optimizer').submit(function(event) {
+                socket.emit('start_optimizer');
+                return false;
+            });
+        });
+    </script>
 {% endblock %}
