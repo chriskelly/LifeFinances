@@ -1,4 +1,10 @@
-from data import constants as const 
+"""Model of a financial annuity
+
+Required installations are detailed in requirements.txt.
+
+"""
+
+from data import constants as const
 
 class Annuity:
     def __init__(self):
@@ -7,7 +13,7 @@ class Annuity:
         self.prev_transaction_row = 0
         self.balance = 0
         self.annuitized = False
-    
+
     def contribute(self,amount:float,row:int):
         """Contribute to the balance of the annuity
 
@@ -20,7 +26,7 @@ class Annuity:
         """
         self.balance_update(row)
         self.balance += amount
-        
+
     def balance_update(self,row:int) -> float:
         """Update and return balance for interest gained. Interest yield will be 1 when annuitized.
 
@@ -33,7 +39,7 @@ class Annuity:
         self.balance *= self.interest_yield ** (row - self.prev_transaction_row)
         self.prev_transaction_row = row
         return self.balance
-            
+
     def annuitize(self,row:int):
         """Annuitize this annuity
 
@@ -45,8 +51,9 @@ class Annuity:
         """
         self.balance_update(row) # add interest for last time
         self.annuitized = True
-        self.interest_yield = 1 # After annuitization, balance does not grow anymore except for contributions.
-    
+        self.interest_yield = 1
+        # After annuitization, balance does not grow anymore except for contributions.
+
     def take_payment(self) -> float:
         """Request payment from annuity
 
@@ -57,13 +64,15 @@ class Annuity:
             return self.balance * self.payout_rate
         else:
             return 0
+
+
+
+# if __name__ == '__main__':
+#     annuity = Annuity(interest_yield_qt=1.001,payout_rate_qt=0.01,
+#           date_ls=[2022,2022.25,2022.5,2022.75,2023,2023.25,2023.5,2023.75])
+#     annuity.contribute(100,2022)
+#     annuity.contribute(100,2022.5)
+#     #annuity.annuitize(2023.5)
+#     print(annuity.take_payment(2023.75))
+#     debug=True
     
-    
-"""if __name__ == '__main__':
-    annuity = Annuity(interest_yield_qt=1.001,payout_rate_qt=0.01,date_ls=[2022,2022.25,2022.5,2022.75,2023,2023.25,2023.5,2023.75])
-    annuity.contribute(100,2022)
-    annuity.contribute(100,2022.5)
-    #annuity.annuitize(2023.5)
-    print(annuity.take_payment(2023.75))
-    debug=True
-    """

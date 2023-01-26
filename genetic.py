@@ -1,10 +1,23 @@
+"""Optimization Algorithm for Retirement Planning Simulator
+
+This script allows the user to try to improve the success rate of a retirement plan
+by trying different combinations of parameters.
+
+Required installations are detailed in requirements.txt.
+
+This file can also be imported as a module and contains the following function:
+
+    * Algorithm.main() - An infinite loop that uses a genetic algoritm to search
+                            for better parameter combinations
+
+"""
+
 import copy
 import json
 import time
 import os
 import numpy as np # pylint: disable=unused-import # used in eval() of parameter ranges
 import scipy.stats as ss
-from flask_socketio import SocketIO
 from simulator import Simulator
 import simulator
 import models.model
