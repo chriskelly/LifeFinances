@@ -233,7 +233,7 @@ def load_params():
         param_details:dict = json.load(json_file)
     return param_vals, param_details
 
-def db_cmd(cmd,cmd_args:tuple=None):
+def db_cmd(cmd,cmd_args:tuple=None) -> tuple[list, list]:
     """Provide the query result to the provided command string
 
     Args:
