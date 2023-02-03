@@ -7,5 +7,5 @@ seaborn
 numba
 flask
 Gunicorn
-sqlalchemy
+sqlalchemy<2.0
 flask_socketio
