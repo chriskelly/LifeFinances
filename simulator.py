@@ -346,32 +346,23 @@ class Simulator:
                 'img_data':img_data}
 
     # HELPER FUNCTIONS ---------------------------------------------------- #
-    def _pow(self,num,exp:int) -> int:
-        """exponential formular num^exp that should be faster for small exponents"""
-        i=1
-        result = num
-        while i<exp:
-            result = result * num
-            i+=1
-        return result
-
     def val(self, key:str, quart_modifier):
         """Modifies value to match quarterly modifier. \n
         User input values are typically in annual format,
-        so they may need to be adjusted to a quarterly value instead
-        MOD='rate' will return (1+value)^(1/4) \n 
-        MOD='dollar' will return value/4 \n 
-        MOD=False will return value"""
-        if quart_modifier=="rate":
+        so they may need to be adjusted to a quarterly value instead \n
+        quart_modifier = 'rate' will return (1+value)^(1/4) \n 
+        quart_modifier = 'dollar' will return value/4 \n 
+        quart_modifier = False will return value"""
+        if quart_modifier == "rate":
             return (1+self.params[key]) ** (1. / 4)
-        elif quart_modifier=='dollar':
+        if quart_modifier == 'dollar':
             return self.params[key] / 4
-        elif not quart_modifier:
+        if not quart_modifier:
             return self.params[key]
         else:
             raise ValueError("invalid MOD")
 
-    def _base_spending(self,spending_qt, retirement_change,**kw):
+    def _base_spending(self, spending_qt, retirement_change, **kw):
         """Calculates base spending in a quarter
 
         Parameters
