@@ -188,30 +188,30 @@ def main(n_rows:int, qty_per_year:int, columns:int) -> list[list[list]]:
         columns (int): How many runs in a simulation
 
     Returns:
-        list[list[list]]: List of 2D return arrays [Stock, Bond, Real Estate, Inflation]
+        tuple[list[list]]: 2D return arrays [Stock, Bond, Real Estate, Inflation]
     """
-    generated_array =[]
-    generated_array.append(_generate_returns(const.EQUITY_MEAN, const.EQUITY_STDEV,
+    stock_returns = _generate_returns(const.EQUITY_MEAN, const.EQUITY_STDEV,
                                             const.EQUITY_ANNUAL_HIGH, const.EQUITY_ANNUAL_LOW,
-                                            n_rows,qty_per_year,columns))
-    generated_array.append(_generate_returns(const.BOND_MEAN, const.BOND_STDEV,
+                                            n_rows,qty_per_year,columns)
+    bond_returns = _generate_returns(const.BOND_MEAN, const.BOND_STDEV,
                                             const.BOND_ANNUAL_HIGH, const.BOND_ANNUAL_LOW,
-                                            n_rows,qty_per_year,columns))
+                                            n_rows,qty_per_year,columns)
     if DEBUG_LVL >= 1:
         start = time.perf_counter()
-    generated_array.append(_generate_returns(const.RE_MEAN, const.RE_STDEV, const.RE_ANNUAL_HIGH,
-                                            const.RE_ANNUAL_LOW, n_rows,qty_per_year,columns))
+    real_estate_returns = _generate_returns(const.RE_MEAN, const.RE_STDEV, const.RE_ANNUAL_HIGH,
+                                            const.RE_ANNUAL_LOW, n_rows,qty_per_year,columns)
     if DEBUG_LVL >= 1:
         mid = time.perf_counter()
         _generate_returns_faster(const.RE_MEAN, const.RE_STDEV, const.RE_ANNUAL_HIGH,
                                 const.RE_ANNUAL_LOW, n_rows,qty_per_year,columns)
         end = time.perf_counter()
-    generated_array.append(_generate_skewd_inflation(const.INFLATION_MEAN, const.INFLATION_STDEV,
+    inflation = _generate_skewd_inflation(const.INFLATION_MEAN, const.INFLATION_STDEV,
                                                     const.INFLATION_SKEW, n_rows,
-                                                    qty_per_year, columns))
+                                                    qty_per_year, columns)
     if DEBUG_LVL >= 1:
-        print(f"std speed: {mid-start}")
-        print(f"fast speed:{end-mid}")
-    return generated_array
+        print(f"std speed: {mid-start}")    # pylint: disable=used-before-assignment
+                                            # assigned in debug_lvl branch
+        print(f"fast speed:{end-mid}")      # pylint: disable=used-before-assignment
+    return stock_returns, bond_returns, real_estate_returns, inflation
 
 # main(270,4)
