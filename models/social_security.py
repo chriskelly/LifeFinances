@@ -220,7 +220,7 @@ class Calculator:
                     #only accesses if it's been defined
             # set variables
         EARLY_PENSION_YEAR,MID_PENSION_YEAR,LATE_PENSION_YEAR = 2043,2049,2055
-        method = self.sim.val('admin_pension_method',QT_MOD=False)
+        method = self.sim.val('admin_pension_method',quart_modifier=False)
         pension_income = self.income_calc.income_objs[0]
         current_pension_salary_qt = pension_income.income_qt/(1-const.PENSION_COST) # Corrects for 9% taken from salary for pension
         working_qts = pension_income.last_date_idx - pension_income.start_date_idx()
