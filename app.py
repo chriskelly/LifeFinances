@@ -87,4 +87,4 @@ def test():
 if __name__ == "__main__":
     URL = "http://127.0.0.1:5000/"
     webbrowser.open(URL)
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
