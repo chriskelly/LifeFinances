@@ -27,7 +27,8 @@ data_path= path.join(git_root,'data/historic_data')
 
 
 
-def _brute_force(n_iter, n_years, mean, stdev, lower, upper, qty_per_year):
+def _brute_force(n_iter:int, n_years:int, mean:float, stdev:float,
+                 lower:float, upper:float, qty_per_year:int) -> np.ndarray:
     """
     Uses brute force to generate a list of yields with an annualized return
     that is within the given bounds
@@ -51,8 +52,8 @@ def _brute_force(n_iter, n_years, mean, stdev, lower, upper, qty_per_year):
 
     Returns
     -------
-    yield_ls : numpy.array
-        DESCRIPTION.
+    numpy.ndarray
+        array of rates 
 
     """
     annualized = 0
@@ -64,7 +65,8 @@ def _brute_force(n_iter, n_years, mean, stdev, lower, upper, qty_per_year):
         n_iter += 1
     return yield_ls - 1
 
-def _generate_returns(mean, stdev, annual_high, annual_low,n_rows,qty_per_year,columns):
+def _generate_returns(mean, stdev, annual_high, annual_low,n_rows, qty_per_year,
+                      columns) -> list[np.ndarray]:
     """
     Generate a time series of returns for each montecarlo run
 
@@ -87,7 +89,7 @@ def _generate_returns(mean, stdev, annual_high, annual_low,n_rows,qty_per_year,c
 
     Returns
     -------
-    multi_returns : list
+    multi_returns : list[ndarray]
         2D array. column is a lifetime/montecarlo run. rows are periods of time
 
     """
@@ -179,7 +181,7 @@ def _generate_skewd_inflation(mean, stdev, skew,qty_per_column,qty_per_year,colu
         print(f'inflat stdev: {abs(stdev - np.std(dist, ddof=1))}') # result should be 0.0
     return multi_col_returns
 
-def main(n_rows:int, qty_per_year:int, columns:int) -> list[list[list]]:
+def main(n_rows:int, qty_per_year:int, columns:int) -> list[list[np.ndarray]]:
     """Generates and returns stock, bond, real estate, and inflation returns
 
     Args:
@@ -188,7 +190,7 @@ def main(n_rows:int, qty_per_year:int, columns:int) -> list[list[list]]:
         columns (int): How many runs in a simulation
 
     Returns:
-        tuple[list[list]]: 2D return arrays [Stock, Bond, Real Estate, Inflation]
+        tuple[list[ndarray]]: 2D return arrays [Stock, Bond, Real Estate, Inflation]
     """
     stock_returns = _generate_returns(const.EQUITY_MEAN, const.EQUITY_STDEV,
                                             const.EQUITY_ANNUAL_HIGH, const.EQUITY_ANNUAL_LOW,

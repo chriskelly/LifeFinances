@@ -96,7 +96,7 @@ class Model:
                     reduce = bool(job['try_to_optimize'])
                     # check if job will start before previous job ends
                     if duration <= 0.25 and reduce:
-                        raise Exception(f'Income with Last Date of\
+                        raise ValueError(f'Income with Last Date of\
                             {job["last_date"]} ends too early')
                         # Not sure how to better handle this. You could delete the income item
                         # in the params, but I don't think users would prefer the income be deleted.
