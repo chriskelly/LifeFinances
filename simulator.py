@@ -161,9 +161,10 @@ class Simulator:
             partner_ss_calc = None
             # performance tracking
         success_rate = 0
-        final_net_worths = [] # Establish empty list to calculate net worth median
         worst_failure_idx = self.rows
         failure_dict ={}
+            # Establish empty lists for median net worth & withdrawal rate calculations
+        final_net_worths, withdrawal_rates = [], []
 
         # Monte Carlo
         for col in range(monte_carlo_runs):
@@ -190,6 +191,7 @@ class Simulator:
             re_alloc_ls, bond_alloc_ls, taxes_ls = [], [], []
             total_income_ls, usr_ss_ls, partner_ss_ls = [], [], []
             return_rate = None
+            withdrawal_rate = None
             my_annuity = annuity.Annuity()
             annuity_ls = np.zeros(self.rows)
                 # loop through date_ls to find net worth changes
@@ -228,6 +230,11 @@ class Simulator:
                                                         inflation=inflation_ls[row],
                                                         working=working, alloc=alloc,
                                                         return_rate=return_rate))
+                if not working and not withdrawal_rate:
+                    try:
+                        withdrawal_rate = spending_ls[-1]*4 / net_worth_ls[-1]
+                    except ZeroDivisionError:
+                        withdrawal_rate = 1
                 kids_ls[row] = spending_ls[row] * kid_spending_rate * kids_ls[row]
                 total_costs_ls.append(taxes_ls[row] + spending_ls[row] + kids_ls[row])
                 total_income_ls.append(job_income_ls[row]+usr_ss_ls[row]+ partner_ss_ls[row])
@@ -266,6 +273,7 @@ class Simulator:
             if net_worth_ls[-1]!=0:
                 success_rate += 1
             final_net_worths.append(net_worth_ls[-1])
+            withdrawal_rates.append(withdrawal_rate)
             if 0 in net_worth_ls and net_worth_ls.index(0) < worst_failure_idx and debug_lvl >= 2:
                 worst_failure_idx = net_worth_ls.index(0)
                 failure_dict = {
@@ -327,6 +335,7 @@ class Simulator:
         #Summarize the results of the simulations
         success_rate = success_rate/monte_carlo_runs
         median_net_worth = statistics.median(final_net_worths)
+        median_withdrawl_rate = statistics.median(withdrawal_rates)
         img_data = None
         if debug_lvl >= 1: # embed image for flask
             # https://matplotlib.org/stable/gallery/user_interfaces/web_application_server_sgskip.html
@@ -340,6 +349,7 @@ class Simulator:
             failure_df.to_csv(f'{const.SAVE_DIR}/worst_failure.csv')
             print(f"Success Rate: {success_rate*100:.2f}%")
             print(f"Median Final Net Worth: ${median_net_worth*1000:,.0f}")
+            print(f'Median Withdrawal Rate: {median_withdrawl_rate*100:,.1f}%')
 
         return {'s_rate':success_rate,
                 'returns':[stock_return_arr, bond_return_arr, re_return_arr, inflation_arr],
