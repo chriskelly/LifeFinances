@@ -56,9 +56,9 @@ def simulation():
         context['s_rate'] = f"Success Rate: {context['s_rate']*100:.2f}%"
     return flask.render_template('simulation.html', **context)
 
-@app.route('/optimizer', methods=('GET', 'POST'))
-def optimizer():
-    """Optimizer Page"""
+@app.route('/optimization', methods=('GET', 'POST'))
+def optimization():
+    """Optimization Page"""
     #import genetic
     from data import constants as const # pylint: disable=import-outside-toplevel # lazy import
     if flask.request.method == 'POST':
@@ -69,15 +69,15 @@ def optimizer():
             # by the running simulator.main() and causes genetic.main() to stop
             with open(const.QUIT_LOC, 'w', encoding="utf-8"):
                 pass # close file
-    return flask.render_template('optimizer.html')
+    return flask.render_template('optimization.html')
 
-@socketio.on('start_optimizer', namespace='/optimize')
+@socketio.on('start_optimization', namespace='/optimize')
 def start_optimizer():
     """Optimizer algorithm starter"""
     emit('new_log', {'log': 'Loading Optimizer'}, namespace='/optimize')
-    import genetic # pylint: disable=import-outside-toplevel # lazy import
+    import optimizer # pylint: disable=import-outside-toplevel # lazy import
     emit('new_log', {'log': 'Starting Optimizer'}, namespace='/optimize')
-    socketio.start_background_task(genetic.Algorithm(mdl).main)
+    socketio.start_background_task(optimizer.Algorithm(mdl).main)
 
 @app.route("/test", methods=('GET', 'POST'))
 def test():
