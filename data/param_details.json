@@ -159,7 +159,7 @@
         "label":"Real Estate Ratio",
         "description": "Ratio of real estate within equity allocation.\n If value set to 0.5, but bonds are 20%, allocation will be 40% real estate, 40% stock, 20% bonds.",
         "default_val": "0.0",
-        "range": "np.linspace(0,.6,7)",
+        "range": "[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]",
         "type": "",
         "optimizable":true
     },
