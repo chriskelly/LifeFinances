@@ -131,69 +131,6 @@ BENEFIT_RATES= {
     "70":1.24
 }
 """Dictionary of {age:benefit rate}. Benefit rate generally rises the longer you wait to pull SS """
-FED_STD_DEDUCTION=	 [12.950, 25.900]
-"""2022 federal standard deduction"""
-FED_BRACKET_RATES= [
-    [
-        [0.1, 10.275, 0],
-        [0.12, 41.775, 1.027],
-        [0.22, 89.075, 4.807],
-        [0.24, 170.050, 15.213],
-        [0.32, 215.950, 34.647],
-        [0.35, 539.900, 49.335],
-        [0.37, float('inf'), 162.718]
-    ],
-    [
-        [0.1, 20.500, 0],
-        [0.12, 83.550, 2.05],
-        [0.22, 178.150, 9.616],
-        [0.24, 340.100, 30.428],
-        [0.32, 431.900, 69.296],
-        [0.35, 647.850, 98.672],
-        [0.37, float('inf'), 174.254]
-    ]
-    ]
-"""2022 federal brackets for income tax in format
-[rate,highest dollar that rate applies to,sum of tax owed in previous brackets]"""
-
-# Code to calc third column of bracket rates
-# from data import constants as const
-# brackets_set = const.FED_BRACKET_RATES
-# rate_idx, cap_idx = 0, 1
-# for brackets in brackets_set:
-#     res = [0,brackets[0][rate_idx] * brackets[0][cap_idx]] # first 2
-#     for i in range(1,len(brackets)-1):
-#         res.append(res[-1] + brackets[i][rate_idx]*(brackets[i][cap_idx]-brackets[i-1][cap_idx]))
-#     print(res)
-
-STATE_STD_DEDUCTION= [4.803, 9.606]
-"""2022 california standard deduction"""
-STATE_BRACKET_RATES= [
-    [
-        [0.01, 9.325, 0],
-        [0.02, 22.107, 0.093],
-        [0.04, 34.892, 0.348],
-        [0.06, 48.435, 0.860],
-        [0.08, 61.214, 1.672],
-        [0.093, 312.686, 2.695],
-        [0.103, 375.221, 26.082],
-        [0.113, 625.369, 32.523],
-        [0.123, float('inf'), 60.789]
-    ],
-    [
-        [0.01, 18.649, 0],
-        [0.02, 44.213, 0.186],
-        [0.04, 69.783, 0.698],
-        [0.06, 96.869, 1.720],
-        [0.08, 122.427, 3.346],
-        [0.093, 625.371, 5.390],
-        [0.103, 750.442, 52.164],
-        [0.113, 1250.738, 65.046],
-        [0.123, float('inf'), 121.580]
-    ]
-]
-"""2022 CA brackets for income tax in format
-[rate,highest dollar that rate applies to,sum of tax owed in previous brackets]"""
 
 ANNUITY_INT_YIELD = 1.05
 """Interest yield on annuity (Fidelity used as benchmark).

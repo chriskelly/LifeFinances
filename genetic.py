@@ -48,7 +48,7 @@ class Algorithm:
     def main(self, next_loop=(False,[])):
     # ---------------------- First parameter set ---------------------- #
         #self.model = Model()
-        self.mutable_param_ranges:dict[str,list] = {param:list(eval(str(obj['range']))) for param,obj in self.model.param_details.items() if 'range' in obj}
+        self.mutable_param_ranges:dict[str,list] = {param:list(eval(str(obj['range']))) for param,obj in self.model.param_details.items() if 'optimizable' in obj}
         mute_param_vals = {param:val for param,val in self.model.param_vals.items() if 'range' in self.model.param_details[param]}
         full_param_vals = copy.deepcopy(self.model.param_vals) # make a copy rather than point to the same dict # https://stackoverflow.com/a/22341377/13627745
         self.prev_used_params = [] # used to track and prevent reusing the same param sets during step mutation

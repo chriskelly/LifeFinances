@@ -23,11 +23,16 @@ import sys
 import io
 import base64
 import git
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from data import constants as const
+from data import taxes, constants as const
 from models import return_generator, annuity, model, social_security, income
+
+# Prevent error 'starting a matplotlib gui outside of the main thread will likely fail'
+# when running in Flask by changing matplotlib to a non-interactive backend
+matplotlib.use('SVG')
 
 git_root= git.Repo(os.path.abspath(__file__),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
@@ -216,9 +221,11 @@ class Simulator:
                     partner_ss_ls.append(0)
                 # taxes
                     # taxes are 80% for pension and social security
-                income_tax = get_taxes(job_income_ls[row]-tax_deferred_ls[row],
+                income_tax = taxes.get(job_income_ls[row]-tax_deferred_ls[row],
+                                       self.val("state", quart_modifier=False),
                                        inflation_ls[row], self.partner) \
-                            + 0.8*get_taxes(usr_ss_ls[row]+ partner_ss_ls[row],
+                            + 0.8*taxes.get(usr_ss_ls[row]+ partner_ss_ls[row],
+                                       self.val("state", quart_modifier=False),
                                             inflation_ls[row], self.partner)
                 taxes_ls.append(income_tax + medicare[row] + ss_tax[row])
                 # spending
@@ -535,50 +542,6 @@ def step_quarterize(date_ls:list, first_val, increase_yield,
         else:
             sequence.append(sequence[-1])
     return sequence
-
-def get_taxes(income_qt:float, inflation:float, married_state:bool) -> float:
-    """Combines federal and state taxes on non-tax-deferred income
-
-    Args:
-        income_qt (float): income in quarterly amount
-        inflation (float): inflation at specific date
-        married_state (bool): True if married, False if single
-
-    Returns:
-        (float): federal and state tax burden for that quarter
-    """
-    if income_qt == 0.0:
-        return 0 # avoid bracket math if no income
-
-    adj_income = 4*income_qt / inflation # convert income to yearly and adjust for inflation
-    fed_taxes = bracket_math(const.FED_BRACKET_RATES[married_state],
-                             max(adj_income - const.FED_STD_DEDUCTION[married_state], 0))
-    state_taxes = bracket_math(const.STATE_BRACKET_RATES[married_state],
-                               max(adj_income - const.STATE_STD_DEDUCTION[married_state], 0))
-    return 0.25 * (fed_taxes+state_taxes) # need to return quarterly taxes
-
-def bracket_math(brackets:list,yr_income:float) -> float:
-    """Calculates and returns taxes owed
-
-    Args:
-        brackets (list): List of brackets in format: [  rate,
-                                                        highest dollar that rate applies to,
-                                                        sum of tax owed in previous brackets]
-        yr_income (float): income in yearly amount
-
-    Returns:
-        (float): tax owed
-    """
-    if not yr_income:
-        return 0 # avoid bracket math if no income
-    rate_idx, cap_idx, sum_idx = 0, 1, 2
-    prev_bracket_cap = 0
-    for bracket in brackets:
-        if yr_income < bracket[cap_idx]:
-            # return tax owed up to prev bracket + tax owed in this bracket
-            return bracket[sum_idx]\
-                + bracket[rate_idx] * (yr_income-prev_bracket_cap)
-        prev_bracket_cap = bracket[cap_idx]
 
 def test_unit(units:int = 1):
     """Creates a Simulator

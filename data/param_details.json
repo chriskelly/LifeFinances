@@ -89,6 +89,16 @@
         "default_val": "60",
         "type": ""
     },
+    "state":{
+        "label":"State of Residence",
+        "description":"State of residence for tax purposes",
+        "default_val":"California",
+        "range": [
+            "California",
+            "New York"
+        ],
+        "type":"options"
+    },
     "retirement_spending_change": {
         "label":"Spending Change in Retirement (% of Current Spending)",
         "description": "Many people decrease spending in retirement. A value of -0.15 decreases spending by 15% once neither you nor your partner are earning income.",
@@ -121,7 +131,8 @@
             "ceil-floor",
             "inflation-only"
         ],
-        "type": "options"
+        "type": "options",
+        "optimizable":true
     },
     "allowed_fluctuation": {
         "label":"Ceiling-Floor Fluctuation (% of Spending)",
@@ -141,42 +152,48 @@
             "100 Minus Age",
             "Bond Tent"
         ],
-        "type": "options"
+        "type": "options",
+        "optimizable":true
     },
     "real_estate_equity_ratio": {
         "label":"Real Estate Ratio",
         "description": "Ratio of real estate within equity allocation.\n If value set to 0.5, but bonds are 20%, allocation will be 40% real estate, 40% stock, 20% bonds.",
         "default_val": "0.0",
         "range": "np.linspace(0,.6,7)",
-        "type": ""
+        "type": "",
+        "optimizable":true
     },
     "equity_target": {
         "label":"Equity Target",
         "description": "When using lifecycle allocation or net-worth targets for social security, this value acts as a pivot point for the portfolio. If set to 1500 and using lifecycle allocation, portfolio will be in 100% equities until net worth hits $1.5M in today's dollars, then any additonal net worth will be invested in bonds. To learn more, read about lifecycle investing: https://www.lifecycleinvesting.net/, but know this method does not use leverage.",
         "default_val": "1500",
         "range": "range(500,4000,100)",
-        "type": ""
+        "type": "",
+        "optimizable":true
     },
     "annuities_instead_of_bonds": {
         "label":"Annuities Instead of Bonds?",
         "description": "Money that would be invested into bonds is instead invested in an annuity.",
         "default_val": 0,
         "range": [1,0],
-        "type": "bool"
+        "type": "bool",
+        "optimizable":true
     },
     "flat_bond_target": {
         "label":"Flat Bond Target",
         "description": "When using the Flat allocation method, this value determines the ratio of bonds in the portfolio",
         "default_val": "0.2",
         "range": "[0.2, 0.3, 0.4, 0.5, 0.6]",
-        "type": ""
+        "type": "",
+        "optimizable":true
     },
     "bond_tent_start_allocation": {
         "label":"Bond Tent Start Allocation",
         "description": "When using the bond tent allocation method, this value determines the initial allocation of bonds",
         "default_val": "0.0",
         "range": "[0.0, 0.1, 0.2, 0.3, 0.4]",
-        "type": ""
+        "type": "",
+        "optimizable":true
     },
     "bond_tent_start_date": {
         "label":"Bond Tent Start Date",
@@ -189,7 +206,8 @@
         "description": "When using the bond tent allocation method, this value determines the peak allocation of bonds",
         "default_val": "0.8",
         "range": "[0.4, 0.5, 0.6, 0.7, 0.8]",
-        "type": ""
+        "type": "",
+        "optimizable":true
     },
     "bond_tent_peak_date": {
         "label":"Bond Tent Peak Date",
@@ -202,7 +220,8 @@
         "description": "When using the bond tent allocation method, this value determines the final allocation of bonds",
         "default_val": "0.0",
         "range": "[0.0, 0.1, 0.2, 0.3, 0.4]",
-        "type": ""
+        "type": "",
+        "optimizable":true
     },
     "bond_tent_end_date": {
         "label":"Bond Tent End Date",
@@ -220,7 +239,8 @@
             "late",
             "net worth"
         ],
-        "type": "options"
+        "type": "options",
+        "optimizable":true
     },
     "partner_social_security_method": {
         "label":"Partner's Social Security Method",
@@ -232,7 +252,8 @@
             "late",
             "net worth"
         ],
-        "type": "options"
+        "type": "options",
+        "optimizable":true
     },
     "pension_trust_factor": {
         "label":"Pension Trust Factor",
@@ -297,6 +318,7 @@
             "net worth",
             "cash-out"
         ],
-        "type": "hide"
+        "type": "hide",
+        "optimizable":true
     }
 }
