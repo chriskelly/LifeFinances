@@ -78,27 +78,9 @@ class Simulator:
     -------
     main()
         Creates data and runs the Montecarlo simulations
-    get_pension_payment()
-        Calculates pension per quarter
-    base_spending()
-        Calculates quarterly expenses
-    allocation()
-        Determines the allocation of investments per quarter
     
     """
     def __init__(self, param_vals:dict, override_dict:dict):
-        """
-        Construct a Simulator out of the params in the given model
-
-        Parameters
-        ----------
-        param_vals : Dict
-            A dictionary with {param : val}
-        override_dict : dict, optional
-            Use this input to override named parameters.
-                'monte_carlo_runs':int : Overrides the constant MONTE_CARLO_RUNS
-                'returns':[stock_return_arr,bond_return_arr,re_return_arr,inflation_arr]
-        """
         self.params = param_vals
         self.rows = int((param_vals['calculate_til'] - model.TODAY_YR_QT)/.25)
         self.admin = self.params["admin"] # Are you Chris?
