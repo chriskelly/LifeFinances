@@ -6,7 +6,7 @@ import flask
 from flask_socketio import SocketIO, emit
 from models import model
 
-
+print('in Flask app')
 app = flask.Flask(__name__)
 app.secret_key = 'dev' # default value during development
 socketio = SocketIO(app)
@@ -60,6 +60,7 @@ def simulation():
 def optimization():
     """Optimization Page"""
     #import genetic
+    print('optimization page')
     from data import constants as const # pylint: disable=import-outside-toplevel # lazy import
     if flask.request.method == 'POST':
         # if flask.request.form['submit_button'] == 'Start Optimizing!':
@@ -74,6 +75,7 @@ def optimization():
 @socketio.on('start_optimization', namespace='/optimize')
 def start_optimizer():
     """Optimizer algorithm starter"""
+    print('Loading Optimizer')
     emit('new_log', {'log': 'Loading Optimizer'}, namespace='/optimize')
     import optimizer # pylint: disable=import-outside-toplevel # lazy import
     emit('new_log', {'log': 'Starting Optimizer'}, namespace='/optimize')
@@ -87,4 +89,4 @@ def test():
 if __name__ == "__main__":
     URL = "http://127.0.0.1:5000/"
     webbrowser.open(URL)
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=True)
