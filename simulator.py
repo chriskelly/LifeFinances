@@ -32,6 +32,8 @@ from models import return_generator, annuity, model, social_security, income
 
 # Prevent error 'starting a matplotlib gui outside of the main thread will likely fail'
 # when running in Flask by changing matplotlib to a non-interactive backend
+# if __name__ != '__main__' and __name__ != 'simulator':
+#     matplotlib.use('SVG')
 matplotlib.use('SVG')
 
 git_root= git.Repo(os.path.abspath(__file__),
@@ -538,6 +540,6 @@ def test_unit(units:int = 1):
     return Simulator(test_mdl.param_vals, override_dict={'monte_carlo_runs' : units})
 
 if __name__ == '__main__':
-    #instantiate a Simulator and run at least 1 simulation
+    # instantiate a Simulator and run number of simulations
     test_simulator = test_unit(units=MONTE_CARLO_RUNS)
     test_simulator.main()
