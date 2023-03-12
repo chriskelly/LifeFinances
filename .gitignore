@@ -5,7 +5,7 @@
 param_success.json
 **/data/data.db
 diagnostics/saved/
-temp*
+temporary*
 *.prof
 .vscode/
 
