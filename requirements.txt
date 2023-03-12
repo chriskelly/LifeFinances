@@ -7,6 +7,6 @@ seaborn
 numba
 flask
 Gunicorn==20.1.0
-eventlet==0.30.2
+eventlet==0.31.0
 sqlalchemy<2.0
 flask_socketio
