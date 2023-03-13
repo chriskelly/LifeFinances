@@ -6,7 +6,6 @@ import flask
 from flask_socketio import SocketIO, emit
 from models import model
 
-print('in Flask app')
 app = flask.Flask(__name__)
 app.secret_key = 'dev' # default value during development
 socketio = SocketIO(app)
@@ -19,13 +18,6 @@ def index():
         flask.session["user_in_session"] = True
         model.copy_default_values()
     return flask.render_template('index.html')
-
-# @socketio.on('connect', namespace='/test')
-# def test_connect():
-#     print('Client connected')
-#     #randomNumberGenerator()
-    # thread = socketio.start_background_task(randomNumberGenerator)
-
 
 @app.route("/parameters", methods=('GET', 'POST'))
 def parameters():
@@ -59,12 +51,8 @@ def simulation():
 @app.route('/optimization', methods=('GET', 'POST'))
 def optimization():
     """Optimization Page"""
-    #import genetic
-    print('optimization page')
     from data import constants as const # pylint: disable=import-outside-toplevel # lazy import
     if flask.request.method == 'POST':
-        # if flask.request.form['submit_button'] == 'Start Optimizing!':
-        #     genetic.Algorithm().main()
         if flask.request.form['submit_button'] == 'Stop Optimizing':
             # Create a file called cancel.quit that's then captured
             # by the running simulator.main() and causes genetic.main() to stop
@@ -72,10 +60,9 @@ def optimization():
                 pass # close file
     return flask.render_template('optimization.html')
 
-@socketio.on('start_optimization', namespace='/optimize')
+@socketio.on('start_optimizer', namespace='/optimize')
 def start_optimizer():
     """Optimizer algorithm starter"""
-    print('Loading Optimizer')
     emit('new_log', {'log': 'Loading Optimizer'}, namespace='/optimize')
     import optimizer # pylint: disable=import-outside-toplevel # lazy import
     emit('new_log', {'log': 'Starting Optimizer'}, namespace='/optimize')
