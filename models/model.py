@@ -17,29 +17,42 @@ This file contains the following functions:
     * Model.remove_from_special_tables() - Delete instance from unique data type table
 """
 
-import shutil
+# import shutil
 import json
 import datetime as dt
 import sqlalchemy as db
+import sqlalchemy.orm as orm
 from flask_socketio import SocketIO
 import data.constants as const
+from models.user import Base, User, default_user
 
-def copy_default_values():
-    """Overwrite the user database with the default database"""
-    shutil.copy(const.DEFAULT_DB_LOC, const.DB_LOC)
+# def copy_default_values():
+#     """Overwrite the user database with the default database"""
+#     shutil.copy(const.DEFAULT_DB_LOC, const.DB_LOC)
 
-try: # check for database not in data folder yet
-    with open(const.DB_LOC, encoding="utf-8"):
-        pass
-except FileNotFoundError:
-    copy_default_values()
+# Generate the database schema
+engine = db.create_engine(f'sqlite:///{const.DB_LOC}')
+USER_ID = 1 # Default User ID is 1 until we support user login
+with orm.Session(engine) as session:
+    try: # check for database not in data folder yet
+        with open(const.DB_LOC, encoding="utf-8"):
+            pass
+    except FileNotFoundError:
+        session.add(default_user())
+    Base.metadata.create_all(engine)
+    # Attributes need to be eager/joined loaded to ensure they are accessable
+    # after the session is closed. https://docs.sqlalchemy.org/en/14/errors.html#error-bhk3
+    session.expire_on_commit = False
+    user = session.query(User).options(orm.joinedload(User.earnings),
+                                       orm.joinedload(User.income_profiles),
+                                       orm.joinedload(User.kids)).filter_by(user_id=USER_ID).one()
+    session.commit() # commit() is optional unless data is added to database
 
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month-1)//3
 TODAY_YR = TODAY.year
 TODAY_YR_QT = TODAY.year+TODAY_QUARTER*.25
-USER_ID = 1 # Default User ID is 1 until we support user login
-ENGINE = db.create_engine(f'sqlite:///{const.DB_LOC}')
+# engine = db.create_engine(f'sqlite:///{const.DB_LOC}')
 
 class Model:
     """An instance of Model is used to keep track of a collection of parameters
@@ -244,7 +257,7 @@ def db_cmd(cmd,cmd_args:tuple=None) -> tuple[list, list]:
         list: all output rows from query \n
         list: column names
     """
-    with ENGINE.connect() as conn:
+    with engine.connect() as conn:
         if cmd_args: # Used to avoid SQL injection attacks
             res = conn.execute(cmd,cmd_args)
         else:
