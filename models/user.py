@@ -19,6 +19,16 @@ getcontext().prec = 2 # set Decimal precision
 Base = declarative_base()
 
 class EarningsRecord(Base):
+    """A record of income earnings for a specific year
+
+    Earnings are expected to be from the Social Security Administration, and these
+    will be used to calculate social security payments.
+
+    Args:
+        Base : sqlalchemy declarative_base()
+    
+    Attributes: details found in `data/param_details.json`
+    """
     __tablename__ = 'earnings_records'
     earnings_id:int = Column(Integer, primary_key=True, autoincrement=True)
     user_id:int = Column(ForeignKey('users.user_id'), nullable=False, server_default=text("1"))
@@ -28,6 +38,13 @@ class EarningsRecord(Base):
 
 
 class JobIncome(Base):
+    """Represents total income earned by individual during specific period of time
+
+    Args:
+        Base : sqlalchemy declarative_base()
+
+    Attributes: details found in `data/param_details.json`
+    """
     __tablename__ = 'job_incomes'
     job_income_id:int = Column(Integer, primary_key=True, autoincrement=True)
     starting_income:float = Column(Float, nullable=False, server_default=text("50"))
@@ -35,6 +52,7 @@ class JobIncome(Base):
     _last_date = Column(Text, nullable=False, server_default=text("2035.25"))
     @hybrid_property
     def last_date(self):
+        """Gets value as Decimal, sets as String since SQLite doesn't support Decimals"""
         return Decimal(self._last_date)
     @last_date.setter
     def last_date(self, value):
@@ -47,6 +65,13 @@ class JobIncome(Base):
 
 
 class Kid(Base):
+    """Represents each individual child
+
+    Args:
+        Base : sqlalchemy declarative_base()
+
+    Attributes: details found in `data/param_details.json`
+    """
     __tablename__ = 'kids'
     kid_id:int = Column(Integer, primary_key=True, autoincrement=True)
     user_id:int = Column(ForeignKey('users.user_id'), nullable=False, server_default=text("1"))
@@ -54,11 +79,22 @@ class Kid(Base):
 
 
 class User(Base):
+    """Main class for representing user data
+
+    Args:
+        Base : sqlalchemy declarative_base()
+
+    Attributes: 
+        earnings (list[EarningsRecord]): EarningsRecords with matching user_id
+        income_profiles (list[JobIncome]): JobIncomes with matching user_id
+        kids (list[Kid]): Kids with matching user_id
+        other attribute details found in `data/param_details.json`
+    """
     __tablename__ = 'users'
     earnings:list[EarningsRecord] = relationship('EarningsRecord', backref='user')
     income_profiles:list[JobIncome] = relationship('JobIncome', backref='user')
     kids:list[Kid] = relationship('Kid', backref='user')
-    
+
     user_id:int = Column(Integer, primary_key=True, autoincrement=True)
     user_age:int = Column(Integer, nullable=False, server_default=text("29"))
     partner:bool = Column(Integer, nullable=False, server_default=text("1"))
@@ -66,6 +102,7 @@ class User(Base):
     _calculate_til = Column(Text, nullable=False, server_default=text("2090"))
     @hybrid_property
     def calculate_til(self):
+        """Gets value as Decimal, sets as String since SQLite doesn't support Decimals"""
         return Decimal(self._calculate_til)
     @calculate_til.setter
     def calculate_til(self, value):
@@ -86,6 +123,7 @@ class User(Base):
     _bond_tent_start_date = Column(Text, server_default=text("2035"))
     @hybrid_property
     def bond_tent_start_date(self):
+        """Gets value as Decimal, sets as String since SQLite doesn't support Decimals"""
         return Decimal(self._bond_tent_start_date)
     @bond_tent_start_date.setter
     def bond_tent_start_date(self, value):
@@ -94,6 +132,7 @@ class User(Base):
     _bond_tent_peak_date = Column(Text, server_default=text("2040"))
     @hybrid_property
     def bond_tent_peak_date(self):
+        """Gets value as Decimal, sets as String since SQLite doesn't support Decimals"""
         return Decimal(self._bond_tent_peak_date)
     @bond_tent_peak_date.setter
     def bond_tent_peak_date(self, value):
@@ -102,6 +141,7 @@ class User(Base):
     _bond_tent_end_date = Column(Text, server_default=text("2060"))
     @hybrid_property
     def bond_tent_end_date(self):
+        """Gets value as Decimal, sets as String since SQLite doesn't support Decimals"""
         return Decimal(self._bond_tent_end_date)
     @bond_tent_end_date.setter
     def bond_tent_end_date(self, value):
