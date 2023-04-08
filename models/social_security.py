@@ -15,11 +15,11 @@ This file contains the following functions:
 from __future__ import annotations
 import math
 import copy
+from typing import TYPE_CHECKING
 import numpy as np
 from data import constants as const
 from models import model
 import simulator
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from simulator import Simulator
     from models import income
@@ -33,7 +33,7 @@ LATE_AGE = 70
 # Effect of Early or Delayed Retirement on Retirement Benefits:
 # https://www.ssa.gov/oact/ProgData/ar_drc.html
 # Index factors: https://www.ssa.gov/oact/cola/awifactors.html
-# Earnings limit: 
+# Earnings limit:
 # https://www.ssa.gov/benefits/retirement/planner/whileworking.html#:~:text=your%20excess%20earnings.-,How%20We%20Deduct%20Earnings%20From%20Benefits,full%20retirement%20age%20is%20%2451%2C960.
 # Bend points: https://www.ssa.gov/oact/cola/piaformula.html
 # PIA: https://www.ssa.gov/oact/cola/piaformula.html
@@ -44,7 +44,7 @@ SS_MAX_EARNINGS = np.transpose(np.array(const.SS_MAX_EARNINGS))
 x_M_E, y_M_E = SS_MAX_EARNINGS[0], SS_MAX_EARNINGS[1] # prep data for np.polyfit
 fit_M_E = np.polyfit(x_M_E, np.log(y_M_E), 1)
 a_M_E, b_M_E = np.exp(fit_M_E[1]), fit_M_E[0]
-def est_Max_Earning(year:float) -> float:
+def est_max_earning(year:float) -> float:
     """return estimated social security max earnings for specific year
 
     Args:
@@ -55,11 +55,11 @@ def est_Max_Earning(year:float) -> float:
     """
     return a_M_E * np.exp(b_M_E * year)
 # repeat for indicies
-SS_INDEXES = np.transpose(np.array(const.SS_INDEXES)) 
+SS_INDEXES = np.transpose(np.array(const.SS_INDEXES))
 x_I, y_I = SS_INDEXES[0], SS_INDEXES[1]
 fit_I = np.polyfit(x_I, np.log(y_I), 1)
 a_I, b_I = np.exp(fit_I[1]), fit_I[0]
-def est_Index(year:float) -> float:
+def est_index(year:float) -> float:
     """return estimated social security index for specific year
 
     Args:
@@ -71,71 +71,86 @@ def est_Index(year:float) -> float:
     return a_I * np.exp(b_I * year)
 
 class Calculator:
-    def __init__(self,sim:Simulator,usr:str,date_ls:list,income_calc:income.Calculator,spouse_calc:SSCalc = None):
-        """
-        Methods include 'early', 'mid', and 'late' for age dependent retirements. 
-        The 'net worth' method triggers withdrawals if net worth drops below equity target or at last year available
+    """Calculates social security payments
 
-        Parameters
-        ----------
-        sim : simulator.Simulator
-            DESCRIPTION.
-        usr : str
-            Either 'User' or 'Partner'
-        inflation_ls : list or array
-            DESCRIPTION.
-        date_ls : list or array
-            DESCRIPTION.
-        income_ls : list or array
-            DESCRIPTION.
-        spouse_calc : TYPE, optional
-            DESCRIPTION. The default is None.
+    Attributes
+        sim (simulator.Simulator)
 
-        Returns
-        -------
-        None.
+        usr (str): Either 'User' or 'Partner'
 
-        """
-        self.sim, self.date_ls, self.spouse_calc, self.usr, self.income_calc = sim, date_ls, spouse_calc, usr, income_calc
-        self.age = sim.val(f"{usr}_age",False)
-        if self.spouse_calc: spouse_calc.spouse_calc = self # if a spouse is added, make the spouse's spouse this calc
-        self.method = sim.val(f"{usr}_social_security_method",False)
-        self.pension = sim.params[f"{usr}_pension"]
+        date_ls (list)
+
+        income_calc (income.Calculator): income calculator for specific user
+
+        spouse_calc (social_security.Calculator): optional. social security calculator of spouse
+                                                    (parter for user, user for partner)
+
+    Methods
+        make_list(): Returns list with social security payments starting from today till final date
+
+        get_payment(): Get a payment for a specific date
+    """
+    def __init__(self, sim:Simulator, usr:str, date_ls:list, income_calc:income.Calculator,
+                 spouse_calc:SSCalc = None):
+        self.sim, self.date_ls, self.spouse_calc= sim, date_ls, spouse_calc
+        self.usr, self.income_calc = usr, income_calc
+        if usr == 'User':
+            self.age = sim.user.age
+            self.method = sim.user.social_security_method
+            self.pension = sim.user.pension
+            self.earnings_record = {record.year:record.earnings for record in sim.user.earnings
+                                    if not record.is_partner_earnings}
+        elif usr == 'Partner':
+            self.age = sim.user.partner_age
+            self.method = sim.user.partner_social_security_method
+            self.pension = sim.user.partner_pension
+            self.earnings_record = {record.year:record.earnings for record in sim.user.earnings
+                                    if record.is_partner_earnings}
+        else:
+            raise ValueError("usr must be either 'User' or 'Partner'")
+        if self.spouse_calc:
+            spouse_calc.spouse_calc = self # if a spouse is added, make spouse's spouse this calc
         self.triggered = False # Has SS been triggered
-        self.earnings_record = {year:earning for _,year,earning in sim.val(f"{usr}_earnings_record",False)} # {year : earnings}
-        eligible_income_ls = _eligible_income(date_ls,income_calc)
-        self._add_to_earnings_record(date_ls,eligible_income_ls)
+        eligible_income_ls = _eligible_income(date_ls, income_calc)
+        self._add_to_earnings_record(date_ls, eligible_income_ls)
         # -------- CALCULATE PIA (BASE SOCIAL SECURITY PAYMENT) -------- #
         # index and limit the earnings, then sort them from high to low
-        ss_earnings = [min(est_Max_Earning(year),earning) * est_Index(year) 
-                       for (year,earning) in self.earnings_record.items()]
+        ss_earnings = [min(est_max_earning(year), earning) * est_index(year)
+                       for year, earning in self.earnings_record.items()]
         ss_earnings.sort(reverse=True)
         # Find Average Indexed Monthly Earnings (AIME), only top 35 years (420 months) count
         aime = sum(ss_earnings[:35])/420
-        # Calculate monthly Primary Insurance Amounts (PIA) using bend points. Add AIME and sort to see where the AIME ranks in the bend points
+        # Calculate monthly Primary Insurance Amounts (PIA) using bend points.
+        # Add AIME and sort to see where the AIME ranks in the bend points
         bend_points =const.SS_BEND_POINTS+[aime]
         bend_points.sort()
         bend_points = bend_points[:bend_points.index(aime)+1] # cut off bend points at inserted AIME
-        # for the first bracket, just the bend times the rate. After that, find the marginal income to multiple by the rate
+        # For the first bracket, just the bend times the rate.
+        # After that, find the marginal income to multiple by the rate
             # PIA rates are lower if you have certain pension incomes
-        if self.pension: pia_rates = const.PIA_RATES_PENSION
-        else: pia_rates = const.PIA_RATES
-        self.full_PIA = sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate for (i,bend), rate 
-                                in zip(enumerate(bend_points),pia_rates)])
+        if self.pension:
+            pia_rates = const.PIA_RATES_PENSION
+        else:
+            pia_rates = const.PIA_RATES
+        self.full_pia = sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate
+                             for (i, bend), rate in zip(enumerate(bend_points), pia_rates)])
         # -------- FIND SS AGE AND DATE -------- #
         if self.method == 'early':
             self.ss_age = EARLY_AGE
         elif self.method == 'mid':
             self.ss_age = MID_AGE
-        else: # method == 'late' or 'portfolio' List will be overwritten if portfolio triggers before late age
+        else:
+            # method == 'late' or 'portfolio'
+            # List will be overwritten if portfolio triggers before late age
             self.ss_age = LATE_AGE
-        self.ss_date = self.ss_age - self.age + model.TODAY_YR + 1 # not quarterly precise, could be improved by changing from age to birth quarter in params.json
+        # not quarterly precise, could be improved by changing from age to birth quarter
+        self.ss_date = self.ss_age - self.age + model.TODAY_YR + 1
             
     def make_list(self, inflation_ls:list):
         """Returns list with social security payments starting from today till final date"""
         self.inflation_ls = inflation_ls
         self.benefit_rate = const.BENEFIT_RATES[str(self.ss_age)]
-        adjusted_PIA = self.full_PIA * self.benefit_rate # find adjusted PIA based on benefit rates for selected age
+        adjusted_PIA = self.full_pia * self.benefit_rate # find adjusted PIA based on benefit rates for selected age
         # PIA is in that today's dollars and needs to be adjusted
         self.ls = list(3 * adjusted_PIA * np.array(self.inflation_ls)) # Multiple by inflation_ls
         self.ss_row = self.date_ls.index(self.ss_date)
@@ -180,11 +195,11 @@ class Calculator:
             spousal_benefit = max(0,spousal_benefit - (2/3) * self.sim.pension_ls[row]) # worker's with a pension have to cut spousal benefit by 2/3 of pension payment https://www.ssa.gov/benefits/retirement/planner/gpo-calc.html
         return spousal_benefit
         
-    def _add_to_earnings_record(self,date_ls,income_ls):
+    def _add_to_earnings_record(self, date_ls, income_ls):
         """Add input date_ls and income_ls to the earnings record"""
         # need to deepcopy to avoid editing the lists outside of this method
-        date_record = copy.deepcopy(date_ls) 
-        income_record = copy.deepcopy(income_ls)
+        date_record = date_ls.copy()
+        income_record = income_ls.copy()
         # First, if the first dates are fractional, convert value to annual and delete the fractional first dates
         if date_record[0] % 1 != 0:
             year = math.trunc(date_record[0])
@@ -193,7 +208,7 @@ class Calculator:
                 del date_record[0]
                 del income_record[0]
         # Then add the remaining dates to the earnings_record
-        for date, income in zip(date_record,income_record):
+        for date, income in zip(date_record, income_record):
             year = math.trunc(date)
             if income != 0:
                 if year in self.earnings_record:
@@ -220,8 +235,8 @@ class Calculator:
                     #only accesses if it's been defined
             # set variables
         EARLY_PENSION_YEAR,MID_PENSION_YEAR,LATE_PENSION_YEAR = 2043,2049,2055
-        method = self.sim.val('admin_pension_method',quart_modifier=False)
-        pension_income = self.income_calc.income_objs[0]
+        method = self.sim.user.admin_pension_method
+        pension_income = self.income_calc.profiles[0]
         current_pension_salary_qt = pension_income.income_qt/(1-const.PENSION_COST) # Corrects for 9% taken from salary for pension
         working_qts = pension_income.last_date_idx - pension_income.start_date_idx()
         max_pension_salary_qt = current_pension_salary_qt * pension_income.yearly_raise ** (working_qts/4)
@@ -262,7 +277,7 @@ class Calculator:
                         + simulator.step_quarterize(self.date_ls,starting_pension_qt,pension_income.yearly_raise,start_date_idx,end_date_idx=self.sim.rows-1)
         return self.pension_ls[row]
 
-def _eligible_income(date_ls:list,income_calc:income.Calculator) -> list:
+def _eligible_income(date_ls:list, income_calc:income.Calculator) -> list:
     """Determine which income can be used for social security
 
     Args:
@@ -273,7 +288,7 @@ def _eligible_income(date_ls:list,income_calc:income.Calculator) -> list:
         list: full list of incomes with 0s for non-eligible incomes and non-working years
     """
     ls = []
-    for each_income in income_calc.income_objs:
+    for each_income in income_calc.profiles:
         if each_income.ss_eligible:
             ls += each_income.income_ls
         else:
@@ -297,16 +312,16 @@ def taxes(date_ls:list, inflation, user_calc:income.Calculator,
     """    
     # sum up social security eligible income from all usrs
     if partner_calc:
-        total_eligible_income = list(np.array(_eligible_income(date_ls,user_calc))
-                                 +np.array(_eligible_income(date_ls,partner_calc)))
+        total_eligible_income = list(np.array(_eligible_income(date_ls, user_calc))
+                                 +np.array(_eligible_income(date_ls, partner_calc)))
     else:
-        total_eligible_income = _eligible_income(date_ls,user_calc)
+        total_eligible_income = _eligible_income(date_ls, user_calc)
     # need the SS Max Earnings, but in quarter form instead of the annual form
-    ss_max_earnings_qt_ls = simulator.step_quarterize(date_ls,first_val=0.25
-                                                      * est_Max_Earning(model.TODAY_YR),
-                                                       increase_yield=inflation,start_date_idx=0,
+    ss_max_earnings_qt_ls = simulator.step_quarterize(date_ls, first_val=0.25
+                                                      * est_max_earning(model.TODAY_YR),
+                                                       increase_yield=inflation, start_date_idx=0,
                                                        end_date_idx=len(date_ls)-1)
-    ss_tax = [0.062*min(income,ss_max) for income,ss_max in zip(total_eligible_income,
+    ss_tax = [0.062*min(income, ss_max) for income, ss_max in zip(total_eligible_income,
                                                                 ss_max_earnings_qt_ls)]
     return ss_tax
 

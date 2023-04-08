@@ -6,6 +6,7 @@ Required installations are detailed in requirements.txt.
 
 import numpy as np
 import simulator
+from models.user import JobIncome
 
 class Income:
     """An object to represent an income stream.
@@ -36,14 +37,14 @@ class Income:
     start_date_idx()
         Returns the index for the date_ls that the income begins
     """
-    def __init__(self, income_obj:dict, date_ls:list, previous_income):
+    def __init__(self, income_profile:JobIncome, date_ls:list, previous_income):
         self.previous_income:Income = previous_income
-        self.income_qt:float = income_obj['starting_income'] / 4
-        self.tax_deferred_qt = income_obj['tax_deferred_income'] / 4
-        self.last_date_idx = date_ls.index(income_obj['last_date'])
-        self.yearly_raise:float = income_obj['yearly_raise'] + 1 # needs to be in yield format
-        self.optimization_target:bool = bool(income_obj['try_to_optimize'])
-        self.ss_eligible:bool = bool(income_obj['social_security_eligible'])
+        self.income_qt:float = income_profile.starting_income / 4
+        self.tax_deferred_qt = income_profile.tax_deferred_income / 4
+        self.last_date_idx = date_ls.index(income_profile.last_date)
+        self.yearly_raise:float = income_profile.yearly_raise + 1 # needs to be in yield format
+        self.optimization_target:bool = bool(income_profile.try_to_optimize)
+        self.ss_eligible:bool = bool(income_profile.social_security_eligible)
         self.income_ls = simulator.step_quarterize(date_ls, first_val=self.income_qt,
                                                    increase_yield=self.yearly_raise,
                                                     start_date_idx=self.start_date_idx(),
@@ -71,15 +72,15 @@ class Calculator:
     total_deferred_ls : list[float]
         The total tax deferred income mapped for each date, increasing by the raise amount each year
     """
-    def __init__(self,income_dicts:list[dict], date_ls:list):
+    def __init__(self, income_profiles:list[JobIncome], date_ls:list):
         # Make list of Income objects
-        self.income_objs = [Income(income_dicts[0], date_ls, previous_income=None)]
-        for i in range(1,len(income_dicts)):
-            self.income_objs.append(Income(income_dicts[i], date_ls,
-                                           previous_income=self.income_objs[-1]))
+        self.profiles = [Income(income_profiles[0], date_ls, previous_income=None)]
+        for i in range(1,len(income_profiles)):
+            self.profiles.append(Income(income_profiles[i], date_ls,
+                                           previous_income=self.profiles[-1]))
         # Make lists of total income & tax-deferred income
         self.total_income_ls, self.total_deferred_ls =[], []
-        for income in self.income_objs:
+        for income in self.profiles:
             self.total_income_ls += income.income_ls
             self.total_deferred_ls += income.deferred_ls
         self.total_income_ls += [0]*(len(date_ls)-len(self.total_income_ls))
@@ -102,7 +103,7 @@ def generate_lists(user_calc:Calculator,partner_calc:Calculator = None)-> tuple[
                         +np.array(partner_calc.total_deferred_ls))
     else:
         income_ls = user_calc.total_income_ls
-        deferred_ls = user_calc.total_deferred_ls   
+        deferred_ls = user_calc.total_deferred_ls
     return income_ls, deferred_ls
 
 
