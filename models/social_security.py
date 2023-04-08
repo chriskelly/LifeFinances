@@ -14,7 +14,6 @@ This file contains the following functions:
 
 from __future__ import annotations
 import math
-import copy
 from typing import TYPE_CHECKING
 import numpy as np
 from data import constants as const
@@ -132,8 +131,8 @@ class Calculator:
             pia_rates = const.PIA_RATES_PENSION
         else:
             pia_rates = const.PIA_RATES
-        self.full_pia = sum([(bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate
-                             for (i, bend), rate in zip(enumerate(bend_points), pia_rates)])
+        self.full_pia = sum((bend_points[i]-bend_points[i-1])*rate if i!=0 else bend*rate
+                             for (i, bend), rate in zip(enumerate(bend_points), pia_rates))
         # -------- FIND SS AGE AND DATE -------- #
         if self.method == 'early':
             self.ss_age = EARLY_AGE
@@ -145,17 +144,24 @@ class Calculator:
             self.ss_age = LATE_AGE
         # not quarterly precise, could be improved by changing from age to birth quarter
         self.ss_date = self.ss_age - self.age + model.TODAY_YR + 1
-            
+        # for later use
+        self.inflation_ls = None
+        self.benefit_rate = None
+        self.payments = None
+        self.ss_row = None
+
     def make_list(self, inflation_ls:list):
         """Returns list with social security payments starting from today till final date"""
         self.inflation_ls = inflation_ls
         self.benefit_rate = const.BENEFIT_RATES[str(self.ss_age)]
-        adjusted_PIA = self.full_pia * self.benefit_rate # find adjusted PIA based on benefit rates for selected age
+        # find adjusted PIA based on benefit rates for selected age
+        adjusted_pia = self.full_pia * self.benefit_rate
         # PIA is in that today's dollars and needs to be adjusted
-        self.ls = list(3 * adjusted_PIA * np.array(self.inflation_ls)) # Multiple by inflation_ls
+        self.payments = list(3 * adjusted_pia * np.array(self.inflation_ls))
         self.ss_row = self.date_ls.index(self.ss_date)
-        self.ls = [0]*self.ss_row + self.ls[self.ss_row:] # then trim the early years and replace with 0s
-    
+        # then trim the early years and replace with 0s
+        self.payments = [0]*self.ss_row + self.payments[self.ss_row:]
+
     def get_payment(self,row:int, net_worth:float, equity_target:float) -> float:
         """Get a payment for a specific date
 
@@ -167,40 +173,53 @@ class Calculator:
         Returns:
             float: Payment for specific date
         """
-        res =  max(self._get_worker_payment(row,net_worth,equity_target), self._get_spousal_payment(row,net_worth,equity_target))
+        res =  max(self._get_worker_payment(row, net_worth, equity_target),
+                   self._get_spousal_payment(row, net_worth, equity_target))
         if self.sim.admin and self.usr == 'partner':
-            res += self._admin_pension_payment(row,equity_target,net_worth)
+            res += self._admin_pension_payment(row, equity_target, net_worth)
         return res
-    
+
     def _get_worker_payment(self,row,net_worth,equity_target):
-        if self.method == 'net worth' and net_worth < equity_target * self.inflation_ls[row] and not self.triggered:
+        if self.method == 'net worth' and net_worth < equity_target * self.inflation_ls[row]\
+            and not self.triggered:
         # Have to generate new list if using 'net worth' method
             current_date = self.date_ls[row]
             current_age = math.trunc(current_date) + self.age - model.TODAY_YR
-            if current_age >= EARLY_AGE and current_age <= LATE_AGE: # confirm worker is of age to retire
+            if EARLY_AGE <= current_age <= LATE_AGE: # confirm worker is of age to retire
                 self.ss_date, self.ss_age = current_date, current_age
                 self.triggered = True
                 self.make_list(self.inflation_ls)
-        return self.ls[row]
-    
-    def _get_spousal_payment(self,row,net_worth,equity_target):
+        return self.payments[row]
+
+    def _get_spousal_payment(self, row, net_worth, equity_target):
         """Returns the eligible portion of a spouse's income the worker could receive.
         https://www.ssa.gov/benefits/retirement/planner/applying7.html"""
-        if not self.spouse_calc or self.spouse_calc._get_worker_payment(row,net_worth,equity_target) == 0 or row < self.ss_row: # if not married or spouse not receiving payments yet or worker's social security hasn't been triggered yet (worker's SS strategy should not be overridden by spouse's strategy)
+        if not self.spouse_calc\
+            or self.spouse_calc._get_worker_payment(row, net_worth, equity_target) == 0\
+                or row < self.ss_row: # pylint: disable=protected-access # N/A
+                # if not married or spouse not receiving payments yet or worker's social security
+                # hasn't been triggered yet (worker's SS strategy should not be overridden
+                # by spouse's strategy)
             return 0
-        spouse_payment = self.spouse_calc._get_worker_payment(row,net_worth,equity_target)
-        inverted_spouse_payment = spouse_payment / self.spouse_calc.benefit_rate # reverse the adjustment used to calculate spouse's PIA 
-        spousal_benefit = 0.5 * inverted_spouse_payment * self.benefit_rate # Worker's can earn up to half of their spouse's PIA, adjusted by the worker's benefit rate
-        if self.pension and hasattr(self.sim, 'pension_ls'): # if this worker has a pension and that pension has started paying yet:
-            spousal_benefit = max(0,spousal_benefit - (2/3) * self.sim.pension_ls[row]) # worker's with a pension have to cut spousal benefit by 2/3 of pension payment https://www.ssa.gov/benefits/retirement/planner/gpo-calc.html
+        spouse_payment = self.spouse_calc._get_worker_payment(row, net_worth, equity_target) # pylint: disable=protected-access # N/A
+        # reverse the adjustment used to calculate spouse's PIA
+        inverted_spouse_payment = spouse_payment / self.spouse_calc.benefit_rate
+        # Worker's can earn up to half of their spouse's PIA, adjusted by the worker's benefit rate
+        spousal_benefit = 0.5 * inverted_spouse_payment * self.benefit_rate
+        # if this worker has a pension and that pension has started paying yet:
+        if self.pension and hasattr(self.sim, 'pension_ls'):
+            # worker's with a pension have to cut spousal benefit by 2/3 of pension payment
+            # https://www.ssa.gov/benefits/retirement/planner/gpo-calc.html
+            spousal_benefit = max(0,spousal_benefit - (2/3) * self.sim.pension_ls[row])
         return spousal_benefit
-        
+
     def _add_to_earnings_record(self, date_ls, income_ls):
         """Add input date_ls and income_ls to the earnings record"""
         # need to deepcopy to avoid editing the lists outside of this method
         date_record = date_ls.copy()
         income_record = income_ls.copy()
-        # First, if the first dates are fractional, convert value to annual and delete the fractional first dates
+        # First, if the first dates are fractional,
+        # convert value to annual and delete the fractional first dates
         if date_record[0] % 1 != 0:
             year = math.trunc(date_record[0])
             self.earnings_record[year] = income_record[0] * 4
@@ -215,7 +234,7 @@ class Calculator:
                     self.earnings_record[year] += income
                 else: self.earnings_record[year] = income
 
-    def _admin_pension_payment(self,row:int,equity_target:float,net_worth:float) -> float:
+    def _admin_pension_payment(self, row:int, equity_target:float, net_worth:float) -> float:
         """Calculates the pension for Admin's partner if admin is selected.
         
         Args:
@@ -228,53 +247,67 @@ class Calculator:
         """
             # if pension list has already been calculated, just return the value for the current row
         if hasattr(self, 'pension_ls'):
-            if row == 0: 
+            if row == 0:
                 del self.pension_ls # reset for each loop
-            else: 
-                return self.pension_ls[row] # pylint: disable=access-member-before-definition 
+            else:
+                return self.pension_ls[row] # pylint: disable=access-member-before-definition
                     #only accesses if it's been defined
             # set variables
-        EARLY_PENSION_YEAR,MID_PENSION_YEAR,LATE_PENSION_YEAR = 2043,2049,2055
+        early_pension_year, mid_pension_year, late_pension_year = 2043, 2049, 2055
         method = self.sim.user.admin_pension_method
         pension_income = self.income_calc.profiles[0]
-        current_pension_salary_qt = pension_income.income_qt/(1-const.PENSION_COST) # Corrects for 9% taken from salary for pension
+        # Corrects for 9% taken from salary for pension
+        current_pension_salary_qt = pension_income.income_qt/(1-const.PENSION_COST)
         working_qts = pension_income.last_date_idx - pension_income.start_date_idx()
-        max_pension_salary_qt = current_pension_salary_qt * pension_income.yearly_raise ** (working_qts/4)
+        max_pension_salary_qt = current_pension_salary_qt * pension_income.yearly_raise\
+                                ** (working_qts/4)
         if method == 'cash-out':
-            # Need to correct for out-dated info, first estimate salary at date of last update, then project forward
-            data_age_qt = int((model.TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25) # find age of data
-            est_prev_pension_salary_qt = current_pension_salary_qt / (pension_income.yearly_raise ** (data_age_qt/4)) # estimate salary at date of data
-            # rough estimate of historical earnings + projected future earnings (corrected for pension cost)
-            projected_income = np.concatenate((simulator.step_quarterize(self.date_ls,est_prev_pension_salary_qt,pension_income.yearly_raise,start_date_idx=0,end_date_idx=data_age_qt)
-                                              ,np.array(pension_income.income_ls)/(1-const.PENSION_COST))) 
+            # Need to correct for out-dated info, first estimate salary at date of last update,
+            # then project forward
+            # Find age of data
+            data_age_qt = int((model.TODAY_YR_QT - const.PENSION_ACCOUNT_BAL_UP_DATE)/.25)
+            est_prev_pension_salary_qt = current_pension_salary_qt\
+                / (pension_income.yearly_raise ** (data_age_qt/4)) # Estimate salary at date of data
+            # Rough estimate of historical earnings
+            # + projected future earnings (corrected for pension cost)
+            projected_income = np.concatenate(
+                                (simulator.step_quarterize(self.date_ls, est_prev_pension_salary_qt,
+                                                           pension_income.yearly_raise,
+                                                           start_date_idx=0,
+                                                           end_date_idx=data_age_qt),
+                                 np.array(pension_income.income_ls)/(1-const.PENSION_COST)))
             pension_bal = const.PENSION_ACCOUNT_BAL
             pension_int_rate_qt = const.PENSION_INTEREST_YIELD ** (1/4) - 1
             for each_income in projected_income:
                 pension_bal += each_income * const.PENSION_COST + pension_bal * pension_int_rate_qt
-            self.pension_ls = [0]*working_qts + [pension_bal] + [0]*(len(self.date_ls) - working_qts - 1)
+            self.pension_ls = [0]*working_qts + [pension_bal] + [0]*(len(self.date_ls)
+                                                                     - working_qts - 1)
             return self.pension_ls[row]
-        elif method == 'net worth':
-            if (net_worth > equity_target * self.inflation_ls[row] and self.date_ls[row]<LATE_PENSION_YEAR) or self.date_ls[row]<EARLY_PENSION_YEAR:
+        if method == 'net worth':
+            if (net_worth > equity_target * self.inflation_ls[row]
+                and self.date_ls[row]<late_pension_year) or self.date_ls[row]<early_pension_year:
                 return 0 # haven't triggered yet or passed the late pension year
-            else:
-                pension_start_yr = min(math.trunc(self.date_ls[row]),LATE_PENSION_YEAR)
+            pension_start_yr = min(math.trunc(self.date_ls[row]),late_pension_year)
         elif method == 'early':
-            pension_start_yr = EARLY_PENSION_YEAR
+            pension_start_yr = early_pension_year
         elif method == 'mid':
-            pension_start_yr = MID_PENSION_YEAR
+            pension_start_yr = mid_pension_year
         elif method == 'late':
-            pension_start_yr = LATE_PENSION_YEAR
+            pension_start_yr = late_pension_year
             # find initial pension amount (in last working year's dollars)
-        PENSION_JOB_FIRST_YEAR = 2016
+        pension_job_first_year = 2016
         pension_job_last_year = math.trunc(self.date_ls[pension_income.last_date_idx])
-        years_worked = pension_job_last_year - PENSION_JOB_FIRST_YEAR
+        years_worked = pension_job_last_year - pension_job_first_year
         pension_multiplier = const.ADMIN_PENSION_RATES[str(pension_start_yr)]
-        starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier 
-        starting_pension_qt *= pension_income.yearly_raise**(pension_start_yr-pension_job_last_year) # convert to est. value at pension_start_yr
+        starting_pension_qt = max_pension_salary_qt * years_worked * pension_multiplier
+        # convert to est. value at pension_start_yr
+        starting_pension_qt *= pension_income.yearly_raise**(pension_start_yr-pension_job_last_year)
             # build out list with the correct number of zeros to the beginning
         start_date_idx = self.date_ls.index(pension_start_yr)
         self.pension_ls = [0]*(start_date_idx) \
-                        + simulator.step_quarterize(self.date_ls,starting_pension_qt,pension_income.yearly_raise,start_date_idx,end_date_idx=self.sim.rows-1)
+                        + simulator.step_quarterize(self.date_ls, starting_pension_qt,
+                                                    pension_income.yearly_raise, start_date_idx,
+                                                    end_date_idx=self.sim.rows-1)
         return self.pension_ls[row]
 
 def _eligible_income(date_ls:list, income_calc:income.Calculator) -> list:
@@ -287,16 +320,16 @@ def _eligible_income(date_ls:list, income_calc:income.Calculator) -> list:
     Returns:
         list: full list of incomes with 0s for non-eligible incomes and non-working years
     """
-    ls = []
+    eligible_income = []
     for each_income in income_calc.profiles:
         if each_income.ss_eligible:
-            ls += each_income.income_ls
+            eligible_income += each_income.income_ls
         else:
-            ls += [0] * len(each_income.income_ls)
-    ls += [0]*(len(date_ls)-len(ls))
-    return ls
+            eligible_income += [0] * len(each_income.income_ls)
+    eligible_income += [0]*(len(date_ls)-len(eligible_income))
+    return eligible_income
 
-def taxes(date_ls:list, inflation, user_calc:income.Calculator, 
+def taxes(date_ls:list, inflation, user_calc:income.Calculator,
           partner_calc:income.Calculator = None) -> list:
     """Generate list of taxes paid for social security
     Dependent on whether an individual income stream is social security eligible
@@ -309,7 +342,7 @@ def taxes(date_ls:list, inflation, user_calc:income.Calculator,
 
     Returns:
         list
-    """    
+    """
     # sum up social security eligible income from all usrs
     if partner_calc:
         total_eligible_income = list(np.array(_eligible_income(date_ls, user_calc))
