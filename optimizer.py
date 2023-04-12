@@ -91,9 +91,11 @@ class Algorithm:
             None: Only returns if cancelled with external trigger.
         """
     # ---------------------- First parameter set ---------------------- #
-        mute_param_vals = {param:val for param,val in self.model.param_vals.items()
-                           if 'optimizable' in self.model.param_details[param]}
-        full_param_vals = self.model.param_vals.copy() # Need to not modify the model version
+        mute_param_vals = {param:val for param, val in self.model.user.__dict__.items()
+                           if param in self.model.param_details
+                           and 'optimizable' in self.model.param_details[param]}
+        full_param_vals = {param:val for param, val in self.model.user.__dict__.items()
+                           if param in self.model.param_details} # Needs to be a copy of the items
         success_rate, parent_is_best_qty = 0.0 , 0
         if next_loop[0]: # checks if we are we in a susequent loop
             full_param_vals = next_loop[1]
