@@ -21,7 +21,7 @@ This file contains the following functions:
 import json
 import datetime as dt
 import sqlalchemy as db
-import sqlalchemy.orm as orm
+from sqlalchemy import orm
 from flask_socketio import SocketIO
 import data.constants as const
 from models.user import Base, User, default_user
@@ -40,12 +40,6 @@ with orm.Session(engine) as session:
     except FileNotFoundError:
         session.add(default_user())
     Base.metadata.create_all(engine)
-    # Attributes need to be eager/joined loaded to ensure they are accessable
-    # after the session is closed. https://docs.sqlalchemy.org/en/14/errors.html#error-bhk3
-    session.expire_on_commit = False
-    user = session.query(User).options(orm.joinedload(User.earnings),
-                                       orm.joinedload(User.income_profiles),
-                                       orm.joinedload(User.kids)).filter_by(user_id=USER_ID).one()
     session.commit() # commit() is optional unless data is added to database
 
 TODAY = dt.date.today()
@@ -58,14 +52,24 @@ class Model:
     """An instance of Model is used to keep track of a collection of parameters
 
     Attributes
-    ----------
-    param_vals : dict
-        {Parameter:value} that contribute to financial calculations
-    param_details : dict
-        {Parameter:detail obj} that shows details for a parameter such as type and range of options
+        param_details (dict): {Parameter:detail obj} that shows details for a parameter
+                                such as type and range of options
+
+        user (models.user.User): user data 
+        
+        socketio (SocketIO)
     """
     def __init__(self, socketio:SocketIO = None):
-        self.param_vals, self.param_details = load_params()
+        # self.param_vals, self.param_details = load_params()
+        with open(const.PARAM_DETAILS_LOC, encoding="utf-8") as json_file:
+            self.param_details:dict = json.load(json_file)
+        with orm.Session(engine, expire_on_commit = False) as session: # pylint: disable=redefined-outer-name
+            # Attributes need to be eager/joined loaded to ensure they are accessable
+            # after the session is closed. https://docs.sqlalchemy.org/en/14/errors.html#error-bhk3
+            self.user = session.query(User).filter_by(user_id=USER_ID).options(
+                                        orm.joinedload(User.earnings),
+                                        orm.joinedload(User.income_profiles),
+                                        orm.joinedload(User.kids)).one()
         self.socketio = socketio
 
     def log_to_optimize_page(self, log:str):
