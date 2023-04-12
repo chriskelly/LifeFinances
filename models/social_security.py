@@ -175,7 +175,7 @@ class Calculator:
         """
         res =  max(self._get_worker_payment(row, net_worth, equity_target),
                    self._get_spousal_payment(row, net_worth, equity_target))
-        if self.sim.admin and self.usr == 'partner':
+        if self.sim.user.admin and self.usr == 'partner':
             res += self._admin_pension_payment(row, equity_target, net_worth)
         return res
 

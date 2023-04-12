@@ -70,9 +70,7 @@ class Simulator:
         user (models.user.User): user data
 
         rows (int): The total number of time periods per simulation
-    
-        admin (bool)
-        
+            
         override_dict (dict): A dictionary for parameters that you want to override
     
     Methods
@@ -82,7 +80,6 @@ class Simulator:
     def __init__(self, user:User, override_dict:dict):
         self.user = user
         self.rows = int((self.user.calculate_til - model.TODAY_YR_QT)/.25)
-        self.admin = self.user.admin # Are you Chris?
         self.partner = self.user.partner
         self.override_dict = override_dict
 
