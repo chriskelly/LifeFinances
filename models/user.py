@@ -13,6 +13,25 @@ from sqlalchemy.ext.declarative import declarative_base
 # A hybrid property is a special type of property that can be accessed as either
 # an instance attribute or a class attribute, depending on how it's called.
 
+class SuperColumn(Column): # pylint: disable=abstract-method # not intending to overwrite
+    """Stores additional information in the Column objects defined for each table"""
+    def __init__(self, *args, label_text:str, help_text:str, **kwargs):
+        """Stores additional information in the Column objects defined for each table
+
+        Args:
+            label_text (str): Human friendly label to be shown
+            help_text (str): Text description of item
+        
+        Kwargs:
+            options (list): Limited options for Column
+            is_mutable (bool): Indicates attribute can be modified by the optimizer script
+        """
+        self.label_text = label_text
+        self.help_text = help_text
+        self.options:list = kwargs.pop('options', [])
+        self.is_mutable:bool = kwargs.pop('is_mutable', False)
+        super().__init__(*args, **kwargs)
+
 Base = declarative_base()
 
 class EarningsRecord(Base):
@@ -86,13 +105,20 @@ class User(Base):
     kids:list[Kid] = relationship('Kid', backref='user')
 
     user_id:int = Column(Integer, primary_key=True, autoincrement=True)
-    age:int = Column(Integer, nullable=False, server_default=text("29"))
+    age:int = SuperColumn(Integer, nullable=False, server_default=text("29"),
+                          label_text = 'Your Age', help_text="Current age of user")
     partner:bool = Column(Integer, nullable=False, server_default=text("1"))
     partner_age:int = Column(Integer, nullable=False, server_default=text("34"))
     calculate_til:float = Column(Float, nullable=False, server_default=text("2090"))
     current_net_worth:float = Column(Float, nullable=False, server_default=text("250"))
     yearly_spending:float = Column(Float, nullable=False, server_default=text("60"))
-    state:str = Column(Text, nullable=False, server_default=text("'California'"))
+    state:str = SuperColumn(Text, nullable=False, server_default=text("'California'"),
+                            label_text='State of Residence',
+                            help_text='State of residence for tax purposes',
+                            options = [
+                                "California",
+                                "New York"
+                            ])
     drawdown_tax_rate:float = Column(Float, nullable=False, server_default=text(".1"))
     cost_of_kid:float = Column(Float, nullable=False, server_default=text(".12"))
     spending_method:str = Column(Text, nullable=False, server_default=text("'ceil-floor'"))
