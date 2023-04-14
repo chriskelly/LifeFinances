@@ -100,7 +100,7 @@ class Algorithm:
         else: # if not, keep random mutating till we hit SUCCESS_THRESH
             while success_rate <  INITIAL_SUCCESS_THRESH:
                 success_rate, parent_mutable_vals = self._make_child(success_rate, 'random')
-                if isinstance(success_rate, float):
+                if success_rate is None:
                     return # if cancelled
                 if DEBUG_LVL >= 1:
                     print(f"Success Rate: {success_rate*100:.2f}%")
@@ -137,7 +137,7 @@ class Algorithm:
                     success_rate = 0.0
                     while success_rate <  INITIAL_SUCCESS_THRESH:
                         success_rate, parent_mutable_vals = self._make_child(success_rate, 'random')
-                        if not success_rate:
+                        if success_rate is None:
                             return # if cancelled
             # ------ Child is better ------ #
             else: # If child better than parent, update success rate and params
