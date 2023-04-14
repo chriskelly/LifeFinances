@@ -22,7 +22,7 @@ class SuperColumn(Column): # pylint: disable=abstract-method # not intending to 
         """
         self.label_text = label_text
         self.help_text = help_text
-        self.options = kwargs.pop('options', [])
+        self.options:list = kwargs.pop('options', [])
         self.optimizable:bool = kwargs.pop('optimizable', False)
         super().__init__(*args, **kwargs)
 
@@ -91,9 +91,24 @@ class User(Base):
         earnings (list[EarningsRecord]): EarningsRecords with matching user_id
         income_profiles (list[JobIncome]): JobIncomes with matching user_id
         kids (list[Kid]): Kids with matching user_id
-        other attribute details found in `data/param_details.json`
+        other attribute details found in help_text attributes
     """
     __tablename__ = 'users'
+
+    def optimizable_parameters(self) -> list[str]:
+        """All parameters that are set to optimizable
+        
+        The return will be different if there's code that modifies the User class
+        to change the boolean state of 'optimizable' in the SuperColumn attributes.
+
+        Returns:
+            list[str]: List of User optimizable attributes (in string form)
+        """
+        return [key for key, _ in self.__dict__.items()
+                if key in User.__dict__
+                and 'optimizable' in User.__dict__[key].expression.__dict__
+                and User.__dict__[key].expression.__dict__['optimizable']]
+
     earnings:list[EarningsRecord] = relationship('EarningsRecord', backref='user')
     income_profiles:list[JobIncome] = relationship('JobIncome', backref='user')
     kids:list[Kid] = relationship('Kid', backref='user')
@@ -203,7 +218,7 @@ class User(Base):
                                                                           , but know this method \
                                                                               does not use \
                                                                                   leverage.",
-                                      options = range(500,4000,100),
+                                      options = list(range(500,4000,100)),
                                       optimizable = True)
     annuities_instead_of_bonds:bool = SuperColumn(Integer, nullable=False, server_default=text("0"),
                                                   label_text='Annuities Instead of Bonds',

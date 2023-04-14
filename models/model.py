@@ -66,7 +66,7 @@ class Model:
         with orm.Session(engine, expire_on_commit = False) as session: # pylint: disable=redefined-outer-name
             # Attributes need to be eager/joined loaded to ensure they are accessable
             # after the session is closed. https://docs.sqlalchemy.org/en/14/errors.html#error-bhk3
-            self.user = session.query(User).filter_by(user_id=USER_ID).options(
+            self.user:User = session.query(User).filter_by(user_id=USER_ID).options(
                                         orm.joinedload(User.earnings),
                                         orm.joinedload(User.income_profiles),
                                         orm.joinedload(User.kids)).one()
@@ -81,53 +81,15 @@ class Model:
         if self.socketio:
             self.socketio.emit('new_log', {'log': log}, namespace='/optimize')
 
-    def save_from_genetic(self, mute_param_vals:dict, reduce_dates:bool):
-        """Save the mutable paramater values into the database.
-        If reduce_dates: reduce all the job last_dates by
-        one quarter if they're marked try_to_optimize
+    def update_from_optimizer(self, user:User):
+        """Update the user in the database.
 
         Args:
-            mute_param_vals (dict): {param:value} for mutable params,
-                assumes they're only in the 'users' Table of the database
-            reduce_dates (bool): whether or not to reduce the last_dates in the database
-
-        Raises:
-            Exception: if reducing the job last_date would make the job never start.
+            user (models.user.User): User object with updated parameters
         """
-        for param,val in mute_param_vals.items():
-            cmd = f'UPDATE users SET {param} = ? WHERE user_id = ?'
-            # Can't use SQL objects as placeholders https://stackoverflow.com/a/25387570/13627745
-            db_cmd(cmd,(val,USER_ID))
-        if reduce_dates:
-            # Reduce all last dates by one quarter
-                # Assuming dates for bond tent also needs to be reduced with earlier retire date
-            for param in ['bond_tent_start_date','bond_tent_peak_date','bond_tent_end_date']:
-                cmd = f'UPDATE users SET {param} = ? WHERE user_id = ?'
-                db_cmd(cmd,(self.param_vals[param]-0.25, USER_ID))
-                # Reduce income stop dates
-            for usr in ['user','partner']:
-                start_date = TODAY_YR_QT
-                for job in self.param_vals[f'{usr}_jobs']:
-                    last_date = job['last_date']
-                    duration = last_date - start_date + 0.25
-                    reduce = bool(job['try_to_optimize'])
-                    # check if job will start before previous job ends
-                    if duration <= 0.25 and reduce:
-                        raise ValueError(f'Income with Last Date of\
-                            {job["last_date"]} ends too early')
-                        # Not sure how to better handle this. You could delete the income item
-                        # in the params, but I don't think users would prefer the income be deleted.
-                        # You could add some sort of skip tag to the income that income.py
-                        # then uses to ignore, but that may not be easily debuggable
-                    if reduce:
-                        cmd = 'UPDATE job_incomes SET last_date = ?\
-                            WHERE user_id = ? AND job_income_id = ?'
-                        db_cmd(cmd,(job['last_date']-0.25, USER_ID, job['job_income_id']))
-                        print(f"Now trying to reduce {usr}'s last date to {last_date-0.25}!")
-                        self.log_to_optimize_page(f"Now trying to reduce {usr}'s\
-                            last date to {last_date-0.25}!")
-                    start_date = last_date + 0.25 # adjust start_date for next income
-        self.param_vals, _ = load_params()
+        with orm.Session(engine, expire_on_commit = False) as new_session:
+            new_session.add(user)
+            new_session.commit()
 
     def save_from_flask(self, form: dict[str,str]):
         """Save the form results into the database.
