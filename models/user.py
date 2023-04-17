@@ -3,9 +3,13 @@
 This module defines the attributes of a user and the default values populated into the database.
 
 """
-from sqlalchemy import Column, Float, ForeignKey, Integer, Text, text
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Float, ForeignKey, Integer, Text, text, orm
 from sqlalchemy.ext.declarative import declarative_base
+from flask_wtf import FlaskForm
+from wtforms_alchemy import ModelForm, ModelFieldList
+from wtforms.fields import FormField
+
+Base = declarative_base()
 
 class SuperColumn(Column): # pylint: disable=abstract-method # not intending to overwrite
     """Stores additional information in the Column objects defined for each table"""
@@ -26,8 +30,6 @@ class SuperColumn(Column): # pylint: disable=abstract-method # not intending to 
         self.optimizable:bool = kwargs.pop('optimizable', False)
         super().__init__(*args, **kwargs)
 
-Base = declarative_base()
-
 class EarningsRecord(Base):
     """A record of income earnings for a specific year
 
@@ -45,7 +47,6 @@ class EarningsRecord(Base):
     is_partner_earnings:bool = Column(Integer, nullable=False, server_default=text("0"))
     year:int = Column(Integer, nullable=False, server_default=text("0"))
     earnings:float = Column(Float, nullable=False, server_default=text("0"))
-
 
 class JobIncome(Base):
     """Represents total income earned by individual during specific period of time
@@ -66,7 +67,6 @@ class JobIncome(Base):
     user_id:int = Column(ForeignKey('users.user_id'), nullable=False, server_default=text("1"))
     is_partner_income:bool = Column(Integer, nullable=False, server_default=text("0"))
 
-
 class Kid(Base):
     """Represents each individual child
 
@@ -79,7 +79,6 @@ class Kid(Base):
     kid_id:int = Column(Integer, primary_key=True, autoincrement=True)
     user_id:int = Column(ForeignKey('users.user_id'), nullable=False, server_default=text("1"))
     birth_year:int = Column(Integer, nullable=False, server_default=text("2020"))
-
 
 class User(Base):
     """Main class for representing user data
@@ -109,9 +108,9 @@ class User(Base):
                 and 'optimizable' in User.__dict__[key].expression.__dict__
                 and User.__dict__[key].expression.__dict__['optimizable']]
 
-    earnings:list[EarningsRecord] = relationship('EarningsRecord', backref='user')
-    income_profiles:list[JobIncome] = relationship('JobIncome', backref='user')
-    kids:list[Kid] = relationship('Kid', backref='user')
+    earnings:list[EarningsRecord] = orm.relationship('EarningsRecord', backref='user')
+    income_profiles:list[JobIncome] = orm.relationship('JobIncome', backref='user')
+    kids:list[Kid] = orm.relationship('Kid', backref='user')
 
     user_id:int = Column(Integer, primary_key=True, autoincrement=True)
     age:int = SuperColumn(Integer, nullable=False, server_default=text("29"),
@@ -362,6 +361,34 @@ class User(Base):
                                                "cash-out"
                                            ],
                                            optimizable = True)
+
+class EarningsRecordForm(FlaskForm, ModelForm):
+    """Form for EarningsRecord class"""
+    class Meta:
+        """WTForms-Alchemy required class"""
+        model = EarningsRecord
+
+class JobIncomeForm(FlaskForm, ModelForm):
+    """Form for JobIncome class"""
+    class Meta:
+        """WTForms-Alchemy required class"""
+        model = JobIncome
+
+class KidForm(FlaskForm, ModelForm):
+    """Form for Kid class"""
+    class Meta:
+        """WTForms-Alchemy required class"""
+        model = Kid
+
+class UserForm(FlaskForm, ModelForm):
+    """Form for User class"""
+    class Meta:
+        """WTForms-Alchemy required class"""
+        model = User
+    earnings = ModelFieldList(FormField(EarningsRecordForm))
+    kids_are_something = ModelFieldList(FormField(KidForm))
+    income_profiles = ModelFieldList(FormField(JobIncomeForm))
+
 
 def default_user() -> User:
     """Generate a user with default parameters
