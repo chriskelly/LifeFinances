@@ -18,19 +18,11 @@ This file contains the following functions:
 """
 import json
 import datetime as dt
-# import sqlalchemy as db
-# from sqlalchemy import orm
 from flask_socketio import SocketIO
 from app import db, app
 import data.constants as const
 from models.user import User, default_user
 
-# def copy_default_values():
-#     """Overwrite the user database with the default database"""
-#     shutil.copy(const.DEFAULT_DB_LOC, const.DB_LOC)
-
-# Generate the database schema
-# engine = db.create_engine(f'sqlite:///{const.DB_LOC}')
 USER_ID = 1 # Default User ID is 1 until we support user login
 
 def initialize_db():
@@ -68,7 +60,7 @@ class Model:
         with app.app_context():
             # Attributes need to be eager/joined loaded to ensure they are accessable
             # after the session is closed. https://docs.sqlalchemy.org/en/14/errors.html#error-bhk3
-            self.user:User = db.session.query(User).filter_by(user_id=USER_ID).options(
+            self.user:User = db.session.query(User).filter_by(id=USER_ID).options(
                                         db.joinedload(User.earnings),
                                         db.joinedload(User.income_profiles),
                                         db.joinedload(User.kids)).one()
@@ -93,52 +85,52 @@ class Model:
             db.session.add(self.user)
             db.session.commit()
 
-    def save_from_flask(self, form: dict[str,str]):
-        """Save the form results into the database.
+    # def save_from_flask(self, form: dict[str,str]):
+    #     """Save the form results into the database.
 
-        Args:
-            form (dict[str,str]): (param:str(value))
-        """
-        form_set = set()
-        for key, val in form.items():
-            if key in ['save', 'remove_row', 'add_row']:
-                continue
-            if key in form_set:
-                continue # avoid duplicates from checkboxes. Only the first should be counted
-            else: form_set.add(key)
-            if val.isdigit():
-                val = int(val)
-            elif _is_float(val):
-                val = float(val)
-            elif val == "True":
-                val = 1
-            elif val == "False":
-                val = 0
+    #     Args:
+    #         form (dict[str,str]): (param:str(value))
+    #     """
+    #     form_set = set()
+    #     for key, val in form.items():
+    #         if key in ['save', 'remove_row', 'add_row']:
+    #             continue
+    #         if key in form_set:
+    #             continue # avoid duplicates from checkboxes. Only the first should be counted
+    #         else: form_set.add(key)
+    #         if val.isdigit():
+    #             val = int(val)
+    #         elif _is_float(val):
+    #             val = float(val)
+    #         elif val == "True":
+    #             val = 1
+    #         elif val == "False":
+    #             val = 0
 
-            # if the key matches the db name exactly, it isn't a special key
-            if key in self.param_vals:
-                # Can't use SQL objects as placeholders
-                # https://stackoverflow.com/a/25387570/13627745
-                cmd = f'UPDATE users SET {key} = ? WHERE user_id = ?'
-                db_cmd(cmd,(val,USER_ID))
-                continue
-            else:
-                try:
-                    key, idx, sub_k = key.split('@')
-                except ValueError:
-                    key, idx = key.split('@')
-            # job incomes
-            if key in ['user_jobs','partner_jobs']:
-                cmd = f'UPDATE job_incomes SET {sub_k} = ? WHERE user_id = ? AND job_income_id = ?'
-            # kid birth years
-            elif key == 'kid_birth_years':
-                cmd = 'UPDATE kids SET birth_year = ? WHERE user_id = ? AND kid_id = ?'
-            # earnings record
-            elif key in ['user_earnings_record','partner_earnings_record']:
-                cmd = f'UPDATE earnings_records SET {sub_k}\
-                    = ? WHERE user_id = ? AND earnings_id = ?'
-            db_cmd(cmd,(val,USER_ID,idx))
-        self.param_vals, _ = load_params()
+    #         # if the key matches the db name exactly, it isn't a special key
+    #         if key in self.param_vals:
+    #             # Can't use SQL objects as placeholders
+    #             # https://stackoverflow.com/a/25387570/13627745
+    #             cmd = f'UPDATE users SET {key} = ? WHERE user_id = ?'
+    #             db_cmd(cmd,(val,USER_ID))
+    #             continue
+    #         else:
+    #             try:
+    #                 key, idx, sub_k = key.split('@')
+    #             except ValueError:
+    #                 key, idx = key.split('@')
+    #         # job incomes
+    #         if key in ['user_jobs','partner_jobs']:
+    #             cmd = f'UPDATE job_incomes SET {sub_k} = ? WHERE user_id = ? AND job_income_id = ?'
+    #         # kid birth years
+    #         elif key == 'kid_birth_years':
+    #             cmd = 'UPDATE kids SET birth_year = ? WHERE user_id = ? AND kid_id = ?'
+    #         # earnings record
+    #         elif key in ['user_earnings_record','partner_earnings_record']:
+    #             cmd = f'UPDATE earnings_records SET {sub_k}\
+    #                 = ? WHERE user_id = ? AND earnings_id = ?'
+    #         db_cmd(cmd,(val,USER_ID,idx))
+    #     self.param_vals, _ = load_params()
 
 #     def add_to_special_tables(self,param:str):
 #         """Inserts one row into the table related to the passed in param and reloads the param_vals

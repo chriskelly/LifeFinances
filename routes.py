@@ -2,7 +2,6 @@
 
 import os
 import webbrowser
-from copy import copy
 import flask
 from flask_socketio import emit
 from models.user import UserForm
@@ -76,17 +75,7 @@ def test():
     form = UserForm(obj=mdl.user)
 
     if flask.request.method == 'POST' and form.validate():
-        # The populate_obj() overwrites the ids in the joined tables of the user obj, so those
-        # details need to be saved prior to populate_obj(), then that data can be reinserted into
-        # the user object
-        save_data = [copy(earning) for earning in mdl.user.earnings]
         form.populate_obj(mdl.user)
-        for i, earning in enumerate(mdl.user.earnings):
-            pass
-            # setattr(earning, 'user_id', save_data[i].user_id)
-            # setattr(earning, 'earnings_id', save_data[i].earnings_id)
-            # earning.user_id = save_data[i].user_id
-            # earning.earnings_id = save_data[i].earnings_id
         mdl.update_user()
     return flask.render_template('test.html', form=form)
 

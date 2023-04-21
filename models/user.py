@@ -5,7 +5,7 @@ This module defines the attributes of a user and the default values populated in
 """
 from flask_wtf import FlaskForm
 from wtforms_alchemy import ModelForm, ModelFieldList
-from wtforms.fields import FormField, SelectField, SubmitField
+from wtforms.fields import FormField, SelectField, SubmitField, HiddenField
 from app import db
 
 class SuperColumn(db.Column): # pylint: disable=abstract-method # not intending to overwrite
@@ -39,8 +39,8 @@ class EarningsRecord(db.Model):
     Attributes: details found in `data/param_details.json`
     """
     __tablename__ = 'earnings_records'
-    earnings_id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id:int = db.Column(db.ForeignKey('users.user_id'), nullable=False, server_default=db.text("1"))
+    id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id:int = db.Column(db.Integer, db.ForeignKey('users.id'))
     is_partner_earnings:bool = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     year:int = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     earnings:float = db.Column(db.Float, nullable=False, server_default=db.text("0"))
@@ -54,14 +54,15 @@ class JobIncome(db.Model):
     Attributes: details found in `data/param_details.json`
     """
     __tablename__ = 'job_incomes'
-    job_income_id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
     starting_income:float = db.Column(db.Float, nullable=False, server_default=db.text("50"))
     tax_deferred_income:float = db.Column(db.Float, nullable=False, server_default=db.text("10"))
     last_date:float = db.Column(db.Float, nullable=False, server_default=db.text("2035.25"))
     yearly_raise:float = db.Column(db.Float, nullable=False, server_default=db.text("0.04"))
     try_to_optimize:bool = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
-    social_security_eligible:bool = db.Column(db.Integer, nullable=False, server_default=db.text("1"))
-    user_id:int = db.Column(db.ForeignKey('users.user_id'), nullable=False, server_default=db.text("1"))
+    social_security_eligible:bool = db.Column(db.Integer, nullable=False,
+                                              server_default=db.text("1"))
+    user_id:int = db.Column(db.Integer, db.ForeignKey('users.id'))
     is_partner_income:bool = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
 
 class Kid(db.Model):
@@ -73,8 +74,8 @@ class Kid(db.Model):
     Attributes: details found in `data/param_details.json`
     """
     __tablename__ = 'kids'
-    kid_id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id:int = db.Column(db.ForeignKey('users.user_id'), nullable=False, server_default=db.text("1"))
+    id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id:int = db.Column(db.Integer, db.ForeignKey('users.id'))
     birth_year:int = db.Column(db.Integer, nullable=False, server_default=db.text("2020"))
 
 class User(db.Model):
@@ -109,7 +110,7 @@ class User(db.Model):
     income_profiles:list[JobIncome] = db.relationship('JobIncome', backref='user')
     kids:list[Kid] = db.relationship('Kid', backref='user')
 
-    user_id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
     age:int = SuperColumn(db.Integer, nullable=False, server_default=db.text("29"),
                           label_text = 'Your Age', help_text="Current age of user")
     partner:bool = SuperColumn(db.Boolean, nullable=False, server_default=db.text("1"),
@@ -153,7 +154,8 @@ class User(db.Model):
                                     help_text='Estimate for average cost of kid as a percentage of \
                                         spending.\n A value of 0.12 increases spending by 12% for \
                                             each child for 22 years after their birth.')
-    spending_method:str = SuperColumn(db.Text, nullable=False, server_default=db.text("'ceil-floor'"),
+    spending_method:str = SuperColumn(db.Text, nullable=False,
+                                      server_default=db.text("'ceil-floor'"),
                                       label_text='Spending Adjustment Method',
                                       help_text='Controls how spending changes each year.\n\
                                           Inflation-only: increases spending by the inflation rate \
@@ -192,7 +194,8 @@ class User(db.Model):
                                             "Bond Tent"
                                         ],
                                        optimizable = True)
-    real_estate_equity_ratio:float = SuperColumn(db.Float, nullable=False, server_default=db.text("0.6"),
+    real_estate_equity_ratio:float = SuperColumn(db.Float, nullable=False,
+                                                 server_default=db.text("0.6"),
                                                  label_text='Real Estate Ratio',
                                                  help_text='Ratio of real estate within equity \
                                                      allocation.\n If value set to 0.5, but bonds \
@@ -224,7 +227,8 @@ class User(db.Model):
                                                                                   leverage.",
                                       options = list(range(500,4000,100)),
                                       optimizable = True)
-    annuities_instead_of_bonds:bool = SuperColumn(db.Boolean, nullable=True, server_default=db.text("0"),
+    annuities_instead_of_bonds:bool = SuperColumn(db.Boolean, nullable=True,
+                                                  server_default=db.text("0"),
                                                   label_text='Annuities Instead of Bonds',
                                                   help_text='Money that would be invested into \
                                                       bonds is instead invested in an annuity.',
@@ -296,7 +300,8 @@ class User(db.Model):
                                            help_text='When using the bond tent allocation method, \
                                                this value determines the year bond allocation gets \
                                                    to final default_value')
-    social_security_method:str = SuperColumn(db.Text, nullable=False, server_default=db.text("'mid'"),
+    social_security_method:str = SuperColumn(db.Text, nullable=False,
+                                             server_default=db.text("'mid'"),
                                              label_text='Your Social Security Method',
                                              help_text="Models the age at which you take social \
                                                  security.\n Early age = 62, mid age = 66, late \
@@ -329,7 +334,8 @@ class User(db.Model):
                                                         "net worth"
                                                      ],
                                                      optimizable = True)
-    pension_trust_factor:float = SuperColumn(db.Float, nullable=False, server_default=db.text("0.8"),
+    pension_trust_factor:float = SuperColumn(db.Float, nullable=False,
+                                             server_default=db.text("0.8"),
                                              label_text='Pension Trust Factor',
                                              help_text='Many people are skeptical of relying on \
                                                  social security. A value of 0.8 models your \
@@ -372,18 +378,21 @@ class EarningsRecordForm(FlaskForm, ModelForm):
     class Meta:
         """WTForms-Alchemy required class"""
         model = EarningsRecord
+    id = HiddenField() # Ensures id stays linked to User object for saving
 
 class JobIncomeForm(FlaskForm, ModelForm):
     """Form for JobIncome class"""
     class Meta:
         """WTForms-Alchemy required class"""
         model = JobIncome
+    id = HiddenField()
 
 class KidForm(FlaskForm, ModelForm):
     """Form for Kid class"""
     class Meta:
         """WTForms-Alchemy required class"""
         model = Kid
+    id = HiddenField()
 
 class UserForm(FlaskForm, ModelForm):
     """Form for User class"""
@@ -391,7 +400,7 @@ class UserForm(FlaskForm, ModelForm):
         """WTForms-Alchemy required class"""
         model = User
         exclude = ['admin_pension_method','admin']
-    earnings = ModelFieldList(FormField(EarningsRecordForm, default=EarningsRecord)) # REMOVE IF IT DOESN'T HELP
+    earnings = ModelFieldList(FormField(EarningsRecordForm))
     kids = ModelFieldList(FormField(KidForm))
     income_profiles = ModelFieldList(FormField(JobIncomeForm))
     state = SelectField(choices=User.state.options)
@@ -406,7 +415,7 @@ class UserForm(FlaskForm, ModelForm):
     social_security_method = SelectField(choices=User.social_security_method.options)
     partner_social_security_method = SelectField(choices
                                                  =User.partner_social_security_method.options)
-    submit = SubmitField('Submit')
+    submit = SubmitField('Save')
     # automatically generate all SelectFields() for any User attribute with defined options
 
 def default_user() -> User:

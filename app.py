@@ -1,6 +1,5 @@
 """Entry point for application"""
 
-import webbrowser
 import flask
 from flask_socketio import SocketIO
 from flask_bootstrap import Bootstrap
@@ -15,7 +14,7 @@ app.secret_key = 'dev' # default value during development
 socketio = SocketIO(app)
 Bootstrap().init_app(app)
 
-if __name__ == "__main__":
-    URL = "http://127.0.0.1:5000/"
-    webbrowser.open(URL)
-    socketio.run(app, debug=True)
+# if __name__ == "__main__":
+#     URL = "http://127.0.0.1:5000/"
+#     webbrowser.open(URL)
+#     socketio.run(app, debug=True)
