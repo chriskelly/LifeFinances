@@ -170,7 +170,7 @@ class Algorithm:
                         f"Found a good combination! {success_rate*100:.2f}%\n {parent_mutable_vals}"
                         )
                     print(f"Final max: {success_rate*100:.2f}%\n {parent_mutable_vals}")
-                    self.model.update_from_optimizer(self.user)
+                    self.model.update_user(self.user)
                         # Reduce last dates by one quarter if desired
                     recursing = False # don't know yet if there's an income to reduce
                     usr_start_date = partner_start_date = models.model.TODAY_YR_QT

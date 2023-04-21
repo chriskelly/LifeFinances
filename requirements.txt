@@ -12,3 +12,5 @@ sqlalchemy<2.0
 flask_socketio
 flask_wtf
 WTForms-Alchemy
+Flask-Bootstrap
+flask_sqlalchemy
