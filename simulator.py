@@ -256,12 +256,18 @@ class Simulator:
                                                                 - 1)
                     taxes_ls[row] += portfolio_tax
                     net_transaction_ls[row] -= portfolio_tax
+
+                # If net worth and net transaction is 0 
+                if net_worth_ls[-1] <= 0 and net_transaction_ls[row] <= 0:
+                    net_worth_ls.append(0)
+                    break
+
                 if net_worth_ls[-1] >= 0: # prevent net worth from exponentially decreasing below 0
                     net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+net_transaction_ls[row]))
-                else: # if net worth started negative, assume no investing until positive net worth
+                else: # if net worth started negative, assume no investing until positive net worth 
                     net_worth_ls.append(net_worth_ls[-1]+net_transaction_ls[row])
             net_worth_ls.pop()
-            if net_worth_ls[-1]!=0:
+            if net_worth_ls[-1] > 0:
                 success_rate += 1
             final_net_worths.append(net_worth_ls[-1])
             withdrawal_rates.append(withdrawal_rate)
@@ -290,7 +296,7 @@ class Simulator:
                     "RE Returns":re_return_ls
                 }
             if debug_lvl >= 1:
-                plt.plot(date_ls,net_worth_ls)
+                plt.plot(date_ls[0:len(net_worth_ls)],net_worth_ls)
                 plt.ylabel('net worth, $1,000s')
                 plt.xlabel('time')
             if debug_lvl >= 3:
