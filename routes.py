@@ -77,6 +77,7 @@ def test():
     if flask.request.method == 'POST' and form.validate():
         form.populate_obj(mdl.user)
         mdl.update_user()
+        flask.flash('User updated successfully')
     return flask.render_template('test.html', form=form)
 
 if __name__ == "__main__":
