@@ -4,8 +4,7 @@ import os
 import webbrowser
 import flask
 from flask_socketio import emit
-from models.user import UserForm
-from models import model
+from models import model, user
 from app import socketio, app
 import data.constants as const
 
@@ -72,9 +71,11 @@ def start_optimizer():
 @app.route("/test", methods=('GET', 'POST'))
 def test():
     """Test Page"""
-    form = UserForm(obj=mdl.user)
+    form = user.UserForm(obj=mdl.user)
 
     if flask.request.method == 'POST' and form.validate():
+        # if 'add_income' in flask.request.form:
+        #     mdl.user.income_profiles.append(user.JobIncome())
         form.populate_obj(mdl.user)
         mdl.update_user()
         flask.flash('User updated successfully')

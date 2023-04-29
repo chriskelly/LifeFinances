@@ -3,7 +3,45 @@
 
 {% block content %}
   <h1>{% block title %} Test {% endblock %}</h1>
-  <div>
+  <form class="form form-horizontal" method="post" role="form">
+    {{ form.hidden_tag() }}
+    {{ wtf.form_errors(form, hiddens="only") }}
+    {{ wtf.form_field(form.submit) }}
+    {{ wtf.form_field(form.age) }}
+    {{ wtf.form_field(form.partner) }}
+    {{ wtf.form_field(form.partner_age) }}
+    {{ wtf.form_field(form.calculate_til) }}
+    {{ wtf.form_field(form.current_net_worth) }}
+    {{ wtf.form_field(form.income_profiles) }}
+    <button type="submit" name="add_income">+ Next Job</button>
+    {{ wtf.form_field(form.yearly_spending) }}
+    {{ wtf.form_field(form.state) }}
+    {{ wtf.form_field(form.drawdown_tax_rate) }}
+    {{ wtf.form_field(form.spending_method) }}
+    {{ wtf.form_field(form.allowed_fluctuation) }}
+    {{ wtf.form_field(form.kids) }}
+    {{ wtf.form_field(form.cost_of_kid) }}
+    {{ wtf.form_field(form.allocation_method) }}
+    {{ wtf.form_field(form.real_estate_equity_ratio) }}
+    {{ wtf.form_field(form.equity_target) }}
+    {{ wtf.form_field(form.annuities_instead_of_bonds) }}
+    {{ wtf.form_field(form.flat_bond_target) }}
+    {{ wtf.form_field(form.bond_tent_start_allocation) }}
+    {{ wtf.form_field(form.bond_tent_start_date) }}
+    {{ wtf.form_field(form.bond_tent_peak_allocation) }}
+    {{ wtf.form_field(form.bond_tent_peak_date) }}
+    {{ wtf.form_field(form.bond_tent_end_allocation) }}
+    {{ wtf.form_field(form.bond_tent_end_date) }}
+    {{ wtf.form_field(form.social_security_method) }}
+    {{ wtf.form_field(form.partner_social_security_method) }}
+    {{ wtf.form_field(form.pension_trust_factor) }}
+    {{ wtf.form_field(form.retirement_spending_change) }}
+    {{ wtf.form_field(form.pension) }}
+    {{ wtf.form_field(form.partner_pension) }}
+    {{ wtf.form_field(form.earnings) }}
+    {{ wtf.form_field(form.submit) }}
+  </form> 
+  {# <div>
     {{ wtf.quick_form(form) }}
-  </div>
+  </div> #}
 {% endblock %}

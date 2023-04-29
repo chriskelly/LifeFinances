@@ -10,18 +10,16 @@ from app import db
 
 class SuperColumn(db.Column): # pylint: disable=abstract-method # not intending to overwrite
     """Stores additional information in the Column objects defined for each table"""
-    def __init__(self, *args, label_text:str, help_text:str, **kwargs):
+    def __init__(self, *args, help_text:str, **kwargs):
         """Stores additional information in the Column objects defined for each table
 
         Args:
-            label_text (str): Human friendly label to be shown
             help_text (str): Text description of item
         
         Kwargs:
             options (iterable): Limited options for Column
             optimizable (bool): Indicates attribute can be modified by the optimizer script
         """
-        self.label_text = label_text
         self.help_text = help_text
         self.options:list = kwargs.pop('options', [])
         self.optimizable:bool = kwargs.pop('optimizable', False)
@@ -41,9 +39,9 @@ class EarningsRecord(db.Model):
     __tablename__ = 'earnings_records'
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id:int = db.Column(db.Integer, db.ForeignKey('users.id'))
-    is_partner_earnings:bool = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
-    year:int = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
-    earnings:float = db.Column(db.Float, nullable=False, server_default=db.text("0"))
+    is_partner_earnings:bool = db.Column(db.Boolean, server_default=db.text("0"), info={'label':"Partner's?"})
+    year:int = db.Column(db.Integer, nullable=False, server_default=db.text("0"), info={'label':'Year'})
+    earnings:float = db.Column(db.Float, nullable=False, server_default=db.text("0"), info={'label':'Earnings'})
 
 class JobIncome(db.Model):
     """Represents total income earned by individual during specific period of time
@@ -55,15 +53,15 @@ class JobIncome(db.Model):
     """
     __tablename__ = 'job_incomes'
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    starting_income:float = db.Column(db.Float, nullable=False, server_default=db.text("50"))
-    tax_deferred_income:float = db.Column(db.Float, nullable=False, server_default=db.text("10"))
-    last_date:float = db.Column(db.Float, nullable=False, server_default=db.text("2035.25"))
-    yearly_raise:float = db.Column(db.Float, nullable=False, server_default=db.text("0.04"))
-    try_to_optimize:bool = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
-    social_security_eligible:bool = db.Column(db.Integer, nullable=False,
-                                              server_default=db.text("1"))
+    starting_income:float = db.Column(db.Float, nullable=False, server_default=db.text("50"), info={'label':'Salary'})
+    tax_deferred_income:float = db.Column(db.Float, nullable=False, server_default=db.text("10"), info={'label':'Tax Deferred Income'})
+    last_date:float = db.Column(db.Float, nullable=False, server_default=db.text("2035.25"), info={'label':'Last Date'})
+    yearly_raise:float = db.Column(db.Float, nullable=False, server_default=db.text("0.04"), info={'label':'Yearly Increase'})
+    try_to_optimize:bool = db.Column(db.Boolean, server_default=db.text("0"), info={'label':'Try to Optimize?'})
+    social_security_eligible:bool = db.Column(db.Boolean,
+                                              server_default=db.text("1"), info={'label':'Social Security Eligible?'})
     user_id:int = db.Column(db.Integer, db.ForeignKey('users.id'))
-    is_partner_income:bool = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
+    is_partner_income:bool = db.Column(db.Boolean, server_default=db.text("0"), info={'label':"Partner's?"})
 
 class Kid(db.Model):
     """Represents each individual child
@@ -76,7 +74,7 @@ class Kid(db.Model):
     __tablename__ = 'kids'
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id:int = db.Column(db.Integer, db.ForeignKey('users.id'))
-    birth_year:int = db.Column(db.Integer, nullable=False, server_default=db.text("2020"))
+    birth_year:int = db.Column(db.Integer, nullable=False, server_default=db.text("2020"), info={'label':'Birth Year'})
 
 class User(db.Model):
     """Main class for representing user data
@@ -112,51 +110,43 @@ class User(db.Model):
 
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
     age:int = SuperColumn(db.Integer, nullable=False, server_default=db.text("29"),
-                          label_text = 'Your Age', help_text="Current age of user")
-    partner:bool = SuperColumn(db.Boolean, nullable=False, server_default=db.text("1"),
-                               label_text='Partner', help_text='Do you have a partner? If \
+                          info={'label': 'Your Age'}, help_text="Current age of user")
+    partner:bool = SuperColumn(db.Boolean, server_default=db.text("1"),
+                               info={'label':'Partner'}, help_text='Do you have a partner? If \
                                    unchecked, all partner related parameters will be ignored')
     partner_age:int = SuperColumn(db.Integer, nullable=False, server_default=db.text("34"),
-                                  label_text="Partner's Age", help_text='Current age of partner')
+                                  info={'label':"Partner's Age"}, help_text='Current age of partner')
     calculate_til:float = SuperColumn(db.Float, nullable=False, server_default=db.text("2090"),
-                                      label_text='Simulation End Year', help_text='Final year for \
+                                      info={'label':'Simulation End Year'}, help_text='Final year for \
                                           simulation. Recommended value: birth year + 90')
     current_net_worth:float = SuperColumn(db.Float, nullable=False, server_default=db.text("250"),
-                                          label_text='Current Net Worth (in $1000s)',
-                                          help_text='Current net worth in $1000s',
-                                            info={
-                                                'description': 'This is the description of email.',
-                                                'label': 'Net Worth Info Label'
-                                                })
+                                          info={'label':'Current Net Worth (in $1000s)'},
+                                          help_text='Current net worth in $1000s')
     yearly_spending:float = SuperColumn(db.Float, nullable=False, server_default=db.text("60"),
-                                        label_text='Yearly Spending (in $1000s)',
+                                        info={'label':'Yearly Spending (in $1000s)'},
                                         help_text='Total household spending in $1000s')
     state:str = SuperColumn(db.Text, nullable=False, server_default=db.text("'California'"),
-                            label_text='State of Residence',
+                            info={'label':'State of Residence'},
                             help_text='State of residence for tax purposes',
                             options = [
                                 "California",
                                 "New York"
-                            ],
-                            info={
-                                'description': 'This is the description of email.',
-                                'label': 'Hello'
-                                })
+                            ])
     drawdown_tax_rate:float = SuperColumn(db.Float, nullable=False, server_default=db.text(".1"),
-                                          label_text='Drawdown Tax Rate', help_text='Assumed \
+                                          info={'label':'Drawdown Tax Rate'}, help_text='Assumed \
                                               average rate of tax on portfolio drawdown. 15% and \
                                                   20% are the marginal capital gains rates, but \
                                                       the average rate will depend on your mix of \
                                                           tax-advantaged accounts at the point of \
                                                               retirement.')
     cost_of_kid:float = SuperColumn(db.Float, nullable=False, server_default=db.text(".12"),
-                                    label_text='Cost of Each Child (% Spending)',
+                                    info={'label':'Cost of Each Child (% Spending)'},
                                     help_text='Estimate for average cost of kid as a percentage of \
                                         spending.\n A value of 0.12 increases spending by 12% for \
                                             each child for 22 years after their birth.')
     spending_method:str = SuperColumn(db.Text, nullable=False,
                                       server_default=db.text("'ceil-floor'"),
-                                      label_text='Spending Adjustment Method',
+                                      info={'label':'Spending Adjustment Method'},
                                       help_text='Controls how spending changes each year.\n\
                                           Inflation-only: increases spending by the inflation rate \
                                               for that year.\n Ceil-floor allows spending to \
@@ -169,12 +159,12 @@ class User(db.Model):
                                        ],
                                        optimizable = True)
     allowed_fluctuation:float = SuperColumn(db.Float, server_default=db.text("0.05"),
-                                            label_text='Ceiling-Floor Fluctuation (% of Spending)',
+                                            info={'label':'Ceiling-Floor Fluctuation (% of Spending)'},
                                             help_text='If using the ceil-floor method of spending, \
                                                 spending fluctuates by +/-5% (for value of 0.05) \
                                                     depending on market returns.')
     allocation_method:str = SuperColumn(db.Text, nullable=False, server_default=db.text("'Flat'"),
-                                        label_text='Portfolio Allocation Method',
+                                        info={'label':'Portfolio Allocation Method'},
                                         help_text='Equity / Bond allocation. \n Life Cycle: uses \
                                             the lifecycle investing method of 100% equities \
                                                 allocation until equity target met.\n Flat: Keeps \
@@ -196,7 +186,7 @@ class User(db.Model):
                                        optimizable = True)
     real_estate_equity_ratio:float = SuperColumn(db.Float, nullable=False,
                                                  server_default=db.text("0.6"),
-                                                 label_text='Real Estate Ratio',
+                                                 info={'label':'Real Estate Ratio'},
                                                  help_text='Ratio of real estate within equity \
                                                      allocation.\n If value set to 0.5, but bonds \
                                                          are 20%, allocation will be 40% real \
@@ -212,7 +202,7 @@ class User(db.Model):
                                                  ],
                                                  optimizable = True)
     equity_target:float = SuperColumn(db.Float, nullable=False, server_default=db.text("1500"),
-                                      label_text='Equity Target',
+                                      info={'label':'Equity Target'},
                                       help_text="When using lifecycle allocation or net-worth \
                                           targets for social security, this value acts as a pivot \
                                               point for the portfolio. If set to 1500 and using \
@@ -227,15 +217,14 @@ class User(db.Model):
                                                                                   leverage.",
                                       options = list(range(500,4000,100)),
                                       optimizable = True)
-    annuities_instead_of_bonds:bool = SuperColumn(db.Boolean, nullable=True,
-                                                  server_default=db.text("0"),
-                                                  label_text='Annuities Instead of Bonds',
+    annuities_instead_of_bonds:bool = SuperColumn(db.Boolean,                                                  server_default=db.text("0"),
+                                                  info={'label':'Annuities Instead of Bonds'},
                                                   help_text='Money that would be invested into \
                                                       bonds is instead invested in an annuity.',
                                                   options = [1, 0],
                                                   optimizable = True)
     flat_bond_target:float = SuperColumn(db.Float, server_default=db.text("0.2"),
-                                         label_text='Flat Bond Target',
+                                         info={'label':'Flat Bond Target'},
                                          help_text='When using the Flat allocation method, this \
                                              value determines the ratio of bonds in the portfolio',
                                          options = [
@@ -247,7 +236,7 @@ class User(db.Model):
                                          ],
                                          optimizable = True)
     bond_tent_start_allocation:float = SuperColumn(db.Float, server_default=db.text("0"),
-                                                   label_text='Bond Tent Start Allocation',
+                                                   info={'label':'Bond Tent Start Allocation'},
                                                    help_text='When using the bond tent allocation \
                                                        method, this value determines the initial \
                                                            allocation of bonds',
@@ -260,12 +249,12 @@ class User(db.Model):
                                                    ],
                                                    optimizable = True)
     bond_tent_start_date:float = SuperColumn(db.Float, server_default=db.text("2035"),
-                                             label_text='Bond Tent Start Date',
+                                             info={'label':'Bond Tent Start Date'},
                                              help_text='When using the bond tent allocation \
                                                  method, this value determines the year bond \
                                                      allocation starts to increase')
     bond_tent_peak_allocation:float = SuperColumn(db.Float, server_default=db.text("0.8"),
-                                                  label_text='Bond Tent Peak Allocation',
+                                                  info={'label':'Bond Tent Peak Allocation'},
                                                   help_text='When using the bond tent allocation \
                                                       method, this value determines the peak \
                                                           allocation of bonds',
@@ -278,12 +267,12 @@ class User(db.Model):
                                                    ],
                                                    optimizable = True)
     bond_tent_peak_date:float = SuperColumn(db.Float, server_default=db.text("2040"),
-                                            label_text='Bond Tent Peak Date',
+                                            info={'label':'Bond Tent Peak Date'},
                                             help_text='When using the bond tent allocation method, \
                                                 this value determines the year bond allocation \
                                                     peaks')
     bond_tent_end_allocation:float = SuperColumn(db.Float, server_default=db.text("0.0"),
-                                                 label_text='Bond Tent End Allocation',
+                                                 info={'label':'Bond Tent End Allocation'},
                                                  help_text='When using the bond tent allocation \
                                                      method, this value determines the final \
                                                          allocation of bonds',
@@ -296,13 +285,13 @@ class User(db.Model):
                                                    ],
                                                  optimizable = True)
     bond_tent_end_date:float = SuperColumn(db.Float, server_default=db.text("2060"),
-                                           label_text='Bond Tent End Date',
+                                           info={'label':'Bond Tent End Date'},
                                            help_text='When using the bond tent allocation method, \
                                                this value determines the year bond allocation gets \
                                                    to final default_value')
     social_security_method:str = SuperColumn(db.Text, nullable=False,
                                              server_default=db.text("'mid'"),
-                                             label_text='Your Social Security Method',
+                                             info={'label':'Your Social Security Method'},
                                              help_text="Models the age at which you take social \
                                                  security.\n Early age = 62, mid age = 66, late \
                                                      age = 70.\n Net worth method triggers social \
@@ -318,7 +307,7 @@ class User(db.Model):
                                              optimizable = True)
     partner_social_security_method:str = SuperColumn(db.Text, nullable=False,
                                                      server_default=db.text("'mid'"),
-                                                     label_text="Partner's Social Security Method",
+                                                     info={'label':"Partner's Social Security Method"},
                                                      help_text="Models the date at which your \
                                                          partner takes social security.\n Early \
                                                              age = 62, mid age = 66, late age = \
@@ -336,7 +325,7 @@ class User(db.Model):
                                                      optimizable = True)
     pension_trust_factor:float = SuperColumn(db.Float, nullable=False,
                                              server_default=db.text("0.8"),
-                                             label_text='Pension Trust Factor',
+                                             info={'label':'Pension Trust Factor'},
                                              help_text='Many people are skeptical of relying on \
                                                  social security. A value of 0.8 models your \
                                                      social security payment as 80% of what the \
@@ -345,24 +334,24 @@ class User(db.Model):
                                                                  record.')
     retirement_spending_change:float = SuperColumn(db.Float, nullable=False,
                                                    server_default=db.text("-0.15"),
-                                                   label_text='Spending Change in Retirement (% of \
-                                                       Current Spending)',
+                                                   info={'label':'Spending Change in Retirement (% of \
+                                                       Current Spending)'},
                                                    help_text='Many people decrease spending in \
                                                        retirement. A value of -0.15 decreases \
                                                            spending by 15% once neither you nor \
                                                                your partner are earning income.')
-    pension:bool = SuperColumn(db.Boolean, nullable=True, server_default=db.text("0"),
-                               label_text='Pension Eligible',
+    pension:bool = SuperColumn(db.Boolean,server_default=db.text("0"),
+                               info={'label':'Pension Eligible'},
                                help_text='Are you going to receive a pension? If so, social \
                                    security payment is decreased')
-    partner_pension:bool = SuperColumn(db.Boolean, nullable=True, server_default=db.text("0"),
-                                       label_text='Partner Pension Eligible',
+    partner_pension:bool = SuperColumn(db.Boolean,server_default=db.text("0"),
+                                       info={'label':'Partner Pension Eligible'},
                                        help_text='Is your partner going to receive a pension? If \
                                            so, social security payment is decreased')
-    admin:bool = SuperColumn(db.Boolean, nullable=True, server_default=db.text("0"),
-                             label_text='Admin', help_text='Only applies for admin. Keep 0.')
+    admin:bool = SuperColumn(db.Boolean,server_default=db.text("0"),
+                             info={'label':'Admin'}, help_text='Only applies for admin. Keep 0.')
     admin_pension_method:str = SuperColumn(db.Text, server_default=db.text("'early'"),
-                                           label_text='Admin Pension Method',
+                                           info={'label':'Admin Pension Method'},
                                            help_text='Only applies for admin',
                                            options = [
                                                "early",
@@ -400,6 +389,7 @@ class UserForm(FlaskForm, ModelForm):
         """WTForms-Alchemy required class"""
         model = User
         exclude = ['admin_pension_method','admin']
+    submit = SubmitField('Save')
     earnings = ModelFieldList(FormField(EarningsRecordForm))
     kids = ModelFieldList(FormField(KidForm))
     income_profiles = ModelFieldList(FormField(JobIncomeForm))
@@ -415,7 +405,7 @@ class UserForm(FlaskForm, ModelForm):
     social_security_method = SelectField(choices=User.social_security_method.options)
     partner_social_security_method = SelectField(choices
                                                  =User.partner_social_security_method.options)
-    submit = SubmitField('Save')
+    submit_bot = SubmitField('Save')
     # automatically generate all SelectFields() for any User attribute with defined options
 
 def default_user() -> User:
