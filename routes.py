@@ -72,12 +72,28 @@ def start_optimizer():
 def test():
     """Test Page"""
     form = user.UserForm(obj=mdl.user)
-
     if flask.request.method == 'POST' and form.validate():
-        # if 'add_income' in flask.request.form:
-        #     mdl.user.income_profiles.append(user.JobIncome())
-        form.populate_obj(mdl.user)
-        mdl.update_user()
+        # if 'submit' in flask.request.form:
+        if 'add_field' in flask.request.form:
+            user.append_field(form, field=flask.request.form['add_field'])
+            form.populate_obj(mdl.user)
+            mdl.save_user()
+            form.process(obj=mdl.user)
+        if 'remove_field' in flask.request.form:
+            field_id=flask.request.form['remove_field']
+            table, _ = field_id.split('-')
+            fields = form.__dict__[table]
+            i = 0
+            for i, field in enumerate(fields):
+                if field.id == field_id:
+                    record = fields.object_data[i]
+                    mdl.delete_record(record, table)
+                    form.process(obj=mdl.user)
+                    break
+        if 'submit' in flask.request.form:
+            form.populate_obj(mdl.user)
+            mdl.save_user()
+            form.process(obj=mdl.user)
         flask.flash('User updated successfully')
     return flask.render_template('test.html', form=form)
 

@@ -75,15 +75,20 @@ class Model:
         if self.socketio:
             self.socketio.emit('new_log', {'log': log}, namespace='/optimize')
 
-    def update_user(self):
+    def save_user(self):
         """Update the user in the database.
 
         Args:
             user (models.user.User): User object with updated parameters
         """
-        with app.app_context():
-            db.session.add(self.user)
-            db.session.commit()
+        # with app.app_context():
+        db.session.add(self.user)
+        db.session.commit()
+
+    def delete_record(self, record_to_delete, table):
+        db.session.delete(record_to_delete) # delete from database
+        db.session.commit()
+        self.user.__dict__[table].remove(record_to_delete) # disconnect from user
 
     # def save_from_flask(self, form: dict[str,str]):
     #     """Save the form results into the database.

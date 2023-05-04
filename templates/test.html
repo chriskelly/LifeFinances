@@ -12,14 +12,25 @@
     {{ wtf.form_field(form.partner_age) }}
     {{ wtf.form_field(form.calculate_til) }}
     {{ wtf.form_field(form.current_net_worth) }}
-    {{ wtf.form_field(form.income_profiles) }}
-    <button type="submit" name="add_income">+ Next Job</button>
+    {% for field in form.income_profiles %}
+      <div>
+        {{ wtf.form_field(field) }}
+        <button type="submit" name="remove_field" value="{{ field.id }}">-</button>
+      </div>
+    {% endfor %}
+    <button type="submit" name="add_field" value="income">+ Next Job</button>
     {{ wtf.form_field(form.yearly_spending) }}
     {{ wtf.form_field(form.state) }}
     {{ wtf.form_field(form.drawdown_tax_rate) }}
     {{ wtf.form_field(form.spending_method) }}
     {{ wtf.form_field(form.allowed_fluctuation) }}
-    {{ wtf.form_field(form.kids) }}
+    {% for field in form.kids %}
+      <div>
+      {{ wtf.form_field(field) }}
+      <button type="submit" name="remove_field" value="{{ field.id }}">-</button>
+      </div>
+    {% endfor %}
+    <button type="submit" name="add_field" value="kid">+ Kid</button>
     {{ wtf.form_field(form.cost_of_kid) }}
     {{ wtf.form_field(form.allocation_method) }}
     {{ wtf.form_field(form.real_estate_equity_ratio) }}
@@ -38,10 +49,14 @@
     {{ wtf.form_field(form.retirement_spending_change) }}
     {{ wtf.form_field(form.pension) }}
     {{ wtf.form_field(form.partner_pension) }}
-    {{ wtf.form_field(form.earnings) }}
+    {% for field in form.earnings %}
+      <div>
+        {{ wtf.form_field(field) }}
+        <button type="submit" name="remove_field" value="{{ field.id }}">-</button>
+      </div>
+    {% endfor %}
+    <button type="submit" name="add_field" value="earning">+ Earnings</button>
+
     {{ wtf.form_field(form.submit) }}
   </form> 
-  {# <div>
-    {{ wtf.quick_form(form) }}
-  </div> #}
 {% endblock %}

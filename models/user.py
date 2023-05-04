@@ -8,7 +8,7 @@ from wtforms_alchemy import ModelForm, ModelFieldList
 from wtforms.fields import FormField, SelectField, SubmitField, HiddenField
 from app import db
 
-class SuperColumn(db.Column): # pylint: disable=abstract-method # not intending to overwrite
+class SuperColumn(db.Column):
     """Stores additional information in the Column objects defined for each table"""
     def __init__(self, *args, help_text:str, **kwargs):
         """Stores additional information in the Column objects defined for each table
@@ -405,8 +405,14 @@ class UserForm(FlaskForm, ModelForm):
     social_security_method = SelectField(choices=User.social_security_method.options)
     partner_social_security_method = SelectField(choices
                                                  =User.partner_social_security_method.options)
-    submit_bot = SubmitField('Save')
-    # automatically generate all SelectFields() for any User attribute with defined options
+
+def append_field(form:UserForm, field):
+    if field == 'income':
+        form.income_profiles.append_entry(FormField(JobIncomeForm()))
+    elif field == 'kid':
+        form.kids.append_entry(FormField(KidForm()))
+    elif field == 'earning':
+        form.earnings.append_entry(FormField(EarningsRecordForm()))
 
 def default_user() -> User:
     """Generate a user with default parameters
