@@ -78,14 +78,8 @@ class Model:
         Args:
             user (models.user.User): User object with updated parameters
         """
-        # with app.app_context():
         db.session.add(self.user)
         db.session.commit()
-
-    def delete_record(self, record_to_delete, table):
-        db.session.delete(record_to_delete) # delete from database
-        db.session.commit()
-        self.user = get_user() # refresh user
 
 def get_user():
     return db.session.query(User).filter_by(id=USER_ID).options(

@@ -39,9 +39,9 @@ class EarningsRecord(db.Model):
     __tablename__ = 'earnings_records'
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id:int = db.Column(db.Integer, db.ForeignKey('users.id'))
-    is_partner_earnings:bool = db.Column(db.Boolean, server_default=db.text("0"), info={'label':"Partner's?"})
     year:int = db.Column(db.Integer, nullable=False, server_default=db.text("0"), info={'label':'Year'})
     earnings:float = db.Column(db.Float, nullable=False, server_default=db.text("0"), info={'label':'Earnings'})
+    is_partner_earnings:bool = db.Column(db.Boolean, server_default=db.text("0"), info={'label':"Partner's?"})
 
 class JobIncome(db.Model):
     """Represents total income earned by individual during specific period of time
@@ -53,9 +53,9 @@ class JobIncome(db.Model):
     """
     __tablename__ = 'job_incomes'
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    last_date:float = db.Column(db.Float, nullable=False, server_default=db.text("2035.25"), info={'label':'Last Date'})
     starting_income:float = db.Column(db.Float, nullable=False, server_default=db.text("50"), info={'label':'Salary'})
     tax_deferred_income:float = db.Column(db.Float, nullable=False, server_default=db.text("10"), info={'label':'Tax Deferred Income'})
-    last_date:float = db.Column(db.Float, nullable=False, server_default=db.text("2035.25"), info={'label':'Last Date'})
     yearly_raise:float = db.Column(db.Float, nullable=False, server_default=db.text("0.04"), info={'label':'Yearly Increase'})
     try_to_optimize:bool = db.Column(db.Boolean, server_default=db.text("0"), info={'label':'Try to Optimize?'})
     social_security_eligible:bool = db.Column(db.Boolean,
@@ -390,9 +390,9 @@ class UserForm(FlaskForm, ModelForm):
         model = User
         exclude = ['admin_pension_method','admin']
     submit = SubmitField('Save')
-    earnings = ModelFieldList(FormField(EarningsRecordForm))
-    kids = ModelFieldList(FormField(KidForm))
-    income_profiles = ModelFieldList(FormField(JobIncomeForm))
+    earnings = ModelFieldList(FormField(EarningsRecordForm, 'Earning'))
+    kids = ModelFieldList(FormField(KidForm, 'Kid'))
+    income_profiles = ModelFieldList(FormField(JobIncomeForm, 'Income Profile'))
     state = SelectField(choices=User.state.options)
     spending_method = SelectField(choices=User.spending_method.options)
     allocation_method = SelectField(choices=User.allocation_method.options)

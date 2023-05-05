@@ -86,8 +86,11 @@ def test():
             i = 0
             for i, field in enumerate(fields):
                 if field.id == field_id:
-                    record = fields.object_data[i]
-                    mdl.delete_record(record, table)
+                    form.populate_obj(mdl.user) # save any changes made prior to removal
+                    # database record would be = fields.object_data[i]
+                    transient_record = mdl.user.__dict__[table][i]
+                    mdl.user.__dict__[table].remove(transient_record) # delete from user object
+                    mdl.save_user()
                     form.process(obj=mdl.user)
                     break
         if 'submit' in flask.request.form:
