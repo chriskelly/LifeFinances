@@ -23,17 +23,30 @@ def index():
 @app.route("/parameters", methods=('GET', 'POST'))
 def parameters():
     """Parameter Page"""
-    if flask.request.method == 'POST':
-        mdl.save_from_flask(flask.request.form)
-        if 'remove_row' in flask.request.form:
-            mdl.remove_from_special_tables(flask.request.form['remove_row'])
-        elif 'add_row' in flask.request.form:
-            mdl.add_to_special_tables(flask.request.form['add_row'])
-    context = {
-        "param_vals": mdl.param_vals,
-        "param_details":mdl.param_details
-    }
-    return flask.render_template("parameters.html", **context)
+    form = user.UserForm(obj=mdl.user)
+    if flask.request.method == 'POST' and form.validate():
+        if 'add_field' in flask.request.form:
+            user.append_field(form, field=flask.request.form['add_field'])
+            form.populate_obj(mdl.user)
+        elif 'remove_field' in flask.request.form:
+            # Confirm which field to remove, find the index,
+            # and remove the corresponding item from the user
+            field_id = flask.request.form['remove_field']
+            table, _ = field_id.split('-')
+            fields = form.__dict__[table]
+            for i, field in enumerate(fields):
+                if field.id == field_id:
+                    form.populate_obj(mdl.user) # save any changes made prior to call
+                    # if needed, database record would be = fields.object_data[i]
+                    transient_record = mdl.user.__dict__[table][i]
+                    mdl.user.__dict__[table].remove(transient_record) # delete from user object
+                    break
+        elif 'submit' in flask.request.form:
+            form.populate_obj(mdl.user)
+        mdl.save_user()
+        form.process(obj=mdl.user) # reload form with updated user
+        flask.flash('User updated successfully')
+    return flask.render_template("parameters.html", form=form)
 
 @app.route('/simulation', methods=('GET', 'POST'))
 def simulation():
@@ -67,38 +80,6 @@ def start_optimizer():
     import optimizer # pylint: disable=import-outside-toplevel # lazy import
     emit('new_log', {'log': 'Starting Optimizer'}, namespace='/optimize')
     socketio.start_background_task(optimizer.Algorithm(mdl).main)
-
-@app.route("/test", methods=('GET', 'POST'))
-def test():
-    """Test Page"""
-    form = user.UserForm(obj=mdl.user)
-    if flask.request.method == 'POST' and form.validate():
-        # if 'submit' in flask.request.form:
-        if 'add_field' in flask.request.form:
-            user.append_field(form, field=flask.request.form['add_field'])
-            form.populate_obj(mdl.user)
-            mdl.save_user()
-            form.process(obj=mdl.user)
-        if 'remove_field' in flask.request.form:
-            field_id=flask.request.form['remove_field']
-            table, _ = field_id.split('-')
-            fields = form.__dict__[table]
-            i = 0
-            for i, field in enumerate(fields):
-                if field.id == field_id:
-                    form.populate_obj(mdl.user) # save any changes made prior to removal
-                    # database record would be = fields.object_data[i]
-                    transient_record = mdl.user.__dict__[table][i]
-                    mdl.user.__dict__[table].remove(transient_record) # delete from user object
-                    mdl.save_user()
-                    form.process(obj=mdl.user)
-                    break
-        if 'submit' in flask.request.form:
-            form.populate_obj(mdl.user)
-            mdl.save_user()
-            form.process(obj=mdl.user)
-        flask.flash('User updated successfully')
-    return flask.render_template('test.html', form=form)
 
 if __name__ == "__main__":
     URL = "http://127.0.0.1:5000/"
