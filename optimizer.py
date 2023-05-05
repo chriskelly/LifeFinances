@@ -52,8 +52,7 @@ class Algorithm:
     model : model
         Model for managing parameters and database connection
     mutable_param_ranges : dict
-        {parameter:list of options} for parameters marked as optimizable 
-        in `data/param_details.json`
+        {parameter:list of options} for parameters marked as optimizable
     
     Methods
     -------

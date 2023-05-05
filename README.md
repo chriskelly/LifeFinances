@@ -35,7 +35,6 @@ pip3 install -r requirements.txt
   - default_values: if anything happens to your `data.db`, you can grab this copy to use
   - historical_data: project to generate returns modeled heavily after old returns. Not implemented yet
   - constants.py: constants used across multiple modules
-  - param_details.json: holds details of parameter such as type and range of options
   - param_success.json: records a tally for each successful set of parameters found in genetic.py. Helps understand what parts of a attempted parameter Range are used
 - diagnostics folder
   - saved folder: For every run of simulator.py, the run with the fastest failure is saved as diagnostics/saved/worst_failure.csv. When simulator.py is run with the constant DEBUG_LVL >= 2, you can save the results of individual runs. They'll be in this folder as well

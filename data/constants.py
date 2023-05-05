@@ -10,7 +10,6 @@ import git
 git_root= git.Repo(os.path.abspath(''),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 
-PARAM_DETAILS_LOC = os.path.join(git_root,'data/param_details.json')
 DB_LOC = os.path.join(git_root,'data/data.db')
 DEFAULT_DB_LOC = os.path.join(git_root,'data/default_values/data.db')
 PARAMS_SUCCESS_LOC = os.path.join(git_root,'data/param_success.json')

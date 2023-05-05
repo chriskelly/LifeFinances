@@ -33,8 +33,6 @@ class EarningsRecord(db.Model):
 
     Args:
         Base : sqlalchemy declarative_base()
-    
-    Attributes: details found in `data/param_details.json`
     """
     __tablename__ = 'earnings_records'
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -48,8 +46,6 @@ class JobIncome(db.Model):
 
     Args:
         Base : sqlalchemy declarative_base()
-
-    Attributes: details found in `data/param_details.json`
     """
     __tablename__ = 'job_incomes'
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -68,8 +64,6 @@ class Kid(db.Model):
 
     Args:
         Base : sqlalchemy declarative_base()
-
-    Attributes: details found in `data/param_details.json`
     """
     __tablename__ = 'kids'
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)

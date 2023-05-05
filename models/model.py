@@ -7,7 +7,7 @@ Required installations are detailed in requirements.txt.
 
 This file contains the following functions:
 
-    * load_params() - Pulls parameter values from the database
+    * initialize_db() - Create database with default user
     * copy_default_values() - Overwrite the user database with the default database
     * db_cmd() - Send a query to the database
     * Model.log_to_optimize_page() - Use a web socket connection to log to the optimizer page
@@ -47,19 +47,12 @@ class Model:
     """An instance of Model is used to keep track of a collection of parameters
 
     Attributes
-        param_details (dict): {Parameter:detail obj} that shows details for a parameter
-                                such as type and range of options
-
         user (models.user.User): user data 
         
         socketio (SocketIO)
     """
     def __init__(self, socketio:SocketIO = None):
-        with open(const.PARAM_DETAILS_LOC, encoding="utf-8") as json_file:
-            self.param_details:dict = json.load(json_file)
         with app.app_context():
-            # Attributes need to be eager/joined loaded to ensure they are accessable
-            # after the session is closed. https://docs.sqlalchemy.org/en/14/errors.html#error-bhk3
             self.user:User = get_user()
         self.socketio = socketio
 
@@ -82,167 +75,9 @@ class Model:
         db.session.commit()
 
 def get_user():
+    # Attributes need to be eager/joined loaded to ensure they are accessable
+    # after the session is closed. https://docs.sqlalchemy.org/en/14/errors.html#error-bhk3
     return db.session.query(User).filter_by(id=USER_ID).options(
                                         db.joinedload(User.earnings),
                                         db.joinedload(User.income_profiles),
                                         db.joinedload(User.kids)).one()
-
-    # def save_from_flask(self, form: dict[str,str]):
-    #     """Save the form results into the database.
-
-    #     Args:
-    #         form (dict[str,str]): (param:str(value))
-    #     """
-    #     form_set = set()
-    #     for key, val in form.items():
-    #         if key in ['save', 'remove_row', 'add_row']:
-    #             continue
-    #         if key in form_set:
-    #             continue # avoid duplicates from checkboxes. Only the first should be counted
-    #         else: form_set.add(key)
-    #         if val.isdigit():
-    #             val = int(val)
-    #         elif _is_float(val):
-    #             val = float(val)
-    #         elif val == "True":
-    #             val = 1
-    #         elif val == "False":
-    #             val = 0
-
-    #         # if the key matches the db name exactly, it isn't a special key
-    #         if key in self.param_vals:
-    #             # Can't use SQL objects as placeholders
-    #             # https://stackoverflow.com/a/25387570/13627745
-    #             cmd = f'UPDATE users SET {key} = ? WHERE user_id = ?'
-    #             db_cmd(cmd,(val,USER_ID))
-    #             continue
-    #         else:
-    #             try:
-    #                 key, idx, sub_k = key.split('@')
-    #             except ValueError:
-    #                 key, idx = key.split('@')
-    #         # job incomes
-    #         if key in ['user_jobs','partner_jobs']:
-    #             cmd = f'UPDATE job_incomes SET {sub_k} = ? WHERE user_id = ? AND job_income_id = ?'
-    #         # kid birth years
-    #         elif key == 'kid_birth_years':
-    #             cmd = 'UPDATE kids SET birth_year = ? WHERE user_id = ? AND kid_id = ?'
-    #         # earnings record
-    #         elif key in ['user_earnings_record','partner_earnings_record']:
-    #             cmd = f'UPDATE earnings_records SET {sub_k}\
-    #                 = ? WHERE user_id = ? AND earnings_id = ?'
-    #         db_cmd(cmd,(val,USER_ID,idx))
-    #     self.param_vals, _ = load_params()
-
-#     def add_to_special_tables(self,param:str):
-#         """Inserts one row into the table related to the passed in param and reloads the param_vals
-
-#         Args:
-#             param (str): parameter to determine table and partner status
-#         """
-#         if param == 'user_jobs':
-#             db_cmd(db.text('INSERT INTO job_incomes DEFAULT VALUES'))
-#         elif param == 'partner_jobs':
-#             db_cmd(db.text('INSERT INTO job_incomes (is_partner_income) VALUES (1)'))
-#         elif param == 'kid_birth_years':
-#             db_cmd(db.text('INSERT INTO kids DEFAULT VALUES'))
-#         elif param == 'user_earnings_record':
-#             db_cmd(db.text('INSERT INTO earnings_records DEFAULT VALUES'))
-#         elif param == 'partner_earnings_record':
-#             db_cmd(db.text('INSERT INTO earnings_records (is_partner_earnings) VALUES (1)'))
-#         self.param_vals, _ = load_params()
-
-#     def remove_from_special_tables(self,table_id:str):
-#         """Remove a row from a specific table and reloads the param_vals
-
-#         Args:
-#             table_id (str): 'table@id': str that combines the table being accessed
-#                                         and the id of the row in the table
-#         """
-#         table, idx = table_id.split('@')
-#         if table == 'job_incomes':
-#             cmd = db.text(f'DELETE FROM job_incomes WHERE job_income_id = {idx}')
-#         elif table == 'kids':
-#             cmd = db.text(f'DELETE FROM kids WHERE kid_id = {idx}')
-#         elif table == 'earnings_records':
-#             cmd = db.text(f'DELETE FROM earnings_records WHERE earnings_id = {idx}')
-#         # db_cmd(cmd,(idx,)) # can't get to work.
-#             # Keeps giving error for not enough binding arguements
-#         db_cmd(cmd)
-#         self.param_vals, _ = load_params()
-
-# def load_params():
-#     """Pulls parameter values from data/data.db and parameter details from data/param_detail.json
-
-#     Returns:
-#         dict: param_vals = {param:val} \n
-#         dict: param_details = {param:detail object}
-#     """
-#     res, headers = db_cmd(db.text(f'SELECT * FROM users WHERE user_id == {USER_ID}'))
-#     param_vals = {param:value for param, value in zip(headers,res[0])}
-#     del param_vals['user_id'] # not needed and doesn't have a match in param_details
-#         # historic earnings for social security
-#     usr_earnings, _ = db_cmd(db.text(f'SELECT * from earnings_records WHERE\
-#                             user_id == {USER_ID} AND is_partner_earnings == 0'))
-#     partner_earnings, _ = db_cmd(db.text(f'SELECT * from earnings_records WHERE\
-#                             user_id == {USER_ID} AND is_partner_earnings == 1'))
-#     param_vals['user_earnings_record'] = [[idx,year,earnings] for
-#                                           idx,_,_,year,earnings in usr_earnings]
-#     param_vals['partner_earnings_record'] = [[idx,year,earnings] for
-#                                              idx,_,_,year,earnings in partner_earnings]
-#         # kid birth years
-#     birth_years, _ = db_cmd(db.text(f'SELECT * from kids WHERE user_id == {USER_ID}'))
-#     param_vals['kid_birth_years'] = [[idx,year] for idx,_,year in birth_years]
-#         # income from jobs
-#     usr_job_incomes, descriptions = db_cmd(db.text(f'SELECT * from job_incomes\
-#                                     WHERE user_id == {USER_ID} AND is_partner_income == 0'))
-#     partner_job_incomes, _ = db_cmd(db.text(f'SELECT * from job_incomes\
-#                                     WHERE user_id == {USER_ID} AND is_partner_income == 1'))
-#         # Use dict comprehension (to get sub-parameters) in a list comprehension (to get all jobs)
-#     param_vals['user_jobs'] = [{key:val for key,val in zip(descriptions,job) if key not in\
-#                                 {'user_id','is_partner_income'}} for job in usr_job_incomes]
-#     param_vals['partner_jobs'] = [{key:val for key,val in zip(descriptions,job) if key not in\
-#                                 {'user_id','is_partner_income'}} for job in partner_job_incomes]
-#     # get param details
-#     with open(const.PARAM_DETAILS_LOC, encoding="utf-8") as json_file:
-#         param_details:dict = json.load(json_file)
-#     return param_vals, param_details
-
-# def db_cmd(cmd,cmd_args:tuple=None) -> tuple[list, list]:
-#     """Provide the query result to the provided command string
-
-#     Args:
-#         sql_cmd (_Executable): SQLAlchemy statement that can be executed
-#         cmd_args (tuple): Any arguements that need to be passed into the sql_cmd
-
-#     Returns:
-#         list: all output rows from query \n
-#         list: column names
-#     """
-#     with engine.connect() as conn:
-#         if cmd_args: # Used to avoid SQL injection attacks
-#             res = conn.execute(cmd,cmd_args)
-#         else:
-#             res = conn.execute(cmd)
-#         try:
-#             return res.fetchall(), res.keys()
-#         except db.exc.ResourceClosedError: # some commands won't have a return
-#             pass
-
-def _is_float(element):
-    """Checks whether the element can be converted to a float
-
-    Parameters
-    ----------
-    element : any
-
-    Returns
-    -------
-    bool
-
-    """
-    try:
-        float(element)
-        return True
-    except ValueError:
-        return False
