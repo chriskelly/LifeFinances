@@ -60,10 +60,7 @@ class Model:
         with app.app_context():
             # Attributes need to be eager/joined loaded to ensure they are accessable
             # after the session is closed. https://docs.sqlalchemy.org/en/14/errors.html#error-bhk3
-            self.user:User = db.session.query(User).filter_by(id=USER_ID).options(
-                                        db.joinedload(User.earnings),
-                                        db.joinedload(User.income_profiles),
-                                        db.joinedload(User.kids)).one()
+            self.user:User = get_user()
         self.socketio = socketio
 
     def log_to_optimize_page(self, log:str):
@@ -88,7 +85,13 @@ class Model:
     def delete_record(self, record_to_delete, table):
         db.session.delete(record_to_delete) # delete from database
         db.session.commit()
-        self.user.__dict__[table].remove(record_to_delete) # disconnect from user
+        self.user = get_user() # refresh user
+
+def get_user():
+    return db.session.query(User).filter_by(id=USER_ID).options(
+                                        db.joinedload(User.earnings),
+                                        db.joinedload(User.income_profiles),
+                                        db.joinedload(User.kids)).one()
 
     # def save_from_flask(self, form: dict[str,str]):
     #     """Save the form results into the database.
