@@ -27,6 +27,14 @@
         <a href="https://github.com/chriskelly/LifeFinances">GitHub</a>
     </nav>
     <hr>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+            {# alert class works with bootstrap #}
+            <div class="alert alert-info" role="alert">{{ message }}</div> 
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
     <div class="content">
         {% block content %} {% endblock %}
     </div>

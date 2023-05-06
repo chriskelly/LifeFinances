@@ -1,117 +1,62 @@
 {% extends 'base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
 
 {% block content %}
   <h1>{% block title %} Parameters {% endblock %}</h1>
-  <form method="post">
-    <input type="submit" name="save" value="Save"></button> 
-    <ul>
-      {# Iterating through all the parameters #}
-      {% for param, obj in param_details.items() %} 
-        {% if obj.type == 'incomes' %} {# if this is an job income parameter, go through each element of the job obj #}
-          <li><label for="{{ param }}">{{ obj.label }}:</label> 
-          <span title="{{ obj.description }}">&#9432</span></li>
-          <ul>
-            {% for job in param_vals[param] %}
-              <li>
-                <button type="submit" name="remove_row" value="job_incomes@{{ job.job_income_id }}">-</button>
-                <label for="{{ param }}@{{ job.job_income_id }}@starting_income"> Starting Income:</label>
-                <input type="text" name="{{ param }}@{{ job.job_income_id }}@starting_income" value="{{ job.starting_income }}"></input>
-              
-                <label for="{{ param }}@{{ job.job_income_id }}@tax_deferred_income"> Tax Deferred Income:</label>
-                <input type="text" name="{{ param }}@{{ job.job_income_id }}@tax_deferred_income" value="{{ job.tax_deferred_income }}"></input>
-              
-                <label for="{{ param }}@{{ job.job_income_id }}@last_date"> Last Date:</label>
-                <input type="text" name="{{ param }}@{{ job.job_income_id }}@last_date" value="{{ job.last_date }}"></input>
-              
-                <label for="{{ param }}@{{ job.job_income_id }}@yearly_raise">Yearly Raise:</label>
-                <input type="text" name="{{ param }}@{{ job.job_income_id }}@yearly_raise" value="{{ job.yearly_raise }}"></input>
-              
-                <label for="{{ param }}@{{ job.job_income_id }}try_to_optimize">Try to Optimize:</label>
-                {% if job.try_to_optimize == 1 %}
-                  <input type="checkbox" name="{{ param }}@{{ job.job_income_id }}@try_to_optimize" id="{{ param }}@{{ job.job_income_id }}try_to_optimize" value='True' checked></input>
-                {% else %}
-                  <input type="checkbox" name="{{ param }}@{{ job.job_income_id }}@try_to_optimize" id="{{ param }}@{{ job.job_income_id }}try_to_optimize" value='True'></input>
-                {% endif %}
-                  <input type='hidden' value='False' name='{{ param }}@{{ job.job_income_id }}try_to_optimize'>
-              
-                <label for="{{ param }}@{{ job.job_income_id }}@social_security_eligible">Social Security Eligible:</label>
-                {% if job.social_security_eligible == 1 %}
-                  <input type="checkbox" name="{{ param }}@{{ job.job_income_id }}@social_security_eligible" id="{{ param }}@{{ job.job_income_id }}@social_security_eligible" value='True' checked></input>
-                {% else %}
-                  <input type="checkbox" name="{{ param }}@{{ job.job_income_id }}@social_security_eligible" id="{{ param }}@{{ job.job_income_id }}@social_security_eligible" value='True'></input>
-                {% endif %}
-                  <input type='hidden' value='False' name='{{ param }}@{{ job.job_income_id }}@social_security_eligible'>
-              </li>
-            {% endfor %}
-            <li><button type="submit" name="add_row" value="{{ param }}">+ Next Job</button></li>
-          </ul>
+  <form class="form form-horizontal" method="post" role="form">
+    {{ form.hidden_tag() }}
+    {{ wtf.form_errors(form, hiddens="only") }}
+    {{ wtf.form_field(form.submit) }}
+    {{ wtf.form_field(form.age) }}
+    {{ wtf.form_field(form.partner) }}
+    {{ wtf.form_field(form.partner_age) }}
+    {{ wtf.form_field(form.calculate_til) }}
+    {{ wtf.form_field(form.current_net_worth) }}
+    {% for field in form.income_profiles %}
+      <div>
+        {{ wtf.form_field(field) }}
+        <button type="submit" name="remove_field" value="{{ field.id }}">-</button>
+      </div>
+    {% endfor %}
+    <button type="submit" name="add_field" value="income">+ Next Income Profile</button>
+    {{ wtf.form_field(form.yearly_spending) }}
+    {{ wtf.form_field(form.state) }}
+    {{ wtf.form_field(form.drawdown_tax_rate) }}
+    {{ wtf.form_field(form.spending_method) }}
+    {{ wtf.form_field(form.allowed_fluctuation) }}
+    {% for field in form.kids %}
+      <div>
+      {{ wtf.form_field(field) }}
+      <button type="submit" name="remove_field" value="{{ field.id }}">-</button>
+      </div>
+    {% endfor %}
+    <button type="submit" name="add_field" value="kid">+ Kid</button>
+    {{ wtf.form_field(form.cost_of_kid) }}
+    {{ wtf.form_field(form.allocation_method) }}
+    {{ wtf.form_field(form.real_estate_equity_ratio) }}
+    {{ wtf.form_field(form.equity_target) }}
+    {{ wtf.form_field(form.annuities_instead_of_bonds) }}
+    {{ wtf.form_field(form.flat_bond_target) }}
+    {{ wtf.form_field(form.bond_tent_start_allocation) }}
+    {{ wtf.form_field(form.bond_tent_start_date) }}
+    {{ wtf.form_field(form.bond_tent_peak_allocation) }}
+    {{ wtf.form_field(form.bond_tent_peak_date) }}
+    {{ wtf.form_field(form.bond_tent_end_allocation) }}
+    {{ wtf.form_field(form.bond_tent_end_date) }}
+    {{ wtf.form_field(form.social_security_method) }}
+    {{ wtf.form_field(form.partner_social_security_method) }}
+    {{ wtf.form_field(form.pension_trust_factor) }}
+    {{ wtf.form_field(form.retirement_spending_change) }}
+    {{ wtf.form_field(form.pension) }}
+    {{ wtf.form_field(form.partner_pension) }}
+    {% for field in form.earnings %}
+      <div>
+        {{ wtf.form_field(field) }}
+        <button type="submit" name="remove_field" value="{{ field.id }}">-</button>
+      </div>
+    {% endfor %}
+    <button type="submit" name="add_field" value="earning">+ Earnings</button>
 
-
-        {% elif obj.type == 'kids' %}
-          <li><label for="{{ param }}">{{ obj.label }}:</label> 
-            <span title="{{ obj.description }}">&#9432</span></li>
-            <ul>
-            {% for i in range(param_vals[param]|length) %}
-            <li>
-              <button type="submit" name="remove_row" value="kids@{{param_vals[param][i][0]}}">-</button>
-              <input type="text" name="{{ param }}@{{param_vals[param][i][0]}}" value="{{ param_vals[param][i][1] }}"></input>
-            </li>
-            {% endfor %}
-            <li><button type="submit" name="add_row" value="{{ param }}">+ Kid</button></li>
-            </ul>
-          
-
-        {% elif obj.type == 'earnings_record' %}
-          <li><label for="{{ param }}">{{ obj.label }}:</label> 
-          <span title="{{ obj.description }}">&#9432</span></li>
-          <ul>
-            <ul><li>Year | Earnings (in $1000s)</li></ul>
-            {% for i in range(param_vals[param]|length) %}
-              <li>
-                <button type="submit" name="remove_row" value="earnings_records@{{param_vals[param][i][0]}}">-</button>
-                <input type="text" name="{{ param }}@{{param_vals[param][i][0]}}@year" value="{{ param_vals[param][i][1] }}"></input>
-                <input type="text" name="{{ param }}@{{param_vals[param][i][0]}}@earnings" value="{{ param_vals[param][i][2] }}"></input>
-              </li>
-            {% endfor %}
-            <li><button type="submit" name="add_row" value="{{ param }}">+ Next Record</button></li>
-          </ul>
-
-
-        {% elif obj.type != 'hide' %}
-        <li>
-          <label for="{{ param }}">{{ obj.label }}:</label> 
-
-          {% if obj.type == 'bool' %}
-            {# https://stackoverflow.com/questions/1809494/post-unchecked-html-checkboxes #}
-            {% if param_vals[param] == 1 %}
-              <input type="checkbox" name="{{ param }}"
-              id="{{ param }}" value='True' checked></input>
-            {% else %}
-              <input type="checkbox" name="{{ param }}"
-              id="{{ param }}" value='True'></input>
-            {% endif %}
-              <input type='hidden' value='False' name='{{ param }}'>
-
-          {% elif obj.type == 'options' %}
-          <select name="{{ param }}" id="{{ param }}">
-            {% for option in obj.range %}
-              {% if param_vals[param] == option %}
-                <option value="{{ option }}" selected>{{ option }}</option>
-              {% else %}
-                <option value="{{ option }}">{{ option }}</option>
-              {% endif %}
-            {% endfor %}
-          </select>
-
-          {% else %}
-          <input type="text" name="{{ param }}"
-          value="{{ param_vals[param] }}"></input>
-          {% endif %}
-          <span title="{{ obj.description }}">&#9432</span>
-        </li>
-        {% endif %}
-      {% endfor %}
-    </ul>
-    <button type="submit">Save</button>
-  </form>
+    {{ wtf.form_field(form.submit) }}
+  </form> 
 {% endblock %}

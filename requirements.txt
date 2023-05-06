@@ -10,3 +10,7 @@ Gunicorn==20.1.0
 eventlet==0.30.2
 sqlalchemy<2.0
 flask_socketio
+flask_wtf
+WTForms-Alchemy
+Flask-Bootstrap
+flask_sqlalchemy

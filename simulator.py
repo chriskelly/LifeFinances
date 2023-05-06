@@ -9,10 +9,7 @@ This file can also be imported as a module and contains the following functions:
 
     * Simulator.main() - runs a simulation and returns the success rate, the
                             returns used, and image data of the results
-    * Simulator.val() - returns the value of a specific parameter
     * step_quarterize() - Creates a list with values that increases only at the new year
-    * get_taxes() - Combines federal and state taxes on non-tax-deferred income
-    * bracket_math() - Calculates and return taxes owed for specific brackets
     * test_unit() - Creates a Simulator with only 1 monte carlo run
 """
 
@@ -29,6 +26,7 @@ import numpy as np
 import pandas as pd
 from data import taxes, constants as const
 from models import return_generator, annuity, model, social_security, income
+from models.user import User
 
 # Prevent error 'starting a matplotlib gui outside of the main thread will likely fail'
 # when running in Flask by changing matplotlib to a non-interactive backend
@@ -46,11 +44,11 @@ if os.path.exists(const.SAVE_DIR):
 else:
     os.makedirs(const.SAVE_DIR)
 
-MONTE_CARLO_RUNS = 500 # takes 20 seconds to generate 5000
-DEBUG_LVL = 2
 # DEBUG_LVL 1: Generate plot
 # DEBUG_LVL 2: Print success rate, save worst failure, show plot
 # DEBUG_LVL 3: Investigate each result 1 by 1
+DEBUG_LVL = 2
+MONTE_CARLO_RUNS = 500 # takes 20 seconds to generate 5000
 
 class Simulator:
     """
@@ -66,27 +64,20 @@ class Simulator:
     return/rate and 1.03 yield
     
     Attributes
-    ----------
-    params : dict
-        A clean set of parameters and their values
-    rows : int
-        The total number of periods per simulation
-    admin : bool
-    fi_date : ?
-    override_dict : dict
-        A dictionary for parameters that you want to override
+        user (models.user.User): user data
+
+        rows (int): The total number of time periods per simulation
+            
+        override_dict (dict): A dictionary for parameters that you want to override
     
     Methods
-    -------
-    main()
-        Creates data and runs the Montecarlo simulations
+        main(): Creates data and runs the Montecarlo simulations
     
     """
-    def __init__(self, param_vals:dict, override_dict:dict):
-        self.params = param_vals
-        self.rows = int((param_vals['calculate_til'] - model.TODAY_YR_QT)/.25)
-        self.admin = self.params["admin"] # Are you Chris?
-        self.partner = self.params["partner"]
+    def __init__(self, user:User, override_dict:dict):
+        self.user = user
+        self.rows = int((self.user.calculate_til - model.TODAY_YR_QT)/.25)
+        self.partner = self.user.partner
         self.override_dict = override_dict
 
     def main(self) -> dict:
@@ -111,10 +102,12 @@ class Simulator:
                               num=self.rows, endpoint=False))
 
         # Job Income and tax-differed list. Does not include SS.
-        user_income_calc = income.Calculator(self.val("user_jobs", quart_modifier=False), date_ls)
+        user_income_calc = income.Calculator([profile for profile in self.user.income_profiles
+                                              if not profile.is_partner_income], date_ls)
         if self.partner:
-            partner_income_calc = income.Calculator(self.val("partner_jobs",
-                                                             quart_modifier=False), date_ls)
+            partner_income_calc = income.Calculator([profile for profile
+                                                        in self.user.income_profiles
+                                                        if profile.is_partner_income], date_ls)
         else:
             partner_income_calc = None
         (job_income_ls, tax_deferred_ls)\
@@ -135,16 +128,15 @@ class Simulator:
                 = self.override_dict['returns']
         else:
             stock_return_arr, bond_return_arr, re_return_arr, inflation_arr\
-                = return_generator.main(self.rows,4,monte_carlo_runs)
-        spending_qt = self.val("yearly_spending", quart_modifier='dollar')
-        retirement_change = self.val("retirement_spending_change", quart_modifier=False)
+                = return_generator.main(self.rows, 4, monte_carlo_runs)
+        spending_qt = self.user.yearly_spending / 4
+        retirement_change = self.user.retirement_spending_change
             # make a kids array with years of kids being planned
-        kid_year_qts = [year_qt for _,year_qt in self.val("kid_birth_years", quart_modifier=False)]
-        kid_spending_rate = self.val("cost_of_kid", quart_modifier=False)
+        kid_dates = [kid.birth_year for kid in self.user.kids]
             # Social Security Initialization
-        user_ss_calc = social_security.Calculator(self, 'user', date_ls, user_income_calc)
+        user_ss_calc = social_security.Calculator(self, 'User', date_ls, user_income_calc)
         if self.partner:
-            partner_ss_calc = social_security.Calculator(self, 'partner', date_ls,
+            partner_ss_calc = social_security.Calculator(self, 'Partner', date_ls,
                                                     partner_income_calc, spouse_calc=user_ss_calc)
         else:
             partner_ss_calc = None
@@ -172,9 +164,9 @@ class Simulator:
             # Kid count
                 # kids_ls should have kid for every year from each kid's birth till 22 years after
             kids_ls = [0]*self.rows
-            for kid_yr in kid_year_qts:
-                kids_ls = [other_kids + 1 if yr_qt>=kid_yr and yr_qt-22<kid_yr else other_kids
-                        for other_kids,yr_qt in zip(kids_ls,date_ls)]
+            for kid_yr in kid_dates:
+                kids_ls = [other_kids + 1 if yr_qt-22 < kid_yr <= yr_qt else other_kids
+                        for other_kids, yr_qt in zip(kids_ls, date_ls)]
             # Net Worth/total savings
             spending_ls, total_costs_ls, net_transaction_ls, equity_alloc_ls = [], [], [], []
             re_alloc_ls, bond_alloc_ls, taxes_ls = [], [], []
@@ -184,32 +176,28 @@ class Simulator:
             my_annuity = annuity.Annuity()
             annuity_ls = np.zeros(self.rows)
                 # loop through date_ls to find net worth changes
-            net_worth_ls = [self.val('current_net_worth',quart_modifier=False)]
+            net_worth_ls = [self.user.current_net_worth]
 
             for row in range(self.rows):
                 # allocations
-                alloc = self._allocation(inflation_ls[row],net_worth_ls[-1],date_ls,row)
+                alloc = self._allocation(inflation_ls[row], net_worth_ls[-1], date_ls, row)
                 equity_alloc_ls.append(alloc["Equity"])
                 re_alloc_ls.append(alloc["RE"])
                 bond_alloc_ls.append(alloc["Bond"])
                 # social security
-                trust = self.val("pension_trust_factor",quart_modifier=False)
+                trust = self.user.pension_trust_factor
                 usr_ss_ls.append(trust * user_ss_calc.get_payment(row, net_worth_ls[-1],
-                                                                    self.val("equity_target",
-                                                                             quart_modifier=False)))
+                                                                    self.user.equity_target))
                 if self.partner:
                     partner_ss_ls.append(trust * partner_ss_calc.get_payment(row, net_worth_ls[-1],
-                                                                        self.val("equity_target",
-                                                                            quart_modifier=False)))
+                                                                        self.user.equity_target))
                 else:
                     partner_ss_ls.append(0)
                 # taxes
                     # taxes are 80% for pension and social security
-                income_tax = taxes.get(job_income_ls[row]-tax_deferred_ls[row],
-                                       self.val("state", quart_modifier=False),
+                income_tax = taxes.get(job_income_ls[row]-tax_deferred_ls[row], self.user.state,
                                        inflation_ls[row], self.partner) \
-                            + 0.8*taxes.get(usr_ss_ls[row]+ partner_ss_ls[row],
-                                       self.val("state", quart_modifier=False),
+                            + 0.8*taxes.get(usr_ss_ls[row]+ partner_ss_ls[row], self.user.state,
                                             inflation_ls[row], self.partner)
                 taxes_ls.append(income_tax + medicare[row] + ss_tax[row])
                 # spending
@@ -226,7 +214,7 @@ class Simulator:
                         withdrawal_rate = spending_ls[-1]*4 / net_worth_ls[-1]
                     except ZeroDivisionError:
                         withdrawal_rate = 1
-                kids_ls[row] = spending_ls[row] * kid_spending_rate * kids_ls[row]
+                kids_ls[row] *= spending_ls[row] * self.user.cost_of_kid
                 total_costs_ls.append(taxes_ls[row] + spending_ls[row] + kids_ls[row])
                 total_income_ls.append(job_income_ls[row]+usr_ss_ls[row]+ partner_ss_ls[row])
                 net_transaction_ls.append(total_income_ls[row] - total_costs_ls[row])
@@ -234,7 +222,7 @@ class Simulator:
                 if alloc['Annuity'] != 0:
                     target_balance = alloc['Annuity'] * net_worth_ls[-1]
                     contribution = max(0, target_balance - my_annuity.balance_update(row))
-                    my_annuity.contribute(contribution,row)
+                    my_annuity.contribute(contribution, row)
                     annuity_ls[row] -= contribution
                     net_worth_ls[-1] -= contribution
                 # investment returns
@@ -251,17 +239,16 @@ class Simulator:
                 net_transaction_ls[row] += my_annuity.take_payment()
                 # if net withdrawal, apply portfolio tax before pulling from net worth
                 if net_transaction_ls[row] < 0:
-                    portfolio_tax = net_transaction_ls[row] * -(1/(1-self.val("drawdown_tax_rate",
-                                                                            quart_modifier=False))
+                    portfolio_tax = net_transaction_ls[row] * -(1/(1-self.user.drawdown_tax_rate)
                                                                 - 1)
                     taxes_ls[row] += portfolio_tax
                     net_transaction_ls[row] -= portfolio_tax
                 if net_worth_ls[-1] >= 0: # prevent net worth from exponentially decreasing below 0
-                    net_worth_ls.append(max(0,net_worth_ls[-1]+return_amt+net_transaction_ls[row]))
+                    net_worth_ls.append(max(0, net_worth_ls[-1]+return_amt+net_transaction_ls[row]))
                 else: # if net worth started negative, assume no investing until positive net worth
                     net_worth_ls.append(net_worth_ls[-1]+net_transaction_ls[row])
             net_worth_ls.pop()
-            if net_worth_ls[-1]!=0:
+            if net_worth_ls[-1] != 0:
                 success_rate += 1
             final_net_worths.append(net_worth_ls[-1])
             withdrawal_rates.append(withdrawal_rate)
@@ -347,22 +334,6 @@ class Simulator:
                 'img_data':img_data}
 
     # HELPER FUNCTIONS ---------------------------------------------------- #
-    def val(self, key:str, quart_modifier):
-        """Modifies value to match quarterly modifier. \n
-        User input values are typically in annual format,
-        so they may need to be adjusted to a quarterly value instead \n
-        quart_modifier = 'rate' will return (1+value)^(1/4) \n 
-        quart_modifier = 'dollar' will return value/4 \n 
-        quart_modifier = False will return value"""
-        if quart_modifier == "rate":
-            return (1+self.params[key]) ** (1. / 4)
-        if quart_modifier == 'dollar':
-            return self.params[key] / 4
-        if not quart_modifier:
-            return self.params[key]
-        else:
-            raise ValueError("invalid MOD")
-
     def _base_spending(self, spending_qt, retirement_change, **kw):
         """Calculates base spending in a quarter
 
@@ -380,7 +351,7 @@ class Simulator:
 
         """
         # Spending, kids, costs, contributions
-        method = self.val("spending_method", quart_modifier=False)
+        method = self.user.spending_method
         inflation = kw['inflation']
         if method == 'inflation-only':
             if kw['working']:
@@ -388,7 +359,7 @@ class Simulator:
             else:
                 spending = spending_qt * inflation*(1+retirement_change)
         elif method == 'ceil-floor':
-            max_flux = self.val("allowed_fluctuation", quart_modifier=False)
+            max_flux = self.user.allowed_fluctuation
             # real spending should not increase/decrease more than the max_flux
             # only takes effect after retirement
             equity_mean_qt = const.EQUITY_MEAN ** (1/4) - 1
@@ -428,10 +399,10 @@ class Simulator:
                     'Annuity':Annuity Allocation}
         """
         # variables used in multiple method
-        method= self.val("allocation_method", quart_modifier=False)
-        re_ratio = self.val("real_estate_equity_ratio", quart_modifier=False)
+        method= self.user.allocation_method
+        re_ratio = self.user.real_estate_equity_ratio
         if method == 'Life Cycle':
-            equity_target = self.val("equity_target", quart_modifier=False)
+            equity_target = self.user.equity_target
             equity_target_present_value = equity_target*inflation
             max_risk_factor = 1
             with warnings.catch_warnings():
@@ -455,22 +426,22 @@ class Simulator:
             equity_alloc = (1-re_alloc)*risk_factor
             bond_alloc = max(1-re_alloc-equity_alloc, 0)
         elif method == 'Flat':
-            bond_alloc = self.val("flat_bond_target", quart_modifier=False)
+            bond_alloc = self.user.flat_bond_target
             re_alloc = re_ratio * (1-bond_alloc)
             equity_alloc = 1 - bond_alloc - re_alloc
         elif method in ('120 Minus Age', '110 Minus Age', '100 Minus Age'):
             risk_val = int(method[0:3])
-            average_age = (self.val("user_age",False) + self.val("partner_age",False))/2 + row/4
+            average_age = (self.user.age + self.user.partner_age)/2 + row/4
             bond_alloc = max(0, 1 - (risk_val - average_age)/100)
             re_alloc = re_ratio * (1-bond_alloc)
             equity_alloc = 1 - bond_alloc - re_alloc
         elif method == 'Bond Tent':
-            start_bond_alloc = self.val("bond_tent_start_allocation", quart_modifier=False)
-            start_date = self.val("bond_tent_start_date", quart_modifier=False)
-            peak_bond_alloc = self.val("bond_tent_peak_allocation", quart_modifier=False)
-            peak_date = self.val("bond_tent_peak_date", quart_modifier=False)
-            end_bond_alloc = self.val("bond_tent_end_allocation", quart_modifier=False)
-            end_date = self.val("bond_tent_end_date", quart_modifier=False)
+            start_bond_alloc = self.user.bond_tent_start_allocation
+            start_date = self.user.bond_tent_start_date
+            peak_bond_alloc = self.user.bond_tent_peak_allocation
+            peak_date = self.user.bond_tent_peak_date
+            end_bond_alloc = self.user.bond_tent_end_allocation
+            end_date = self.user.bond_tent_end_date
             start_date = max(model.TODAY_YR_QT, start_date) # Prevent start date from going too low
                                                             # due to genetic improvement trials
             start_row = date_ls.index(start_date)
@@ -492,7 +463,7 @@ class Simulator:
         else:
             raise ValueError("Allocation method is not defined")
         # Convert bonds to annuities depending on params
-        if self.val("annuities_instead_of_bonds", quart_modifier=False):
+        if self.user.annuities_instead_of_bonds:
             annuity_alloc = bond_alloc
             bond_alloc = 0
         else:
@@ -537,7 +508,7 @@ def test_unit(units:int = 1):
         Simulator: Instance of the class defined in this file.
     """
     test_mdl= model.Model()
-    return Simulator(test_mdl.param_vals, override_dict={'monte_carlo_runs' : units})
+    return Simulator(test_mdl.user, override_dict={'monte_carlo_runs' : units})
 
 if __name__ == '__main__':
     # instantiate a Simulator and run number of simulations

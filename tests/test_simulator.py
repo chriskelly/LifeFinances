@@ -1,17 +1,14 @@
 """Testing for simulator.py
-run `python -m pytest` if VSCode Testing won't load
+run `python3 -m pytest` if VSCode Testing won't load
 
 """
-import sqlalchemy as db
 import numpy as np
 import simulator
 from models import model
 import data.constants as const
 simulator.DEBUG_LVL = 1
 
-# make sure model pulls default values for testing
-model.ENGINE = db.create_engine(f'sqlite:///{const.DEFAULT_DB_LOC}')
-test_mdl = model.Model()
+test_user = model.Model().user
 
 def test_simulator_success_rate():
     """Ensure the simulator returns the same success rate as before.
@@ -22,26 +19,18 @@ def test_simulator_success_rate():
     of its sub-functions] was modified in a way that changes the success rate
     for a given set of parameters.
     """
-    rows = int((test_mdl.param_vals['calculate_til'] - model.TODAY_YR_QT)/.25)
+    rows = int((test_user.calculate_til - model.TODAY_YR_QT)/.25)
     runs = 100
     returns = [[np.full(rows, const.EQUITY_MEAN-1)]*runs,
                 [np.full(rows, const.BOND_MEAN-1)]*runs,
                 [np.full(rows, const.RE_MEAN-1)]*runs,
-                [np.linspace(start=1, stop=60+5*(n/runs), num=rows, endpoint=False)
+                [np.linspace(start=1, stop=35+5*(n/runs), num=rows, endpoint=False)
                 for n in range(runs)]]
-    test_sim = simulator.Simulator(test_mdl.param_vals, override_dict={
-                                                                    'monte_carlo_runs' : runs,
-                                                                    'returns': returns})
+    test_sim = simulator.Simulator(test_user, override_dict={
+                                                            'monte_carlo_runs' : runs,
+                                                            'returns': returns})
     res = test_sim.main()
-    assert res['s_rate'] == 0.42
-
-def test_val():
-    """Test quarterly modifier in simulator.val function"""
-    test_sim = simulator.Simulator(test_mdl.param_vals, override_dict={})
-    test_sim.params['test_value'] = 15
-    assert test_sim.val('test_value', quart_modifier='rate') == 2
-    assert test_sim.val('test_value', quart_modifier='dollar') == 3.75
-    assert test_sim.val('test_value', quart_modifier=None) == 15
+    assert res['s_rate'] == 0.59
 
 def test_step_quarterize():
     """Test step quarterizer function"""
