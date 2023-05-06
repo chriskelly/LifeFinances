@@ -9,10 +9,7 @@ This file can also be imported as a module and contains the following functions:
 
     * Simulator.main() - runs a simulation and returns the success rate, the
                             returns used, and image data of the results
-    * Simulator.val() - returns the value of a specific parameter
     * step_quarterize() - Creates a list with values that increases only at the new year
-    * get_taxes() - Combines federal and state taxes on non-tax-deferred income
-    * bracket_math() - Calculates and return taxes owed for specific brackets
     * test_unit() - Creates a Simulator with only 1 monte carlo run
 """
 
