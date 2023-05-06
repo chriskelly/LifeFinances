@@ -2,6 +2,11 @@
 
 This module defines the attributes of a user and the default values populated into the database.
 
+This file can also be imported as a module and contains the following functions:
+
+    * append_field() - Append the specified field to a UserForm
+    * default_user() - Generate a user with default parameters
+
 """
 from flask_wtf import FlaskForm
 from wtforms_alchemy import ModelForm, ModelFieldList
@@ -418,7 +423,7 @@ class UserForm(FlaskForm, ModelForm):
                                                  =User.partner_social_security_method.options)
 
 def append_field(form:UserForm, field:str):
-    """Append to a UserForm the specified field
+    """Append the specified field to a UserForm
 
     Args:
         form (UserForm)
