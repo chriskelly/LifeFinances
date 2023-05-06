@@ -116,7 +116,7 @@ class Algorithm:
                                                 parent_mutable_vals,
                                                 max_step=max(1, parent_is_best_qty),
                                                 reuse_returns=idx))
-                if not children[-1][0]:
+                if children[-1][0] is None:
                     return # if cancelled
             # Find best child (or use parent if all children worse)
                 # Lambda func needed to avoid sorting by params if success rates are equal
@@ -155,7 +155,7 @@ class Algorithm:
                 # test at higher monte carlo runs
                 simulator.MONTE_CARLO_RUNS = MAX_MONTE_RUNS
                 success_rate, _ = self._make_child(success_rate, 'identical', parent_mutable_vals)
-                if not success_rate:
+                if success_rate is None:
                     return # if cancelled
                 simulator.MONTE_CARLO_RUNS = current_monte_carlo_runs
                 if success_rate < TARGET_SUCCESS_RATE:
