@@ -32,7 +32,6 @@ pip3 install -r requirements.txt
 - `genetic.py`: Running this starts an infinite loop. The simulator will be run over and over again with slightly randomized parameters ('Range' property of any variable in data/params.json). When a parameter set is found that meets the TARGET_SUCCESS_RATE, data/params.json will be overwritten with those params, and the loop will start over again with a more aggressive FI Date target.
 - data folder
   - data.db: Database with all user parameter values
-  - default_values: if anything happens to your `data.db`, you can grab this copy to use
   - historical_data: project to generate returns modeled heavily after old returns. Not implemented yet
   - constants.py: constants used across multiple modules
   - param_success.json: records a tally for each successful set of parameters found in genetic.py. Helps understand what parts of a attempted parameter Range are used

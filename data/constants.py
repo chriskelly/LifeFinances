@@ -11,7 +11,6 @@ git_root= git.Repo(os.path.abspath(''),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 
 DB_LOC = os.path.join(git_root,'data/data.db')
-DEFAULT_DB_LOC = os.path.join(git_root,'data/default_values/data.db')
 PARAMS_SUCCESS_LOC = os.path.join(git_root,'data/param_success.json')
 QUIT_LOC = os.path.join(git_root,'cancel.quit')
 SAVE_DIR = os.path.join(git_root,'diagnostics/saved')
