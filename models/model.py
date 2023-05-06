@@ -8,15 +8,9 @@ Required installations are detailed in requirements.txt.
 This file contains the following functions:
 
     * initialize_db() - Create database with default user
-    * copy_default_values() - Overwrite the user database with the default database
-    * db_cmd() - Send a query to the database
     * Model.log_to_optimize_page() - Use a web socket connection to log to the optimizer page
-    * Model.save_from_genetic() - Save parameters changed by genetic.main()
-    * Model.save_from_flask - Save paramters changed on the parameter.html page
-    * Model.add_to_special_tables() - Save new instances of unique data types
-    * Model.remove_from_special_tables() - Delete instance from unique data type table
+    * Model.save_user() - Update the user in the database
 """
-import json
 import datetime as dt
 from flask_socketio import SocketIO
 from app import db, app
@@ -53,7 +47,12 @@ class Model:
     """
     def __init__(self, socketio:SocketIO = None):
         with app.app_context():
-            self.user:User = get_user()
+            # User is eager loaded to ensure all attributes are accessable after the
+            # session is closed https://docs.sqlalchemy.org/en/14/errors.html#error-bhk3
+            self.user:User = db.session.query(User).filter_by(id=USER_ID).options(
+                                        db.joinedload(User.earnings),
+                                        db.joinedload(User.income_profiles),
+                                        db.joinedload(User.kids)).one()
         self.socketio = socketio
 
     def log_to_optimize_page(self, log:str):
@@ -73,11 +72,3 @@ class Model:
         """
         db.session.add(self.user)
         db.session.commit()
-
-def get_user():
-    # Attributes need to be eager/joined loaded to ensure they are accessable
-    # after the session is closed. https://docs.sqlalchemy.org/en/14/errors.html#error-bhk3
-    return db.session.query(User).filter_by(id=USER_ID).options(
-                                        db.joinedload(User.earnings),
-                                        db.joinedload(User.income_profiles),
-                                        db.joinedload(User.kids)).one()

@@ -37,9 +37,12 @@ class EarningsRecord(db.Model):
     __tablename__ = 'earnings_records'
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id:int = db.Column(db.Integer, db.ForeignKey('users.id'))
-    year:int = db.Column(db.Integer, nullable=False, server_default=db.text("0"), info={'label':'Year'})
-    earnings:float = db.Column(db.Float, nullable=False, server_default=db.text("0"), info={'label':'Earnings'})
-    is_partner_earnings:bool = db.Column(db.Boolean, server_default=db.text("0"), info={'label':"Partner's?"})
+    year:int = db.Column(db.Integer, nullable=False, server_default=db.text("0"),
+                         info={'label':'Year'})
+    earnings:float = db.Column(db.Float, nullable=False, server_default=db.text("0"),
+                               info={'label':'Earnings'})
+    is_partner_earnings:bool = db.Column(db.Boolean, server_default=db.text("0"),
+                                         info={'label':"Partner's?"})
 
 class JobIncome(db.Model):
     """Represents total income earned by individual during specific period of time
@@ -48,16 +51,23 @@ class JobIncome(db.Model):
         Base : sqlalchemy declarative_base()
     """
     __tablename__ = 'job_incomes'
+
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    last_date:float = db.Column(db.Float, nullable=False, server_default=db.text("2035.25"), info={'label':'Last Date'})
-    starting_income:float = db.Column(db.Float, nullable=False, server_default=db.text("50"), info={'label':'Salary'})
-    tax_deferred_income:float = db.Column(db.Float, nullable=False, server_default=db.text("10"), info={'label':'Tax Deferred Income'})
-    yearly_raise:float = db.Column(db.Float, nullable=False, server_default=db.text("0.04"), info={'label':'Yearly Increase'})
-    try_to_optimize:bool = db.Column(db.Boolean, server_default=db.text("0"), info={'label':'Try to Optimize?'})
-    social_security_eligible:bool = db.Column(db.Boolean,
-                                              server_default=db.text("1"), info={'label':'Social Security Eligible?'})
+    last_date:float = db.Column(db.Float, nullable=False, server_default=db.text("2035.25"),
+                                info={'label':'Last Date'})
+    starting_income:float = db.Column(db.Float, nullable=False, server_default=db.text("50"),
+                                      info={'label':'Salary'})
+    tax_deferred_income:float = db.Column(db.Float, nullable=False, server_default=db.text("10"),
+                                          info={'label':'Tax Deferred Income'})
+    yearly_raise:float = db.Column(db.Float, nullable=False, server_default=db.text("0.04"),
+                                   info={'label':'Yearly Increase'})
+    try_to_optimize:bool = db.Column(db.Boolean, server_default=db.text("0"),
+                                     info={'label':'Try to Optimize?'})
+    social_security_eligible:bool = db.Column(db.Boolean, server_default=db.text("1"),
+                                              info={'label':'Social Security Eligible?'})
+    is_partner_income:bool = db.Column(db.Boolean, server_default=db.text("0"),
+                                       info={'label':"Partner's?"})
     user_id:int = db.Column(db.Integer, db.ForeignKey('users.id'))
-    is_partner_income:bool = db.Column(db.Boolean, server_default=db.text("0"), info={'label':"Partner's?"})
 
 class Kid(db.Model):
     """Represents each individual child
@@ -68,7 +78,8 @@ class Kid(db.Model):
     __tablename__ = 'kids'
     id:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id:int = db.Column(db.Integer, db.ForeignKey('users.id'))
-    birth_year:int = db.Column(db.Integer, nullable=False, server_default=db.text("2020"), info={'label':'Birth Year'})
+    birth_year:int = db.Column(db.Integer, nullable=False, server_default=db.text("2020"),
+                               info={'label':'Birth Year'})
 
 class User(db.Model):
     """Main class for representing user data
@@ -109,9 +120,11 @@ class User(db.Model):
                                info={'label':'Partner'}, help_text='Do you have a partner? If \
                                    unchecked, all partner related parameters will be ignored')
     partner_age:int = SuperColumn(db.Integer, nullable=False, server_default=db.text("34"),
-                                  info={'label':"Partner's Age"}, help_text='Current age of partner')
+                                  info={'label':"Partner's Age"},
+                                  help_text='Current age of partner')
     calculate_til:float = SuperColumn(db.Float, nullable=False, server_default=db.text("2090"),
-                                      info={'label':'Simulation End Year'}, help_text='Final year for \
+                                      info={'label':'Simulation End Year'},
+                                      help_text='Final year for \
                                           simulation. Recommended value: birth year + 90')
     current_net_worth:float = SuperColumn(db.Float, nullable=False, server_default=db.text("250"),
                                           info={'label':'Current Net Worth (in $1000s)'},
@@ -153,7 +166,9 @@ class User(db.Model):
                                        ],
                                        optimizable = True)
     allowed_fluctuation:float = SuperColumn(db.Float, server_default=db.text("0.05"),
-                                            info={'label':'Ceiling-Floor Fluctuation (% of Spending)'},
+                                            info={
+                                                'label':'Ceiling-Floor Fluctuation (% of Spending)'
+                                                },
                                             help_text='If using the ceil-floor method of spending, \
                                                 spending fluctuates by +/-5% (for value of 0.05) \
                                                     depending on market returns.')
@@ -211,7 +226,7 @@ class User(db.Model):
                                                                                   leverage.",
                                       options = list(range(500,4000,100)),
                                       optimizable = True)
-    annuities_instead_of_bonds:bool = SuperColumn(db.Boolean,                                                  server_default=db.text("0"),
+    annuities_instead_of_bonds:bool = SuperColumn(db.Boolean, server_default=db.text("0"),
                                                   info={'label':'Annuities Instead of Bonds'},
                                                   help_text='Money that would be invested into \
                                                       bonds is instead invested in an annuity.',
@@ -301,7 +316,9 @@ class User(db.Model):
                                              optimizable = True)
     partner_social_security_method:str = SuperColumn(db.Text, nullable=False,
                                                      server_default=db.text("'mid'"),
-                                                     info={'label':"Partner's Social Security Method"},
+                                                     info={
+                                                         'label':"Partner's Social Security Method"
+                                                         },
                                                      help_text="Models the date at which your \
                                                          partner takes social security.\n Early \
                                                              age = 62, mid age = 66, late age = \
@@ -328,8 +345,8 @@ class User(db.Model):
                                                                  record.')
     retirement_spending_change:float = SuperColumn(db.Float, nullable=False,
                                                    server_default=db.text("-0.15"),
-                                                   info={'label':'Spending Change in Retirement (% of \
-                                                       Current Spending)'},
+                                                   info={'label':'Spending Change in Retirement\
+                                                       (% of Current Spending)'},
                                                    help_text='Many people decrease spending in \
                                                        retirement. A value of -0.15 decreases \
                                                            spending by 15% once neither you nor \
@@ -400,7 +417,13 @@ class UserForm(FlaskForm, ModelForm):
     partner_social_security_method = SelectField(choices
                                                  =User.partner_social_security_method.options)
 
-def append_field(form:UserForm, field):
+def append_field(form:UserForm, field:str):
+    """Append to a UserForm the specified field
+
+    Args:
+        form (UserForm)
+        field (str): Either 'income', 'kid', or 'earning'
+    """
     if field == 'income':
         form.income_profiles.append_entry(FormField(JobIncomeForm()))
     elif field == 'kid':
