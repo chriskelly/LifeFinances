@@ -406,7 +406,7 @@ class UserForm(FlaskForm, ModelForm):
         model = User
         exclude = ['admin_pension_method','admin']
     submit = SubmitField('Save')
-    earnings = ModelFieldList(FormField(EarningsRecordForm, 'Earning'))
+    earnings = ModelFieldList(FormField(EarningsRecordForm, 'Social Security Earning'))
     kids = ModelFieldList(FormField(KidForm, 'Kid'))
     income_profiles = ModelFieldList(FormField(JobIncomeForm, 'Income Profile'))
     state = SelectField(choices=User.state.options)
