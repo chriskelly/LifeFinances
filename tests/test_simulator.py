@@ -26,10 +26,10 @@ def test_simulator_success_rate():
                 [np.full(rows, const.RE_MEAN-1)]*runs,
                 [np.linspace(start=1, stop=35+5*(n/runs), num=rows, endpoint=False)
                 for n in range(runs)]]
-    test_sim = simulator.Simulator(test_user, override_dict={
+    test_sim = simulator.Simulator(test_user, override_options={
                                                             'monte_carlo_runs' : runs,
                                                             'returns': returns})
-    res = test_sim.main()
+    res = test_sim.run()
     assert res['s_rate'] == 0.59
 
 def test_step_quarterize():

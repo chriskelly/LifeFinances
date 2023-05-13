@@ -71,16 +71,16 @@ class Simulator:
         override_dict (dict): A dictionary for parameters that you want to override
     
     Methods
-        main(): Creates data and runs the Montecarlo simulations
+        run(): Creates data and runs the Montecarlo simulations
     
     """
-    def __init__(self, user:User, override_dict:dict):
+    def __init__(self, user:User, override_options:dict):
         self.user = user
-        self.rows = int((self.user.calculate_til - model.TODAY_YR_QT)/.25)
+        self.date_interval_qty = int((self.user.calculate_til - model.TODAY_YR_QT)/.25)
         self.partner = self.user.partner
-        self.override_dict = override_dict
+        self.options = override_options
 
-    def main(self) -> dict:
+    def run(self) -> dict:
         """Runs a simulation with the parameters in data/data.db
 
         Returns:
@@ -98,51 +98,52 @@ class Simulator:
             fig = plt.figure()
 
         # Year.Quarter list
-        date_ls = list(np.linspace(start=model.TODAY_YR_QT, stop=model.TODAY_YR_QT+0.25*self.rows,
-                              num=self.rows, endpoint=False))
+        date_ls = list(np.linspace(start=model.TODAY_YR_QT,
+                                   stop=model.TODAY_YR_QT+0.25*self.date_interval_qty,
+                                   num=self.date_interval_qty, endpoint=False))
 
         # Job Income and tax-differed list. Does not include SS.
-        user_income_calc = income.Calculator([profile for profile in self.user.income_profiles
+        user_income_group = income.IncomeGroup([profile for profile in self.user.income_profiles
                                               if not profile.is_partner_income], date_ls)
         if self.partner:
-            partner_income_calc = income.Calculator([profile for profile
+            partner_income_group = income.IncomeGroup([profile for profile
                                                         in self.user.income_profiles
                                                         if profile.is_partner_income], date_ls)
         else:
-            partner_income_calc = None
+            partner_income_group = None
         (job_income_ls, tax_deferred_ls)\
-            = income.generate_lists(user_income_calc, partner_income_calc)
+            = income.generate_lists(user_income_group, partner_income_group)
         # FICA: Medicare (1.45% of income) and social security (6.2% of eligible income)
-        medicare= np.array(job_income_ls)*0.0145
+        medicare_tax= np.array(job_income_ls)*0.0145
         ss_tax = social_security.taxes(date_ls, const.PENSION_INFLATION,
-                                       user_income_calc, partner_income_calc)
+                                       user_income_group, partner_income_group)
 
     # MONTE CARLO VARIED LISTS: RETURN, INFLATION, SPENDING, ALLOCATION, NET WORTH ------------ #
         # variables that don't alter with each run
-        if 'monte_carlo_runs' in self.override_dict:
-            monte_carlo_runs = self.override_dict['monte_carlo_runs']
+        if 'monte_carlo_runs' in self.options:
+            monte_carlo_runs = self.options['monte_carlo_runs']
         else:
             monte_carlo_runs = MONTE_CARLO_RUNS
-        if 'returns' in self.override_dict:
+        if 'returns' in self.options:
             stock_return_arr, bond_return_arr, re_return_arr, inflation_arr\
-                = self.override_dict['returns']
+                = self.options['returns']
         else:
             stock_return_arr, bond_return_arr, re_return_arr, inflation_arr\
-                = return_generator.main(self.rows, 4, monte_carlo_runs)
+                = return_generator.main(self.date_interval_qty, 4, monte_carlo_runs)
         spending_qt = self.user.yearly_spending / 4
         retirement_change = self.user.retirement_spending_change
             # make a kids array with years of kids being planned
         kid_dates = [kid.birth_year for kid in self.user.kids]
             # Social Security Initialization
-        user_ss_calc = social_security.Calculator(self, 'User', date_ls, user_income_calc)
+        user_ss_calc = social_security.IncomeGroup(self, 'User', date_ls, user_income_group)
         if self.partner:
-            partner_ss_calc = social_security.Calculator(self, 'Partner', date_ls,
-                                                    partner_income_calc, spouse_calc=user_ss_calc)
+            partner_ss_calc = social_security.IncomeGroup(self, 'Partner', date_ls,
+                                                    partner_income_group, spouse_calc=user_ss_calc)
         else:
             partner_ss_calc = None
             # performance tracking
         success_rate = 0
-        worst_failure_idx = self.rows
+        worst_failure_idx = self.date_interval_qty
         failure_dict ={}
             # Establish empty lists for median net worth & withdrawal rate calculations
         final_net_worths, withdrawal_rates = [], []
@@ -163,7 +164,7 @@ class Simulator:
                 partner_ss_calc.make_list(inflation_ls)
             # Kid count
                 # kids_ls should have kid for every year from each kid's birth till 22 years after
-            kids_ls = [0]*self.rows
+            kids_ls = [0]*self.date_interval_qty
             for kid_yr in kid_dates:
                 kids_ls = [other_kids + 1 if yr_qt-22 < kid_yr <= yr_qt else other_kids
                         for other_kids, yr_qt in zip(kids_ls, date_ls)]
@@ -174,79 +175,85 @@ class Simulator:
             return_rate = None
             withdrawal_rate = None
             my_annuity = annuity.Annuity()
-            annuity_ls = np.zeros(self.rows)
+            annuity_ls = np.zeros(self.date_interval_qty)
                 # loop through date_ls to find net worth changes
             net_worth_ls = [self.user.current_net_worth]
 
-            for row in range(self.rows):
+            for date_idx in range(self.date_interval_qty):
                 # allocations
-                alloc = self._allocation(inflation_ls[row], net_worth_ls[-1], date_ls, row)
-                equity_alloc_ls.append(alloc["Equity"])
-                re_alloc_ls.append(alloc["RE"])
-                bond_alloc_ls.append(alloc["Bond"])
+                allocation = self._allocation(inflation_ls[date_idx], net_worth_ls[-1],
+                                         date_ls, date_idx)
+                equity_alloc_ls.append(allocation["Equity"])
+                re_alloc_ls.append(allocation["RE"])
+                bond_alloc_ls.append(allocation["Bond"])
                 # social security
-                trust = self.user.pension_trust_factor
-                usr_ss_ls.append(trust * user_ss_calc.get_payment(row, net_worth_ls[-1],
-                                                                    self.user.equity_target))
+                usr_ss_ls.append(self.user.pension_trust_factor
+                                 * user_ss_calc.get_payment(date_idx, net_worth_ls[-1],
+                                                            self.user.equity_target))
                 if self.partner:
-                    partner_ss_ls.append(trust * partner_ss_calc.get_payment(row, net_worth_ls[-1],
-                                                                        self.user.equity_target))
+                    partner_ss_ls.append(self.user.pension_trust_factor
+                                         * partner_ss_calc.get_payment(date_idx, net_worth_ls[-1],
+                                                                       self.user.equity_target))
                 else:
                     partner_ss_ls.append(0)
                 # taxes
                     # taxes are 80% for pension and social security
-                income_tax = taxes.get(job_income_ls[row]-tax_deferred_ls[row], self.user.state,
-                                       inflation_ls[row], self.partner) \
-                            + 0.8*taxes.get(usr_ss_ls[row]+ partner_ss_ls[row], self.user.state,
-                                            inflation_ls[row], self.partner)
-                taxes_ls.append(income_tax + medicare[row] + ss_tax[row])
+                income_tax = taxes.get(job_income_ls[date_idx]-tax_deferred_ls[date_idx],
+                                       self.user.state, inflation_ls[date_idx], self.partner) \
+                            + 0.8*taxes.get(usr_ss_ls[date_idx]+ partner_ss_ls[date_idx],
+                                            self.user.state, inflation_ls[date_idx], self.partner)
+                taxes_ls.append(income_tax + medicare_tax[date_idx] + ss_tax[date_idx])
                 # spending
-                if job_income_ls[row] == 0:
+                if job_income_ls[date_idx] == 0:
                     working = False
                 else:
                     working = True
                 spending_ls.append(self._base_spending(spending_qt, retirement_change,
-                                                        inflation=inflation_ls[row],
-                                                        working=working, alloc=alloc,
+                                                        inflation=inflation_ls[date_idx],
+                                                        working=working, alloc=allocation,
                                                         return_rate=return_rate))
+                # Calculate withdrawal rate once at beginning of retirement
                 if not working and not withdrawal_rate:
                     try:
                         withdrawal_rate = spending_ls[-1]*4 / net_worth_ls[-1]
                     except ZeroDivisionError:
                         withdrawal_rate = 1
-                kids_ls[row] *= spending_ls[row] * self.user.cost_of_kid
-                total_costs_ls.append(taxes_ls[row] + spending_ls[row] + kids_ls[row])
-                total_income_ls.append(job_income_ls[row]+usr_ss_ls[row]+ partner_ss_ls[row])
-                net_transaction_ls.append(total_income_ls[row] - total_costs_ls[row])
+                kids_ls[date_idx] *= spending_ls[date_idx] * self.user.cost_of_kid
+                total_costs_ls.append(taxes_ls[date_idx] + spending_ls[date_idx]
+                                      + kids_ls[date_idx])
+                total_income_ls.append(job_income_ls[date_idx] + usr_ss_ls[date_idx]
+                                       + partner_ss_ls[date_idx])
+                net_transaction_ls.append(total_income_ls[date_idx] - total_costs_ls[date_idx])
                 # annuity contributions
-                if alloc['Annuity'] != 0:
-                    target_balance = alloc['Annuity'] * net_worth_ls[-1]
-                    contribution = max(0, target_balance - my_annuity.balance_update(row))
-                    my_annuity.contribute(contribution, row)
-                    annuity_ls[row] -= contribution
+                if allocation['Annuity'] != 0:
+                    target_balance = allocation['Annuity'] * net_worth_ls[-1]
+                    contribution = max(0, target_balance - my_annuity.balance_update(date_idx))
+                    my_annuity.contribute(contribution, date_idx)
+                    annuity_ls[date_idx] -= contribution
                     net_worth_ls[-1] -= contribution
                 # investment returns
-                return_rate = stock_return_ls[row] * alloc['Equity']\
-                            + bond_return_ls[row] * alloc['Bond']\
-                            + re_return_ls[row] * alloc['RE']
-                return_amt = return_rate * (net_worth_ls[-1] + 0.5*net_transaction_ls[row])
+                return_rate = stock_return_ls[date_idx] * allocation['Equity']\
+                            + bond_return_ls[date_idx] * allocation['Bond']\
+                            + re_return_ls[date_idx] * allocation['RE']
+                return_amt = return_rate * (net_worth_ls[-1] + 0.5*net_transaction_ls[date_idx])
                 # annuity withdrawals
                     # annuity is started when user runs out of money
-                if net_worth_ls[-1] + return_amt + net_transaction_ls[row] < 0\
+                if net_worth_ls[-1] + return_amt + net_transaction_ls[date_idx] < 0\
                     and not my_annuity.annuitized:
-                    my_annuity.annuitize(row)
-                annuity_ls[row] += my_annuity.take_payment()
-                net_transaction_ls[row] += my_annuity.take_payment()
+                    my_annuity.annuitize(date_idx)
+                annuity_ls[date_idx] += my_annuity.take_payment()
+                net_transaction_ls[date_idx] += my_annuity.take_payment()
                 # if net withdrawal, apply portfolio tax before pulling from net worth
-                if net_transaction_ls[row] < 0:
-                    portfolio_tax = net_transaction_ls[row] * -(1/(1-self.user.drawdown_tax_rate)
-                                                                - 1)
-                    taxes_ls[row] += portfolio_tax
-                    net_transaction_ls[row] -= portfolio_tax
+                if net_transaction_ls[date_idx] < 0:
+                    portfolio_tax = net_transaction_ls[date_idx]\
+                                    * -(1/(1-self.user.drawdown_tax_rate) - 1)
+                    taxes_ls[date_idx] += portfolio_tax
+                    net_transaction_ls[date_idx] -= portfolio_tax
                 if net_worth_ls[-1] >= 0: # prevent net worth from exponentially decreasing below 0
-                    net_worth_ls.append(max(0, net_worth_ls[-1]+return_amt+net_transaction_ls[row]))
+                    net_worth_ls.append(max(0,
+                                        net_worth_ls[-1]+return_amt+net_transaction_ls[date_idx]))
                 else: # if net worth started negative, assume no investing until positive net worth
-                    net_worth_ls.append(net_worth_ls[-1]+net_transaction_ls[row])
+                    net_worth_ls.append(net_worth_ls[-1]+net_transaction_ls[date_idx])
             net_worth_ls.pop()
             if net_worth_ls[-1] != 0:
                 success_rate += 1
@@ -508,9 +515,9 @@ def test_unit(units:int = 1):
         Simulator: Instance of the class defined in this file.
     """
     test_mdl= model.Model()
-    return Simulator(test_mdl.user, override_dict={'monte_carlo_runs' : units})
+    return Simulator(test_mdl.user, override_options={'monte_carlo_runs' : units})
 
 if __name__ == '__main__':
     # instantiate a Simulator and run number of simulations
     test_simulator = test_unit(units=MONTE_CARLO_RUNS)
-    test_simulator.main()
+    test_simulator.run()

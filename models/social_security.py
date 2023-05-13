@@ -22,7 +22,7 @@ import simulator
 if TYPE_CHECKING:
     from simulator import Simulator
     from models import income
-    from social_security import Calculator as SSCalc
+    from social_security import IncomeGroup as SSCalc
 
 EARLY_AGE = 62
 MID_AGE = 66
@@ -69,7 +69,7 @@ def est_index(year:float) -> float:
     """
     return a_I * np.exp(b_I * year)
 
-class Calculator:
+class IncomeGroup:
     """Calculates social security payments
 
     Attributes
@@ -89,7 +89,7 @@ class Calculator:
 
         get_payment(): Get a payment for a specific date
     """
-    def __init__(self, sim:Simulator, usr:str, date_ls:list, income_calc:income.Calculator,
+    def __init__(self, sim:Simulator, usr:str, date_ls:list, income_calc:income.IncomeGroup,
                  spouse_calc:SSCalc = None):
         self.sim, self.date_ls, self.spouse_calc= sim, date_ls, spouse_calc
         self.usr, self.income_calc = usr, income_calc
@@ -310,7 +310,7 @@ class Calculator:
                                                     end_date_idx=self.sim.rows-1)
         return self.pension_ls[row]
 
-def _eligible_income(date_ls:list, income_calc:income.Calculator) -> list:
+def _eligible_income(date_ls:list, income_calc:income.IncomeGroup) -> list:
     """Determine which income can be used for social security
 
     Args:
@@ -329,8 +329,8 @@ def _eligible_income(date_ls:list, income_calc:income.Calculator) -> list:
     eligible_income += [0]*(len(date_ls)-len(eligible_income))
     return eligible_income
 
-def taxes(date_ls:list, inflation, user_calc:income.Calculator,
-          partner_calc:income.Calculator = None) -> list:
+def taxes(date_ls:list, inflation, user_calc:income.IncomeGroup,
+          partner_calc:income.IncomeGroup = None) -> list:
     """Generate list of taxes paid for social security
     Dependent on whether an individual income stream is social security eligible
 

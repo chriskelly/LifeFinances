@@ -333,7 +333,7 @@ class Algorithm:
             override_dict['returns']  = self.returns
         print(f"monte runs: {override_dict['monte_carlo_runs']}")
         new_simulator = Simulator(self.user, override_dict)
-        sim_results = new_simulator.main()
+        sim_results = new_simulator.run()
         if not sim_results: # Simulator returns empty dict when quit commmand given
             return (None, None)
         self.returns = sim_results['returns']

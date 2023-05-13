@@ -56,7 +56,7 @@ def simulation():
     if flask.request.method == 'POST':
         context['results'] = True
         simulator.DEBUG_LVL = 1
-        sim_results = simulator.test_unit(units=simulator.MONTE_CARLO_RUNS).main()
+        sim_results = simulator.test_unit(units=simulator.MONTE_CARLO_RUNS).run()
         context.update(sim_results) # add s_rate, returns, and img_data
             # change s_rate to string with correct formatting
         context['s_rate'] = f"Success Rate: {context['s_rate']*100:.2f}%"
