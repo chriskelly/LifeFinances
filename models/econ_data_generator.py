@@ -1,4 +1,4 @@
-"""Generates randomized returns for stocks, bonds, real estate and inflation.
+"""Generates randomized economic data for stocks, bonds, real estate and inflation.
 
 Required installations are detailed in requirements.txt.
 
@@ -8,7 +8,6 @@ This file contains the following functions:
 """
 
 import math
-import time
 import random
 import sys
 from os import path
@@ -24,8 +23,6 @@ rng= np.random.default_rng()
 
 DEBUG_LVL = 0
 data_path= path.join(git_root,'data/historic_data')
-
-
 
 def _brute_force(n_iter:int, n_years:int, mean:float, stdev:float,
                  lower:float, upper:float, qty_per_year:int) -> np.ndarray:
@@ -106,48 +103,6 @@ def _generate_returns(mean, stdev, annual_high, annual_low,n_rows, qty_per_year,
         print(f'std stdev: {abs(stdev - np.std(multi_returns, ddof=1))}') # result should be 0.0
     return multi_returns
 
-    # trying to make it faster
-def _generate_returns_faster(mean, stdev, annual_high, annual_low,n_rows,qty_per_year,columns):
-    """
-    Generate a time series of returns for each montecarlo run
-
-    Parameters
-    ----------
-    mean : TYPE
-        Annualized mean.
-    stdev : TYPE
-        Annualized standard deviation.
-    annual_high : TYPE
-        DESCRIPTION.
-    annual_low : TYPE
-        DESCRIPTION.
-    n_rows : int or float
-        Number of rows per column.
-    qty_per_year : int or float
-        Quantity per year, e.g. 4 for quarterly calculations
-    columns : int or float
-        Number of columns, which means the number of monte carlo runs
-
-    Returns
-    -------
-    multi_returns : list
-        2D array. column is a lifetime/montecarlo run. rows are periods of time
-
-    """
-    n_iter = 0
-    # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
-    stdev = stdev / math.sqrt(qty_per_year)
-    mean = mean ** (1/qty_per_year)
-    n_years = math.ceil(n_rows/qty_per_year)
-    multi_returns = [_brute_force(n_iter, n_years, mean, stdev, annual_low, annual_high,
-                                qty_per_year)[:n_rows] for _ in range(columns)]
-    if DEBUG_LVL >= 1:
-        print(f'n_iter: {n_iter}')
-        print(f'std mean: {abs(mean-1 - np.mean(multi_returns))}') # result should be 0.0
-        print(f'std stdev: {abs(stdev - np.std(multi_returns, ddof=1))}') # result should be 0.0
-    return multi_returns
-
-# @jit
 def _generate_skewd_inflation(mean, stdev, skew,qty_per_column,qty_per_year,columns) -> list[list]:
     """Generate randomized inflation with a skew
 
@@ -198,22 +153,9 @@ def main(n_rows:int, qty_per_year:int, columns:int) -> list[list[np.ndarray]]:
     bond_returns = _generate_returns(const.BOND_MEAN, const.BOND_STDEV,
                                             const.BOND_ANNUAL_HIGH, const.BOND_ANNUAL_LOW,
                                             n_rows,qty_per_year,columns)
-    if DEBUG_LVL >= 1:
-        start = time.perf_counter()
     real_estate_returns = _generate_returns(const.RE_MEAN, const.RE_STDEV, const.RE_ANNUAL_HIGH,
                                             const.RE_ANNUAL_LOW, n_rows,qty_per_year,columns)
-    if DEBUG_LVL >= 1:
-        mid = time.perf_counter()
-        _generate_returns_faster(const.RE_MEAN, const.RE_STDEV, const.RE_ANNUAL_HIGH,
-                                const.RE_ANNUAL_LOW, n_rows,qty_per_year,columns)
-        end = time.perf_counter()
     inflation = _generate_skewd_inflation(const.INFLATION_MEAN, const.INFLATION_STDEV,
                                                     const.INFLATION_SKEW, n_rows,
                                                     qty_per_year, columns)
-    if DEBUG_LVL >= 1:
-        print(f"std speed: {mid-start}")    # pylint: disable=used-before-assignment
-                                            # assigned in debug_lvl branch
-        print(f"fast speed:{end-mid}")      # pylint: disable=used-before-assignment
     return stock_returns, bond_returns, real_estate_returns, inflation
-
-# main(270,4)
