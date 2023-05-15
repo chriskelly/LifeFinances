@@ -10,13 +10,17 @@ def create_skew_dist(mean:float, std:float, skew:float, size:int, debug:bool = F
 
     Args:
         mean (float)
+        
         std (float): standard diviation
+        
         skew (float)
-        size (int): qty_per_column*columns
+        
+        size (int): total qty desired
+        
         debug (bool, optional): Create plot of distribution. Defaults to False
 
     Returns:
-        np.ndarray: list of qty_per_column*columns size
+        np.ndarray: list skewed values with size = size
     """
 
     # Calculate the degrees of freedom 1 required to obtain the

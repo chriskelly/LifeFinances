@@ -15,14 +15,14 @@ PARAMS_SUCCESS_LOC = os.path.join(git_root,'data/param_success.json')
 QUIT_LOC = os.path.join(git_root,'cancel.quit')
 SAVE_DIR = os.path.join(git_root,'diagnostics/saved')
 
-EQUITY_MEAN = 1.092
+STOCK_MEAN = 1.092
 """Geometric average yield for stock invesments"""
-EQUITY_STDEV = .16
+STOCK_STDEV = .16
 """Standard deviation of yield for stock invesments"""
-EQUITY_ANNUAL_HIGH = 1.121
+STOCK_ANNUAL_HIGH = 1.121
 """Highest allowed annualized lifetime yield for stock investments,
 based on historical data of rolling time periods"""
-EQUITY_ANNUAL_LOW = 1.053
+STOCK_ANNUAL_LOW = 1.053
 """Lowest allowed annualized lifetime yield for stock investments,
 based on historical data of rolling time periods"""
 

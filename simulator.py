@@ -369,7 +369,7 @@ class Simulator:
             max_flux = self.user.allowed_fluctuation
             # real spending should not increase/decrease more than the max_flux
             # only takes effect after retirement
-            equity_mean_qt = const.EQUITY_MEAN ** (1/4) - 1
+            equity_mean_qt = const.STOCK_MEAN ** (1/4) - 1
             bond_mean_qt =  const.BOND_MEAN ** (1/4) - 1
             re_mean_qt = const.RE_MEAN ** (1/4) - 1
             expected_return_rate_qt = equity_mean_qt *kw['alloc']['Equity']\

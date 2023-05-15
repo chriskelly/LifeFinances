@@ -18,25 +18,27 @@ import data.constants as const
 git_root= git.Repo(path.abspath(__file__),
                    search_parent_directories=True).git.rev_parse('--show-toplevel')
 sys.path.append(git_root)
-#instantiate a random generator
-rng= np.random.default_rng()
+
+rng= np.random.default_rng() # instantiate a random generator
 
 DEBUG_LVL = 0
-data_path= path.join(git_root,'data/historic_data')
 
-def _brute_force(n_iter:int, n_years:int, mean:float, stdev:float,
-                 lower:float, upper:float, qty_per_year:int) -> np.ndarray:
-    """
-    Uses brute force to generate a list of yields with an annualized return
+def _brute_force(iter_cnt:int, year_qty:int, mean_yield:float, stdev:float,
+                 lower_limit:float, upper_limit:float, intervals_per_year:int) -> np.ndarray:
+    """Uses brute force to generate a list of yields with an annualized return
     that is within the given bounds
+    
+    Since values need to be tested against annualized limits, input may be larger
+    than needed since years need to be tested in whole quantities, not fractional.
+    Ex: You need 10 quarters (2.5 years) of data. year_qty must be 3
 
     Parameters
     ----------
-    n_iter : int
+    iter_cnt : int
         DESCRIPTION.
-    n_years : int
+    year_qty : int
         DESCRIPTION.
-    mean : numeric
+    mean_yield : numeric
         DESCRIPTION.
     stdev : numeric
         DESCRIPTION.
@@ -53,23 +55,20 @@ def _brute_force(n_iter:int, n_years:int, mean:float, stdev:float,
         array of rates 
 
     """
-    annualized = 0
-    while annualized < lower or annualized > upper:
-        # annualized test needs product in yearly multiples,
-        # even if years_qty*qty_per_year isn't equal to qty_per_column
-        yield_ls = rng.normal(mean, stdev, n_years*qty_per_year)
-        annualized = pow(np.prod(yield_ls), 1 / n_years)
-        n_iter += 1
+    annualized_return = 0
+    while annualized_return < lower_limit or annualized_return > upper_limit:
+        yield_ls = rng.normal(mean_yield, stdev, year_qty*intervals_per_year)
+        annualized_return = pow(np.prod(yield_ls), 1 / year_qty)
+        iter_cnt += 1
     return yield_ls - 1
 
-def _generate_returns(mean, stdev, annual_high, annual_low,n_rows, qty_per_year,
-                      columns) -> list[np.ndarray]:
-    """
-    Generate a time series of returns for each montecarlo run
+def _generate_returns(mean_yield, stdev, annual_high, annual_low, intervals_per_run, intervals_per_year,
+                      runs) -> list[np.ndarray]:
+    """Generate a time series of returns for each montecarlo run
 
     Parameters
     ----------
-    mean : TYPE
+    mean_yield : TYPE
         Annualized mean.
     stdev : TYPE
         Annualized standard deviation.
@@ -81,8 +80,8 @@ def _generate_returns(mean, stdev, annual_high, annual_low,n_rows, qty_per_year,
         Number of rows per column.
     qty_per_year : int or float
         Quantity per year, e.g. 4 for quarterly calculations
-    columns : int or float
-        Number of columns, which means the number of monte carlo runs
+    runs : int or float
+        Number of monte carlo runs
 
     Returns
     -------
@@ -90,72 +89,71 @@ def _generate_returns(mean, stdev, annual_high, annual_low,n_rows, qty_per_year,
         2D array. column is a lifetime/montecarlo run. rows are periods of time
 
     """
-    n_iter = 0
+    iter_cnt = 0 # tracked for debugging. Init here to avoid scope issues
     # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
-    stdev = stdev / math.sqrt(qty_per_year)
-    mean = mean ** (1/qty_per_year)
-    n_years = math.ceil(n_rows/qty_per_year)
-    multi_returns = [_brute_force(n_iter, n_years, mean, stdev, annual_low, annual_high,
-                                 qty_per_year)[:n_rows] for _ in range(columns)]
+    stdev = stdev / math.sqrt(intervals_per_year)
+    mean_yield = mean_yield ** (1/intervals_per_year)
+    year_qty = math.ceil(intervals_per_run/intervals_per_year)
+    all_returns = [_brute_force(iter_cnt, year_qty, mean_yield, stdev, annual_low, annual_high,
+                                 intervals_per_year)[:intervals_per_run] for _ in range(runs)]
     if DEBUG_LVL >= 1:
-        print(f'n_iter: {n_iter}')
-        print(f'std mean: {abs(mean-1 - np.mean(multi_returns))}') # result should be 0.0
-        print(f'std stdev: {abs(stdev - np.std(multi_returns, ddof=1))}') # result should be 0.0
-    return multi_returns
+        print(f'iteration cnt: {iter_cnt}')
+        print(f'std mean: {abs(mean_yield-1 - np.mean(all_returns))}') # result should be 0.0
+        print(f'std stdev: {abs(stdev - np.std(all_returns, ddof=1))}') # result should be 0.0
+    return all_returns
 
-def _generate_skewd_inflation(mean, stdev, skew,qty_per_column,qty_per_year,columns) -> list[list]:
+def _generate_skewd_inflation(mean_yield, stdev, skew, intervals_per_run, intervals_per_year, runs) -> list[list]:
     """Generate randomized inflation with a skew
 
     Args:
-        mean (_type_): _description_
+        mean_yield (_type_): _description_
         stdev (_type_): _description_
         skew (_type_): _description_
         qty_per_column (_type_): _description_
         qty_per_year (_type_): _description_
-        columns (_type_): _description_
+        runs (_type_): _description_
 
     Returns:
-        list[list]: 2D array of returns
+        list[list]: each list has inflation growing cumulatively
     """
     # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
-    stdev = stdev / math.sqrt(qty_per_year)
-    mean = mean ** (1/qty_per_year)
-    dist = create_skew_dist(mean,stdev,skew,size=qty_per_column*columns,debug=False)
-    random.shuffle(dist) # createSkewDist returns ordered items
-    array = np.array(dist)
-    chunked_arrays = np.array_split(array,indices_or_sections=columns)
-    multi_col_returns = [list(array) for array in chunked_arrays]
-    for multi_col_idx in range(columns):
-        single_col_idx = 1
-        while single_col_idx<qty_per_column:
-            multi_col_returns[multi_col_idx][single_col_idx]\
-                *= multi_col_returns[multi_col_idx][single_col_idx-1]
-            single_col_idx+=1
+    stdev = stdev / math.sqrt(intervals_per_year)
+    mean_yield = mean_yield ** (1/intervals_per_year)
+    dist = create_skew_dist(mean_yield, stdev, skew, size=intervals_per_run*runs, debug=False)
+    random.shuffle(dist) # create_skew_dist returns ordered items
+    # convert to np array for split, then convert back to 2D list
+    array = np.array(dist) 
+    chunked_arrays = np.array_split(array, indices_or_sections=runs)
+    inflation_lists = [list(array) for array in chunked_arrays]
+    # convert individual inflation yields to cumulative inflation yields
+    for i in range(runs):
+        for j in range(1, intervals_per_run):
+            inflation_lists[i][j] *= inflation_lists[i][j-1]
     if DEBUG_LVL >= 1:
-        print(f'inflat mean: {abs(mean - np.mean(dist))}') # result should be 0.0
+        print(f'inflat mean: {abs(mean_yield - np.mean(dist))}') # result should be 0.0
         print(f'inflat stdev: {abs(stdev - np.std(dist, ddof=1))}') # result should be 0.0
-    return multi_col_returns
+    return inflation_lists
 
-def main(n_rows:int, qty_per_year:int, columns:int) -> list[list[np.ndarray]]:
-    """Generates and returns stock, bond, real estate, and inflation returns
+def main(intervals_per_run:int, intervals_per_year:int, runs:int) -> tuple[list[np.ndarray]]:
+    """Generates and returns stock, bond, real estate, and inflation data
 
     Args:
-        n_rows (int): Quantity of time segments in each run
-        qty_per_year (int): Quantity of time segments in each year
-        columns (int): How many runs in a simulation
+        intervals_per_run (int): Quantity of time segments in each run
+        intervals_per_year (int): Quantity of time segments in each year
+        runs (int): How many runs in a simulation
 
     Returns:
         tuple[list[ndarray]]: 2D return arrays [Stock, Bond, Real Estate, Inflation]
     """
-    stock_returns = _generate_returns(const.EQUITY_MEAN, const.EQUITY_STDEV,
-                                            const.EQUITY_ANNUAL_HIGH, const.EQUITY_ANNUAL_LOW,
-                                            n_rows,qty_per_year,columns)
+    stock_returns = _generate_returns(const.STOCK_MEAN, const.STOCK_STDEV,
+                                            const.STOCK_ANNUAL_HIGH, const.STOCK_ANNUAL_LOW,
+                                            intervals_per_run, intervals_per_year, runs)
     bond_returns = _generate_returns(const.BOND_MEAN, const.BOND_STDEV,
                                             const.BOND_ANNUAL_HIGH, const.BOND_ANNUAL_LOW,
-                                            n_rows,qty_per_year,columns)
+                                            intervals_per_run, intervals_per_year, runs)
     real_estate_returns = _generate_returns(const.RE_MEAN, const.RE_STDEV, const.RE_ANNUAL_HIGH,
-                                            const.RE_ANNUAL_LOW, n_rows,qty_per_year,columns)
+                                            const.RE_ANNUAL_LOW, intervals_per_run, intervals_per_year, runs)
     inflation = _generate_skewd_inflation(const.INFLATION_MEAN, const.INFLATION_STDEV,
-                                                    const.INFLATION_SKEW, n_rows,
-                                                    qty_per_year, columns)
+                                                    const.INFLATION_SKEW, intervals_per_run,
+                                                    intervals_per_year, runs)
     return stock_returns, bond_returns, real_estate_returns, inflation
