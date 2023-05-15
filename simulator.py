@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from data import taxes, constants as const
-from models import return_generator, annuity, model, social_security, income
+from models import econ_data_generator, annuity, model, social_security, income
 from models.user import User
 
 # Prevent error 'starting a matplotlib gui outside of the main thread will likely fail'
@@ -129,7 +129,7 @@ class Simulator:
                 = self.options['returns']
         else:
             stock_return_arr, bond_return_arr, re_return_arr, inflation_arr\
-                = return_generator.main(self.date_interval_qty, 4, monte_carlo_runs)
+                = econ_data_generator.main(self.date_interval_qty, 4, monte_carlo_runs)
         spending_qt = self.user.yearly_spending / 4
         retirement_change = self.user.retirement_spending_change
             # make a kids array with years of kids being planned
