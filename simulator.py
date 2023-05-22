@@ -135,9 +135,9 @@ class Simulator:
             # make a kids array with years of kids being planned
         kid_dates = [kid.birth_year for kid in self.user.kids]
             # Social Security Initialization
-        user_ss_calc = social_security.IncomeGroup(self, 'User', date_ls, user_income_group)
+        user_ss_calc = social_security.Calculator(self, 'User', date_ls, user_income_group)
         if self.partner:
-            partner_ss_calc = social_security.IncomeGroup(self, 'Partner', date_ls,
+            partner_ss_calc = social_security.Calculator(self, 'Partner', date_ls,
                                                     partner_income_group, spouse_calc=user_ss_calc)
         else:
             partner_ss_calc = None

@@ -22,7 +22,7 @@ import simulator
 if TYPE_CHECKING:
     from simulator import Simulator
     from models import income
-    from social_security import IncomeGroup as SSCalc
+    from social_security import Calculator as SSCalc
 
 EARLY_AGE = 62
 MID_AGE = 66
@@ -69,7 +69,7 @@ def est_index(year:float) -> float:
     """
     return a_I * np.exp(b_I * year)
 
-class IncomeGroup:
+class Calculator:
     """Calculates social security payments
 
     Attributes
