@@ -69,7 +69,7 @@ def est_index(year:float) -> float:
     """
     return a_I * np.exp(b_I * year)
 
-class IncomeGroup:
+class Calculator:
     """Calculates social security payments
 
     Attributes
