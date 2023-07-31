@@ -12,7 +12,7 @@ or
 pip3 install -r requirements.txt
 ```
 ## First Time Usage
-- After installing dependencies, run `python app.py`. The GUI should show up in your browser. It's still a work in progress, but you can navigate to Simulator, then click run, and after a few moments, you should see a chart pop up with hundreds of lines. These are all the individual results of a simulation based on the default parameters. You'll also see the success rate. The success rate represents what percentage of the time you did not run out of money before the final year (default: 2090).
+- After installing dependencies, run `python routes.py`. The GUI should show up in your browser. It's still a work in progress, but you can navigate to Simulator, then click run, and after a few moments, you should see a chart pop up with hundreds of lines. These are all the individual results of a simulation based on the default parameters. You'll also see the success rate. The success rate represents what percentage of the time you did not run out of money before the final year (default: 2090).
 
 <img src="https://user-images.githubusercontent.com/3745832/206873001-fc1954ce-5610-46f1-955e-b158f7c96d2c.png" width="200">
 
