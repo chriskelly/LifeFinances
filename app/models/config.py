@@ -13,12 +13,20 @@ from typing import Optional
 import yaml
 from pydantic import BaseModel, ValidationError, field_validator, Field
 from pydantic_core.core_schema import FieldValidationInfo
-from data.taxes import STATE_BRACKET_RATES
+from app.data.taxes import STATE_BRACKET_RATES
+from app.data import constants
 
 # TODO: from pydantic.json_schema import GenerateJsonSchema
 
 
 class Strategy(BaseModel):
+    """
+    Attributes
+        enabled (bool)
+
+        chosen (bool)
+    """
+
     enabled: bool = False
     chosen: bool = False
 
@@ -34,6 +42,13 @@ class Strategy(BaseModel):
 
 
 class StrategyOptions:
+    """
+    Property class that implements the following properties:
+        enabled_strategies (dict[str, Strategy])
+
+        chosen_strategy (tuple[str, Strategy])
+    """
+
     @property
     def enabled_strategies(self) -> dict[str, Strategy]:
         """Dict of enabled strategies
@@ -65,18 +80,48 @@ class StrategyOptions:
 
 
 class RealEstateStrategy(Strategy):
+    """
+    Attributes
+        equity_ratio (float)
+    """
+
     equity_ratio: float
 
 
 class FlatBondStrategy(Strategy):
+    """
+    Attributes
+        flat_bond_target (float)
+    """
+
     flat_bond_target: Optional[float] = None
 
 
 class XMinusAgeStrategy(Strategy):
+    """
+    Attributes
+        x (int)
+    """
+
     x: Optional[int] = None
 
 
 class BondTentStrategy(Strategy):
+    """
+    Attributes
+        start_allocation (float)
+
+        start_date (float)
+
+        peak_allocation (float)
+
+        peak_date (float)
+
+        end_allocation (float)
+
+        end_date (float)
+    """
+
     start_allocation: Optional[float] = None
     start_date: Optional[float] = None
     peak_allocation: Optional[float] = None
@@ -86,17 +131,46 @@ class BondTentStrategy(Strategy):
 
 
 class LifeCycleStrategy(Strategy):
+    """
+    Attributes
+        equity_target (float)
+    """
+
     equity_target: Optional[float] = None
 
 
 class AllocationOptions(BaseModel, StrategyOptions):
-    flat_bond: Optional[Strategy] = None
+    """
+    Attributes
+        flat_bond (FlatBondStrategy)
+
+        x_minus_age (XMinusAgeStrategy)
+
+        bond_tent (BondTentStrategy)
+
+        life_cycle (LifeCycleStrategy)
+    """
+
+    flat_bond: Optional[FlatBondStrategy] = None
     x_minus_age: Optional[XMinusAgeStrategy] = None
     bond_tent: Optional[BondTentStrategy] = None
     life_cycle: Optional[LifeCycleStrategy] = None
 
 
 class Portfolio(BaseModel):
+    """
+    Attributes
+        current_net_worth (float)
+
+        drawdown_tax_rate (float)
+
+        real_estate (RealEstateStrategy)
+
+        annuities_instead_of_bonds (bool)
+
+        allocation_strategy (AllocationOptions)
+    """
+
     current_net_worth: float
     drawdown_tax_rate: float = 0.1
     real_estate: RealEstateStrategy = None
@@ -105,10 +179,28 @@ class Portfolio(BaseModel):
 
 
 class NetWorthStrategy(Strategy):
+    """
+    Attributes
+        equity_target (float)
+    """
+
     equity_target: Optional[float] = None
 
 
 class SocialSecurityPensionOptions(BaseModel, StrategyOptions):
+    """
+    Attributes
+        early (Strategy)
+
+        mid (Strategy)
+
+        late (Strategy)
+
+        net_worth (NetWorthStrategy)
+
+        same (Strategy)
+    """
+
     early: Optional[Strategy] = None
     mid: Optional[Strategy] = None
     late: Optional[Strategy] = None
@@ -117,32 +209,84 @@ class SocialSecurityPensionOptions(BaseModel, StrategyOptions):
 
 
 class SocialSecurityPension(BaseModel):
+    """
+    Attributes
+        trust_factor (float)
+
+        pension_eligible (bool)
+
+        strategy (SocialSecurityPensionOptions)
+    """
+
     trust_factor: Optional[float] = 1
     pension_eligible: bool = False
     strategy: SocialSecurityPensionOptions
 
 
 class CeilFloorStrategy(Strategy):
+    """
+    Attributes
+        allowed_fluctuation (float)
+    """
+
     allowed_fluctuation: Optional[float] = None
 
 
 class SpendingOptions(BaseModel, StrategyOptions):
+    """
+    Attributes
+        inflation_only (Strategy)
+
+        ceil_floor (CeilFloorStrategy)
+    """
+
     inflation_only: Optional[Strategy] = None
     ceil_floor: Optional[CeilFloorStrategy] = None
 
 
 class Spending(BaseModel):
+    """
+    Attributes
+        yearly_amount (int)
+
+        spending_strategy (SpendingOptions)
+
+        retirement_change (float)
+    """
+
     yearly_amount: int
     spending_strategy: SpendingOptions
     retirement_change: float
 
 
 class Kids(BaseModel):
+    """
+    Attributes
+        cost_of_kid (float)
+
+        birth_years (list[float])
+    """
+
     cost_of_kid: float
     birth_years: list[float]
 
 
 class IncomeProfile(BaseModel):
+    """
+    Attributes
+        starting_income (float)
+
+        tax_deferred_income (float)
+
+        yearly_raise (float)
+
+        try_to_optimize (bool)
+
+        social_security_eligible (bool)
+
+        last_date (float)
+    """
+
     starting_income: float
     tax_deferred_income: float
     yearly_raise: float
@@ -152,17 +296,60 @@ class IncomeProfile(BaseModel):
 
 
 class Partner(BaseModel):
-    age: int
-    social_security_pension: SocialSecurityPension
-    earnings_records: dict
-    income_profiles: list[IncomeProfile]
+    """
+    Attributes
+        age (int)
+
+        social_security_pension (SocialSecurityPension)
+
+        earnings_records (dict)
+
+        income_profiles (list[IncomeProfile])
+    """
+
+    age: Optional[int] = None
+    social_security_pension: Optional[SocialSecurityPension] = None
+    earnings_records: Optional[dict] = None
+    income_profiles: Optional[list[IncomeProfile]] = None
 
 
 class Admin(BaseModel):
+    """
+    Attributes
+        partner_pension_strategy (SocialSecurityPensionOptions)
+    """
+
     partner_pension_strategy: SocialSecurityPensionOptions
 
 
 class User(BaseModel):
+    """
+    Attributes
+        age (int)
+
+        calculate_til (float)
+
+        equity_target (float)
+
+        portfolio (Portfolio)
+
+        social_security_pension (SocialSecurityPension)
+
+        spending (Spending)
+
+        state (str)
+
+        kids (Kids)
+
+        earnings_records (dict)
+
+        income_profiles (list[IncomeProfile])
+
+        partner (Partner)
+
+        admin (Admin)
+    """
+
     age: int = Field(description="foo value of the response")
     calculate_til: float
     equity_target: Optional[float] = None
@@ -187,7 +374,7 @@ class User(BaseModel):
 
 
 # Populate the Python object from the YAML configuration
-with open("config.yml", "r", encoding="utf-8") as file:
+with open(constants.CONFIG_PATH, "r", encoding="utf-8") as file:
     yaml_content = yaml.safe_load(file)
 try:
     config = User(**yaml_content)
@@ -195,27 +382,27 @@ except ValidationError as e:
     print(e)
 
 
-def variable_override(obj, attr: str, override_value):
-    """Iterate recursively through obj and replace attr with override_value
+def attribute_filller(obj, attr: str, fill_value):
+    """Iterate recursively through obj and fills attr with fill_value
 
-    Only replaces if not specified
+    Only fills if not specified (attr set to None)
 
     Args:
         obj (any)
         attr (str): the object attribute to be targeted
-        override_value (any): the value to change the attribute to
+        fill_value (any): the value to change the attribute to
     """
     if hasattr(obj, "__dict__"):
         for field_name, field_value in vars(obj).items():
             # Confirm attribute is part of obj, but is set
             # to default None (consequense of user not providing it in config)
             if field_name == attr and not field_value:
-                setattr(obj, attr, override_value)
+                setattr(obj, attr, fill_value)
             else:
-                variable_override(field_value, attr, override_value)
+                attribute_filller(field_value, attr, fill_value)
 
 
 if config.equity_target:
     # config.equity_target is considered global
     # and overwrites any equity_target value left unspecified
-    variable_override(config, "equity_target", config.equity_target)
+    attribute_filller(config, "equity_target", config.equity_target)
