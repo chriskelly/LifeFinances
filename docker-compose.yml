@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  life_finances:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./src:/src:ro
+      - ./tests:/tests:ro
+    ports:
+      - "3000:3000"
+    entrypoint:
+      - python
+      - /run.py
