@@ -8,6 +8,7 @@ services:
     volumes:
       - ./src:/src:ro
       - ./tests:/tests:ro
+      - ./config.yml:/config.yml:ro
     ports:
       - "3000:3000"
     entrypoint:
