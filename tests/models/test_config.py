@@ -20,16 +20,27 @@ from app.models.config import (
 @pytest.fixture
 def sample_user_data():
     """Pull in current user's config"""
-    with open(constants.CONFIG_PATH, "r", encoding="utf-8") as file:
-        user_data = yaml.safe_load(file)
-    return user_data
+    with open(constants.SAMPLE_CONFIG_PATH, "r", encoding="utf-8") as file:
+        sample_data = yaml.safe_load(file)
+    return sample_data
 
 
 def test_sample_user_data(sample_user_data):
-    """Ensure user data is valid"""
+    """Ensure sample data is valid"""
     assert sample_user_data
     try:
         User(**sample_user_data)
+    except ValidationError as error:
+        pytest.fail(f"Failed to validate sample user data: {error}")
+
+
+def test_user_data():
+    """Ensure user's data is valid"""
+    with open(constants.CONFIG_PATH, "r", encoding="utf-8") as file:
+        user_data = yaml.safe_load(file)
+    assert user_data
+    try:
+        User(**user_data)
     except ValidationError as error:
         pytest.fail(f"Failed to validate sample user data: {error}")
 
