@@ -9,15 +9,9 @@ This file contains the following functions:
 
 import math
 import random
-import sys
-from os import path
-import git
 import numpy as np
 from models.skew_dist import create_skew_dist
 import data.constants as const
-git_root= git.Repo(path.abspath(__file__),
-                   search_parent_directories=True).git.rev_parse('--show-toplevel')
-sys.path.append(git_root)
 
 rng= np.random.default_rng() # instantiate a random generator
 

@@ -4,20 +4,15 @@ This module contains the constants used across multiple modules in
 the Life Finances package
 
 """
-import os
-import git
 import datetime as dt
+from pathlib import Path
 
-
-git_root = git.Repo(os.path.abspath(""), search_parent_directories=True).git.rev_parse(
-    "--show-toplevel"
-)
-
-CONFIG_PATH = os.path.join(git_root, "config.yml")
-DB_LOC = os.path.join(git_root, "data/data.db")
-PARAMS_SUCCESS_LOC = os.path.join(git_root, "data/param_success.json")
-QUIT_LOC = os.path.join(git_root, "cancel.quit")
-SAVE_DIR = os.path.join(git_root, "diagnostics/saved")
+CONFIG_PATH = Path("config.yml")
+SAMPLE_CONFIG_PATH = Path("tests/sample_config.yml")
+DB_LOC = Path("data/data.db")
+PARAMS_SUCCESS_LOC = Path("data/param_success.json")
+QUIT_LOC = Path("cancel.quit")
+SAVE_DIR = Path("diagnostics/saved")
 
 TODAY = dt.date.today()
 TODAY_QUARTER = (TODAY.month - 1) // 3
