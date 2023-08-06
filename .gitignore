@@ -5,6 +5,7 @@
 param_success.json
 **/data/data.db
 diagnostics/saved/
+config.yml
 temporary*
 *.prof
 .vscode/
