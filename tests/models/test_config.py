@@ -17,19 +17,11 @@ from app.models.config import (
 )
 
 
-@pytest.fixture
-def sample_user_data():
-    """Pull in current user's config"""
-    with open(constants.SAMPLE_CONFIG_PATH, "r", encoding="utf-8") as file:
-        sample_data = yaml.safe_load(file)
-    return sample_data
-
-
-def test_sample_user_data(sample_user_data):
+def test_sample_config_data(sample_config_data):
     """Ensure sample data is valid"""
-    assert sample_user_data
+    assert sample_config_data
     try:
-        User(**sample_user_data)
+        User(**sample_config_data)
     except ValidationError as error:
         pytest.fail(f"Failed to validate sample user data: {error}")
 
@@ -85,12 +77,12 @@ def test_chosen_strategy(strategy_options: StrategyOptions):
     assert chosen_strategy[0] == "strategy3"
 
 
-def test_user_state_supported(sample_user_data):
+def test_user_state_supported(sample_config_data):
     """If the user selects a state not supported,
     a ValidationError should be captured."""
-    sample_user_data["state"] = "Mexico"
+    sample_config_data["state"] = "Mexico"
     with pytest.raises(ValidationError, match="1 validation error"):
-        User(**sample_user_data)
+        User(**sample_config_data)
 
 
 def test_attribute_filler():
