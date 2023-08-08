@@ -10,7 +10,7 @@ services:
       - ./tests:/tests:ro
       - ./config.yml:/config.yml:ro
     ports:
-      - "3000:3000"
+      - "3500:3500"
     entrypoint:
       - python
       - /run.py
