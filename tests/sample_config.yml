@@ -8,8 +8,11 @@ portfolio:
   current_net_worth: 250
   drawdown_tax_rate: 0.1
   real_estate:
-    enabled: true
-    equity_ratio: 0.6
+    include:
+      chosen: true
+      equity_ratio: 0.6
+    dont_include:
+      enabled: true
   annuities_instead_of_bonds: false
   allocation_strategy:
     flat_bond:

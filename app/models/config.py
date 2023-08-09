@@ -88,6 +88,18 @@ class RealEstateStrategy(Strategy):
     equity_ratio: float
 
 
+class RealEstateOptions(BaseModel, StrategyOptions):
+    """
+    Attributes
+        include (RealEstateStrategy)
+
+        dont_include (Strategy)
+    """
+
+    include: Optional[RealEstateStrategy] = None
+    dont_include: Optional[Strategy] = None
+
+
 class FlatBondStrategy(Strategy):
     """
     Attributes
@@ -173,7 +185,7 @@ class Portfolio(BaseModel):
 
     current_net_worth: float
     drawdown_tax_rate: float = 0.1
-    real_estate: RealEstateStrategy = None
+    real_estate: RealEstateOptions = None
     annuities_instead_of_bonds: bool
     allocation_strategy: AllocationOptions
 
