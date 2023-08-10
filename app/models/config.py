@@ -105,6 +105,13 @@ class FlatBondStrategy(Strategy):
 
     flat_bond_target: Optional[float] = None
 
+    @validator("flat_bond_target")
+    def flat_bond_target_between_0_and_1(cls, v):
+        """Restrict flat_bond_target to be between 0 and 1 if provided"""
+        if v < 0 or v > 1:
+            raise ValueError("flat_bond_target must be between 0 and 1")
+        return v
+
 
 class XMinusAgeStrategy(Strategy):
     """
@@ -138,6 +145,28 @@ class BondTentStrategy(Strategy):
     end_allocation: Optional[float] = None
     end_date: Optional[float] = None
 
+    @validator("start_allocation", "peak_allocation", "end_allocation")
+    def allocation_between_0_and_1(cls, v):
+        """Restrict allocations to be between 0 and 1 if provided"""
+        if v < 0 or v > 1:
+            raise ValueError("Allocation must be between 0 and 1")
+        return v
+
+    # Start date must be before peak date which must be before end date
+    @validator("start_date", "peak_date", "end_date")
+    def dates_in_order(cls, v, values):
+        """Restrict dates to be in order if provided"""
+        if (
+            values.get("start_date")
+            and values.get("peak_date")
+            and values.get("end_date")
+        ):
+            if values["start_date"] >= values["peak_date"]:
+                raise ValueError("Start date must be before peak date")
+            if values["peak_date"] >= values["end_date"]:
+                raise ValueError("Peak date must be before end date")
+        return v
+
 
 class LifeCycleStrategy(Strategy):
     """
@@ -146,6 +175,13 @@ class LifeCycleStrategy(Strategy):
     """
 
     equity_target: Optional[float] = None
+
+    @validator("equity_target")
+    def equity_target_greater_or_equal_to_0(cls, v):
+        """Restrict equity target to be greater or equal to 0 if provided"""
+        if v < 0:
+            raise ValueError("Equity target must be greater or equal to 0")
+        return v
 
 
 class AllocationOptions(BaseModel, StrategyOptions):
