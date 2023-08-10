@@ -231,7 +231,9 @@ class Controller:
         else:
             bond = risk_ratio.low
             annuity = 0
-        real_estate = risk_ratio.high * self.user.portfolio.real_estate.equity_ratio
+        real_estate = (
+            risk_ratio.high * self.user.portfolio.real_estate.include.equity_ratio
+        )
         stock = risk_ratio.high - real_estate
         return AllocationRatios(
             stock=stock, bond=bond, real_estate=real_estate, annuity=annuity

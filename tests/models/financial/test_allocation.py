@@ -13,8 +13,9 @@ from app.models.financial.allocation import (
     BondTent,
     RiskRatios,
     LifeCycle,
+    Controller,
 )
-from app.models.config import User
+from app.models.config import User, AllocationOptions
 
 
 def test_risk_ratios_post_init():
@@ -107,3 +108,37 @@ class TestLifeCycle:
         first_state.inflation = 1.5
         risk_ratio = self.strategy.risk_ratio(first_state)
         assert risk_ratio.high == pytest.approx(0.75)
+
+
+class TestGenAllocation:
+    def test_bond_annuity_relationship(self, sample_user: User, first_state: State):
+        """If annuities_instead_of_bonds is False, annuity allocation should be 0.
+        If annuities_instead_of_bonds is True, bond allocation should be 0."""
+        allocation_options = {
+            "flat_bond": {
+                "chosen": True,
+                "flat_bond_target": 0.5,
+            }
+        }
+        sample_user.portfolio.allocation_strategy = AllocationOptions(
+            **allocation_options
+        )
+        sample_user.portfolio.annuities_instead_of_bonds = False
+        allocation = Controller(sample_user).gen_allocation(first_state)
+        assert allocation.bond == pytest.approx(0.5)
+        assert allocation.annuity == pytest.approx(0)
+        sample_user.portfolio.annuities_instead_of_bonds = True
+        allocation = Controller(sample_user).gen_allocation(first_state)
+        assert allocation.bond == pytest.approx(0)
+        assert allocation.annuity == pytest.approx(0.5)
+
+    def test_stock_real_estate_relationship(
+        self, sample_user: User, first_state: State
+    ):
+        """Real estate and stock allocation should be complimentary"""
+        sample_user.portfolio.real_estate.include.equity_ratio = 0.25
+        allocation = Controller(sample_user).gen_allocation(first_state)
+        low_risk_ratio = allocation.bond + allocation.annuity
+        assert allocation.real_estate + allocation.stock == pytest.approx(
+            1 - low_risk_ratio
+        )
