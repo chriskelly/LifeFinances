@@ -21,9 +21,22 @@ def test_sample_config_data(sample_config_data):
     """Ensure sample data is valid"""
     assert sample_config_data
     try:
-        User(**sample_config_data)
+        user = User(**sample_config_data)
     except ValidationError as error:
         pytest.fail(f"Failed to validate sample user data: {error}")
+
+    # If the config model is changed, but the sample_config isn't updated
+    # correctly, this test should help capture undeclared objects
+    exceptions = {"same", "equity_target"}
+
+    def check_for_none(obj, parent_path=""):
+        for key, value in obj.items():
+            if value is None and key not in exceptions:
+                pytest.fail(f"Value at path '{parent_path}.{key}' is None")
+            elif isinstance(value, dict):
+                check_for_none(value, parent_path=f"{parent_path}.{key}")
+
+    check_for_none(user.model_dump())
 
 
 def test_user_data():

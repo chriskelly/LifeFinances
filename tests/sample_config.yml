@@ -45,6 +45,7 @@ social_security_pension:
       enabled: true
     net_worth:
       enabled: true
+      equity_target: 2000
 
 spending:
   yearly_amount: 60
@@ -88,6 +89,14 @@ partner:
   social_security_pension:
     pension_eligible: true
     strategy:
+      early:
+        enabled: false
+      mid:
+        chosen: false
+      late:
+        enabled: false
+      net_worth:
+        enabled: false
       same:
         chosen: true
 
