@@ -50,6 +50,18 @@ def test_user_data():
         pytest.fail(f"Failed to validate sample user data: {error}")
 
 
+## Test the min_config.yml and ensure it's valid
+def test_min_config():
+    """Ensure min_config.yml is valid"""
+    with open(constants.MIN_CONFIG_PATH, "r", encoding="utf-8") as file:
+        min_config = yaml.safe_load(file)
+    assert min_config
+    try:
+        User(**min_config)
+    except ValidationError as error:
+        pytest.fail(f"Failed to validate the min config: {error}")
+
+
 def test_chosen_forces_enabled():
     """Any strategy with chosen=True should be enabled"""
     strategy = Strategy(enabled=False, chosen=True)

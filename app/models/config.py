@@ -10,7 +10,7 @@ Useful Pydantic documentation
 
 from typing import Optional
 import yaml
-from pydantic import BaseModel, ValidationError, field_validator, Field
+from pydantic import BaseModel, ValidationError, field_validator, validator
 from pydantic_core.core_schema import FieldValidationInfo
 from app.data.taxes import STATE_BRACKET_RATES
 from app.data import constants
@@ -180,11 +180,13 @@ class Portfolio(BaseModel):
         allocation_strategy (AllocationOptions)
     """
 
-    current_net_worth: float
+    current_net_worth: float = 0
     drawdown_tax_rate: float = 0.1
     real_estate: RealEstateOptions = None
-    annuities_instead_of_bonds: bool
-    allocation_strategy: AllocationOptions
+    annuities_instead_of_bonds: bool = False
+    allocation_strategy: AllocationOptions = AllocationOptions(
+        flat_bond=FlatBondStrategy(flat_bond_target=0.4, chosen=True),
+    )
 
 
 class NetWorthStrategy(Strategy):
@@ -264,8 +266,10 @@ class Spending(BaseModel):
     """
 
     yearly_amount: int
-    spending_strategy: SpendingOptions
-    retirement_change: float
+    spending_strategy: SpendingOptions = SpendingOptions(
+        inflation_only=Strategy(chosen=True)
+    )
+    retirement_change: float = 0
 
 
 class Kids(BaseModel):
@@ -297,10 +301,10 @@ class IncomeProfile(BaseModel):
     """
 
     starting_income: float
-    tax_deferred_income: float
-    yearly_raise: float
-    try_to_optimize: bool
-    social_security_eligible: bool
+    tax_deferred_income: float = 0
+    yearly_raise: float = 0.3
+    try_to_optimize: bool = True
+    social_security_eligible: bool = True
     last_date: float
 
 
@@ -359,11 +363,11 @@ class User(BaseModel):
         admin (Admin)
     """
 
-    age: int = Field(description="foo value of the response")
-    calculate_til: float
+    age: int
+    calculate_til: float = None
     equity_target: Optional[float] = None
-    portfolio: Portfolio
-    social_security_pension: SocialSecurityPension
+    portfolio: Portfolio = Portfolio()
+    social_security_pension: Optional[SocialSecurityPension] = None
     spending: Spending
     state: Optional[str] = None
     kids: Optional[Kids] = None
@@ -371,6 +375,13 @@ class User(BaseModel):
     income_profiles: list[IncomeProfile] = []
     partner: Optional[Partner] = None
     admin: Optional[Admin] = None
+
+    @validator("calculate_til", pre=True)
+    def set_calculate_til(cls, value, values):
+        """Set calculate till to be current year minus age + 90 if not specified"""
+        if value is None:
+            return constants.TODAY_YR - values["age"] + 90
+        return value
 
     @field_validator("state")
     def state_supported(cls, state):

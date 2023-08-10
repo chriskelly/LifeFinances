@@ -1,0 +1,8 @@
+age: 30
+
+spending:
+  yearly_amount: 60
+
+income_profiles:
+  - starting_income: 80
+    last_date: 2035.25
