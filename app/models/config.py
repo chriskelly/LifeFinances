@@ -7,7 +7,6 @@ Useful Pydantic documentation
         
 """
 # pylint: disable=no-self-argument # @field_validator are class methods
-# pylint: disable=missing-class-docstring # many self-explanatory classes
 
 from typing import Optional
 import yaml
@@ -15,8 +14,6 @@ from pydantic import BaseModel, ValidationError, field_validator, Field
 from pydantic_core.core_schema import FieldValidationInfo
 from app.data.taxes import STATE_BRACKET_RATES
 from app.data import constants
-
-# TODO: from pydantic.json_schema import GenerateJsonSchema
 
 
 class Strategy(BaseModel):
