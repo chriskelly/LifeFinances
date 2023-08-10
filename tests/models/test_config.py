@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from app.data import constants
 from app.models.config import (
     User,
-    Strategy,
+    StrategyConfig,
     StrategyOptions,
     attribute_filller,
 )
@@ -64,22 +64,22 @@ def test_min_config():
 
 def test_chosen_forces_enabled():
     """Any strategy with chosen=True should be enabled"""
-    strategy = Strategy(enabled=False, chosen=True)
+    strategy = StrategyConfig(enabled=False, chosen=True)
     assert strategy.enabled is True
 
 
 @pytest.fixture
 def strategy_options() -> StrategyOptions:
     """Sample StrategyOptions"""
-    strategy1 = Strategy(enabled=True)
-    strategy2 = Strategy(enabled=False)
-    strategy3 = Strategy(enabled=True, chosen=True)
+    strategy1 = StrategyConfig(enabled=True)
+    strategy2 = StrategyConfig(enabled=False)
+    strategy3 = StrategyConfig(enabled=True, chosen=True)
 
     @dataclass
     class MyOptions(StrategyOptions):
-        strategy1: Strategy
-        strategy2: Strategy
-        strategy3: Strategy
+        strategy1: StrategyConfig
+        strategy2: StrategyConfig
+        strategy3: StrategyConfig
 
     my_options = MyOptions(strategy1, strategy2, strategy3)
     return my_options

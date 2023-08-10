@@ -8,11 +8,11 @@ import pytest
 from app.models import config
 from app.models.financial.state import State
 from app.models.financial.allocation import (
-    FlatBond,
-    XMinusAge,
-    BondTent,
+    FlatBondStrategy,
+    XMinusAgeStrategy,
+    BondTentStrategy,
     RiskRatios,
-    LifeCycle,
+    LifeCycleStrategy,
     Controller,
 )
 from app.models.config import User, AllocationOptions
@@ -32,13 +32,13 @@ def test_risk_ratios_post_init():
 def test_flat_bond_strategy(sample_user: User, first_state):
     """Low risk ratio should be equal to flat_bond_target"""
     sample_config = sample_user.portfolio.allocation_strategy.flat_bond
-    strategy = FlatBond(config=sample_config)
+    strategy = FlatBondStrategy(config=sample_config)
     risk_ratio = strategy.risk_ratio(first_state)
     assert risk_ratio.low == sample_config.flat_bond_target
 
 
 class TestXMinusAge:
-    strategy = XMinusAge(config=config.XMinusAgeStrategy(x=100))
+    strategy = XMinusAgeStrategy(config=config.XMinusAgeStrategyConfig(x=100))
 
     def test_risk_ratio_with_partner(self, first_state: State):
         """This strategy should use the average age between partners"""
@@ -60,7 +60,7 @@ class TestXMinusAge:
 
 def test_bond_tent_strategy(first_state: State):
     """Low risk should match path defined in the config_obj"""
-    config_obj = config.BondTentStrategy(
+    config_obj = config.BondTentStrategyConfig(
         start_allocation=0.3,
         start_date=1,
         peak_allocation=0.7,
@@ -68,7 +68,7 @@ def test_bond_tent_strategy(first_state: State):
         end_allocation=0.1,
         end_date=6,
     )
-    strategy = BondTent(config=config_obj)
+    strategy = BondTentStrategy(config=config_obj)
     # Create states with incrementally increasing dates
     states = []
     for i in range(8):
@@ -84,7 +84,9 @@ def test_bond_tent_strategy(first_state: State):
 
 
 class TestLifeCycle:
-    strategy = LifeCycle(config=config.LifeCycleStrategy(equity_target=1000))
+    strategy = LifeCycleStrategy(
+        config=config.LifeCycleStrategyConfig(equity_target=1000)
+    )
 
     def test_constraint(self, first_state: State):
         """Risk ratio should not be outside the bounds of 0 - 1"""

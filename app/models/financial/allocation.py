@@ -85,7 +85,7 @@ class Strategy(ABC):
 
 
 @dataclass
-class FlatBond(Strategy):
+class FlatBondStrategy(Strategy):
     """Implementation of a flat bond strategy.
 
     Attributes
@@ -96,7 +96,7 @@ class FlatBond(Strategy):
         Low risk ratio is equal to `flat_bond_target` from user config.
     """
 
-    config: config.FlatBondStrategy
+    config: config.FlatBondStrategyConfig
 
     def risk_ratio(self, state: State):
         low_risk = self.config.flat_bond_target
@@ -104,7 +104,7 @@ class FlatBond(Strategy):
 
 
 @dataclass
-class XMinusAge(Strategy):
+class XMinusAgeStrategy(Strategy):
     """Implementation of an X Minus Age strategy.
 
     Attributes
@@ -115,7 +115,7 @@ class XMinusAge(Strategy):
         High risk ratio is equal to x minus average current age of users
     """
 
-    config: config.XMinusAgeStrategy
+    config: config.XMinusAgeStrategyConfig
 
     def risk_ratio(self, state: State):
         if state.user.partner:
@@ -128,7 +128,7 @@ class XMinusAge(Strategy):
 
 
 @dataclass
-class BondTent(Strategy):
+class BondTentStrategy(Strategy):
     """Implementation of a bond tent strategy.
 
     Attributes
@@ -139,7 +139,7 @@ class BondTent(Strategy):
         Low risk ratio follows bond tent path defined in config
     """
 
-    config: config.BondTentStrategy
+    config: config.BondTentStrategyConfig
 
     def risk_ratio(self, state: State):
         if state.date <= self.config.start_date:
@@ -169,7 +169,7 @@ class BondTent(Strategy):
 
 
 @dataclass
-class LifeCycle(Strategy):
+class LifeCycleStrategy(Strategy):
     """Implementation of a Life Cycle strategy.
 
     Attributes
@@ -180,7 +180,7 @@ class LifeCycle(Strategy):
         High risk ratio follows `equity_target` divided by `net_worth`
     """
 
-    config: config.LifeCycleStrategy
+    config: config.LifeCycleStrategyConfig
 
     def risk_ratio(self, state: State):
         equity_target_present_value = state.inflation * self.config.equity_target
@@ -207,13 +207,13 @@ class Controller:
             strategy_obj,
         ) = user.portfolio.allocation_strategy.chosen_strategy
         if strategy_str == "flat_bond":
-            self.strategy = FlatBond(config=strategy_obj)
+            self.strategy = FlatBondStrategy(config=strategy_obj)
         elif strategy_str == "x_minus_age":
-            self.strategy = XMinusAge(config=strategy_obj)
+            self.strategy = XMinusAgeStrategy(config=strategy_obj)
         elif strategy_str == "bond_tent":
-            self.strategy = BondTent(config=strategy_obj)
+            self.strategy = BondTentStrategy(config=strategy_obj)
         elif strategy_str == "life_cycle":
-            self.strategy = LifeCycle(config=strategy_obj)
+            self.strategy = LifeCycleStrategy(config=strategy_obj)
 
     def gen_allocation(self, state: State) -> AllocationRatios:
         """Returns allocation ratios for a given state

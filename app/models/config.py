@@ -16,7 +16,7 @@ from app.data.taxes import STATE_BRACKET_RATES
 from app.data import constants
 
 
-class Strategy(BaseModel):
+class StrategyConfig(BaseModel):
     """
     Attributes
         enabled (bool)
@@ -47,7 +47,7 @@ class StrategyOptions:
     """
 
     @property
-    def enabled_strategies(self) -> dict[str, Strategy]:
+    def enabled_strategies(self) -> dict[str, StrategyConfig]:
         """Dict of enabled strategies
 
         Returns:
@@ -60,7 +60,7 @@ class StrategyOptions:
         }
 
     @property
-    def chosen_strategy(self) -> tuple[str, Strategy]:
+    def chosen_strategy(self) -> tuple[str, StrategyConfig]:
         """Strategy chosen by user
 
         Returns:
@@ -76,7 +76,7 @@ class StrategyOptions:
         )
 
 
-class RealEstateStrategy(Strategy):
+class RealEstateStrategyConfig(StrategyConfig):
     """
     Attributes
         equity_ratio (float)
@@ -93,11 +93,11 @@ class RealEstateOptions(BaseModel, StrategyOptions):
         dont_include (Strategy)
     """
 
-    include: Optional[RealEstateStrategy] = None
-    dont_include: Optional[Strategy] = None
+    include: Optional[RealEstateStrategyConfig] = None
+    dont_include: Optional[StrategyConfig] = None
 
 
-class FlatBondStrategy(Strategy):
+class FlatBondStrategyConfig(StrategyConfig):
     """
     Attributes
         flat_bond_target (float)
@@ -113,7 +113,7 @@ class FlatBondStrategy(Strategy):
         return v
 
 
-class XMinusAgeStrategy(Strategy):
+class XMinusAgeStrategyConfig(StrategyConfig):
     """
     Attributes
         x (int)
@@ -122,7 +122,7 @@ class XMinusAgeStrategy(Strategy):
     x: Optional[int] = None
 
 
-class BondTentStrategy(Strategy):
+class BondTentStrategyConfig(StrategyConfig):
     """
     Attributes
         start_allocation (float)
@@ -168,7 +168,7 @@ class BondTentStrategy(Strategy):
         return v
 
 
-class LifeCycleStrategy(Strategy):
+class LifeCycleStrategyConfig(StrategyConfig):
     """
     Attributes
         equity_target (float)
@@ -196,10 +196,10 @@ class AllocationOptions(BaseModel, StrategyOptions):
         life_cycle (LifeCycleStrategy)
     """
 
-    flat_bond: Optional[FlatBondStrategy] = None
-    x_minus_age: Optional[XMinusAgeStrategy] = None
-    bond_tent: Optional[BondTentStrategy] = None
-    life_cycle: Optional[LifeCycleStrategy] = None
+    flat_bond: Optional[FlatBondStrategyConfig] = None
+    x_minus_age: Optional[XMinusAgeStrategyConfig] = None
+    bond_tent: Optional[BondTentStrategyConfig] = None
+    life_cycle: Optional[LifeCycleStrategyConfig] = None
 
 
 class Portfolio(BaseModel):
@@ -221,11 +221,11 @@ class Portfolio(BaseModel):
     real_estate: RealEstateOptions = None
     annuities_instead_of_bonds: bool = False
     allocation_strategy: AllocationOptions = AllocationOptions(
-        flat_bond=FlatBondStrategy(flat_bond_target=0.4, chosen=True),
+        flat_bond=FlatBondStrategyConfig(flat_bond_target=0.4, chosen=True),
     )
 
 
-class NetWorthStrategy(Strategy):
+class NetWorthStrategyConfig(StrategyConfig):
     """
     Attributes
         equity_target (float)
@@ -248,11 +248,11 @@ class SocialSecurityPensionOptions(BaseModel, StrategyOptions):
         same (Strategy)
     """
 
-    early: Optional[Strategy] = None
-    mid: Optional[Strategy] = None
-    late: Optional[Strategy] = None
-    net_worth: Optional[NetWorthStrategy] = None
-    same: Optional[Strategy] = None
+    early: Optional[StrategyConfig] = None
+    mid: Optional[StrategyConfig] = None
+    late: Optional[StrategyConfig] = None
+    net_worth: Optional[NetWorthStrategyConfig] = None
+    same: Optional[StrategyConfig] = None
 
 
 class SocialSecurityPension(BaseModel):
@@ -270,7 +270,7 @@ class SocialSecurityPension(BaseModel):
     strategy: SocialSecurityPensionOptions
 
 
-class CeilFloorStrategy(Strategy):
+class CeilFloorStrategyConfig(StrategyConfig):
     """
     Attributes
         allowed_fluctuation (float)
@@ -287,8 +287,8 @@ class SpendingOptions(BaseModel, StrategyOptions):
         ceil_floor (CeilFloorStrategy)
     """
 
-    inflation_only: Optional[Strategy] = None
-    ceil_floor: Optional[CeilFloorStrategy] = None
+    inflation_only: Optional[StrategyConfig] = None
+    ceil_floor: Optional[CeilFloorStrategyConfig] = None
 
 
 class Spending(BaseModel):
@@ -303,7 +303,7 @@ class Spending(BaseModel):
 
     yearly_amount: int
     spending_strategy: SpendingOptions = SpendingOptions(
-        inflation_only=Strategy(chosen=True)
+        inflation_only=StrategyConfig(chosen=True)
     )
     retirement_change: float = 0
 
