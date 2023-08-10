@@ -6,11 +6,10 @@ Useful Pydantic documentation
     V2 Validators
         
 """
-# pylint: disable=no-self-argument # @field_validator are class methods
 
 from typing import Optional
 import yaml
-from pydantic import BaseModel, ValidationError, field_validator, validator
+from pydantic import BaseModel, ValidationError, field_validator, model_validator
 from pydantic_core.core_schema import FieldValidationInfo
 from app.data.taxes import STATE_BRACKET_RATES
 from app.data import constants
@@ -28,6 +27,7 @@ class StrategyConfig(BaseModel):
     chosen: bool = False
 
     @field_validator("chosen")
+    @classmethod
     def chosen_forces_enabled(cls, chosen, info: FieldValidationInfo):
         """Forces enabled to true if chosen is true
 
@@ -105,12 +105,12 @@ class FlatBondStrategyConfig(StrategyConfig):
 
     flat_bond_target: Optional[float] = None
 
-    @validator("flat_bond_target")
-    def flat_bond_target_between_0_and_1(cls, v):
+    @model_validator(mode="after")
+    def flat_bond_target_between_0_and_1(self):
         """Restrict flat_bond_target to be between 0 and 1 if provided"""
-        if v < 0 or v > 1:
+        if self.flat_bond_target < 0 or self.flat_bond_target > 1:
             raise ValueError("flat_bond_target must be between 0 and 1")
-        return v
+        return self
 
 
 class XMinusAgeStrategyConfig(StrategyConfig):
@@ -145,27 +145,23 @@ class BondTentStrategyConfig(StrategyConfig):
     end_allocation: Optional[float] = None
     end_date: Optional[float] = None
 
-    @validator("start_allocation", "peak_allocation", "end_allocation")
-    def allocation_between_0_and_1(cls, v):
+    @field_validator("start_allocation", "peak_allocation", "end_allocation")
+    @classmethod
+    def allocation_between_0_and_1(cls, allocation: float):
         """Restrict allocations to be between 0 and 1 if provided"""
-        if v < 0 or v > 1:
+        if allocation < 0 or allocation > 1:
             raise ValueError("Allocation must be between 0 and 1")
-        return v
+        return allocation
 
-    # Start date must be before peak date which must be before end date
-    @validator("start_date", "peak_date", "end_date")
-    def dates_in_order(cls, v, values):
+    @model_validator(mode="after")
+    def dates_in_order(self):
         """Restrict dates to be in order if provided"""
-        if (
-            values.get("start_date")
-            and values.get("peak_date")
-            and values.get("end_date")
-        ):
-            if values["start_date"] >= values["peak_date"]:
+        if self.start_date and self.peak_date and self.end_date:
+            if self.start_date >= self.peak_date:
                 raise ValueError("Start date must be before peak date")
-            if values["peak_date"] >= values["end_date"]:
+            if self.peak_date >= self.end_date:
                 raise ValueError("Peak date must be before end date")
-        return v
+        return self
 
 
 class LifeCycleStrategyConfig(StrategyConfig):
@@ -176,12 +172,12 @@ class LifeCycleStrategyConfig(StrategyConfig):
 
     equity_target: Optional[float] = None
 
-    @validator("equity_target")
-    def equity_target_greater_or_equal_to_0(cls, v):
+    @model_validator(mode="after")
+    def equity_target_greater_or_equal_to_0(self):
         """Restrict equity target to be greater or equal to 0 if provided"""
-        if v < 0:
+        if self.equity_target < 0:
             raise ValueError("Equity target must be greater or equal to 0")
-        return v
+        return self
 
 
 class AllocationOptions(BaseModel, StrategyOptions):
@@ -412,14 +408,16 @@ class User(BaseModel):
     partner: Optional[Partner] = None
     admin: Optional[Admin] = None
 
-    @validator("calculate_til", pre=True)
-    def set_calculate_til(cls, value, values):
+    @field_validator("calculate_til")
+    @classmethod
+    def set_calculate_til(cls, calculate_til, info: FieldValidationInfo):
         """Set calculate till to be current year minus age + 90 if not specified"""
-        if value is None:
-            return constants.TODAY_YR - values["age"] + 90
-        return value
+        if calculate_til is None:
+            return constants.TODAY_YR - info.data["age"] + 90
+        return calculate_til
 
     @field_validator("state")
+    @classmethod
     def state_supported(cls, state):
         """Class method for validating state is supported by taxes module"""
         if state not in STATE_BRACKET_RATES:
