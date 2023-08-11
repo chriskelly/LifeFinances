@@ -19,9 +19,9 @@ portfolio:
     annuities:
       enabled: true
   allocation_strategy:
-    flat_bond:
+    flat_allocation:
       chosen: true
-      flat_bond_target: 0.2
+      low_risk_target: 0.2
     x_minus_age:
       enabled: true
       x: 120

@@ -93,13 +93,13 @@ class FlatBondStrategy(Strategy):
 
     Methods
         risk_ratio(self, state:State) -> RiskRatio:
-        Low risk ratio is equal to `flat_bond_target` from user config.
+        Low risk ratio is equal to `low_risk_target` from user config.
     """
 
-    config: config.FlatBondStrategyConfig
+    config: config.FlatAllocationStrategyConfig
 
     def risk_ratio(self, state: State):
-        low_risk = self.config.flat_bond_target
+        low_risk = self.config.low_risk_target
         return RiskRatios(low=low_risk)
 
 
@@ -207,7 +207,7 @@ class Controller:
             strategy_obj,
         ) = user.portfolio.allocation_strategy.chosen_strategy
         match strategy_str:
-            case "flat_bond":
+            case "flat_allocation":
                 self.strategy = FlatBondStrategy(config=strategy_obj)
             case "x_minus_age":
                 self.strategy = XMinusAgeStrategy(config=strategy_obj)

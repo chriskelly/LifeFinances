@@ -109,21 +109,21 @@ class LowRiskOptions(BaseModel, StrategyOptions):
     annuities: Optional[StrategyConfig] = None
 
 
-class FlatBondStrategyConfig(StrategyConfig):
+class FlatAllocationStrategyConfig(StrategyConfig):
     """
     Attributes
-        flat_bond_target (float)
+        low_risk_target (float)
     """
 
-    flat_bond_target: Optional[float] = None
+    low_risk_target: Optional[float] = None
 
     @model_validator(mode="after")
-    def flat_bond_target_between_0_and_1(self):
-        """Restrict flat_bond_target to be between 0 and 1 if provided"""
-        if self.flat_bond_target and (
-            self.flat_bond_target < 0 or self.flat_bond_target > 1
+    def low_risk_target_between_0_and_1(self):
+        """Restrict low_risk_target to be between 0 and 1 if provided"""
+        if self.low_risk_target and (
+            self.low_risk_target < 0 or self.low_risk_target > 1
         ):
-            raise ValueError("flat_bond_target must be between 0 and 1")
+            raise ValueError("low_risk_target must be between 0 and 1")
         return self
 
 
@@ -138,6 +138,8 @@ class XMinusAgeStrategyConfig(StrategyConfig):
 
 class BondTentStrategyConfig(StrategyConfig):
     """
+    While called a Bond Tent, this strategy also applies to annuities if selected.
+
     Attributes
         start_allocation (float)
 
@@ -197,16 +199,16 @@ class LifeCycleStrategyConfig(StrategyConfig):
 class AllocationOptions(BaseModel, StrategyOptions):
     """
     Attributes
-        flat_bond (FlatBondStrategy)
+        flat_allocation (FlatAllocationStrategyConfig)
 
-        x_minus_age (XMinusAgeStrategy)
+        x_minus_age (XMinusAgeStrategyConfig)
 
-        bond_tent (BondTentStrategy)
+        bond_tent (BondTentStrategyConfig)
 
-        life_cycle (LifeCycleStrategy)
+        life_cycle (LifeCycleStrategyConfig)
     """
 
-    flat_bond: Optional[FlatBondStrategyConfig] = None
+    flat_allocation: Optional[FlatAllocationStrategyConfig] = None
     x_minus_age: Optional[XMinusAgeStrategyConfig] = None
     bond_tent: Optional[BondTentStrategyConfig] = None
     life_cycle: Optional[LifeCycleStrategyConfig] = None
@@ -221,7 +223,7 @@ class Portfolio(BaseModel):
 
         real_estate (RealEstateStrategy)
 
-        annuities_instead_of_bonds (bool)
+        low_risk (LowRiskOptions)
 
         allocation_strategy (AllocationOptions)
     """
@@ -231,7 +233,7 @@ class Portfolio(BaseModel):
     real_estate: RealEstateOptions = None
     low_risk: LowRiskOptions = LowRiskOptions(bonds=StrategyConfig(chosen=True))
     allocation_strategy: AllocationOptions = AllocationOptions(
-        flat_bond=FlatBondStrategyConfig(flat_bond_target=0.4, chosen=True),
+        flat_allocation=FlatAllocationStrategyConfig(low_risk_target=0.4, chosen=True),
     )
 
 

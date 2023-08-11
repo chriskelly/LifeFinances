@@ -29,12 +29,12 @@ def test_risk_ratios_post_init():
     assert ratios.low + ratios.high == 1
 
 
-def test_flat_bond_strategy(sample_user: User, first_state):
-    """Low risk ratio should be equal to flat_bond_target"""
-    sample_config = sample_user.portfolio.allocation_strategy.flat_bond
+def test_flat_allocation_strategy(sample_user: User, first_state):
+    """Low risk ratio should be equal to low_risk_target"""
+    sample_config = sample_user.portfolio.allocation_strategy.flat_allocation
     strategy = FlatBondStrategy(config=sample_config)
     risk_ratio = strategy.risk_ratio(first_state)
-    assert risk_ratio.low == sample_config.flat_bond_target
+    assert risk_ratio.low == sample_config.low_risk_target
 
 
 class TestXMinusAge:
@@ -117,9 +117,9 @@ class TestGenAllocation:
         """If annuities_instead_of_bonds is False, annuity allocation should be 0.
         If annuities_instead_of_bonds is True, bond allocation should be 0."""
         allocation_options = {
-            "flat_bond": {
+            "flat_allocation": {
                 "chosen": True,
-                "flat_bond_target": 0.5,
+                "low_risk_target": 0.5,
             }
         }
         sample_user.portfolio.allocation_strategy = AllocationOptions(
