@@ -15,7 +15,7 @@ from app.models.financial.allocation import (
     LifeCycleStrategy,
     Controller,
 )
-from app.models.config import User, AllocationOptions
+from app.models.config import User, AllocationOptions, LowRiskOptions
 
 
 def test_risk_ratios_post_init():
@@ -125,11 +125,13 @@ class TestGenAllocation:
         sample_user.portfolio.allocation_strategy = AllocationOptions(
             **allocation_options
         )
-        sample_user.portfolio.annuities_instead_of_bonds = False
+        low_risk_options = {"bonds": {"chosen": True}, "annuities": {}}
+        sample_user.portfolio.low_risk = LowRiskOptions(**low_risk_options)
         allocation = Controller(sample_user).gen_allocation(first_state)
         assert allocation.bond == pytest.approx(0.5)
         assert allocation.annuity == pytest.approx(0)
-        sample_user.portfolio.annuities_instead_of_bonds = True
+        low_risk_options = {"bonds": {}, "annuities": {"chosen": True}}
+        sample_user.portfolio.low_risk = LowRiskOptions(**low_risk_options)
         allocation = Controller(sample_user).gen_allocation(first_state)
         assert allocation.bond == pytest.approx(0)
         assert allocation.annuity == pytest.approx(0.5)

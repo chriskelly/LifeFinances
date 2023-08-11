@@ -97,6 +97,18 @@ class RealEstateOptions(BaseModel, StrategyOptions):
     dont_include: Optional[StrategyConfig] = None
 
 
+class LowRiskOptions(BaseModel, StrategyOptions):
+    """
+    Attributes
+        bonds (Strategy)
+
+        annuities (Strategy)
+    """
+
+    bonds: Optional[StrategyConfig] = None
+    annuities: Optional[StrategyConfig] = None
+
+
 class FlatBondStrategyConfig(StrategyConfig):
     """
     Attributes
@@ -217,7 +229,7 @@ class Portfolio(BaseModel):
     current_net_worth: float = 0
     drawdown_tax_rate: float = 0.1
     real_estate: RealEstateOptions = None
-    annuities_instead_of_bonds: bool = False
+    low_risk: LowRiskOptions = LowRiskOptions(bonds=StrategyConfig(chosen=True))
     allocation_strategy: AllocationOptions = AllocationOptions(
         flat_bond=FlatBondStrategyConfig(flat_bond_target=0.4, chosen=True),
     )

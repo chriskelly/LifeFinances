@@ -226,7 +226,7 @@ class Controller:
             AllocationRatios
         """
         risk_ratio = self.strategy.risk_ratio(state)
-        if self.user.portfolio.annuities_instead_of_bonds:
+        if self.user.portfolio.low_risk.chosen_strategy[0] == "annuities":
             annuity = risk_ratio.low
             bond = 0
         else:

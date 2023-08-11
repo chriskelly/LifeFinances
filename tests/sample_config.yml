@@ -13,7 +13,11 @@ portfolio:
       equity_ratio: 0.6
     dont_include:
       enabled: true
-  annuities_instead_of_bonds: false
+  low_risk:
+    bonds:
+      chosen: true
+    annuities:
+      enabled: true
   allocation_strategy:
     flat_bond:
       chosen: true
