@@ -429,15 +429,6 @@ class User(BaseModel):
         return state
 
 
-# Populate the Python object from the YAML configuration
-with open(constants.CONFIG_PATH, "r", encoding="utf-8") as file:
-    yaml_content = yaml.safe_load(file)
-try:
-    config = User(**yaml_content)
-except ValidationError as e:
-    print(e)
-
-
 def attribute_filller(obj, attr: str, fill_value):
     """Iterate recursively through obj and fills attr with fill_value
 
@@ -458,7 +449,22 @@ def attribute_filller(obj, attr: str, fill_value):
                 attribute_filller(field_value, attr, fill_value)
 
 
-if config.equity_target:
+def get_config() -> User:
+    """Populate the Python object from the YAML configuration file
+
+    Returns:
+        User
+    """
+    with open(constants.CONFIG_PATH, "r", encoding="utf-8") as file:
+        yaml_content = yaml.safe_load(file)
+    try:
+        config = User(**yaml_content)
+    except ValidationError as e:
+        print(e)
+
     # config.equity_target is considered global
     # and overwrites any equity_target value left unspecified
-    attribute_filller(config, "equity_target", config.equity_target)
+    if config.equity_target:
+        attribute_filller(config, "equity_target", config.equity_target)
+
+    return config

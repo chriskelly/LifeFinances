@@ -9,6 +9,9 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      ci_testing: true
+
     steps:
     - uses: actions/checkout@v3
 
