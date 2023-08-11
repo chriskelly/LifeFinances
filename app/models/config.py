@@ -108,7 +108,9 @@ class FlatBondStrategyConfig(StrategyConfig):
     @model_validator(mode="after")
     def flat_bond_target_between_0_and_1(self):
         """Restrict flat_bond_target to be between 0 and 1 if provided"""
-        if self.flat_bond_target < 0 or self.flat_bond_target > 1:
+        if self.flat_bond_target and (
+            self.flat_bond_target < 0 or self.flat_bond_target > 1
+        ):
             raise ValueError("flat_bond_target must be between 0 and 1")
         return self
 
@@ -175,7 +177,7 @@ class LifeCycleStrategyConfig(StrategyConfig):
     @model_validator(mode="after")
     def equity_target_greater_or_equal_to_0(self):
         """Restrict equity target to be greater or equal to 0 if provided"""
-        if self.equity_target < 0:
+        if self.equity_target and self.equity_target < 0:
             raise ValueError("Equity target must be greater or equal to 0")
         return self
 
