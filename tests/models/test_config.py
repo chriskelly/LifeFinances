@@ -42,11 +42,10 @@ def test_sample_config_data(sample_config_data):
 
 def test_user_data():
     """Ensure user's data is valid"""
-    # Skip test if environment variable CI_TESTING exists
+    # Skip test if environment variable GITHUB_JOB exists
     # This is to prevent the test from failing on GitHub Actions
     # due to the lack of a config.yml file
-    print(os.getenv("CI_TESTING"))
-    if os.getenv("CI_TESTING"):
+    if os.getenv("GITHUB_JOB"):
         pytest.skip("Skipping test for CI Testing")
     with open(constants.CONFIG_PATH, "r", encoding="utf-8") as file:
         user_data = yaml.safe_load(file)

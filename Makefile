@@ -14,4 +14,4 @@ down:
 	docker-compose down --remove-orphans
 
 test: up
-	docker-compose run --rm --no-deps --entrypoint=pytest life_finances /tests/models /tests/models/financial
+	docker-compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances /tests/models /tests/models/financial
