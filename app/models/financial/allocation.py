@@ -206,14 +206,15 @@ class Controller:
             strategy_str,
             strategy_obj,
         ) = user.portfolio.allocation_strategy.chosen_strategy
-        if strategy_str == "flat_bond":
-            self.strategy = FlatBondStrategy(config=strategy_obj)
-        elif strategy_str == "x_minus_age":
-            self.strategy = XMinusAgeStrategy(config=strategy_obj)
-        elif strategy_str == "bond_tent":
-            self.strategy = BondTentStrategy(config=strategy_obj)
-        elif strategy_str == "life_cycle":
-            self.strategy = LifeCycleStrategy(config=strategy_obj)
+        match strategy_str:
+            case "flat_bond":
+                self.strategy = FlatBondStrategy(config=strategy_obj)
+            case "x_minus_age":
+                self.strategy = XMinusAgeStrategy(config=strategy_obj)
+            case "bond_tent":
+                self.strategy = BondTentStrategy(config=strategy_obj)
+            case "life_cycle":
+                self.strategy = LifeCycleStrategy(config=strategy_obj)
 
     def gen_allocation(self, state: State) -> AllocationRatios:
         """Returns allocation ratios for a given state
