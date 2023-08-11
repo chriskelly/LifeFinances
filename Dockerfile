@@ -1,4 +1,4 @@
-FROM python:3.9.17
+FROM python:3.10
 
 COPY requirements/ /requirements/
 RUN pip install -r /requirements/docker.txt
