@@ -10,10 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      ci_testing: true
+      CI_TESTING: true
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: Print Env
+      run: printenv
 
     - name: Run Tests
       run: make
