@@ -3,9 +3,17 @@
 
 import yaml
 import pytest
+from app import create_app
 from app.data import constants
 from app.models.config import User
 from app.models.financial.state import gen_first_state
+
+
+@pytest.fixture
+def app():
+    """Flask App"""
+    app = create_app()
+    return app
 
 
 @pytest.fixture
