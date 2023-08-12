@@ -9,7 +9,7 @@ Classes:
 Methods:
     gen_first_interval(user: User): 
 """
-from app.models.config import get_config
+from app.models.config import User
 from app.models.financial.state import State, gen_first_state
 
 # from app.models.financial.transformation import Transformation
@@ -50,7 +50,7 @@ class Interval:
         """Generate the next interval from State + Transformation"""
 
 
-def gen_first_interval():
+def gen_first_interval(user_config: User):
     """Generate the first interval of a trial from the user config"""
-    state = gen_first_state(get_config())
+    state = gen_first_state(user_config)
     return Interval(state)
