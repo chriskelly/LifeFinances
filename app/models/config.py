@@ -75,6 +75,18 @@ class StrategyOptions:
             None,
         )
 
+    @model_validator(mode="after")
+    def only_one_chosen(self):
+        """Restrict only one strategy to be chosen"""
+        chosen_cnt = sum(
+            1 for prop, strategy in vars(self).items() if strategy and strategy.chosen
+        )
+        if chosen_cnt != 1:
+            raise ValueError(
+                f"Exactly one {type(self).__name__} strategy must have 'chosen' set to True."
+            )
+        return self
+
 
 class RealEstateStrategyConfig(StrategyConfig):
     """
