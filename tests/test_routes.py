@@ -5,17 +5,22 @@ Route locations
     
     app/routes/api.py
 """
+# pylint:disable=redefined-outer-name
+import pytest
 
 
-def test_index_route(client):
-    """Ensure the index route is working"""
-    response = client.get("/")
-    assert response.status_code == 200
-    assert b"Hello, World!" in response.data
+@pytest.fixture
+def routes_to_test() -> dict:
+    """Returns dictionary of `route:expected_response`"""
+    return {
+        "/": "Hello, World!",
+        "/api/simulation": "Here's the simulation!",
+    }
 
 
-def test_about_route(client):
-    """Ensure the simulation route is working"""
-    response = client.get("/api/simulation")
-    assert response.status_code == 200
-    assert b"Here's the simulation!" in response.data
+def test_routes(client, routes_to_test: dict):
+    """Ensure all routes are working"""
+    for route, expected_res in routes_to_test.items():
+        response = client.get(route)
+        assert response.status_code == 200
+        assert expected_res.encode("utf-8") in response.data
