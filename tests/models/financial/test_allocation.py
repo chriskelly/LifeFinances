@@ -7,7 +7,7 @@ from copy import copy
 import pytest
 from app.models import config
 from app.models.financial.state import State
-from app.models.financial.allocation import (
+from app.models.controllers.allocation import (
     FlatBondStrategy,
     XMinusAgeStrategy,
     BondTentStrategy,
