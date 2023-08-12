@@ -3,7 +3,6 @@ run `python3 -m pytest` if VSCode Testing won't load
 """
 # pylint:disable=redefined-outer-name,missing-class-docstring
 
-import os
 from typing import Optional
 from dataclasses import dataclass
 import yaml
@@ -42,11 +41,6 @@ def test_sample_config_data(sample_config_data):
 
 def test_user_data():
     """Ensure user's data is valid"""
-    # Skip test if environment variable GITHUB_JOB exists
-    # This is to prevent the test from failing on GitHub Actions
-    # due to the lack of a config.yml file
-    if os.getenv("GITHUB_JOB"):
-        pytest.skip("Skipping test for CI Testing")
     with open(constants.CONFIG_PATH, "r", encoding="utf-8") as file:
         user_data = yaml.safe_load(file)
     assert user_data
