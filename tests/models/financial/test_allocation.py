@@ -140,7 +140,7 @@ class TestGenAllocation:
         self, sample_user: User, first_state: State
     ):
         """Real estate and stock allocation should be complimentary"""
-        sample_user.portfolio.real_estate.include.equity_ratio = 0.25
+        sample_user.portfolio.real_estate.include.fraction_of_high_risk = 0.25
         allocation = Controller(sample_user).gen_allocation(first_state)
         low_risk_ratio = allocation.bond + allocation.annuity
         assert allocation.real_estate + allocation.stock == pytest.approx(

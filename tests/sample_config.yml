@@ -10,7 +10,7 @@ portfolio:
   real_estate:
     include:
       chosen: true
-      equity_ratio: 0.6
+      fraction_of_high_risk: 0.6
     dont_include:
       enabled: true
   low_risk:

@@ -91,10 +91,10 @@ class StrategyOptions:
 class RealEstateStrategyConfig(StrategyConfig):
     """
     Attributes
-        equity_ratio (float)
+        fraction_of_high_risk (float)
     """
 
-    equity_ratio: float
+    fraction_of_high_risk: float
 
 
 class RealEstateOptions(BaseModel, StrategyOptions):
