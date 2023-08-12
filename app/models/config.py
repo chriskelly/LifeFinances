@@ -191,6 +191,21 @@ class BondTentStrategyConfig(StrategyConfig):
                 raise ValueError("Peak date must be before end date")
         return self
 
+    @model_validator(mode="after")
+    def all_attributes_or_none(self):
+        """Restrict attributes to be all present or all absent"""
+        values = list(
+            {
+                k: v for k, v in vars(self).items() if k not in {"enabled", "chosen"}
+            }.values()
+        )
+        none_values = [value is None for value in values]
+        if any(none_values) and not all(none_values):
+            raise ValueError(
+                "All Bond Tent attributes must be defined if any are defined"
+            )
+        return self
+
 
 class LifeCycleStrategyConfig(StrategyConfig):
     """
