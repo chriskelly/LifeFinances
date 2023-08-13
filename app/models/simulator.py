@@ -36,7 +36,7 @@ class SimulationTrial:
         """Generates subsequent intervals"""
 
 
-def generate_trial() -> SimulationTrial:
+def gen_trial() -> SimulationTrial:
     """Generate a single simulation trial given the current user config"""
     trial = SimulationTrial(user_config=get_config())
     trial.controllers.allocation = allocation.Controller(trial.user_config)
@@ -62,14 +62,17 @@ class SimulationEngine:
     Attributes
         results (Results)
 
+        trial_qty (int): Number of trials to run
+
     Methods
-        gen_num_trials(n: int)
+        gen_all_trials()
     """
 
-    def __init__(self):
+    def __init__(self, trial_qty: int = 1):
         self.results: Results = Results()
+        self.trial_qty = trial_qty
 
-    def gen_num_trials(self, num: int):
-        """Create n trials and save to `self.results`"""
+    def gen_all_trials(self):
+        """Create trials and save to `self.results`"""
 
-        self.results.trials = [generate_trial() for _ in range(num)]
+        self.results.trials = [gen_trial() for _ in range(self.trial_qty)]
