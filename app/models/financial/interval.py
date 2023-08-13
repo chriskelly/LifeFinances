@@ -1,6 +1,6 @@
 """Financial intervals represent a single period of time in a user's financial life
 
-The include a State and a Transformation. The Transformation is used to generate
+The include a State and a StateChangeComponents. The Transformation is used to generate
 the state of the subsequent Interval.
 
 Classes:
@@ -39,7 +39,7 @@ class Interval:
     #     def econ_data(date: float):
     #         pass
 
-    #     return Transformation(
+    #     return StateChangeComponents(
     #         total_income=income_from_income_groups(self.state),
     #         total_costs=spending(self.state),
     #         economic_data=econ_data(self.state.date),
@@ -47,7 +47,7 @@ class Interval:
     #     )
 
     def gen_next_interval(self):
-        """Generate the next interval from State + Transformation"""
+        """Generate the next interval from State + StateChangeComponents"""
 
 
 def gen_first_interval(user_config: User):
