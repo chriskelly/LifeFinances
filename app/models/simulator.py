@@ -51,7 +51,7 @@ def gen_trial(economic_data_controller: economic_data.Controller) -> SimulationT
     trial = SimulationTrial(user_config=get_config())
     trial.controllers.allocation = allocation.Controller(trial.user_config)
     trial.controllers.economic_data = economic_data_controller
-    trial.intervals.append(gen_first_interval(trial.user_config))
+    trial.intervals.append(gen_first_interval(trial.user_config, trial.controllers))
     trial.run()
     return trial
 

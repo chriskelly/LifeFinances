@@ -10,32 +10,23 @@ Methods:
 """
 from dataclasses import dataclass
 from app import util
-from app.models.controllers.allocation import AllocationRatios
 from app.models.financial.state import State
 from app.models.controllers import Controllers
 
 
 @dataclass
-class EconomicData:
-    stock_return: float
-    bond_return: float
-    real_estate_return: float
-    inflation: float
-
-
-@dataclass
-class Income(util.FloatRepr):
+class _Income(util.FloatRepr):
     job_income: float
     social_security_user: float
     social_security_partner: float
 
 
-def gen_income() -> Income:
+def gen_income() -> _Income:
     pass
 
 
 @dataclass
-class Costs(util.FloatRepr):
+class _Costs(util.FloatRepr):
     spending: float
     kids: float
     income_tax: float
@@ -43,19 +34,19 @@ class Costs(util.FloatRepr):
     ss_tax: float
 
 
-def gen_costs() -> Costs:
+def gen_costs() -> _Costs:
     pass
 
 
 @dataclass
-class NetTransactions(util.FloatRepr):
-    income: Income
-    costs: Costs
+class _NetTransactions(util.FloatRepr):
+    income: _Income
+    costs: _Costs
     annuity: float
     portfolio_return: float
 
 
-def gen_net_transactions() -> NetTransactions:
+def gen_net_transactions() -> _NetTransactions:
     gen_income()
     gen_costs()
 
@@ -69,22 +60,11 @@ def gen_net_transactions() -> NetTransactions:
 
     gen_portfolio_return()
 
+    return 1
 
-@dataclass
+
 class StateChangeComponents:
-    allocation: AllocationRatios
-    economic_data: EconomicData
-    net_transactions: NetTransactions
-
-
-def gen_state_change_components(
-    state: State, controllers: Controllers
-) -> StateChangeComponents:
-    def gen_economic_data():
-        pass
-
-    return StateChangeComponents(
-        allocation=controllers.allocation.gen_allocation(state),
-        economic_data=gen_economic_data(),
-        net_transactions=gen_net_transactions(),
-    )
+    def __init__(self, state: State, controllers: Controllers):
+        self.allocation = controllers.allocation.gen_allocation(state)
+        self.economic_data = controllers.economic_data.get_economic_state_data(state)
+        self.net_transactions = gen_net_transactions()

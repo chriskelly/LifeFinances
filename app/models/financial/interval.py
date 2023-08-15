@@ -1,19 +1,18 @@
 """Financial intervals represent a single period of time in a user's financial life
 
-The include a State and a StateChangeComponents. The Transformation is used to generate
+The include a State and a StateChangeComponents. The StateChangeComponents is used to generate
 the state of the subsequent Interval.
 
 Classes:
     Interval: A single period of time in a user's financial life
 
 Methods:
-    gen_first_interval(user: User): 
+    gen_first_interval(trial: SimulationTrial): 
 """
 from app.models.config import User
+from app.models.controllers import Controllers
 from app.models.financial.state import State, gen_first_state
-
-# from app.models.financial.transformation import Transformation
-# from app.data import constants as const
+from app.models.financial.state_change import StateChangeComponents
 
 
 class Interval:
@@ -25,32 +24,15 @@ class Interval:
         gen_next_interval(): Generate the next interval from State + Transformation
     """
 
-    def __init__(self, state: State):
+    def __init__(self, state: State, controllers: Controllers):
         self.state = state
-        # self.transformation = self._gen_transformation()
-
-    # def _gen_transformation(self) -> Transformation:
-    #     def income_from_income_groups(state: State):
-    #         pass
-
-    #     def spending(state: State):
-    #         pass
-
-    #     def econ_data(date: float):
-    #         pass
-
-    #     return StateChangeComponents(
-    #         total_income=income_from_income_groups(self.state),
-    #         total_costs=spending(self.state),
-    #         economic_data=econ_data(self.state.date),
-    #         allocation=None,
-    #     )
+        self.state_change_components = StateChangeComponents(state, controllers)
 
     def gen_next_interval(self):
         """Generate the next interval from State + StateChangeComponents"""
 
 
-def gen_first_interval(user_config: User):
+def gen_first_interval(user_config: User, controllers: Controllers):
     """Generate the first interval of a trial from the user config"""
     state = gen_first_state(user_config)
-    return Interval(state)
+    return Interval(state, controllers)
