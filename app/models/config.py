@@ -415,6 +415,8 @@ class User(BaseModel):
     Attributes
         age (int)
 
+        trial_quantity (int)
+
         calculate_til (float)
 
         equity_target (float)
@@ -439,6 +441,7 @@ class User(BaseModel):
     """
 
     age: int
+    trial_quantity: int = 500
     calculate_til: float = None
     equity_target: Optional[float] = None
     portfolio: Portfolio = Portfolio()

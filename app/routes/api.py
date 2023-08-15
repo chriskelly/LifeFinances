@@ -8,6 +8,6 @@ api = Blueprint("api", __name__)
 @api.route("simulation")
 def run_simulation():
     """Run the simulation"""
-    engine = SimulationEngine(trial_qty=2)
+    engine = SimulationEngine()
     engine.gen_all_trials()
     return "Here's the simulation!"
