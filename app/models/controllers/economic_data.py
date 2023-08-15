@@ -143,18 +143,18 @@ class EconomicStateData:
     """Economic data for a single state
 
     Attributes:
-        stock_returns (float)
+        stock_return (float)
 
-        bond_returns (float)
+        bond_return (float)
 
-        real_estate_returns (float)
+        real_estate_return (float)
 
         inflation (float)
     """
 
-    stock_returns: float
-    bond_returns: float
-    real_estate_returns: float
+    stock_return: float
+    bond_return: float
+    real_estate_return: float
     inflation: float
 
     def __repr__(self) -> str:
@@ -196,9 +196,9 @@ class EconomicTrialData:
             EconomicStateData: Economic data for a single state
         """
         return EconomicStateData(
-            stock_returns=self.stock_returns[interval_cnt],
-            bond_returns=self.bond_returns[interval_cnt],
-            real_estate_returns=self.real_estate_returns[interval_cnt],
+            stock_return=self.stock_returns[interval_cnt],
+            bond_return=self.bond_returns[interval_cnt],
+            real_estate_return=self.real_estate_returns[interval_cnt],
             inflation=self.inflation[interval_cnt],
         )
 
