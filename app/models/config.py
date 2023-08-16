@@ -454,6 +454,12 @@ class User(BaseModel):
     partner: Optional[Partner] = None
     admin: Optional[Admin] = None
 
+    @property
+    def intervals_per_trial(self) -> int:
+        """Returns the number of intervals per trial"""
+
+        return int((self.calculate_til - constants.TODAY_YR_QT) / 0.25)
+
     @field_validator("calculate_til")
     @classmethod
     def set_calculate_til(cls, calculate_til, info: FieldValidationInfo):
