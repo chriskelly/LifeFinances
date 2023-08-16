@@ -13,9 +13,8 @@ Classes:
     SimulationEngine:
 """
 from dataclasses import dataclass, field
-from app.data import constants
 from app.models.config import User, get_config
-from app.models.controllers import Controllers, allocation, economic_data
+from app.models.controllers import Controllers, allocation, economic_data, job_income
 from app.models.financial.interval import Interval, gen_first_interval
 
 
@@ -42,15 +41,33 @@ class SimulationTrial:
         """Generates subsequent intervals"""
 
 
-def gen_trial(economic_data_controller: economic_data.Controller) -> SimulationTrial:
+def gen_trial(
+    user_config: User,
+    allocation_controller: allocation.Controller,
+    economic_data_controller: economic_data.Controller,
+    job_income_controller: job_income.Controller,
+) -> SimulationTrial:
     """Generate a single simulation trial given the current user config
+
+    Allocation and Job Income controllers are passed in
+    since the same controller can be used for all Trials.
+
+    Social Security, Annuity, and Pension controllers are generated fresh
+    for every Trial.
+
+    Economic Engine Data is parsed into individual Trial data classes before
+    being passed in.
 
     Args:
         economic_data_controller (economic_data.Controller)
     """
-    trial = SimulationTrial(user_config=get_config())
-    trial.controllers.allocation = allocation.Controller(trial.user_config)
+    trial = SimulationTrial(user_config)
+    trial.controllers.allocation = allocation_controller
     trial.controllers.economic_data = economic_data_controller
+    trial.controllers.job_income = job_income_controller
+    # trial.controllers.social_security=social_security.Controller(),
+    # trial.controllers.annuity=annuity.Controller(),
+    # trial.controllers.pension=pension.Controller(),
     trial.intervals.append(gen_first_interval(trial.user_config, trial.controllers))
     trial.run()
     return trial
@@ -86,17 +103,25 @@ class SimulationEngine:
         self.results: Results = Results()
         self.trial_qty = user_config.trial_quantity
         self.economic_engine_data = economic_data.Generator(
-            intervals_per_trial=int(
-                (user_config.calculate_til - constants.TODAY_YR_QT) / 0.25
-            ),
+            intervals_per_trial=user_config.intervals_per_trial,
             intervals_per_year=4,
             trial_qty=user_config.trial_quantity,
         ).gen_economic_engine_data()
 
     def gen_all_trials(self):
         """Create trials and save to `self.results`"""
+        user_config = get_config()
+        allocation_controller = allocation.Controller(user_config)
+        job_income_controller = job_income.Controller(user_config)
 
         self.results.trials = [
-            gen_trial(economic_data.Controller(self.economic_engine_data, i))
+            gen_trial(
+                user_config=user_config,
+                allocation_controller=allocation_controller,
+                economic_data_controller=economic_data.Controller(
+                    self.economic_engine_data, i
+                ),
+                job_income_controller=job_income_controller,
+            )
             for i in range(self.trial_qty)
         ]
