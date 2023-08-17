@@ -4,13 +4,38 @@ Classes:
     Controller: Generate and provide timelines of job income
 """
 
-import numpy as np
+from dataclasses import dataclass
 from app.data import constants
 from app.models.config import IncomeProfile, User
 
 
+@dataclass
+class _Income:
+    """Dataclass to represent an interval of an `IncomeProfile`
+
+    Attributes:
+        amount (float): Income amount for the interval
+
+        tax_deferred (float): Amount of income that is tax deferred
+
+        try_to_optimize (bool): Whether to try to optimize the income
+
+        social_security_eligible (bool): Whether the income is eligible for social security
+    """
+
+    amount: float = 0
+    tax_deferred: float = 0
+    try_to_optimize: bool = False
+    social_security_eligible: bool = False
+
+
 class Controller:
     """Class of income timelines
+
+    Attributes:
+        user_timeline (list[Income]): Timeline of user income
+
+        partner_timeline (list[Income]): Timeline of partner income
 
     Methods:
         get_user_income(interval_idx): Get the user income for a given interval
@@ -25,33 +50,25 @@ class Controller:
 
     def __init__(self, user_config: User):
         self._size = user_config.intervals_per_trial
-        self._tax_deferred = np.zeros(self._size)
-        self._user = self._gen_timeline_and_update_tax_deferred(
-            user_config.income_profiles
-        )
-        self._partner = self._gen_timeline_and_update_tax_deferred(
-            user_config.partner.income_profiles
-        )
+        self.user_timeline = self._gen_timeline(user_config.income_profiles)
+        self.partner_timeline = self._gen_timeline(user_config.partner.income_profiles)
+        self._user_income = [income.amount for income in self.user_timeline]
+        self._partner_income = [income.amount for income in self.partner_timeline]
+        self._tax_deferred = [
+            user_income.tax_deferred + partner_income.tax_deferred
+            for user_income, partner_income in zip(
+                self.user_timeline, self.partner_timeline
+            )
+        ]
 
-    def _gen_timeline_and_update_tax_deferred(
-        self,
-        profiles: list[IncomeProfile],
-    ) -> np.ndarray:
-        """Generate a timeline of income and update the tax deferred income
-
-        During income processing, the tax deferred timeline is updated to reflect
-        the tax deferred income for each user/partner income profile.
-
-        While doing both at the same time is not ideal, it can't be separated since
-        the deferral ratio changes with each income profile.
+    def _gen_timeline(self, profiles: list[IncomeProfile]) -> list[_Income]:
+        """Generate a list of Income objects
 
         Args:
             profiles (list[IncomeProfile])
 
         Returns:
-            np.ndarray: income timeline.
-
-            Tax deferred income is updated in the class, not returned.
+            list[Income] An Income object for each trial interval (including empty ones)
         """
 
         def _get_income_and_deferral_ratio(profile: IncomeProfile):
@@ -64,24 +81,30 @@ class Controller:
             return income, deferral_ratio
 
         if not profiles:
-            return np.zeros(self._size)
+            return [_Income() for _ in range(self._size)]
         date = constants.TODAY_YR_QT
         timeline = []
         idx = 0
         income, deferral_ratio = _get_income_and_deferral_ratio(profiles[idx])
         while True:
-            self._tax_deferred[len(timeline)] += deferral_ratio * income
-            timeline.append(income)
+            timeline.append(
+                _Income(
+                    amount=income,
+                    tax_deferred=deferral_ratio * income,
+                    try_to_optimize=profiles[idx].try_to_optimize,
+                    social_security_eligible=profiles[idx].social_security_eligible,
+                )
+            )
             date += 0.25
-            if date > profiles[idx].last_date:
+            if date > profiles[idx].last_date:  # end of profile
                 idx += 1
-                if idx >= len(profiles):
+                if idx >= len(profiles):  # no more profiles
                     break
                 income, deferral_ratio = _get_income_and_deferral_ratio(profiles[idx])
             elif date % 1 == 0:  # new year
                 income *= 1 + profiles[idx].yearly_raise
-        remaining_timeline = np.zeros(self._size - len(timeline))
-        return np.concatenate((timeline, remaining_timeline))
+        remaining_timeline = [_Income() for _ in range(self._size - len(timeline))]
+        return timeline + remaining_timeline
 
     def get_user_income(self, interval_idx: int) -> float:
         """Get the user income for a given interval
@@ -92,7 +115,7 @@ class Controller:
         Returns:
             float
         """
-        return self._user[interval_idx]
+        return self._user_income[interval_idx]
 
     def get_partner_income(self, interval_idx: int) -> float:
         """Get the partner income for a given interval
@@ -103,7 +126,7 @@ class Controller:
         Returns:
             float
         """
-        return self._partner[interval_idx]
+        return self._partner_income[interval_idx]
 
     def get_total_income(self, interval_idx: int) -> float:
         """Get the total income for a given interval
