@@ -20,7 +20,7 @@ class State:
 
         date (float)
 
-        interval_cnt (int)
+        interval_idx (int)
 
         net_worth (float)
 
@@ -31,7 +31,7 @@ class State:
 
     user: User
     date: float
-    interval_cnt: int
+    interval_idx: int
     net_worth: float
     inflation: float
     working: bool
@@ -42,7 +42,7 @@ def gen_first_state(user: User):
     return State(
         user=user,
         date=constants.TODAY_YR_QT,
-        interval_cnt=0,
+        interval_idx=0,
         net_worth=user.portfolio.current_net_worth,
         inflation=1,
         working=bool(user.income_profiles or user.partner.income_profiles),

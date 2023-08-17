@@ -175,7 +175,7 @@ class EconomicTrialData:
         inflation (list)
 
     Methods:
-        get_state_data(interval_cnt: int): Returns a single state's economic data
+        get_state_data(interval_idx: int): Returns a single state's economic data
     """
 
     stock_returns: np.ndarray
@@ -186,20 +186,20 @@ class EconomicTrialData:
     def __repr__(self) -> str:
         return "Economic Data"
 
-    def get_state_data(self, interval_cnt) -> EconomicStateData:
+    def get_state_data(self, interval_idx) -> EconomicStateData:
         """Returns a single state's economic data
 
         Args:
-            interval_cnt (int): interval count
+            interval_idx (int): interval count
 
         Returns:
             EconomicStateData: Economic data for a single state
         """
         return EconomicStateData(
-            stock_return=self.stock_returns[interval_cnt],
-            bond_return=self.bond_returns[interval_cnt],
-            real_estate_return=self.real_estate_returns[interval_cnt],
-            inflation=self.inflation[interval_cnt],
+            stock_return=self.stock_returns[interval_idx],
+            bond_return=self.bond_returns[interval_idx],
+            real_estate_return=self.real_estate_returns[interval_idx],
+            inflation=self.inflation[interval_idx],
         )
 
 
@@ -461,4 +461,4 @@ class Controller:
 
     def get_economic_state_data(self, state: State) -> EconomicStateData:
         """Returns economic data for a single state"""
-        return self._economic_trial_data.get_state_data(state.interval_cnt)
+        return self._economic_trial_data.get_state_data(state.interval_idx)

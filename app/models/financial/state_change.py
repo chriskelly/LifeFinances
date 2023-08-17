@@ -18,7 +18,7 @@ from app.models.controllers import Controllers
 
 class _Income(util.FloatRepr):
     def __init__(self, state: State, controllers: Controllers):
-        self.job_income = controllers.job_income.get_total_income(state.interval_cnt)
+        self.job_income = controllers.job_income.get_total_income(state.interval_idx)
         self.social_security_user = 1
         self.social_security_partner = 1
 

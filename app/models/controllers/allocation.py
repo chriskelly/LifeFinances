@@ -122,7 +122,7 @@ class XMinusAgeStrategy(Strategy):
             average_age = (state.user.age + state.user.partner.age) / 2
         else:
             average_age = state.user.age
-        current_age = average_age + state.interval_cnt
+        current_age = average_age + state.interval_idx
         high_risk = util.constrain((self.config.x - current_age) / 100, low=0, high=1)
         return RiskRatios(high=high_risk)
 
