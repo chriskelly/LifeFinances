@@ -1,7 +1,7 @@
 """Testing for models/config.py
 run `python3 -m pytest` if VSCode Testing won't load
 """
-# pylint:disable=redefined-outer-name,missing-class-docstring
+# pylint:disable=redefined-outer-name,missing-class-docstring,no-name-in-module
 
 from typing import Optional
 from dataclasses import dataclass
@@ -10,10 +10,12 @@ import pytest
 from pydantic import ValidationError
 from app.data import constants
 from app.models.config import (
+    IncomeProfile,
     User,
     StrategyConfig,
     StrategyOptions,
     attribute_filller,
+    _income_profiles_in_order,
 )
 
 
@@ -147,3 +149,12 @@ def test_attribute_filler():
     assert obj.str1 == "Hello"
     assert obj.second_lvl.third_lvl.str1 == "Hello"
     assert obj.second_lvl.third_lvl.str2 is None
+
+
+def test_income_profiles_in_order():
+    """Income profiles must be in order"""
+    profile1 = IncomeProfile(starting_income=10000, last_date=5)
+    profile2 = IncomeProfile(starting_income=20000, last_date=3)
+    profiles = [profile1, profile2]
+    with pytest.raises(ValueError):
+        _income_profiles_in_order(profiles)

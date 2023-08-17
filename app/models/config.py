@@ -382,6 +382,21 @@ class IncomeProfile(BaseModel):
     social_security_eligible: bool = True
     last_date: float
 
+    @model_validator(mode="after")
+    def tax_deferred_income_less_than_starting_income(self):
+        """Tax deferred income must be less than starting income"""
+        if self.tax_deferred_income > self.starting_income:
+            raise ValueError("Tax deferred income must be less than starting income")
+        return self
+
+
+def _income_profiles_in_order(income_profiles: list[IncomeProfile]):
+    """Income profiles must be in order"""
+    if income_profiles:
+        for i in range(1, len(income_profiles)):
+            if income_profiles[i].last_date < income_profiles[i - 1].last_date:
+                raise ValueError("Income profiles must be in order")
+
 
 class Partner(BaseModel):
     """
@@ -399,6 +414,12 @@ class Partner(BaseModel):
     social_security_pension: Optional[SocialSecurityPension] = None
     earnings_records: Optional[dict] = None
     income_profiles: Optional[list[IncomeProfile]] = None
+
+    @model_validator(mode="after")
+    def validate_income_profiles(self):
+        """Income profiles must be in order"""
+        _income_profiles_in_order(self.income_profiles)
+        return self
 
 
 class Admin(BaseModel):
@@ -478,6 +499,12 @@ class User(BaseModel):
             )
         return state
 
+    @model_validator(mode="after")
+    def validate_income_profiles(self):
+        """Income profiles must be in order"""
+        _income_profiles_in_order(self.income_profiles)
+        return self
+
 
 def attribute_filller(obj, attr: str, fill_value):
     """Iterate recursively through obj and fills attr with fill_value
@@ -509,8 +536,8 @@ def get_config() -> User:
         yaml_content = yaml.safe_load(file)
     try:
         config = User(**yaml_content)
-    except ValidationError as e:
-        print(e)
+    except ValidationError as error:
+        print(error)
 
     # config.equity_target is considered global
     # and overwrites any equity_target value left unspecified
