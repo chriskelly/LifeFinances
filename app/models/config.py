@@ -257,7 +257,9 @@ class Portfolio(BaseModel):
 
     current_net_worth: float = 0
     drawdown_tax_rate: float = 0.1
-    real_estate: RealEstateOptions = None
+    real_estate: RealEstateOptions = RealEstateOptions(
+        dont_include=StrategyConfig(chosen=True)
+    )
     low_risk: LowRiskOptions = LowRiskOptions(bonds=StrategyConfig(chosen=True))
     allocation_strategy: AllocationOptions = AllocationOptions(
         flat_allocation=FlatAllocationStrategyConfig(low_risk_target=0.4, chosen=True),
@@ -472,7 +474,7 @@ class User(BaseModel):
     spending: Spending
     state: Optional[str] = None
     kids: Optional[Kids] = None
-    income_profiles: list[IncomeProfile] = []
+    income_profiles: list[IncomeProfile] = None
     partner: Optional[Partner] = None
     admin: Optional[Admin] = None
 
@@ -504,6 +506,13 @@ class User(BaseModel):
     def validate_income_profiles(self):
         """Income profiles must be in order"""
         _income_profiles_in_order(self.income_profiles)
+        return self
+
+    @model_validator(mode="after")
+    def default_calculate_til(self):
+        """Set calculate till to be current year minus age + 90 if not specified"""
+        if self.calculate_til is None:
+            self.calculate_til = constants.TODAY_YR - self.age + 90
         return self
 
 

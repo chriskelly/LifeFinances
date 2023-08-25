@@ -34,3 +34,11 @@ def sample_user(sample_config_data):
 def first_state(sample_user: User):
     """Returns financial.state object for first state of sample user"""
     return gen_first_state(sample_user)
+
+
+@pytest.fixture
+def min_user():
+    """Returns User object based on minimum config"""
+    with open(constants.MIN_CONFIG_PATH, "r", encoding="utf-8") as file:
+        min_data = yaml.safe_load(file)
+    return User(**min_data)
