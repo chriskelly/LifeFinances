@@ -42,7 +42,7 @@ class FloatRepr(ABC):
         return float(self) + value
 
     def __radd__(self, value):
-        return self.__add__(value)
+        return value + float(self)
 
     def __sub__(self, value):
         return float(self) - value
