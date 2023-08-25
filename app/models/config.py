@@ -521,6 +521,20 @@ class User(BaseModel):
         partner cannot enable other strategies if `same` is chosen"""
         if "same" in self.social_security_pension.strategy.enabled_strategies:
             raise ValueError("`Same` strategy can only be enabled for partner")
+        return self
+
+    @model_validator(mode="after")
+    def either_income_or_net_worth(self):
+        """User should provide at least one income profile or net worth"""
+        if (
+            not self.income_profiles
+            and not self.portfolio.current_net_worth
+            and not (self.partner and self.partner.income_profiles)
+        ):
+            raise ValueError(
+                "User must provide at least one income profile or net worth"
+            )
+        return self
 
 
 def attribute_filller(obj, attr: str, fill_value):

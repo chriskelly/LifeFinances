@@ -2,3 +2,6 @@ age: 30
 
 spending:
   yearly_amount: 60
+
+portfolio:
+  current_net_worth: 250

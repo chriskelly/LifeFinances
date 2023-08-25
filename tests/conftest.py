@@ -19,7 +19,7 @@ def app():
 @pytest.fixture
 def sample_config_data():
     """Pull in current user's config"""
-    with open(constants.SAMPLE_CONFIG_PATH, "r", encoding="utf-8") as file:
+    with open(constants.SAMPLE_FULL_CONFIG_PATH, "r", encoding="utf-8") as file:
         sample_data = yaml.safe_load(file)
     return sample_data
 
@@ -37,8 +37,16 @@ def first_state(sample_user: User):
 
 
 @pytest.fixture
-def min_user():
-    """Returns User object based on minimum config"""
-    with open(constants.MIN_CONFIG_PATH, "r", encoding="utf-8") as file:
-        min_data = yaml.safe_load(file)
-    return User(**min_data)
+def min_users():
+    """Returns User objects based on the two minimum config
+
+    Returns:
+        tuple[User]: (User based on min income config, User based on min net worth config)
+    """
+    with open(constants.SAMPLE_MIN_CONFIG_INCOME_PATH, "r", encoding="utf-8") as file:
+        min_income_data = yaml.safe_load(file)
+    with open(
+        constants.SAMPLE_MIN_CONFIG_NET_WORTH_PATH, "r", encoding="utf-8"
+    ) as file:
+        min_net_worth_data = yaml.safe_load(file)
+    return (User(**min_income_data), User(**min_net_worth_data))

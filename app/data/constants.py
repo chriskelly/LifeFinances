@@ -8,8 +8,9 @@ import datetime as dt
 from pathlib import Path
 
 CONFIG_PATH = Path("config.yml")
-SAMPLE_CONFIG_PATH = Path("tests/sample_config.yml")
-MIN_CONFIG_PATH = Path("tests/min_config.yml")
+SAMPLE_FULL_CONFIG_PATH = Path("tests/sample_configs/full_config.yml")
+SAMPLE_MIN_CONFIG_INCOME_PATH = Path("tests/sample_configs/min_config_income.yml")
+SAMPLE_MIN_CONFIG_NET_WORTH_PATH = Path("tests/sample_configs/min_config_net_worth.yml")
 DB_LOC = Path("data/data.db")
 PARAMS_SUCCESS_LOC = Path("data/param_success.json")
 QUIT_LOC = Path("cancel.quit")

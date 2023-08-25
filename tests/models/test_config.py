@@ -49,7 +49,22 @@ def test_user_data():
     try:
         User(**user_data)
     except ValidationError as error:
-        pytest.fail(f"Failed to validate sample user data: {error}")
+        pytest.fail(f"Failed to validate user's data: {error}")
+
+
+def test_sample_min_data():
+    """Ensure sample min configs are valid"""
+    for path in [
+        constants.SAMPLE_MIN_CONFIG_INCOME_PATH,
+        constants.SAMPLE_MIN_CONFIG_NET_WORTH_PATH,
+    ]:
+        with open(path, "r", encoding="utf-8") as file:
+            user_data = yaml.safe_load(file)
+        assert user_data
+        try:
+            User(**user_data)
+        except ValidationError as error:
+            pytest.fail(f"Failed to validate min config data: {error}")
 
 
 def test_chosen_forces_enabled():
@@ -156,3 +171,15 @@ def test_social_security_user_same_strategy(sample_config_data):
     }
     with pytest.raises(ValidationError, match="1 validation error"):
         User(**sample_config_data)
+
+
+def test_either_income_or_net_worth():
+    """User should provide at least one income profile or net worth"""
+    data = {
+        "age": 30,
+        "spending": {
+            "yearly_amount": 60,
+        },
+    }
+    with pytest.raises(ValidationError, match="1 validation error"):
+        User(**data)
