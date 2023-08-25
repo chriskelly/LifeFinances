@@ -146,3 +146,13 @@ def test_income_profiles_in_order():
     profiles = [profile1, profile2]
     with pytest.raises(ValueError):
         _income_profiles_in_order(profiles)
+
+
+def test_social_security_user_same_strategy(sample_config_data):
+    """If the user enables the `same` strategy for social_security_pension,
+    a ValidationError should be captured."""
+    sample_config_data["social_security_pension"]["strategy"]["same"] = {
+        "enabled": True
+    }
+    with pytest.raises(ValidationError, match="1 validation error"):
+        User(**sample_config_data)

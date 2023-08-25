@@ -515,6 +515,13 @@ class User(BaseModel):
             self.calculate_til = constants.TODAY_YR - self.age + 90
         return self
 
+    @model_validator(mode="after")
+    def social_security_same_strategy(self):
+        """User cannot enable/choose `same` strategy and
+        partner cannot enable other strategies if `same` is chosen"""
+        if "same" in self.social_security_pension.strategy.enabled_strategies:
+            raise ValueError("`Same` strategy can only be enabled for partner")
+
 
 def attribute_filller(obj, attr: str, fill_value):
     """Iterate recursively through obj and fills attr with fill_value
