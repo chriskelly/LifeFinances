@@ -85,7 +85,7 @@ class Controller:
         if not profiles:
             return [Income() for _ in range(self._size)]
         date = constants.TODAY_YR_QT
-        timeline = []
+        timeline: list[Income] = []
         idx = 0
         income, deferral_ratio = _get_income_and_deferral_ratio(profiles[idx])
         while True:
@@ -106,7 +106,10 @@ class Controller:
                 income, deferral_ratio = _get_income_and_deferral_ratio(profiles[idx])
             elif math.isclose(date % 1, 0):  # new year
                 income *= 1 + profiles[idx].yearly_raise
-        remaining_timeline = [Income() for _ in range(self._size - len(timeline))]
+        remaining_timeline = [
+            Income(date=timeline[-1].date + 0.25 * (i + 1))
+            for i in range(self._size - len(timeline))
+        ]
         return timeline + remaining_timeline
 
     def get_user_income(self, interval_idx: int) -> float:
