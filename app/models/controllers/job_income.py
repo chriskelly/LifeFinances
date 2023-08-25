@@ -31,6 +31,20 @@ class Income:
     social_security_eligible: bool = False
 
 
+def _gen_empty_timeline(first_date: float, size: int) -> list[Income]:
+    """Generate a list of empty Income objects
+
+    Args:
+        first_date (float): Date of first interval
+
+        size (int): Number of intervals
+
+    Returns:
+        list[Income] An Income object for each trial interval (including empty ones)
+    """
+    return [Income(date=first_date + 0.25 * i) for i in range(size)]
+
+
 class Controller:
     """Class of income timelines
 
@@ -52,8 +66,20 @@ class Controller:
 
     def __init__(self, user_config: User):
         self._size = user_config.intervals_per_trial
-        self.user_timeline = self._gen_timeline(user_config.income_profiles)
-        self.partner_timeline = self._gen_timeline(user_config.partner.income_profiles)
+        if user_config.income_profiles:
+            self.user_timeline = self._gen_timeline(user_config.income_profiles)
+        else:
+            self.user_timeline = _gen_empty_timeline(
+                first_date=constants.TODAY_YR_QT, size=self._size
+            )
+        if user_config.partner and user_config.partner.income_profiles:
+            self.partner_timeline = self._gen_timeline(
+                user_config.partner.income_profiles
+            )
+        else:
+            self.partner_timeline = _gen_empty_timeline(
+                first_date=constants.TODAY_YR_QT, size=self._size
+            )
         self._user_income = [income.amount for income in self.user_timeline]
         self._partner_income = [income.amount for income in self.partner_timeline]
         self._tax_deferred = [
@@ -106,10 +132,9 @@ class Controller:
                 income, deferral_ratio = _get_income_and_deferral_ratio(profiles[idx])
             elif math.isclose(date % 1, 0):  # new year
                 income *= 1 + profiles[idx].yearly_raise
-        remaining_timeline = [
-            Income(date=timeline[-1].date + 0.25 * (i + 1))
-            for i in range(self._size - len(timeline))
-        ]
+        remaining_timeline = _gen_empty_timeline(
+            first_date=timeline[-1].date + 0.25, size=self._size - len(timeline)
+        )
         return timeline + remaining_timeline
 
     def get_user_income(self, interval_idx: int) -> float:
