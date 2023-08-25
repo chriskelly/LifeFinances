@@ -471,7 +471,7 @@ class Controller:
                 age=user_config.partner.age,
             )
 
-    def calc_payment(self, state: State) -> float:
+    def calc_payment(self, state: State) -> tuple[float, float]:
         """Calculate total social security payment for the current state.
 
         Return the sum of the user's and partner's social security payments.
@@ -482,7 +482,7 @@ class Controller:
             state (State): current state
 
         Returns:
-            float
+            tuple[float, float] : user payment, partner payment
         """
         basic_user_payment = self._user_controller.calc_payment(state)
         if self._partner_controller is None:
@@ -501,4 +501,4 @@ class Controller:
                 state=state,
             )
             partner_payment = max(basic_partner_payment, partners_spousal_benefit)
-        return user_payment + partner_payment
+        return user_payment, partner_payment

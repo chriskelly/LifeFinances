@@ -310,4 +310,4 @@ def test_controller_calc_payment(sample_user: User, first_state: State):
     )
     first_state.date = constants.TODAY_YR + MID_AGE - sample_user.age + 1
     payment = controller.calc_payment(state=first_state)
-    assert payment == pytest.approx(6.97, 0.1)
+    assert payment == pytest.approx([4.65, 2.32], 0.1)  # user payment, partner payment
