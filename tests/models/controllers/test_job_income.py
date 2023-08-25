@@ -7,6 +7,15 @@ from app.models.config import User, IncomeProfile
 from app.models.controllers.job_income import Controller
 
 
+@pytest.fixture(autouse=True)
+def fix_today_yr_qt():
+    """set the constant so that we start on a predicatable quarter"""
+    original_value = constants.TODAY_YR_QT
+    constants.TODAY_YR_QT = 2000.5
+    yield
+    constants.TODAY_YR_QT = original_value
+
+
 def test_job_income_controller(sample_user: User):
     """Test that the job income controller generates the correct income timeline
 
@@ -14,9 +23,6 @@ def test_job_income_controller(sample_user: User):
         income increments at the start of the new year
         income changes at the end date of the profile
     """
-    constants.TODAY_YR_QT = (
-        2000.5  # set the constant so that we start on a predicatable quarter
-    )
     user_income_profiles = [
         {
             "starting_income": 100,
