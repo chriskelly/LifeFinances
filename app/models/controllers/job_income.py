@@ -5,12 +5,13 @@ Classes:
 """
 
 from dataclasses import dataclass
+import math
 from app.data import constants
 from app.models.config import IncomeProfile, User
 
 
 @dataclass
-class _Income:
+class Income:
     """Dataclass to represent an interval of an `IncomeProfile`
 
     Attributes:
@@ -23,6 +24,7 @@ class _Income:
         social_security_eligible (bool): Whether the income is eligible for social security
     """
 
+    date: float = 0
     amount: float = 0
     tax_deferred: float = 0
     try_to_optimize: bool = False
@@ -61,7 +63,7 @@ class Controller:
             )
         ]
 
-    def _gen_timeline(self, profiles: list[IncomeProfile]) -> list[_Income]:
+    def _gen_timeline(self, profiles: list[IncomeProfile]) -> list[Income]:
         """Generate a list of Income objects
 
         Args:
@@ -81,14 +83,15 @@ class Controller:
             return income, deferral_ratio
 
         if not profiles:
-            return [_Income() for _ in range(self._size)]
+            return [Income() for _ in range(self._size)]
         date = constants.TODAY_YR_QT
         timeline = []
         idx = 0
         income, deferral_ratio = _get_income_and_deferral_ratio(profiles[idx])
         while True:
             timeline.append(
-                _Income(
+                Income(
+                    date=date,
                     amount=income,
                     tax_deferred=deferral_ratio * income,
                     try_to_optimize=profiles[idx].try_to_optimize,
@@ -101,9 +104,9 @@ class Controller:
                 if idx >= len(profiles):  # no more profiles
                     break
                 income, deferral_ratio = _get_income_and_deferral_ratio(profiles[idx])
-            elif date % 1 == 0:  # new year
+            elif math.isclose(date % 1, 0):  # new year
                 income *= 1 + profiles[idx].yearly_raise
-        remaining_timeline = [_Income() for _ in range(self._size - len(timeline))]
+        remaining_timeline = [Income() for _ in range(self._size - len(timeline))]
         return timeline + remaining_timeline
 
     def get_user_income(self, interval_idx: int) -> float:
