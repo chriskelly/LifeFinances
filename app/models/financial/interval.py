@@ -40,7 +40,6 @@ class Interval:
             net_worth=self.state.net_worth
             + self.state_change_components.net_transactions,
             inflation=self.state.inflation,  #! Figure out next inflation
-            working=self.state.working,  #! Figure out next working
         )
         return type(self)(state=next_state, controllers=controllers)
 

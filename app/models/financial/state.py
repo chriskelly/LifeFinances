@@ -25,8 +25,6 @@ class State:
         net_worth (float)
 
         inflation (float)
-
-        working (bool)
     """
 
     user: User
@@ -34,7 +32,6 @@ class State:
     interval_idx: int
     net_worth: float
     inflation: float
-    working: bool
 
 
 def gen_first_state(user: User):
@@ -45,5 +42,4 @@ def gen_first_state(user: User):
         interval_idx=0,
         net_worth=user.portfolio.current_net_worth,
         inflation=1,
-        working=bool(user.income_profiles or user.partner.income_profiles),
     )
