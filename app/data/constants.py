@@ -123,15 +123,15 @@ rate above high bend point]"""
 PIA_RATES_PENSION = [0.4, 0.32, 0.15]
 """Same as PIA rates, but the rate below the low bend point is 40% instead of 90%"""
 BENEFIT_RATES = {
-    "62": 0.7,
-    "63": 0.75,
-    "64": 0.8,
-    "65": 0.867,
-    "66": 0.933,
-    "67": 1,
-    "68": 1.08,
-    "69": 1.16,
-    "70": 1.24,
+    62: 0.7,
+    63: 0.75,
+    64: 0.8,
+    65: 0.867,
+    66: 0.933,
+    67: 1,
+    68: 1.08,
+    69: 1.16,
+    70: 1.24,
 }
 """Dictionary of {age:benefit rate}. Benefit rate generally rises the longer you wait to pull SS """
 

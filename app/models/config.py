@@ -306,7 +306,10 @@ class SocialSecurityPension(BaseModel):
 
     trust_factor: Optional[float] = 1
     pension_eligible: bool = False
-    strategy: SocialSecurityPensionOptions
+    strategy: Optional[SocialSecurityPensionOptions] = SocialSecurityPensionOptions(
+        mid=StrategyConfig(chosen=True)
+    )
+    earnings_records: Optional[dict] = {}
 
 
 class CeilFloorStrategyConfig(StrategyConfig):
@@ -411,8 +414,7 @@ class Partner(BaseModel):
     """
 
     age: Optional[int] = None
-    social_security_pension: Optional[SocialSecurityPension] = None
-    earnings_records: Optional[dict] = None
+    social_security_pension: Optional[SocialSecurityPension] = SocialSecurityPension()
     income_profiles: Optional[list[IncomeProfile]] = None
 
     @model_validator(mode="after")
@@ -466,11 +468,10 @@ class User(BaseModel):
     calculate_til: float = None
     equity_target: Optional[float] = None
     portfolio: Portfolio = Portfolio()
-    social_security_pension: Optional[SocialSecurityPension] = None
+    social_security_pension: Optional[SocialSecurityPension] = SocialSecurityPension()
     spending: Spending
     state: Optional[str] = None
     kids: Optional[Kids] = None
-    earnings_records: Optional[dict] = None
     income_profiles: list[IncomeProfile] = []
     partner: Optional[Partner] = None
     admin: Optional[Admin] = None

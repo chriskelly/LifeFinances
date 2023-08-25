@@ -8,7 +8,7 @@ from . import (
     allocation as allocation_module,
     economic_data as economic_data_module,
     job_income as job_income_module,
-    # social_security as social_security_module,
+    social_security as social_security_module,
     # annuity as annuity_module,
     # pension as pension_module,
 )
@@ -29,6 +29,6 @@ class Controllers:
     allocation: allocation_module.Controller = None
     economic_data: economic_data_module.Controller = None
     job_income: job_income_module.Controller = None
-    # social_security: social_security_module.Controller = None
+    social_security: social_security_module.Controller = None
     # annuity: annuity_module.Controller = None
     # pension: pension_module.Controller = None

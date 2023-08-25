@@ -52,6 +52,9 @@ social_security_pension:
     net_worth:
       enabled: true
       equity_target: 2000
+  earnings_records:
+    2010: 75
+    2011: 78
 
 spending:
   yearly_amount: 60
@@ -70,10 +73,6 @@ kids:
   birth_years:
     - 2021
     - 2026
-
-earnings_records:
-  2010: 75
-  2011: 78
 
 income_profiles:
   - starting_income: 80
@@ -105,10 +104,9 @@ partner:
         enabled: false
       same:
         chosen: true
-
-  earnings_records:
-    2008: 80
-    2010: 95
+    earnings_records:
+      2008: 80
+      2010: 95
 
   income_profiles:
     - starting_income: 100
