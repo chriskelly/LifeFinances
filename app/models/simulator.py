@@ -45,6 +45,10 @@ class SimulationTrial:
 
     def run(self):
         """Generates subsequent intervals"""
+        for _ in range(self.user_config.intervals_per_trial - 1):
+            self.intervals.append(
+                self.intervals[-1].gen_next_interval(self.controllers)
+            )
 
 
 def gen_trial(
@@ -71,10 +75,8 @@ def gen_trial(
     trial.controllers.allocation = allocation_controller
     trial.controllers.economic_data = economic_data_controller
     trial.controllers.job_income = job_income_controller
-    trial.controllers.social_security = (
-        social_security.Controller(
-            user_config=user_config, income_controller=job_income_controller
-        ),
+    trial.controllers.social_security = social_security.Controller(
+        user_config=user_config, income_controller=job_income_controller
     )
     # trial.controllers.annuity=annuity.Controller(),
     # trial.controllers.pension=pension.Controller(),

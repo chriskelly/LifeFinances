@@ -19,43 +19,60 @@ from app.models.controllers import Controllers
 class _Income(util.FloatRepr):
     def __init__(self, state: State, controllers: Controllers):
         self.job_income = controllers.job_income.get_total_income(state.interval_idx)
-        self.social_security_user = 1
-        self.social_security_partner = 1
+        (
+            self.social_security_user,
+            self.social_security_partner,
+        ) = controllers.social_security.calc_payment(state)
 
     def __float__(self):
-        return (
-            self.job_income + self.social_security_user + self.social_security_partner
+        return float(
+            sum(
+                [
+                    self.job_income,
+                    self.social_security_user,
+                    self.social_security_partner,
+                ]
+            )
         )
 
 
 @dataclass
 class _Costs(util.FloatRepr):
-    spending: float
-    kids: float
-    income_tax: float
-    medicare_tax: float
-    ss_tax: float
+    spending: float = 1
+    kids: float = 1
+    income_tax: float = 1
+    medicare_tax: float = 1
+    ss_tax: float = 1
+
+    def __float__(self):
+        return float(
+            sum(
+                [
+                    self.spending,
+                    self.kids,
+                    self.income_tax,
+                    self.medicare_tax,
+                    self.ss_tax,
+                ]
+            )
+        )
 
 
 def gen_costs() -> _Costs:
     pass
 
 
+@dataclass
 class _NetTransactions(util.FloatRepr):
-    def __init__(
-        self,
-        state: State,
-        allocation: AllocationRatios,
-        economic_data: EconomicStateData,
-        controllers: Controllers,
-    ):
-        self.income = _Income(state, controllers)
-        self.costs = 1
-        self.annuity = 1
-        self.portfolio_return = 1
+    income: _Income
+    costs: _Costs = 1
+    annuity: int = 1
+    portfolio_return: float = 1
 
     def __float__(self):
-        return self.income + self.costs + self.annuity + self.portfolio_return
+        return float(
+            sum([self.income, self.costs, self.annuity, self.portfolio_return])
+        )
 
 
 class StateChangeComponents:
@@ -73,5 +90,5 @@ class StateChangeComponents:
         self.allocation = controllers.allocation.gen_allocation(state)
         self.economic_data = controllers.economic_data.get_economic_state_data(state)
         self.net_transactions = _NetTransactions(
-            state, self.allocation, self.economic_data, controllers
+            income=_Income(state, controllers),
         )
