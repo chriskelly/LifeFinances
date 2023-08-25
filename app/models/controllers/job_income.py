@@ -75,12 +75,12 @@ class Controller:
 
         def _get_income_and_deferral_ratio(profile: IncomeProfile):
             """Provide starting income and the ratio between deferred income and starting income"""
-            income = profile.starting_income
+            interval_income = profile.starting_income / 4
             try:
-                deferral_ratio = profile.tax_deferred_income / income
+                deferral_ratio = profile.tax_deferred_income / profile.starting_income
             except ZeroDivisionError:
                 deferral_ratio = 0
-            return income, deferral_ratio
+            return interval_income, deferral_ratio
 
         if not profiles:
             return [Income() for _ in range(self._size)]

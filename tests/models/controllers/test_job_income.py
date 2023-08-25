@@ -61,13 +61,13 @@ def test_job_income_controller(sample_user: User):
     ]
     controller = Controller(sample_user)
 
-    expected_user_income = [100.0, 100.0, 110.0, 110.0, 110.0, 200.0]
-    expected_partner_income = [0.0, 0.0, 0.0, 0.0, 0.0, 150.0]
+    expected_user_income = [25.0, 25.0, 27.5, 27.5, 27.5, 50.0]
+    expected_partner_income = [0.0, 0.0, 0.0, 0.0, 0.0, 37.5]
     expected_total_income = [
         user + partner
         for user, partner in zip(expected_user_income, expected_partner_income)
     ]
-    expected_tax_deferred = [10.0, 10.0, 11.0, 11.0, 11.0, 45.0]
+    expected_tax_deferred = [2.5, 2.5, 2.75, 2.75, 2.75, 11.25]
     expected_taxable_income = [
         total - deferred
         for total, deferred in zip(expected_total_income, expected_tax_deferred)
