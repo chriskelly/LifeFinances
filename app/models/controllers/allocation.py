@@ -8,6 +8,7 @@ Classes:
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import math
 from typing import Optional
 
 import numpy as np
@@ -152,7 +153,7 @@ class BondTentStrategy(Strategy):
                 [self.config.start_date, self.config.peak_date],
                 [self.config.start_allocation, self.config.peak_allocation],
             )
-        elif state.date == self.config.peak_date:
+        elif math.isclose(state.date, self.config.peak_date):
             # Peak point
             low_risk = self.config.peak_allocation
         elif state.date < self.config.end_date:
