@@ -15,3 +15,7 @@ down:
 
 test: up
 	docker-compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances /tests
+
+profile:
+	python -m cProfile -o tests/profiling/results/gen_trials.prof tests/profiling/gen_trials.py
+	snakeviz tests/profiling/results/gen_trials.prof
