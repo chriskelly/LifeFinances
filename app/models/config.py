@@ -265,7 +265,7 @@ class NetWorthStrategyConfig(StrategyConfig):
     equity_target: Optional[float] = None
 
 
-class SocialSecurityPensionOptions(StrategyOptions):
+class SocialSecurityOptions(StrategyOptions):
     """
     Attributes
         early (Strategy)
@@ -286,19 +286,19 @@ class SocialSecurityPensionOptions(StrategyOptions):
     same: Optional[StrategyConfig] = None
 
 
-class SocialSecurityPension(BaseModel):
+class SocialSecurity(BaseModel):
     """
     Attributes
         trust_factor (float)
 
         pension_eligible (bool)
 
-        strategy (SocialSecurityPensionOptions)
+        strategy (SocialSecurityOptions)
     """
 
     trust_factor: Optional[float] = 1
     pension_eligible: bool = False
-    strategy: Optional[SocialSecurityPensionOptions] = SocialSecurityPensionOptions(
+    strategy: Optional[SocialSecurityOptions] = SocialSecurityOptions(
         mid=StrategyConfig(chosen=True)
     )
     earnings_records: Optional[dict] = {}
@@ -398,7 +398,7 @@ class Partner(BaseModel):
     Attributes
         age (int)
 
-        social_security_pension (SocialSecurityPension)
+        social_security_pension (SocialSecurity)
 
         earnings_records (dict)
 
@@ -406,17 +406,17 @@ class Partner(BaseModel):
     """
 
     age: Optional[int] = None
-    social_security_pension: Optional[SocialSecurityPension] = SocialSecurityPension()
+    social_security_pension: Optional[SocialSecurity] = SocialSecurity()
     income_profiles: Optional[list[IncomeProfile]] = None
 
 
 class Admin(BaseModel):
     """
     Attributes
-        partner_pension_strategy (SocialSecurityPensionOptions)
+        partner_pension_strategy (SocialSecurityOptions)
     """
 
-    partner_pension_strategy: SocialSecurityPensionOptions
+    partner_pension_strategy: SocialSecurityOptions
 
 
 class User(BaseModel):
@@ -432,7 +432,7 @@ class User(BaseModel):
 
         portfolio (Portfolio)
 
-        social_security_pension (SocialSecurityPension)
+        social_security_pension (SocialSecurity)
 
         spending (Spending)
 
@@ -454,7 +454,7 @@ class User(BaseModel):
     calculate_til: float = None
     equity_target: Optional[float] = None
     portfolio: Portfolio = Portfolio()
-    social_security_pension: Optional[SocialSecurityPension] = SocialSecurityPension()
+    social_security_pension: Optional[SocialSecurity] = SocialSecurity()
     spending: Spending
     state: Optional[str] = None
     kids: Optional[Kids] = None

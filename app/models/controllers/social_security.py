@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from app.data import constants
 from app.models.financial.state import State
-from app.models.config import NetWorthStrategyConfig, SocialSecurityPension, User
+from app.models.config import NetWorthStrategyConfig, SocialSecurity, User
 from app.models.controllers.job_income import Income, Controller as IncomeController
 
 EARLY_AGE = 62
@@ -143,7 +143,7 @@ def _constrain_earnings(earnings_record: dict):
     ]
 
 
-def _gen_pia(earnings: list, ss_config: SocialSecurityPension) -> float:
+def _gen_pia(earnings: list, ss_config: SocialSecurity) -> float:
     """Generate the Primary Insurance Amount (PIA).
 
     Args:
@@ -208,9 +208,7 @@ def _adjust_bend_points(aime: float) -> list[float]:
     return bend_points[: bend_points.index(aime) + 1]
 
 
-def _apply_pia_rates(
-    bend_points: list[float], ss_config: SocialSecurityPension
-) -> float:
+def _apply_pia_rates(bend_points: list[float], ss_config: SocialSecurity) -> float:
     """Apply PIA rates to bend points to calculate PIA.
 
     Bends Points are the AIME values at which the PIA rates change. This
@@ -235,7 +233,7 @@ def _apply_pia_rates(
     Args:
         bend_points (list[float]): generated bend_points given AIME
 
-        ss_config (SocialSecurityPension)
+        ss_config (SocialSecurity)
 
     Returns:
         float: Calculated PIA
@@ -350,9 +348,7 @@ class _NetWorthStrategy(_Strategy):
 
 
 class _IndividualController:
-    def __init__(
-        self, ss_config: SocialSecurityPension, timeline: list[Income], age: int
-    ):
+    def __init__(self, ss_config: SocialSecurity, timeline: list[Income], age: int):
         """
         Controller should initially create a state compatiable will all strategies
         Strategies all need to cover the same level of scope, so though

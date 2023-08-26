@@ -4,7 +4,7 @@
 import random
 import pytest
 from app.data import constants
-from app.models.config import NetWorthStrategyConfig, SocialSecurityPension, User
+from app.models.config import NetWorthStrategyConfig, SocialSecurity, User
 from app.models.controllers.job_income import Income, Controller as IncomeController
 from app.models.controllers.social_security import (
     EARLY_AGE,
@@ -54,7 +54,7 @@ def modify_constants_for_module():
 
 @pytest.fixture
 def ss_config():
-    """Sample config for SocialSecurityPension"""
+    """Sample config for SocialSecurity"""
     data = {
         "trust_factor": 0.8,
         "pension_eligible": False,
@@ -67,7 +67,7 @@ def ss_config():
         },
         "earnings_records": {2010: 75, 2011: 78},
     }
-    return SocialSecurityPension(**data)
+    return SocialSecurity(**data)
 
 
 @pytest.fixture
@@ -109,18 +109,18 @@ class TestGenPIA:
     bend_points = [1, 6, 8]
     earnings = list(range(40))
 
-    def test_apply_pia_rates(self, ss_config: SocialSecurityPension):
+    def test_apply_pia_rates(self, ss_config: SocialSecurity):
         """PIA should match experimentally determined value"""
         pia = _apply_pia_rates(bend_points=self.bend_points, ss_config=ss_config)
         assert pia == pytest.approx(2.8)
 
-    def test_apply_pia_rates_pension(self, ss_config: SocialSecurityPension):
+    def test_apply_pia_rates_pension(self, ss_config: SocialSecurity):
         """PIA is reduced if pension eligible"""
         ss_config.pension_eligible = True
         pia = _apply_pia_rates(bend_points=self.bend_points, ss_config=ss_config)
         assert pia == pytest.approx(2.3)
 
-    def test_apply_pia_rates_less_bend_points(self, ss_config: SocialSecurityPension):
+    def test_apply_pia_rates_less_bend_points(self, ss_config: SocialSecurity):
         """Function should be compaitable with 1 & 2 bend points"""
         pia = _apply_pia_rates(bend_points=self.bend_points[:2], ss_config=ss_config)
         assert pia == pytest.approx(2.5)
@@ -149,7 +149,7 @@ class TestGenPIA:
         aime = _calc_aime(shuffled_earnings)
         assert pytest.approx(aime, 0.01) == sum(self.earnings[-35:]) / 420
 
-    def test_gen_pia(self, ss_config: SocialSecurityPension):
+    def test_gen_pia(self, ss_config: SocialSecurity):
         """PIA should be the product of the PIA rates and the AIME"""
         pia = _gen_pia(earnings=self.earnings, ss_config=ss_config)
         assert pia == pytest.approx(1.166, 0.01)
