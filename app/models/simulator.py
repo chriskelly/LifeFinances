@@ -110,13 +110,13 @@ class SimulationEngine:
         gen_all_trials()
     """
 
-    def __init__(self):
+    def __init__(self, trial_qty: int = None):
         user_config = get_config()
         self.results: Results = Results()
-        self.trial_qty = user_config.trial_quantity
+        self.trial_qty = trial_qty or user_config.trial_quantity
         self.economic_engine_data = economic_data.Generator(
             intervals_per_trial=user_config.intervals_per_trial,
-            trial_qty=user_config.trial_quantity,
+            trial_qty=self.trial_qty,
         ).gen_economic_engine_data()
 
     def gen_all_trials(self):
