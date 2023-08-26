@@ -493,12 +493,14 @@ class Controller:
                 spousal_controller=self._partner_controller,
                 state=state,
             )
-            user_payment = max(user_payment, users_spousal_benefit)
-            basic_partner_payment = self._partner_controller.calc_payment(state)
+            if users_spousal_benefit > user_payment:
+                user_payment = users_spousal_benefit
+            partner_payment = self._partner_controller.calc_payment(state)
             partners_spousal_benefit = _calc_spousal_benefit(
                 worker_controller=self._partner_controller,
                 spousal_controller=self._user_controller,
                 state=state,
             )
-            partner_payment = max(basic_partner_payment, partners_spousal_benefit)
+            if partners_spousal_benefit > partner_payment:
+                partner_payment = partners_spousal_benefit
         return user_payment, partner_payment
