@@ -419,12 +419,6 @@ class Partner(BaseModel):
     social_security_pension: Optional[SocialSecurityPension] = SocialSecurityPension()
     income_profiles: Optional[list[IncomeProfile]] = None
 
-    @model_validator(mode="after")
-    def validate_income_profiles(self):
-        """Income profiles must be in order"""
-        _income_profiles_in_order(self.income_profiles)
-        return self
-
 
 class Admin(BaseModel):
     """
@@ -506,6 +500,8 @@ class User(BaseModel):
     def validate_income_profiles(self):
         """Income profiles must be in order"""
         _income_profiles_in_order(self.income_profiles)
+        if self.partner and self.partner.income_profiles:
+            _income_profiles_in_order(self.partner.income_profiles)
         return self
 
     @model_validator(mode="after")
