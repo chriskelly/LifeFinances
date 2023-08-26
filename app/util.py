@@ -170,4 +170,8 @@ def constrain(value, low, high):
     Returns:
         int/float: The value clamped between the limits.
     """
-    return max(min(value, high), low)
+    if value < low:
+        return low
+    if value > high:
+        return high
+    return value
