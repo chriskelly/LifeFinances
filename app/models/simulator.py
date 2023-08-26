@@ -116,7 +116,6 @@ class SimulationEngine:
         self.trial_qty = user_config.trial_quantity
         self.economic_engine_data = economic_data.Generator(
             intervals_per_trial=user_config.intervals_per_trial,
-            intervals_per_year=4,
             trial_qty=user_config.trial_quantity,
         ).gen_economic_engine_data()
 

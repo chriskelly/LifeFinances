@@ -14,7 +14,25 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import numpy as np
 from scipy import stats
-from app.data import constants
+from app.data.constants import (
+    BOND_ANNUAL_HIGH,
+    BOND_ANNUAL_LOW,
+    BOND_MEAN,
+    BOND_STDEV,
+    INFLATION_MEAN,
+    INFLATION_SKEW,
+    INFLATION_STDEV,
+    INTERVALS_PER_YEAR,
+    RE_ANNUAL_HIGH,
+    RE_ANNUAL_LOW,
+    RE_MEAN,
+    RE_STDEV,
+    STOCK_ANNUAL_HIGH,
+    STOCK_ANNUAL_LOW,
+    STOCK_MEAN,
+    STOCK_STDEV,
+    YEARS_PER_INTERVAL,
+)
 from app.models.financial.state import State
 
 rng = np.random.default_rng()
@@ -25,24 +43,21 @@ class _StatisticBehavior(ABC):
     mean_yield: float
     stdev: float
 
-    def calculate_for_interval_size(self, intervals_per_year: int):
-        """Calculates mean_yield and stdev for a given interval size
+    def calculate_for_interval_size(self):
+        """Calculates mean_yield and stdev for the global interval size
 
         Assumes self.mean_yield and self.stdev are annualized
 
-        Args:
-            intervals_per_year (int): number of intervals per year (4 for quarterly)
-
         Returns:
-            tuple[float, float]: (mean_yield, stdev) for a given interval size
+            tuple[float, float]: (mean_yield, stdev) for the interval size
         """
-        mean_yield = self.mean_yield ** (1 / intervals_per_year)
+        mean_yield = self.mean_yield**YEARS_PER_INTERVAL
         # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
-        stdev = self.stdev / math.sqrt(intervals_per_year)
+        stdev = self.stdev / math.sqrt(INTERVALS_PER_YEAR)
         return (mean_yield, stdev)
 
     @abstractmethod
-    def gen_interval_behavior(self, intervals_per_year: int):
+    def gen_interval_behavior(self):
         """Returns Behavior object with modified mean_yield and stdev for a given interval"""
 
 
@@ -69,8 +84,8 @@ class InvestmentBehavior(_StatisticBehavior):
     annualized_high: float
     annualized_low: float
 
-    def gen_interval_behavior(self, intervals_per_year: int):
-        mean_yield, stdev = self.calculate_for_interval_size(intervals_per_year)
+    def gen_interval_behavior(self):
+        mean_yield, stdev = self.calculate_for_interval_size()
         return InvestmentBehavior(
             mean_yield=mean_yield,
             stdev=stdev,
@@ -80,22 +95,22 @@ class InvestmentBehavior(_StatisticBehavior):
 
 
 STOCK_BEHAVIOR = InvestmentBehavior(
-    mean_yield=constants.STOCK_MEAN,
-    stdev=constants.STOCK_STDEV,
-    annualized_high=constants.STOCK_ANNUAL_HIGH,
-    annualized_low=constants.STOCK_ANNUAL_LOW,
+    mean_yield=STOCK_MEAN,
+    stdev=STOCK_STDEV,
+    annualized_high=STOCK_ANNUAL_HIGH,
+    annualized_low=STOCK_ANNUAL_LOW,
 )
 BOND_BEHAVIOR = InvestmentBehavior(
-    mean_yield=constants.BOND_MEAN,
-    stdev=constants.BOND_STDEV,
-    annualized_high=constants.BOND_ANNUAL_HIGH,
-    annualized_low=constants.BOND_ANNUAL_LOW,
+    mean_yield=BOND_MEAN,
+    stdev=BOND_STDEV,
+    annualized_high=BOND_ANNUAL_HIGH,
+    annualized_low=BOND_ANNUAL_LOW,
 )
 REAL_ESTATE_BEHAVIOR = InvestmentBehavior(
-    mean_yield=constants.RE_MEAN,
-    stdev=constants.RE_STDEV,
-    annualized_high=constants.RE_ANNUAL_HIGH,
-    annualized_low=constants.RE_ANNUAL_LOW,
+    mean_yield=RE_MEAN,
+    stdev=RE_STDEV,
+    annualized_high=RE_ANNUAL_HIGH,
+    annualized_low=RE_ANNUAL_LOW,
 )
 
 
@@ -119,15 +134,15 @@ class InflationBehavior(_StatisticBehavior):
 
     def __init__(
         self,
-        mean_yield=constants.INFLATION_MEAN,
-        stdev=constants.INFLATION_STDEV,
-        skew=constants.INFLATION_SKEW,
+        mean_yield=INFLATION_MEAN,
+        stdev=INFLATION_STDEV,
+        skew=INFLATION_SKEW,
     ):
         super().__init__(mean_yield=mean_yield, stdev=stdev)
         self.skew = skew
 
-    def gen_interval_behavior(self, intervals_per_year: int):
-        mean_yield, stdev = self.calculate_for_interval_size(intervals_per_year)
+    def gen_interval_behavior(self):
+        mean_yield, stdev = self.calculate_for_interval_size()
         return InflationBehavior(
             mean_yield=mean_yield,
             stdev=stdev,
@@ -253,13 +268,10 @@ class Generator:
         intervals_per_trial (int): number of intervals per trial
         (ex: 42 for 10.5 years of quarterly intervals)
 
-        intervals_per_year (int): number of intervals per year (4 for quarterly)
-
         trial_qty (int): number of trials to run
     """
 
     intervals_per_trial: int
-    intervals_per_year: int
     trial_qty: int
 
     def gen_economic_engine_data(self) -> EconomicEngineData:
@@ -291,7 +303,7 @@ class Generator:
         """
         rate_matrix = [
             self._generate_1d_restricted_rates(
-                investment_behavior.gen_interval_behavior(self.intervals_per_year)
+                investment_behavior.gen_interval_behavior()
             )[0]
             for _ in range(self.trial_qty)
         ]
@@ -318,7 +330,7 @@ class Generator:
         # slightly more data may be generated since years need to be tested
         # in whole quantities, not fractional. Ex: If you need 10 quarters
         # (2.5 years) of data. year_qty must be 3
-        year_qty = math.ceil(self.intervals_per_trial / self.intervals_per_year)
+        year_qty = math.ceil(self.intervals_per_trial / INTERVALS_PER_YEAR)
         # In the case of 4 intervals per year, interval_behavior is the
         # behavior of the investment over the course of a single quarter.
         iter_cnt = 0
@@ -330,7 +342,7 @@ class Generator:
             yields = rng.normal(
                 loc=interval_behavior.mean_yield,
                 scale=interval_behavior.stdev,
-                size=year_qty * self.intervals_per_year,
+                size=year_qty * INTERVALS_PER_YEAR,
             )
             annualized_return = pow(np.prod(yields), 1 / year_qty)
             iter_cnt += 1
@@ -344,9 +356,7 @@ class Generator:
         Returns:
             list[list]: each list has inflation growing cumulatively
         """
-        interval_behavior = INFLATION_BEHAVIOR.gen_interval_behavior(
-            self.intervals_per_year
-        )
+        interval_behavior = INFLATION_BEHAVIOR.gen_interval_behavior()
         distribution = self._create_skew_dist(
             interval_behavior.mean_yield,
             interval_behavior.stdev,

@@ -75,7 +75,7 @@ def timeline():
     """Sample timeline of Incomes"""
     return [
         Income(
-            date=(constants.TODAY_YR - 10) + i * 0.25,
+            date=(constants.TODAY_YR - 10) + i * constants.YEARS_PER_INTERVAL,
             amount=20 + i,
             social_security_eligible=True if i % 2 == 0 else False,
         )

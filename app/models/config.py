@@ -476,7 +476,9 @@ class User(BaseModel):
     def intervals_per_trial(self) -> int:
         """Returns the number of intervals per trial"""
 
-        return int((self.calculate_til - constants.TODAY_YR_QT) / 0.25)
+        return int(
+            (self.calculate_til - constants.TODAY_YR_QT) / constants.YEARS_PER_INTERVAL
+        )
 
     @field_validator("calculate_til")
     @classmethod

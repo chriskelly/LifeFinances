@@ -5,6 +5,7 @@ import math
 import pytest
 import numpy as np
 from scipy import stats
+from app.data import constants
 from app.models.controllers.economic_data import (
     Generator,
     InvestmentBehavior,
@@ -20,7 +21,6 @@ def generator():
     """Sample economic data generator"""
     return Generator(
         intervals_per_trial=350,
-        intervals_per_year=4,
         trial_qty=10,
     )
 
@@ -28,9 +28,7 @@ def generator():
 class TestInflation:
     def test_create_skew_dist(self, generator: Generator):
         """Distribution characteristics should match input"""
-        interval_behavior = INFLATION_BEHAVIOR.gen_interval_behavior(
-            generator.intervals_per_year
-        )
+        interval_behavior = INFLATION_BEHAVIOR.gen_interval_behavior()
         size = generator.intervals_per_trial * generator.trial_qty
         distribution = generator._create_skew_dist(
             interval_behavior.mean_yield,
@@ -64,15 +62,13 @@ class TestInvestmentReturns:
 
     def test_generate_1d_restricted_rates(self, generator: Generator):
         """Output statistics should match input"""
-        interval_behavior = self.investment_behavior.gen_interval_behavior(
-            generator.intervals_per_year
-        )
+        interval_behavior = self.investment_behavior.gen_interval_behavior()
         rates = generator._generate_1d_restricted_rates(interval_behavior)[0]
         yields = rates + 1
         assert np.mean(yields) == pytest.approx(interval_behavior.mean_yield, rel=0.01)
         assert np.std(yields) == pytest.approx(interval_behavior.stdev, rel=0.1)
         year_qty = math.ceil(
-            generator.intervals_per_trial / generator.intervals_per_year
+            generator.intervals_per_trial / constants.INTERVALS_PER_YEAR
         )
         annualized_return = pow(np.prod(yields), 1 / year_qty)
         assert (
@@ -94,9 +90,7 @@ class TestInvestmentReturns:
             BOND_BEHAVIOR,
             REAL_ESTATE_BEHAVIOR,
         ]:
-            interval_behavior = investment_behavior.gen_interval_behavior(
-                generator.intervals_per_year
-            )
+            interval_behavior = investment_behavior.gen_interval_behavior()
             trials = 100
             iteration_cnt = sum(
                 generator._generate_1d_restricted_rates(interval_behavior)[1]

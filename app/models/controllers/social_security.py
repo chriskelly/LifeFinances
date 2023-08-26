@@ -82,7 +82,7 @@ def _fill_in_missing_intervals(timeline: list[Income]) -> list[Income]:
         timeline_copy.insert(
             0,
             Income(
-                date=timeline_copy[0].date - 0.25,
+                date=timeline_copy[0].date - constants.YEARS_PER_INTERVAL,
                 amount=timeline_copy[0].amount,
                 tax_deferred=timeline_copy[0].tax_deferred,
                 try_to_optimize=timeline_copy[0].try_to_optimize,
@@ -93,7 +93,7 @@ def _fill_in_missing_intervals(timeline: list[Income]) -> list[Income]:
         # insert new Income objects at the end of timeline till a date ends with .75
         timeline_copy.append(
             Income(
-                date=timeline_copy[-1].date + 0.25,
+                date=timeline_copy[-1].date + constants.YEARS_PER_INTERVAL,
                 amount=timeline_copy[-1].amount,
                 tax_deferred=timeline_copy[-1].tax_deferred,
                 try_to_optimize=timeline_copy[-1].try_to_optimize,
@@ -304,7 +304,7 @@ class _AgeStrategy(_Strategy):
     def calc_payment(self, state: State) -> float:
         if state.date < self.trigger_date:
             return 0
-        return 3 * self._adjusted_pia * state.inflation
+        return constants.MONTHS_PER_INTERVAL * self._adjusted_pia * state.inflation
 
 
 class _NetWorthStrategy(_Strategy):
@@ -334,7 +334,7 @@ class _NetWorthStrategy(_Strategy):
 
     def calc_payment(self, state: State) -> float:
         if state.date >= self.trigger_date:  # already triggered
-            return 3 * self._adjusted_pia * state.inflation
+            return constants.MONTHS_PER_INTERVAL * self._adjusted_pia * state.inflation
         age_at_state = self._current_age + math.trunc(state.date) - constants.TODAY_YR
         if age_at_state < EARLY_AGE:  # too young
             return 0
@@ -345,7 +345,7 @@ class _NetWorthStrategy(_Strategy):
             self.benefit_rate = constants.BENEFIT_RATES[age_at_state]
             self._adjusted_pia = self._pia * self.benefit_rate
             self.trigger_date = state.date
-            return 3 * self._adjusted_pia * state.inflation
+            return constants.MONTHS_PER_INTERVAL * self._adjusted_pia * state.inflation
         return 0
 
 
@@ -433,7 +433,7 @@ def _calc_spousal_benefit(
     spouse_pia = spousal_controller.pia
     # Worker's can earn up to half of their spouse's PIA, adjusted by the worker's benefit rate
     spousal_benefit = 0.5 * spouse_pia * worker_controller.strategy.benefit_rate
-    return spousal_benefit * 3 * state.inflation
+    return spousal_benefit * constants.MONTHS_PER_INTERVAL * state.inflation
 
 
 class Controller:

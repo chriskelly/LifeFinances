@@ -7,6 +7,10 @@ Classes:
 from dataclasses import dataclass
 import math
 from app.data import constants
+from app.data.constants import (
+    INTERVALS_PER_YEAR,
+    YEARS_PER_INTERVAL,
+)
 from app.models.config import IncomeProfile, User
 
 
@@ -42,7 +46,7 @@ def _gen_empty_timeline(first_date: float, size: int) -> list[Income]:
     Returns:
         list[Income] An Income object for each trial interval (including empty ones)
     """
-    return [Income(date=first_date + 0.25 * i) for i in range(size)]
+    return [Income(date=first_date + YEARS_PER_INTERVAL * i) for i in range(size)]
 
 
 class Controller:
@@ -101,7 +105,7 @@ class Controller:
 
         def _get_income_and_deferral_ratio(profile: IncomeProfile):
             """Provide starting income and the ratio between deferred income and starting income"""
-            interval_income = profile.starting_income / 4
+            interval_income = profile.starting_income / INTERVALS_PER_YEAR
             try:
                 deferral_ratio = profile.tax_deferred_income / profile.starting_income
             except ZeroDivisionError:
@@ -124,7 +128,7 @@ class Controller:
                     social_security_eligible=profiles[idx].social_security_eligible,
                 )
             )
-            date += 0.25
+            date += YEARS_PER_INTERVAL
             if date > profiles[idx].last_date:  # end of profile
                 idx += 1
                 if idx >= len(profiles):  # no more profiles
@@ -133,7 +137,8 @@ class Controller:
             elif math.isclose(date % 1, 0):  # new year
                 income *= 1 + profiles[idx].yearly_raise
         remaining_timeline = _gen_empty_timeline(
-            first_date=timeline[-1].date + 0.25, size=self._size - len(timeline)
+            first_date=timeline[-1].date + YEARS_PER_INTERVAL,
+            size=self._size - len(timeline),
         )
         return timeline + remaining_timeline
 

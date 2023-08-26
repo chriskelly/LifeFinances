@@ -9,6 +9,7 @@ Classes:
 Methods:
     gen_first_interval(trial: SimulationTrial): 
 """
+from app.data import constants
 from app.models.config import User
 from app.models.controllers import Controllers
 from app.models.financial.state import State, gen_first_state
@@ -35,7 +36,7 @@ class Interval:
         """Generate the next interval from State + StateChangeComponents"""
         next_state = State(
             user=self.state.user,
-            date=self.state.date + 0.25,
+            date=self.state.date + constants.YEARS_PER_INTERVAL,
             interval_idx=self.state.interval_idx + 1,
             net_worth=self.state.net_worth
             + self.state_change_components.net_transactions,
