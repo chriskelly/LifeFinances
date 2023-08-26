@@ -11,8 +11,7 @@ from app.models.simulator import (
 class TestSimulationEngine:
     def test_gen_all_trials(self):
         """Ensure simulation runs without error"""
-        engine = SimulationEngine()
-        engine.trial_qty = 5  # speed up tests
+        engine = SimulationEngine(trial_qty=5)  # speed up tests
         try:
             engine.gen_all_trials()
         except Exception as exception:  # pylint:disable=broad-exception-caught # NA
