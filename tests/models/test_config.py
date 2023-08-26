@@ -76,17 +76,19 @@ def test_chosen_forces_enabled():
 @pytest.fixture
 def strategy_options() -> StrategyOptions:
     """Sample StrategyOptions"""
-    strategy1 = StrategyConfig(enabled=True)
-    strategy2 = StrategyConfig(enabled=False)
-    strategy3 = StrategyConfig(enabled=True, chosen=True)
 
-    @dataclass
+    data = {
+        "strategy1": {"enabled": True},
+        "strategy2": {"enabled": False},
+        "strategy3": {"enabled": True, "chosen": True},
+    }
+
     class MyOptions(StrategyOptions):
         strategy1: StrategyConfig
         strategy2: StrategyConfig
         strategy3: StrategyConfig
 
-    my_options = MyOptions(strategy1, strategy2, strategy3)
+    my_options = MyOptions(**data)
     return my_options
 
 

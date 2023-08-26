@@ -38,53 +38,43 @@ class StrategyConfig(BaseModel):
         return chosen
 
 
-class StrategyOptions:
+class StrategyOptions(BaseModel):
     """
-    Property class that implements the following properties:
+    Attributes:
         enabled_strategies (dict[str, Strategy])
 
         chosen_strategy (tuple[str, Strategy])
     """
 
-    @property
-    def enabled_strategies(self) -> dict[str, StrategyConfig]:
-        """Dict of enabled strategies
-
-        Returns:
-            dict[str,Strategy]: {name of strategy: Strategy Object}
-        """
-        return {
-            prop: strategy
-            for (prop, strategy) in vars(self).items()
-            if strategy and strategy.enabled
-        }
-
-    @property
-    def chosen_strategy(self) -> tuple[str, StrategyConfig]:
-        """Strategy chosen by user
-
-        Returns:
-            tuple[str,Strategy]: (name of strategy, Strategy Object)
-        """
-        return next(
-            (
-                (prop, strategy)
-                for (prop, strategy) in vars(self).items()
-                if strategy and strategy.chosen
-            ),
-            None,
-        )
+    enabled_strategies: Optional[dict[str, StrategyConfig]] = None
+    chosen_strategy: Optional[tuple[str, StrategyConfig]] = None
 
     @model_validator(mode="after")
-    def only_one_chosen(self):
-        """Restrict only one strategy to be chosen"""
+    def find_enabled_and_chosen_strategies(self):
+        """Find enabled and chosen strategies"""
+        # Restrict only one strategy to be chosen
         chosen_cnt = sum(
-            1 for prop, strategy in vars(self).items() if strategy and strategy.chosen
+            1 for _, strategy in vars(self).items() if strategy and strategy.chosen
         )
         if chosen_cnt != 1:
             raise ValueError(
                 f"Exactly one {type(self).__name__} strategy must have 'chosen' set to True."
             )
+        # Find enabled strategies
+        self.enabled_strategies = {
+            prop: strategy
+            for (prop, strategy) in vars(self).items()
+            if strategy and strategy.enabled
+        }
+        # Find chosen strategy
+        self.chosen_strategy = next(
+            (
+                (prop, strategy)
+                for (prop, strategy) in self.enabled_strategies.items()
+                if strategy and strategy.chosen
+            ),
+            None,
+        )
         return self
 
 
@@ -97,7 +87,7 @@ class RealEstateStrategyConfig(StrategyConfig):
     fraction_of_high_risk: float
 
 
-class RealEstateOptions(BaseModel, StrategyOptions):
+class RealEstateOptions(StrategyOptions):
     """
     Attributes
         include (RealEstateStrategy)
@@ -109,7 +99,7 @@ class RealEstateOptions(BaseModel, StrategyOptions):
     dont_include: Optional[StrategyConfig] = None
 
 
-class LowRiskOptions(BaseModel, StrategyOptions):
+class LowRiskOptions(StrategyOptions):
     """
     Attributes
         bonds (Strategy)
@@ -223,7 +213,7 @@ class LifeCycleStrategyConfig(StrategyConfig):
         return self
 
 
-class AllocationOptions(BaseModel, StrategyOptions):
+class AllocationOptions(StrategyOptions):
     """
     Attributes
         flat_allocation (FlatAllocationStrategyConfig)
@@ -275,7 +265,7 @@ class NetWorthStrategyConfig(StrategyConfig):
     equity_target: Optional[float] = None
 
 
-class SocialSecurityPensionOptions(BaseModel, StrategyOptions):
+class SocialSecurityPensionOptions(StrategyOptions):
     """
     Attributes
         early (Strategy)
@@ -323,7 +313,7 @@ class CeilFloorStrategyConfig(StrategyConfig):
     allowed_fluctuation: Optional[float] = None
 
 
-class SpendingOptions(BaseModel, StrategyOptions):
+class SpendingOptions(StrategyOptions):
     """
     Attributes
         inflation_only (Strategy)
