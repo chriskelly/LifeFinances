@@ -6,14 +6,13 @@ on:
 
 jobs:
   docker_test:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Create user config
-      run: cp tests/sample_config.yml config.yml
+      - name: Create user config
+        run: cp tests/sample_configs/full_config.yml config.yml
 
-    - name: Run Tests
-      run: make
+      - name: Run Tests
+        run: make
