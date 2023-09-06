@@ -294,6 +294,8 @@ class SocialSecurity(BaseModel):
         pension_eligible (bool)
 
         strategy (SocialSecurityOptions)
+
+        earnings_records (dict)
     """
 
     trust_factor: Optional[float] = 1
@@ -302,6 +304,43 @@ class SocialSecurity(BaseModel):
         mid=StrategyConfig(chosen=True)
     )
     earnings_records: Optional[dict] = {}
+
+
+class PensionOptions(SocialSecurityOptions):
+    """
+    Attributes
+        early (Strategy)
+
+        mid (Strategy)
+
+        late (Strategy)
+
+        net_worth (NetWorthStrategy)
+
+        same (Strategy)
+
+        cash_out (Strategy)
+    """
+
+    cash_out: Optional[StrategyConfig] = None
+
+
+class Pension(BaseModel):
+    """
+    Attributes
+        trust_factor (float)
+
+        account_balance (float)
+
+        balance_update (float)
+
+        strategy (PensionOptions)
+    """
+
+    trust_factor: float = 1
+    account_balance: float = 0
+    balance_update: float = 2022.5
+    strategy: Optional[PensionOptions] = PensionOptions(mid=StrategyConfig(chosen=True))
 
 
 class CeilFloorStrategyConfig(StrategyConfig):
@@ -413,10 +452,10 @@ class Partner(BaseModel):
 class Admin(BaseModel):
     """
     Attributes
-        partner_pension_strategy (SocialSecurityOptions)
+        pension (Pension)
     """
 
-    partner_pension_strategy: SocialSecurityOptions
+    pension: Pension
 
 
 class User(BaseModel):

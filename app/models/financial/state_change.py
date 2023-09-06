@@ -10,8 +10,6 @@ Methods:
 """
 from dataclasses import dataclass
 from app import util
-from app.models.controllers.allocation import AllocationRatios
-from app.models.controllers.economic_data import EconomicStateData
 from app.models.financial.state import State
 from app.models.controllers import Controllers
 
@@ -23,6 +21,7 @@ class _Income(util.FloatRepr):
             self.social_security_user,
             self.social_security_partner,
         ) = controllers.social_security.calc_payment(state)
+        self.pension = controllers.pension.calc_payment(state)
 
     def __float__(self):
         return float(
@@ -31,6 +30,7 @@ class _Income(util.FloatRepr):
                     self.job_income,
                     self.social_security_user,
                     self.social_security_partner,
+                    self.pension,
                 ]
             )
         )

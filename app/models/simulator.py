@@ -19,6 +19,7 @@ from app.models.controllers import (
     allocation,
     economic_data,
     job_income,
+    pension,
     social_security,
 )
 from app.models.financial.interval import Interval, gen_first_interval
@@ -78,8 +79,8 @@ def gen_trial(
     trial.controllers.social_security = social_security.Controller(
         user_config=user_config, income_controller=job_income_controller
     )
+    trial.controllers.pension = pension.Controller(user_config)
     # trial.controllers.annuity=annuity.Controller(),
-    # trial.controllers.pension=pension.Controller(),
     trial.intervals.append(gen_first_interval(trial.user_config, trial.controllers))
     trial.run()
     return trial

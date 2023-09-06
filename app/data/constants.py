@@ -146,29 +146,3 @@ https://digital.fidelity.com/prgw/digital/gie/"""
 ANNUITY_PAYOUT_RATE = 0.045
 """Payout rate on annuity (Fidelity used as benchmark).
 https://digital.fidelity.com/prgw/digital/gie/"""
-
-# Admin's pension details, ignore!
-ADMIN_PENSION_RATES = {
-    "2043": 0.0116,
-    "2044": 0.0128,
-    "2045": 0.0140,
-    "2046": 0.0152,
-    "2047": 0.0164,
-    "2048": 0.0176,
-    "2049": 0.0188,
-    "2050": 0.0200,
-    "2051": 0.0213,
-    "2052": 0.0227,
-    "2053": 0.0240,
-    "2054": 0.0240,
-    "2055": 0.0240,
-}
-"""Please ignore. Pension details for admin. Format: {year:rate}"""
-PENSION_ACCOUNT_BAL = 56.307  # lastpass 'pension bal'
-"""Please ignore. Pension details for admin."""
-PENSION_COST = 0.09  # 9% of income
-"""Please ignore. Pension details for admin."""
-PENSION_ACCOUNT_BAL_UP_DATE = 2022.5
-"""Please ignore. Pension details for admin. Last date of update"""
-PENSION_INTEREST_YIELD = 1.02  # varies from 1.2-3% based on Progress Reports
-"""Please ignore. Pension details for admin."""
