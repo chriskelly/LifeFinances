@@ -1,6 +1,7 @@
 """Utililty Functions"""
 
 from abc import ABC, abstractmethod
+from app.data import constants
 
 
 class FloatRepr(ABC):
@@ -175,3 +176,15 @@ def constrain(value, low, high):
     if value > high:
         return high
     return value
+
+
+def interval_yield(yield_value: float) -> float:
+    """Turn an annual yield into a yield for an interval
+
+    Args:
+        yield_value (float): an annual yield in the format of 1.03
+
+    Returns:
+        float: interval yield
+    """
+    return yield_value**constants.YEARS_PER_INTERVAL
