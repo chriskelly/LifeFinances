@@ -18,9 +18,9 @@ from app.data import constants
 class StrategyConfig(BaseModel):
     """
     Attributes
-        enabled (bool)
+        enabled (bool): Defaults to False
 
-        chosen (bool)
+        chosen (bool): Defaults to False
     """
 
     enabled: bool = False
@@ -41,9 +41,9 @@ class StrategyConfig(BaseModel):
 class StrategyOptions(BaseModel):
     """
     Attributes:
-        enabled_strategies (dict[str, Strategy])
+        enabled_strategies (dict[str, Strategy]): Defaults to None
 
-        chosen_strategy (tuple[str, Strategy])
+        chosen_strategy (tuple[str, Strategy]): Defaults to None
     """
 
     enabled_strategies: Optional[dict[str, StrategyConfig]] = None
@@ -90,9 +90,9 @@ class RealEstateStrategyConfig(StrategyConfig):
 class RealEstateOptions(StrategyOptions):
     """
     Attributes
-        include (RealEstateStrategy)
+        include (RealEstateStrategy): Defaults to None
 
-        dont_include (Strategy)
+        dont_include (Strategy): Defaults to None
     """
 
     include: Optional[RealEstateStrategyConfig] = None
@@ -102,9 +102,9 @@ class RealEstateOptions(StrategyOptions):
 class LowRiskOptions(StrategyOptions):
     """
     Attributes
-        bonds (Strategy)
+        bonds (Strategy): Defaults to None
 
-        annuities (Strategy)
+        annuities (Strategy): Defaults to None
     """
 
     bonds: Optional[StrategyConfig] = None
@@ -114,7 +114,7 @@ class LowRiskOptions(StrategyOptions):
 class FlatAllocationStrategyConfig(StrategyConfig):
     """
     Attributes
-        low_risk_target (float)
+        low_risk_target (float): Defaults to None
     """
 
     low_risk_target: Optional[float] = None
@@ -132,7 +132,7 @@ class FlatAllocationStrategyConfig(StrategyConfig):
 class XMinusAgeStrategyConfig(StrategyConfig):
     """
     Attributes
-        x (int)
+        x (int): Defaults to None
     """
 
     x: Optional[int] = None
@@ -143,17 +143,17 @@ class BondTentStrategyConfig(StrategyConfig):
     While called a Bond Tent, this strategy also applies to annuities if selected.
 
     Attributes
-        start_allocation (float)
+        start_allocation (float): Defaults to None
 
-        start_date (float)
+        start_date (float): Defaults to None
 
-        peak_allocation (float)
+        peak_allocation (float): Defaults to None
 
-        peak_date (float)
+        peak_date (float): Defaults to None
 
-        end_allocation (float)
+        end_allocation (float): Defaults to None
 
-        end_date (float)
+        end_date (float): Defaults to None
     """
 
     start_allocation: Optional[float] = None
@@ -200,7 +200,7 @@ class BondTentStrategyConfig(StrategyConfig):
 class LifeCycleStrategyConfig(StrategyConfig):
     """
     Attributes
-        net_worth_target (float): Also referred to as equity target
+        net_worth_target (float): Also referred to as equity target. Defaults to None
     """
 
     net_worth_target: Optional[float] = None
@@ -216,13 +216,13 @@ class LifeCycleStrategyConfig(StrategyConfig):
 class AllocationOptions(StrategyOptions):
     """
     Attributes
-        flat_allocation (FlatAllocationStrategyConfig)
+        flat_allocation (FlatAllocationStrategyConfig): Defaults to None
 
-        x_minus_age (XMinusAgeStrategyConfig)
+        x_minus_age (XMinusAgeStrategyConfig): Defaults to None
 
-        bond_tent (BondTentStrategyConfig)
+        bond_tent (BondTentStrategyConfig): Defaults to None
 
-        life_cycle (LifeCycleStrategyConfig)
+        life_cycle (LifeCycleStrategyConfig): Defaults to None
     """
 
     flat_allocation: Optional[FlatAllocationStrategyConfig] = None
@@ -234,15 +234,16 @@ class AllocationOptions(StrategyOptions):
 class Portfolio(BaseModel):
     """
     Attributes
-        current_net_worth (float)
+        current_net_worth (float): Defaults to 0
 
-        drawdown_tax_rate (float)
+        drawdown_tax_rate (float): Defaults to 0.1
 
-        real_estate (RealEstateStrategy)
+        real_estate (RealEstateStrategy): Defaults to `dont_include` strategy
 
-        low_risk (LowRiskOptions)
+        low_risk (LowRiskOptions): Defaults to `bonds` strategy
 
-        allocation_strategy (AllocationOptions)
+        allocation_strategy (AllocationOptions): Defaults to `flat_allocation` strategy
+        with `low_risk_target` of 0.4
     """
 
     current_net_worth: float = 0
@@ -259,7 +260,7 @@ class Portfolio(BaseModel):
 class NetWorthStrategyConfig(StrategyConfig):
     """
     Attributes
-        net_worth_target (float)
+        net_worth_target (float): Defaults to None
     """
 
     net_worth_target: Optional[float] = None
@@ -268,15 +269,15 @@ class NetWorthStrategyConfig(StrategyConfig):
 class SocialSecurityOptions(StrategyOptions):
     """
     Attributes
-        early (Strategy)
+        early (Strategy): Defaults to None
 
-        mid (Strategy)
+        mid (Strategy): Defaults to None
 
-        late (Strategy)
+        late (Strategy): Defaults to None
 
-        net_worth (NetWorthStrategy)
+        net_worth (NetWorthStrategy): Defaults to None
 
-        same (Strategy)
+        same (Strategy): Defaults to None
     """
 
     early: Optional[StrategyConfig] = None
@@ -289,13 +290,13 @@ class SocialSecurityOptions(StrategyOptions):
 class SocialSecurity(BaseModel):
     """
     Attributes
-        trust_factor (float)
+        trust_factor (float): Defaults to 1
 
-        pension_eligible (bool)
+        pension_eligible (bool): Defaults to False
 
-        strategy (SocialSecurityOptions)
+        strategy (SocialSecurityOptions): Defaults to `mid` strategy
 
-        earnings_records (dict)
+        earnings_records (dict): Defaults to empty dict
     """
 
     trust_factor: Optional[float] = 1
@@ -309,17 +310,17 @@ class SocialSecurity(BaseModel):
 class PensionOptions(SocialSecurityOptions):
     """
     Attributes
-        early (Strategy)
+        early (Strategy): Defaults to None
 
-        mid (Strategy)
+        mid (Strategy): Defaults to None
 
-        late (Strategy)
+        late (Strategy): Defaults to None
 
-        net_worth (NetWorthStrategy)
+        net_worth (NetWorthStrategy): Defaults to None
 
-        same (Strategy)
+        same (Strategy): Defaults to None
 
-        cash_out (Strategy)
+        cash_out (Strategy): Defaults to None
     """
 
     cash_out: Optional[StrategyConfig] = None
@@ -328,13 +329,13 @@ class PensionOptions(SocialSecurityOptions):
 class Pension(BaseModel):
     """
     Attributes
-        trust_factor (float)
+        trust_factor (float): Defaults to 1
 
-        account_balance (float)
+        account_balance (float): Defaults to 0
 
-        balance_update (float)
+        balance_update (float): Defaults to 2022.5
 
-        strategy (PensionOptions)
+        strategy (PensionOptions): Defaults to `mid` strategy
     """
 
     trust_factor: float = 1
@@ -346,7 +347,7 @@ class Pension(BaseModel):
 class CeilFloorStrategyConfig(StrategyConfig):
     """
     Attributes
-        allowed_fluctuation (float)
+        allowed_fluctuation (float): Defaults to None
     """
 
     allowed_fluctuation: Optional[float] = None
@@ -355,9 +356,9 @@ class CeilFloorStrategyConfig(StrategyConfig):
 class SpendingOptions(StrategyOptions):
     """
     Attributes
-        inflation_only (Strategy)
+        inflation_only (Strategy): Defaults to None
 
-        ceil_floor (CeilFloorStrategy)
+        ceil_floor (CeilFloorStrategy): Defaults to None
     """
 
     inflation_only: Optional[StrategyConfig] = None
@@ -369,9 +370,9 @@ class Spending(BaseModel):
     Attributes
         yearly_amount (int)
 
-        spending_strategy (SpendingOptions)
+        spending_strategy (SpendingOptions): Defaults to `inflation_only` strategy
 
-        retirement_change (float)
+        retirement_change (float): Defaults to 0
     """
 
     yearly_amount: int
@@ -398,13 +399,13 @@ class IncomeProfile(BaseModel):
     Attributes
         starting_income (float)
 
-        tax_deferred_income (float)
+        tax_deferred_income (float): Defaults to 0
 
-        yearly_raise (float)
+        yearly_raise (float): Defaults to 0.3
 
-        try_to_optimize (bool)
+        try_to_optimize (bool): Defaults to True
 
-        social_security_eligible (bool)
+        social_security_eligible (bool): Defaults to True
 
         last_date (float)
     """
@@ -437,11 +438,9 @@ class Partner(BaseModel):
     Attributes
         age (int)
 
-        social_security_pension (SocialSecurity)
+        social_security_pension (SocialSecurity): Defaults to default `SocialSecurity`
 
-        earnings_records (dict)
-
-        income_profiles (list[IncomeProfile])
+        income_profiles (list[IncomeProfile]): Defaults to None
     """
 
     age: Optional[int] = None
@@ -463,29 +462,27 @@ class User(BaseModel):
     Attributes
         age (int)
 
-        trial_quantity (int)
+        trial_quantity (int): Defaults to 500
 
-        calculate_til (float)
+        calculate_til (float): Defaults to current year minus age plus 90
 
-        net_worth_target (float)
+        net_worth_target (float): Defaults to None
 
-        portfolio (Portfolio)
+        portfolio (Portfolio): Defaults to default `Portfolio`
 
-        social_security_pension (SocialSecurity)
+        social_security_pension (SocialSecurity): Defaults to default `SocialSecurity`
 
         spending (Spending)
 
-        state (str)
+        state (str): Defaults to None
 
-        kids (Kids)
+        kids (Kids): Defaults to None
 
-        earnings_records (dict)
+        income_profiles (list[IncomeProfile]): Defaults to None
 
-        income_profiles (list[IncomeProfile])
+        partner (Partner): Defaults to None
 
-        partner (Partner)
-
-        admin (Admin)
+        admin (Admin): Defaults to None
     """
 
     age: int
