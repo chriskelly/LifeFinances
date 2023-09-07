@@ -161,13 +161,13 @@ class IntRepr(ABC):
         return value ** int(self)
 
 
-def constrain(value, low, high):
+def constrain(value, low=float("-inf"), high=float("inf")):
     """Constrain the output of a value between an upper and lower limit.
 
     Args:
         value (int/float)
-        low (int/float)
-        high (int/float)
+        low (int/float): Defaults to negative infinity
+        high (int/float): Defaults to positive infinity
 
     Returns:
         int/float: The value clamped between the limits.
