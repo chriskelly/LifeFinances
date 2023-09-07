@@ -31,9 +31,9 @@ from app.data.constants import (
     STOCK_ANNUAL_LOW,
     STOCK_MEAN,
     STOCK_STDEV,
-    YEARS_PER_INTERVAL,
 )
 from app.models.financial.state import State
+from app.util import interval_stdev, interval_yield
 
 rng = np.random.default_rng()
 
@@ -42,19 +42,6 @@ rng = np.random.default_rng()
 class _StatisticBehavior(ABC):
     mean_yield: float
     stdev: float
-
-    def calculate_for_interval_size(self):
-        """Calculates mean_yield and stdev for the global interval size
-
-        Assumes self.mean_yield and self.stdev are annualized
-
-        Returns:
-            tuple[float, float]: (mean_yield, stdev) for the interval size
-        """
-        mean_yield = self.mean_yield**YEARS_PER_INTERVAL
-        # Standard Deviation of Quarterly Returns = Annualized Standard Deviation / Sqrt(4)
-        stdev = self.stdev / math.sqrt(INTERVALS_PER_YEAR)
-        return (mean_yield, stdev)
 
     @abstractmethod
     def gen_interval_behavior(self):
@@ -85,10 +72,9 @@ class InvestmentBehavior(_StatisticBehavior):
     annualized_low: float
 
     def gen_interval_behavior(self):
-        mean_yield, stdev = self.calculate_for_interval_size()
         return InvestmentBehavior(
-            mean_yield=mean_yield,
-            stdev=stdev,
+            mean_yield=interval_yield(self.mean_yield),
+            stdev=interval_stdev(self.stdev),
             annualized_high=self.annualized_high,
             annualized_low=self.annualized_low,
         )
@@ -142,10 +128,9 @@ class InflationBehavior(_StatisticBehavior):
         self.skew = skew
 
     def gen_interval_behavior(self):
-        mean_yield, stdev = self.calculate_for_interval_size()
         return InflationBehavior(
-            mean_yield=mean_yield,
-            stdev=stdev,
+            mean_yield=interval_yield(self.mean_yield),
+            stdev=interval_stdev(self.stdev),
             skew=self.skew,
         )
 

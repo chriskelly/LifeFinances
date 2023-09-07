@@ -1,6 +1,7 @@
 """Utililty Functions"""
 
 from abc import ABC, abstractmethod
+import math
 from app.data import constants
 
 
@@ -188,3 +189,15 @@ def interval_yield(yield_value: float) -> float:
         float: interval yield
     """
     return yield_value**constants.YEARS_PER_INTERVAL
+
+
+def interval_stdev(stdev: float) -> float:
+    """Turn an annual standard deviation into an interval standard deviation
+
+    Args:
+        stdev (float): an annual standard deviation in the format of 0.15
+
+    Returns:
+        float: interval standard deviation
+    """
+    return stdev * math.sqrt(constants.YEARS_PER_INTERVAL)
