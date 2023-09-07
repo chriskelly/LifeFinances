@@ -200,16 +200,16 @@ class BondTentStrategyConfig(StrategyConfig):
 class LifeCycleStrategyConfig(StrategyConfig):
     """
     Attributes
-        equity_target (float)
+        net_worth_target (float): Also referred to as equity target
     """
 
-    equity_target: Optional[float] = None
+    net_worth_target: Optional[float] = None
 
     @model_validator(mode="after")
-    def equity_target_greater_or_equal_to_0(self):
-        """Restrict equity target to be greater or equal to 0 if provided"""
-        if self.equity_target and self.equity_target < 0:
-            raise ValueError("Equity target must be greater or equal to 0")
+    def net_worth_target_greater_or_equal_to_0(self):
+        """Restrict net worth target to be greater or equal to 0 if provided"""
+        if self.net_worth_target and self.net_worth_target < 0:
+            raise ValueError("Net worth target must be greater or equal to 0")
         return self
 
 
@@ -259,10 +259,10 @@ class Portfolio(BaseModel):
 class NetWorthStrategyConfig(StrategyConfig):
     """
     Attributes
-        equity_target (float)
+        net_worth_target (float)
     """
 
-    equity_target: Optional[float] = None
+    net_worth_target: Optional[float] = None
 
 
 class SocialSecurityOptions(StrategyOptions):
@@ -467,7 +467,7 @@ class User(BaseModel):
 
         calculate_til (float)
 
-        equity_target (float)
+        net_worth_target (float)
 
         portfolio (Portfolio)
 
@@ -491,7 +491,7 @@ class User(BaseModel):
     age: int
     trial_quantity: int = 500
     calculate_til: float = None
-    equity_target: Optional[float] = None
+    net_worth_target: Optional[float] = None
     portfolio: Portfolio = Portfolio()
     social_security_pension: Optional[SocialSecurity] = SocialSecurity()
     spending: Spending
@@ -564,7 +564,7 @@ class User(BaseModel):
         return self
 
 
-def attribute_filller(obj, attr: str, fill_value):
+def attribute_filler(obj, attr: str, fill_value):
     """Iterate recursively through obj and fills attr with fill_value
 
     Only fills if not specified (attr set to None)
@@ -581,7 +581,7 @@ def attribute_filller(obj, attr: str, fill_value):
             if field_name == attr and not field_value:
                 setattr(obj, attr, fill_value)
             else:
-                attribute_filller(field_value, attr, fill_value)
+                attribute_filler(field_value, attr, fill_value)
 
 
 def get_config() -> User:
@@ -597,9 +597,9 @@ def get_config() -> User:
     except ValidationError as error:
         print(error)
 
-    # config.equity_target is considered global
-    # and overwrites any equity_target value left unspecified
-    if config.equity_target:
-        attribute_filller(config, "equity_target", config.equity_target)
+    # config.net_worth_target is considered global
+    # and overwrites any net_worth_target value left unspecified
+    if config.net_worth_target:
+        attribute_filler(config, "net_worth_target", config.net_worth_target)
 
     return config

@@ -62,7 +62,7 @@ def ss_config():
             "early": {"enabled": True, "chosen": False},
             "mid": {"enabled": True, "chosen": True},
             "late": {"enabled": True, "chosen": False},
-            "net_worth": {"enabled": True, "chosen": False, "equity_target": 2800.0},
+            "net_worth": {"enabled": True, "chosen": False, "net_worth_target": 2800.0},
             "same": None,
         },
         "earnings_records": {2010: 75, 2011: 78},
@@ -221,7 +221,7 @@ class TestAgeStrategy:
 class TestNetWorthStrategy:
     config = NetWorthStrategyConfig(
         **{
-            "equity_target": 1000,
+            "net_worth_target": 1000,
         }
     )
     strategy = _NetWorthStrategy(config=config, pia=1, current_age=AGE)
@@ -233,16 +233,16 @@ class TestNetWorthStrategy:
         assert payment == 0
 
     def test_calc_payment_before_late_over_target(self, first_state: State):
-        """Should give payment after equity target met"""
+        """Should give payment after net worth target met"""
         first_state.date = (
             constants.TODAY_YR + EARLY_AGE - self.strategy._current_age + 1
         )
-        first_state.net_worth = self.config.equity_target * first_state.inflation - 1
+        first_state.net_worth = self.config.net_worth_target * first_state.inflation - 1
         payment = self.strategy.calc_payment(state=first_state)
         assert payment > 0
 
     def test_calc_payment_after_late_under_target(self, first_state: State):
-        """Should give payment after late date even if equity target not met"""
+        """Should give payment after late date even if net worth target not met"""
         first_state.date = constants.TODAY_YR + LATE_AGE - self.strategy._current_age
         payment = self.strategy.calc_payment(state=first_state)
         assert payment > 0

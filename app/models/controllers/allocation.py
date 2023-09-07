@@ -178,15 +178,15 @@ class LifeCycleStrategy(Strategy):
 
     Methods
         risk_ratio(self, state:State) -> RiskRatio
-        High risk ratio follows `equity_target` divided by `net_worth`
+        High risk ratio follows `net_worth_target` divided by `net_worth`
     """
 
     config: config.LifeCycleStrategyConfig
 
     def risk_ratio(self, state: State):
-        equity_target_present_value = state.inflation * self.config.equity_target
+        net_worth_target_present_value = state.inflation * self.config.net_worth_target
         risk_factor = util.constrain(
-            equity_target_present_value / state.net_worth, low=0, high=1
+            net_worth_target_present_value / state.net_worth, low=0, high=1
         )
         return RiskRatios(high=risk_factor)
 

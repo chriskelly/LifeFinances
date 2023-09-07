@@ -38,8 +38,8 @@ def test_age_strategy(first_state: State):
 class TestNetWorthStrategy:
     @pytest.fixture
     def net_worth_strategy(self):
-        """Sample _NetWorthStrategy with base=100 and equity_target=1000"""
-        config = NetWorthStrategyConfig(equity_target=1000, chosen=True)
+        """Sample _NetWorthStrategy with base=100 and net_worth_target=1000"""
+        config = NetWorthStrategyConfig(net_worth_target=1000, chosen=True)
         return _NetWorthStrategy(config=config, base=100)
 
     def test_calc_payment_when_payment_exists(
@@ -59,23 +59,23 @@ class TestNetWorthStrategy:
         payment = net_worth_strategy.calc_payment(first_state)
         assert payment == 0
 
-    def test_calc_payment_below_equity_target(
+    def test_calc_payment_below_net_worth_target(
         self, first_state: State, net_worth_strategy: _NetWorthStrategy
     ):
-        """Should return payment if net worth is below equity target"""
+        """Should return payment if net worth is below net worth target"""
         first_state.date = EARLY_YEAR  # Date needs to be at least EARLY_YEAR
-        first_state.net_worth = 0.9 * net_worth_strategy._equity_target
+        first_state.net_worth = 0.9 * net_worth_strategy._net_worth_target
         payment = net_worth_strategy.calc_payment(first_state)
         assert payment == pytest.approx(
             BENEFIT_RATES[EARLY_YEAR] * net_worth_strategy._base
         )
 
-    def test_calc_payment_above_equity_target(
+    def test_calc_payment_above_net_worth_target(
         self, first_state: State, net_worth_strategy: _NetWorthStrategy
     ):
-        """Should return 0 if net worth is above equity target"""
+        """Should return 0 if net worth is above net worth target"""
         first_state.date = EARLY_YEAR  # Date needs to be at least EARLY_YEAR
-        first_state.net_worth = 1.1 * net_worth_strategy._equity_target
+        first_state.net_worth = 1.1 * net_worth_strategy._net_worth_target
         payment = net_worth_strategy.calc_payment(first_state)
         assert payment == pytest.approx(0)
 

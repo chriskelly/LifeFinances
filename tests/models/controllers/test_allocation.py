@@ -85,7 +85,7 @@ def test_bond_tent_strategy(first_state: State):
 
 class TestLifeCycle:
     strategy = LifeCycleStrategy(
-        config=config.LifeCycleStrategyConfig(equity_target=1000)
+        config=config.LifeCycleStrategyConfig(net_worth_target=1000)
     )
 
     def test_constraint(self, first_state: State):
@@ -98,13 +98,13 @@ class TestLifeCycle:
         assert risk_ratio.high == pytest.approx(0)
 
     def test_risk_ratio(self, first_state: State):
-        """High risk ratio should be `equity_target/net_worth`"""
+        """High risk ratio should be `net_worth_target/net_worth`"""
         first_state.net_worth = 2000
         risk_ratio = self.strategy.risk_ratio(first_state)
         assert risk_ratio.high == pytest.approx(0.5)
 
     def test_inflation_adjustment(self, first_state: State):
-        """Inflation over 1 should inflate the equity_target,
+        """Inflation over 1 should inflate the net_worth_target,
         increasing the high risk ratio"""
         first_state.net_worth = 2000
         first_state.inflation = 1.5

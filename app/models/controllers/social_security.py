@@ -309,7 +309,7 @@ class _NetWorthStrategy(_Strategy):
     def __init__(self, config: NetWorthStrategyConfig, pia: float, current_age: int):
         self._trigger_date = float("inf")
         self._benefit_rate = 0
-        self._equity_target = config.equity_target
+        self._net_worth_target = config.net_worth_target
         self._pia = pia
         self._current_age = current_age
         self._adjusted_pia = 0
@@ -338,7 +338,7 @@ class _NetWorthStrategy(_Strategy):
             return 0
         if (
             age_at_state == LATE_AGE
-            or state.net_worth < self._equity_target * state.inflation
+            or state.net_worth < self._net_worth_target * state.inflation
         ):
             self.benefit_rate = constants.BENEFIT_RATES[age_at_state]
             self._adjusted_pia = self._pia * self.benefit_rate

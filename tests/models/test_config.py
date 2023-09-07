@@ -14,7 +14,7 @@ from app.models.config import (
     User,
     StrategyConfig,
     StrategyOptions,
-    attribute_filller,
+    attribute_filler,
     _income_profiles_in_order,
 )
 
@@ -29,7 +29,7 @@ def test_sample_config_data(sample_config_data):
 
     # If the config model is changed, but the sample_config isn't updated
     # correctly, this test should help capture undeclared objects
-    exceptions = {"same", "equity_target"}
+    exceptions = {"same", "net_worth_target"}
 
     def check_for_none(obj, parent_path=""):
         for key, value in obj.items():
@@ -143,14 +143,14 @@ def test_attribute_filler():
             str1="World", third_lvl=ThirdLevelObj(str1="World", str2="World")
         ),
     )
-    attribute_filller(obj=obj, attr="str1", fill_value="Hello")
+    attribute_filler(obj=obj, attr="str1", fill_value="Hello")
     assert obj.str1 == "World"
     assert obj.second_lvl.third_lvl.str1 == "World"
     assert obj.second_lvl.third_lvl.str2 == "World"
 
     # Test that it will fill unspecified values
     obj = FirstLevelObj(second_lvl=SecondLevelObj(third_lvl=ThirdLevelObj()))
-    attribute_filller(obj=obj, attr="str1", fill_value="Hello")
+    attribute_filler(obj=obj, attr="str1", fill_value="Hello")
     assert obj.str1 == "Hello"
     assert obj.second_lvl.third_lvl.str1 == "Hello"
     assert obj.second_lvl.third_lvl.str2 is None

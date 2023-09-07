@@ -69,7 +69,7 @@ class _AgeStrategy(_Strategy):
 
 class _NetWorthStrategy(_Strategy):
     def __init__(self, config: NetWorthStrategyConfig, base: float):
-        self._equity_target = config.equity_target
+        self._net_worth_target = config.net_worth_target
         self._base = base
         self._payment = None
         self._benefit_rate = None
@@ -79,7 +79,7 @@ class _NetWorthStrategy(_Strategy):
             return self._payment * state.inflation
         if (
             state.date >= EARLY_YEAR
-            and state.net_worth < self._equity_target * state.inflation
+            and state.net_worth < self._net_worth_target * state.inflation
         ) or state.date == LATE_YEAR:
             self._benefit_rate = BENEFIT_RATES[math.trunc(state.date)]
             self._payment = self._base * self._benefit_rate

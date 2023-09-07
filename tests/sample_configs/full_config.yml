@@ -4,7 +4,7 @@ trial_quantity: 500
 
 calculate_til: 2090
 
-equity_target: 1500
+net_worth_target: 1500
 
 portfolio:
   current_net_worth: 250
@@ -37,7 +37,7 @@ portfolio:
       end_date: 2060
     life_cycle:
       enabled: true
-      equity_target: 1500
+      net_worth_target: 1500
 
 social_security_pension:
   trust_factor: 0.8
@@ -51,7 +51,7 @@ social_security_pension:
       enabled: true
     net_worth:
       enabled: true
-      equity_target: 2000
+      net_worth_target: 2000
   earnings_records:
     2010: 75
     2011: 78
