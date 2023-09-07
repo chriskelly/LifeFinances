@@ -65,13 +65,13 @@ def gen_costs() -> _Costs:
 @dataclass
 class _NetTransactions(util.FloatRepr):
     income: _Income
-    costs: _Costs = 1
+    portfolio_return: float
     annuity: int = 1
-    portfolio_return: float = 1
+    costs: _Costs = 1
 
     def __float__(self):
         return float(
-            sum([self.income, self.costs, self.annuity, self.portfolio_return])
+            sum([self.income, self.portfolio_return, self.annuity, self.costs])
         )
 
 
@@ -87,8 +87,16 @@ class StateChangeComponents:
     """
 
     def __init__(self, state: State, controllers: Controllers):
+        self._state = state
+        self._controllers = controllers
         self.allocation = controllers.allocation.gen_allocation(state)
         self.economic_data = controllers.economic_data.get_economic_state_data(state)
         self.net_transactions = _NetTransactions(
             income=_Income(state, controllers),
+            portfolio_return=state.net_worth
+            * (
+                self.economic_data.stock_return * self.allocation.stock
+                + self.economic_data.bond_return * self.allocation.bond
+                + self.economic_data.real_estate_return * self.allocation.real_estate
+            ),
         )
