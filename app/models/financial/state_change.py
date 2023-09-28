@@ -66,7 +66,7 @@ def gen_costs() -> _Costs:
 class _NetTransactions(util.FloatRepr):
     income: _Income
     portfolio_return: float
-    annuity: int = 1
+    annuity: float
     costs: _Costs = 1
 
     def __float__(self):
@@ -98,5 +98,10 @@ class StateChangeComponents:
                 self.economic_data.stock_return * self.allocation.stock
                 + self.economic_data.bond_return * self.allocation.bond
                 + self.economic_data.real_estate_return * self.allocation.real_estate
+            ),
+            annuity=controllers.annuity.make_annuity_transaction(
+                state=state,
+                annuity_allocation=self.allocation.annuity,
+                job_income_controller=controllers.job_income,
             ),
         )

@@ -125,12 +125,12 @@ class TestGenAllocation:
         sample_user.portfolio.allocation_strategy = AllocationOptions(
             **allocation_options
         )
-        low_risk_options = {"bonds": {"chosen": True}, "annuities": {}}
+        low_risk_options = {"bonds": {"chosen": True}}
         sample_user.portfolio.low_risk = LowRiskOptions(**low_risk_options)
         allocation = Controller(sample_user).gen_allocation(first_state)
         assert allocation.bond == pytest.approx(0.5)
         assert allocation.annuity == pytest.approx(0)
-        low_risk_options = {"bonds": {}, "annuities": {"chosen": True}}
+        low_risk_options = {"annuities": {"chosen": True, "net_worth_target": 1000}}
         sample_user.portfolio.low_risk = LowRiskOptions(**low_risk_options)
         allocation = Controller(sample_user).gen_allocation(first_state)
         assert allocation.bond == pytest.approx(0)

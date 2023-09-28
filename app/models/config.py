@@ -99,16 +99,25 @@ class RealEstateOptions(StrategyOptions):
     dont_include: Optional[StrategyConfig] = None
 
 
+class AnnuityConfig(StrategyConfig):
+    """
+    Attributes
+        net_worth_target (float): If net worth falls below this value, the annuity will trigger
+    """
+
+    net_worth_target: float
+
+
 class LowRiskOptions(StrategyOptions):
     """
     Attributes
         bonds (Strategy): Defaults to None
 
-        annuities (Strategy): Defaults to None
+        annuities (AnnuityConfig): Defaults to None
     """
 
     bonds: Optional[StrategyConfig] = None
-    annuities: Optional[StrategyConfig] = None
+    annuities: Optional[AnnuityConfig] = None
 
 
 class FlatAllocationStrategyConfig(StrategyConfig):

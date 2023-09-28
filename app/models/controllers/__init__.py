@@ -10,7 +10,7 @@ from . import (
     job_income as job_income_module,
     social_security as social_security_module,
     pension as pension_module,
-    # annuity as annuity_module,
+    annuity as annuity_module,
 )
 
 
@@ -31,4 +31,4 @@ class Controllers:
     job_income: job_income_module.Controller = None
     social_security: social_security_module.Controller = None
     pension: pension_module.Controller = None
-    # annuity: annuity_module.Controller = None
+    annuity: annuity_module.Controller = None
