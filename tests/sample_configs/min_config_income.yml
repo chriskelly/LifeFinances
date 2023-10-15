@@ -6,3 +6,11 @@ spending:
 income_profiles:
   - starting_income: 80
     last_date: 2035.25
+
+portfolio:
+  allocation_strategy:
+    flat:
+      chosen: true
+      allocation:
+        US_Bond: 0.4
+        US_Stock: 0.6

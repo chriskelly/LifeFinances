@@ -11,7 +11,8 @@ CONFIG_PATH = Path("config.yml")
 SAMPLE_FULL_CONFIG_PATH = Path("tests/sample_configs/full_config.yml")
 SAMPLE_MIN_CONFIG_INCOME_PATH = Path("tests/sample_configs/min_config_income.yml")
 SAMPLE_MIN_CONFIG_NET_WORTH_PATH = Path("tests/sample_configs/min_config_net_worth.yml")
-DB_LOC = Path("data/data.db")
+CORRELATION_PATH = Path("app/data/variable_correlation.csv")
+STATISTICS_PATH = Path("app/data/variable_statistics.csv")
 PARAMS_SUCCESS_LOC = Path("data/param_success.json")
 QUIT_LOC = Path("cancel.quit")
 SAVE_DIR = Path("diagnostics/saved")
@@ -24,52 +25,6 @@ TODAY_YR_QT = TODAY.year + TODAY_QUARTER * 0.25
 INTERVALS_PER_YEAR = 4
 YEARS_PER_INTERVAL = 1 / INTERVALS_PER_YEAR
 MONTHS_PER_INTERVAL = round(12 / INTERVALS_PER_YEAR)
-
-STOCK_MEAN = 1.092
-"""Geometric average yield for stock invesments"""
-STOCK_STDEV = 0.16
-"""Standard deviation of yield for stock invesments"""
-STOCK_ANNUAL_HIGH = 1.121
-"""Highest allowed annualized lifetime yield for stock investments,
-based on historical data of rolling time periods"""
-STOCK_ANNUAL_LOW = 1.053
-"""Lowest allowed annualized lifetime yield for stock investments,
-based on historical data of rolling time periods"""
-
-BOND_MEAN = 1.02
-"""Geometric average yield for bond invesments"""
-BOND_STDEV = 0.025
-"""Standard deviation of yield for bond invesments"""
-BOND_ANNUAL_HIGH = 1.02
-"""Highest allowed annualized lifetime yield for bond investments,
-based on historical data of rolling time periods"""
-BOND_ANNUAL_LOW = 1.015
-"""Lowest allowed annualized lifetime yield for bond investments,
-based on historical data of rolling time periods"""
-
-RE_MEAN = 1.11
-"""Geometric average yield for real estate invesments"""
-RE_STDEV = 0.14
-"""Standard deviation of yield for real estate invesments"""
-RE_ANNUAL_HIGH = 1.12
-"""Highest allowed annualized lifetime yield for real estate investments,
-based on estimated data of rolling time periods"""
-RE_ANNUAL_LOW = 1.08
-"""Lowest allowed annualized lifetime yield for real estate investments,
-based on estimated data of rolling time periods"""
-
-INFLATION_MEAN = 1.037  # https://fred.stlouisfed.org/series/FPCPITOTLZGUSA#
-"""Geometric average inflation yield"""
-INFLATION_STDEV = 0.027
-"""Standard deviation of inflation yield"""
-INFLATION_ANNUAL_HIGH = 1.063
-"""Highest allowed annualized inflation yield,
-based on historical data of rolling time periods"""
-INFLATION_ANNUAL_LOW = 1.020
-"""Lowest allowed annualized inflation yield,
-based on historical data of rolling time periods"""
-INFLATION_SKEW = 1.642
-"""Historic skew of inflation yield"""
 
 PENSION_INFLATION = 1.03
 """Expected increase yield to Social Security and Pension figures"""

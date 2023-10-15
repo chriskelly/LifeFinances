@@ -8,14 +8,10 @@ Classes:
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-import math
-from typing import Optional
-
 import numpy as np
 from app.models.financial.state import State
 from app.models.config import User
 from app.models import config
-from app import util
 
 
 @dataclass
@@ -25,170 +21,54 @@ class AllocationRatios:
     A more detailed version of a RiskRatio
 
     Attributes
-        stock (float)
-
-        bond (float)
-
-        real_estate (float)
-
-        annuity (float)
+        assets (np.ndarray): array of allocation ratios for each asset
     """
 
-    stock: float
-    bond: float
-    real_estate: float
-    annuity: float
+    assets: np.ndarray
 
 
-@dataclass
-class RiskRatios:
-    """Dataclass for risk ratio of a portfolio
-
-    A less detailed version of an AllocationRatios.
-
-    At least one attribute needs to be provided. If only one is provided,
-    the other will be set to `1-provided attribute`
-
-    Attributes
-        low (float): Ratio of portfolio with low risk
-
-        high (float): Ratio of portfolio with high risk
-    """
-
-    low: Optional[float] = None
-    high: Optional[float] = None
-
-    def __post_init__(self):
-        if not self.low:
-            self.low = 1 - self.high
-        if not self.high:
-            self.high = 1 - self.low
-
-
-class Strategy(ABC):
+class _Strategy(ABC):
     """Abstract allocation strategy class.
 
     Required methods:
 
-        risk_ratio(self, state:State) -> RiskRatio
+        gen_allocation(self, state: State) -> AllocationRatios:
     """
 
     @abstractmethod
-    def risk_ratio(self, state: State) -> RiskRatios:
+    def gen_allocation(self, state: State) -> AllocationRatios:
         """Generate risk ratios for a portfolio
 
         Args:
             state (financial.State): current state
 
         Returns:
-            RiskRatios
+            AllocationRatios
         """
+        return NotImplementedError
 
 
 @dataclass
-class FlatBondStrategy(Strategy):
+class _FlatAllocationStrategy(_Strategy):
     """Implementation of a flat bond strategy.
 
     Attributes
         config (config.FlatBondStrategy)
 
+        asset_lookup (dict[str, int]): lookup table for asset names
+
     Methods
-        risk_ratio(self, state:State) -> RiskRatio:
-        Low risk ratio is equal to `low_risk_target` from user config.
+        gen_allocation(self, state:State) -> AllocationRatios:
     """
 
     config: config.FlatAllocationStrategyConfig
+    asset_lookup: dict[str, int]
 
-    def risk_ratio(self, state: State):
-        low_risk = self.config.low_risk_target
-        return RiskRatios(low=low_risk)
-
-
-@dataclass
-class XMinusAgeStrategy(Strategy):
-    """Implementation of an X Minus Age strategy.
-
-    Attributes
-        config (config.XMinusAgeStrategy)
-
-    Methods
-        risk_ratio(self, state:State) -> RiskRatio:
-        High risk ratio is equal to x minus average current age of users
-    """
-
-    config: config.XMinusAgeStrategyConfig
-
-    def risk_ratio(self, state: State):
-        if state.user.partner:
-            average_age = (state.user.age + state.user.partner.age) / 2
-        else:
-            average_age = state.user.age
-        current_age = average_age + state.interval_idx
-        high_risk = util.constrain((self.config.x - current_age) / 100, low=0, high=1)
-        return RiskRatios(high=high_risk)
-
-
-@dataclass
-class BondTentStrategy(Strategy):
-    """Implementation of a bond tent strategy.
-
-    Attributes
-        config (config.BondTentStrategy)
-
-    Methods
-        risk_ratio(self, state:State) -> RiskRatio:
-        Low risk ratio follows bond tent path defined in config
-    """
-
-    config: config.BondTentStrategyConfig
-
-    def risk_ratio(self, state: State):
-        if state.date <= self.config.start_date:
-            # Initial flat period
-            low_risk = self.config.start_allocation
-        elif state.date < self.config.peak_date:
-            # Climb to peak
-            low_risk = np.interp(
-                state.date,
-                [self.config.start_date, self.config.peak_date],
-                [self.config.start_allocation, self.config.peak_allocation],
-            )
-        elif math.isclose(state.date, self.config.peak_date):
-            # Peak point
-            low_risk = self.config.peak_allocation
-        elif state.date < self.config.end_date:
-            # Descend to new flat
-            low_risk = np.interp(
-                state.date,
-                [self.config.peak_date, self.config.end_date],
-                [self.config.peak_allocation, self.config.end_allocation],
-            )
-        elif state.date >= self.config.end_date:
-            # Flat period
-            low_risk = self.config.end_allocation
-        return RiskRatios(low=low_risk)
-
-
-@dataclass
-class LifeCycleStrategy(Strategy):
-    """Implementation of a Life Cycle strategy.
-
-    Attributes
-        config (config.LifeCycleStrategy)
-
-    Methods
-        risk_ratio(self, state:State) -> RiskRatio
-        High risk ratio follows `net_worth_target` divided by `net_worth`
-    """
-
-    config: config.LifeCycleStrategyConfig
-
-    def risk_ratio(self, state: State):
-        net_worth_target_present_value = state.inflation * self.config.net_worth_target
-        risk_factor = util.constrain(
-            net_worth_target_present_value / state.net_worth, low=0, high=1
-        )
-        return RiskRatios(high=risk_factor)
+    def gen_allocation(self, state: State):
+        allocation = np.zeros(len(self.asset_lookup))
+        for asset, ratio in self.config.allocation.items():
+            allocation[self.asset_lookup[asset]] = ratio
+        return AllocationRatios(assets=allocation)
 
 
 class Controller:
@@ -201,21 +81,21 @@ class Controller:
         allocation(self) -> AllocationRatios:
     """
 
-    def __init__(self, user: User):
+    def __init__(self, user: User, asset_lookup: dict[str, int]):
         self.user = user
         (
             strategy_str,
             strategy_obj,
         ) = user.portfolio.allocation_strategy.chosen_strategy
         match strategy_str:
-            case "flat_allocation":
-                self.strategy = FlatBondStrategy(config=strategy_obj)
-            case "x_minus_age":
-                self.strategy = XMinusAgeStrategy(config=strategy_obj)
-            case "bond_tent":
-                self.strategy = BondTentStrategy(config=strategy_obj)
-            case "life_cycle":
-                self.strategy = LifeCycleStrategy(config=strategy_obj)
+            case "flat":
+                self.strategy = _FlatAllocationStrategy(
+                    config=strategy_obj, asset_lookup=asset_lookup
+                )
+            case _:
+                raise ValueError(
+                    f"Invalid strategy: {user.portfolio.allocation_strategy.chosen_strategy}"
+                )
 
     def gen_allocation(self, state: State) -> AllocationRatios:
         """Returns allocation ratios for a given state
@@ -226,22 +106,4 @@ class Controller:
         Returns:
             AllocationRatios
         """
-        risk_ratio = self.strategy.risk_ratio(state)
-        if self.user.portfolio.low_risk.chosen_strategy[0] == "annuities":
-            annuity = risk_ratio.low
-            bond = 0
-        else:
-            bond = risk_ratio.low
-            annuity = 0
-        real_estate = (
-            (
-                risk_ratio.high
-                * self.user.portfolio.real_estate.include.fraction_of_high_risk
-            )
-            if self.user.portfolio.real_estate.include
-            else 0
-        )
-        stock = risk_ratio.high - real_estate
-        return AllocationRatios(
-            stock=stock, bond=bond, real_estate=real_estate, annuity=annuity
-        )
+        return self.strategy.gen_allocation(state)

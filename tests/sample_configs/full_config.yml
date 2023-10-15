@@ -9,22 +9,15 @@ net_worth_target: 1500
 portfolio:
   current_net_worth: 250
   drawdown_tax_rate: 0.1
-  real_estate:
-    include:
-      chosen: true
-      fraction_of_high_risk: 0.6
-    dont_include:
-      enabled: true
-  low_risk:
-    bonds:
-      chosen: true
-    annuities:
-      enabled: true
-      net_worth_target: 500
+  annuity:
+    net_worth_target: 500
+    contribution_rate: 0.1
   allocation_strategy:
-    flat_allocation:
+    flat:
       chosen: true
-      low_risk_target: 0.2
+      allocation:
+        US_Bond: 0.4
+        US_Stock: 0.6
     x_minus_age:
       enabled: true
       x: 120

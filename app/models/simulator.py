@@ -13,6 +13,7 @@ Classes:
     SimulationEngine:
 """
 from dataclasses import dataclass, field
+from app.data import constants
 from app.models.config import User, get_config
 from app.models.controllers import (
     Controllers,
@@ -106,7 +107,7 @@ class SimulationEngine:
 
         trial_qty (int): Number of trials to run
 
-        economic_data (EconomicData): Full set of economic data
+        economic_sim_data (EconomicSimData): Full set of economic data
 
     Methods
         gen_all_trials()
@@ -116,15 +117,21 @@ class SimulationEngine:
         user_config = get_config()
         self.results: Results = Results()
         self.trial_qty = trial_qty or user_config.trial_quantity
-        self.economic_engine_data = economic_data.Generator(
+        self.economic_sim_data = economic_data.EconomicEngine(
             intervals_per_trial=user_config.intervals_per_trial,
             trial_qty=self.trial_qty,
-        ).gen_economic_engine_data()
+            variable_mix_repo=economic_data.CsvVariableMixRepo(
+                statistics_path=constants.STATISTICS_PATH,
+                correlation_path=constants.CORRELATION_PATH,
+            ),
+        ).data
 
     def gen_all_trials(self):
         """Create trials and save to `self.results`"""
         user_config = get_config()
-        allocation_controller = allocation.Controller(user_config)
+        allocation_controller = allocation.Controller(
+            user=user_config, asset_lookup=self.economic_sim_data.asset_lookup
+        )
         job_income_controller = job_income.Controller(user_config)
 
         self.results.trials = [
@@ -132,7 +139,7 @@ class SimulationEngine:
                 user_config=user_config,
                 allocation_controller=allocation_controller,
                 economic_data_controller=economic_data.Controller(
-                    self.economic_engine_data, i
+                    economic_sim_data=self.economic_sim_data, trial=i
                 ),
                 job_income_controller=job_income_controller,
             )

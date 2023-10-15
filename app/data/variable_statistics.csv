@@ -1,0 +1,13 @@
+VariableLabel, AverageYield, StdDeviation
+Inflation, 1.0359, 0.0161
+US_Stock, 1.092, 0.16
+US_Bond, 1.0497, 0.0414
+Intl_ex_US_Stock, 1.0451, 0.173
+TIPS, 1.0416, 0.0593
+10_yr_Treasury, 1.0314, 0.0661
+Long_term_Treasury, 1.0576, 0.1044
+Short_term_Treasury, 1.0329, 0.0201
+Mid_term_Treasury, 1.0449, 0.0479
+REIT, 1.0771, 0.2008
+Commondities, 0.9662, 0.2347
+Gold, 1.0755, 0.1695

@@ -33,48 +33,12 @@ def test_apply_interest_to_balance(controller: Controller):
     assert controller._balance == pytest.approx(expected_balance)
 
 
-class TestContributeToAnnuity:
-    def test_contribute_to_annuity(self, controller: Controller, first_state: State):
-        """Should contribute to annuity if balance is smaller than target annuity balance"""
-        controller._balance = 0.5 * first_state.net_worth
-        target_annuity_allocation = 0.6
-        expected_contribution = (
-            target_annuity_allocation * first_state.net_worth - controller._balance
-        )
-        contribution = controller._contribute_to_annuity(
-            annuity_allocation=target_annuity_allocation, state=first_state
-        )
-        assert contribution == pytest.approx(expected_contribution)
-
-    def test_target_balance_too_small(self, controller: Controller, first_state: State):
-        """Should contribute 0 if target annuity balance is smaller than current balance"""
-        controller._balance = 0.5 * first_state.net_worth
-        target_annuity_allocation = 0.4
-        contribution = controller._contribute_to_annuity(
-            annuity_allocation=target_annuity_allocation, state=first_state
-        )
-        assert contribution == 0
-
-    def test_balance_grows_too_large(self, controller: Controller, first_state: State):
-        """Should contribute 0 if balance has grown larger than target
-        annuity balance due to interest"""
-        controller._balance = 0.5 * first_state.net_worth
-        target_annuity_allocation = 0.6
-        first_state.interval_idx = (
-            10000  # Large interval idx to ensure balance grows above target
-        )
-        contribution = controller._contribute_to_annuity(
-            annuity_allocation=target_annuity_allocation, state=first_state
-        )
-        assert contribution == 0
-
-
 def test_annuitize(controller: Controller):
     """Should update the balance and annuitized flag while setting interest yield to 1"""
     initial_balance = 100
     controller._balance = initial_balance
     controller._annuitize(10)
-    assert controller.annuitized
+    assert controller._annuitized
     assert controller._interest_yield == 1
     assert controller._balance > initial_balance
 
@@ -96,7 +60,7 @@ class TestCheckForAnnuityPayment:
         inflation-adjusted target"""
         first_state.inflation = 2
         first_state.net_worth = (
-            2 * first_state.user.portfolio.low_risk.annuities.net_worth_target + 1
+            2 * first_state.user.portfolio.annuity.net_worth_target + 1
         )
         payout = controller._check_for_annuity_payment(
             job_income_controller, first_state
@@ -124,14 +88,12 @@ class TestCheckForAnnuityPayment:
     ):
         """Annuity shoulld annuitize when the net worth is below the target
         and the user is not working"""
-        first_state.net_worth = (
-            first_state.user.portfolio.low_risk.annuities.net_worth_target - 1
-        )
+        first_state.net_worth = first_state.user.portfolio.annuity.net_worth_target - 1
         job_income_controller._user_income[first_state.interval_idx] = 0
         job_income_controller._partner_income[first_state.interval_idx] = 0
-        controller.annuitized = False
+        controller._annuitized = False
         controller._check_for_annuity_payment(job_income_controller, first_state)
-        assert controller.annuitized
+        assert controller._annuitized
 
         # Test that the annuity payout is correct when the annuity is annuitized
         controller._balance = 100

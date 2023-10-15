@@ -7,6 +7,7 @@ Useful Pydantic documentation
         
 """
 
+import math
 from typing import Optional
 import yaml
 from pydantic import BaseModel, ValidationError, field_validator, model_validator
@@ -78,63 +79,32 @@ class StrategyOptions(BaseModel):
         return self
 
 
-class RealEstateStrategyConfig(StrategyConfig):
-    """
-    Attributes
-        fraction_of_high_risk (float)
-    """
-
-    fraction_of_high_risk: float
-
-
-class RealEstateOptions(StrategyOptions):
-    """
-    Attributes
-        include (RealEstateStrategy): Defaults to None
-
-        dont_include (Strategy): Defaults to None
-    """
-
-    include: Optional[RealEstateStrategyConfig] = None
-    dont_include: Optional[StrategyConfig] = None
-
-
-class AnnuityConfig(StrategyConfig):
+class AnnuityConfig(BaseModel):
     """
     Attributes
         net_worth_target (float): If net worth falls below this value, the annuity will trigger
+
+        contribution_rate (float): The percentage of net income that will be
+        contributed to the annuity
     """
 
     net_worth_target: float
-
-
-class LowRiskOptions(StrategyOptions):
-    """
-    Attributes
-        bonds (Strategy): Defaults to None
-
-        annuities (AnnuityConfig): Defaults to None
-    """
-
-    bonds: Optional[StrategyConfig] = None
-    annuities: Optional[AnnuityConfig] = None
+    contribution_rate: float
 
 
 class FlatAllocationStrategyConfig(StrategyConfig):
     """
     Attributes
-        low_risk_target (float): Defaults to None
+        allocation (dict[str, float]): Defaults to None
     """
 
-    low_risk_target: Optional[float] = None
+    allocation: Optional[dict[str, float]] = None
 
     @model_validator(mode="after")
-    def low_risk_target_between_0_and_1(self):
-        """Restrict low_risk_target to be between 0 and 1 if provided"""
-        if self.low_risk_target and (
-            self.low_risk_target < 0 or self.low_risk_target > 1
-        ):
-            raise ValueError("low_risk_target must be between 0 and 1")
+    def allocation_sums_to_1(self):
+        """Restrict allocation to sum to 1 if provided"""
+        if self.allocation and not math.isclose(1, sum(self.allocation.values())):
+            raise ValueError("flat strategy allocation must sum to 1")
         return self
 
 
@@ -225,7 +195,7 @@ class LifeCycleStrategyConfig(StrategyConfig):
 class AllocationOptions(StrategyOptions):
     """
     Attributes
-        flat_allocation (FlatAllocationStrategyConfig): Defaults to None
+        flat (FlatAllocationStrategyConfig): Defaults to None
 
         x_minus_age (XMinusAgeStrategyConfig): Defaults to None
 
@@ -234,7 +204,7 @@ class AllocationOptions(StrategyOptions):
         life_cycle (LifeCycleStrategyConfig): Defaults to None
     """
 
-    flat_allocation: Optional[FlatAllocationStrategyConfig] = None
+    flat: Optional[FlatAllocationStrategyConfig] = None
     x_minus_age: Optional[XMinusAgeStrategyConfig] = None
     bond_tent: Optional[BondTentStrategyConfig] = None
     life_cycle: Optional[LifeCycleStrategyConfig] = None
@@ -247,23 +217,15 @@ class Portfolio(BaseModel):
 
         drawdown_tax_rate (float): Defaults to 0.1
 
-        real_estate (RealEstateStrategy): Defaults to `dont_include` strategy
+        annuity (AnnuityConfig): Defaults to None
 
-        low_risk (LowRiskOptions): Defaults to `bonds` strategy
-
-        allocation_strategy (AllocationOptions): Defaults to `flat_allocation` strategy
-        with `low_risk_target` of 0.4
+        allocation_strategy (AllocationOptions)
     """
 
     current_net_worth: float = 0
     drawdown_tax_rate: float = 0.1
-    real_estate: RealEstateOptions = RealEstateOptions(
-        dont_include=StrategyConfig(chosen=True)
-    )
-    low_risk: LowRiskOptions = LowRiskOptions(bonds=StrategyConfig(chosen=True))
-    allocation_strategy: AllocationOptions = AllocationOptions(
-        flat_allocation=FlatAllocationStrategyConfig(low_risk_target=0.4, chosen=True),
-    )
+    annuity: Optional[AnnuityConfig] = None
+    allocation_strategy: AllocationOptions
 
 
 class NetWorthStrategyConfig(StrategyConfig):
@@ -477,7 +439,7 @@ class User(BaseModel):
 
         net_worth_target (float): Defaults to None
 
-        portfolio (Portfolio): Defaults to default `Portfolio`
+        portfolio (Portfolio)
 
         social_security_pension (SocialSecurity): Defaults to default `SocialSecurity`
 
@@ -498,7 +460,7 @@ class User(BaseModel):
     trial_quantity: int = 500
     calculate_til: float = None
     net_worth_target: Optional[float] = None
-    portfolio: Portfolio = Portfolio()
+    portfolio: Portfolio
     social_security_pension: Optional[SocialSecurity] = SocialSecurity()
     spending: Spending
     state: Optional[str] = None

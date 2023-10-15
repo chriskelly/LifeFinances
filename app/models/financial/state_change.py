@@ -1,14 +1,11 @@
 """Module for representing financial transformation from one state to another
 
-Classes:
-    TotalCosts: 
-    
-    StateChangeComponents:
-
-Methods:
-    gen_transformation(state: State): 
+Classes:    
+    StateChangeComponents: Collection of components needed to calculate transition to next state
 """
 from dataclasses import dataclass
+
+import numpy as np
 from app import util
 from app.models.financial.state import State
 from app.models.controllers import Controllers
@@ -38,11 +35,11 @@ class _Income(util.FloatRepr):
 
 @dataclass
 class _Costs(util.FloatRepr):
-    spending: float = 1
-    kids: float = 1
-    income_tax: float = 1
-    medicare_tax: float = 1
-    ss_tax: float = 1
+    spending: float = -1
+    kids: float = -1
+    income_tax: float = -1
+    medicare_tax: float = -1
+    ss_tax: float = -1
 
     def __float__(self):
         return float(
@@ -66,12 +63,12 @@ def gen_costs() -> _Costs:
 class _NetTransactions(util.FloatRepr):
     income: _Income
     portfolio_return: float
+    costs: _Costs
     annuity: float
-    costs: _Costs = 1
 
     def __float__(self):
         return float(
-            sum([self.income, self.portfolio_return, self.annuity, self.costs])
+            sum([self.income, self.portfolio_return, self.costs, self.annuity])
         )
 
 
@@ -83,7 +80,7 @@ class StateChangeComponents:
 
         economic_data (EconomicStateData): Returns and inflation data
 
-        net_transactions (NetTransactions):
+        net_transactions (NetTransactions): Income, portfolio return, costs, & annuity
     """
 
     def __init__(self, state: State, controllers: Controllers):
@@ -91,17 +88,21 @@ class StateChangeComponents:
         self._controllers = controllers
         self.allocation = controllers.allocation.gen_allocation(state)
         self.economic_data = controllers.economic_data.get_economic_state_data(state)
+
+        income = _Income(state, controllers)
+        costs = _Costs()
+        annuity = controllers.annuity.make_annuity_transaction(
+            state=state,
+            job_income_controller=controllers.job_income,
+            initial_net_transaction=income + costs,
+        )
+        portfolio_return = state.net_worth * np.dot(
+            self.economic_data.asset_rates, self.allocation.assets
+        )
+
         self.net_transactions = _NetTransactions(
-            income=_Income(state, controllers),
-            portfolio_return=state.net_worth
-            * (
-                self.economic_data.stock_return * self.allocation.stock
-                + self.economic_data.bond_return * self.allocation.bond
-                + self.economic_data.real_estate_return * self.allocation.real_estate
-            ),
-            annuity=controllers.annuity.make_annuity_transaction(
-                state=state,
-                annuity_allocation=self.allocation.annuity,
-                job_income_controller=controllers.job_income,
-            ),
+            income=income,
+            portfolio_return=portfolio_return,
+            costs=costs,
+            annuity=annuity,
         )

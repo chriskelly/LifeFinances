@@ -3,35 +3,23 @@
 Return/rate/yield definitions: something that has a 3% growth is a
 0.03 return/rate and 1.03 yield
 
-This file contains the following functions:
+This module contains the following classes:
 
-    * main() - Generates and returns stock, bond, real estate, and inflation returns
+    * VariableMix: A collection of variables and their statistics
+    * VariableMixRepo: Abstract base class for repositories that provide a mix of economic variables
+    * CsvVariableMixRepo: A VariableMixRepo that reads data from CSV files
+    * EconomicStateData: Economic data for a single state
+    * EconomicTrialData: Economic data for a single trial
+    * EconomicSimData: Economic data for the entire simulation
+    * EconomicEngine: A class representing an economic engine that generates simulated economic data
+    * Controller: Manages trial economic data
 """
 
-import math
-import random
 from abc import ABC, abstractmethod
+import csv
+from pathlib import Path
 from dataclasses import dataclass
 import numpy as np
-from scipy import stats
-from app.data.constants import (
-    BOND_ANNUAL_HIGH,
-    BOND_ANNUAL_LOW,
-    BOND_MEAN,
-    BOND_STDEV,
-    INFLATION_MEAN,
-    INFLATION_SKEW,
-    INFLATION_STDEV,
-    INTERVALS_PER_YEAR,
-    RE_ANNUAL_HIGH,
-    RE_ANNUAL_LOW,
-    RE_MEAN,
-    RE_STDEV,
-    STOCK_ANNUAL_HIGH,
-    STOCK_ANNUAL_LOW,
-    STOCK_MEAN,
-    STOCK_STDEV,
-)
 from app.models.financial.state import State
 from app.util import interval_stdev, interval_yield
 
@@ -39,103 +27,155 @@ rng = np.random.default_rng()
 
 
 @dataclass
-class _StatisticBehavior(ABC):
+class _StatisticBehavior:
     mean_yield: float
     stdev: float
 
-    @abstractmethod
     def gen_interval_behavior(self):
-        """Returns Behavior object with modified mean_yield and stdev for a given interval"""
+        """Returns Behavior object with modified mean_yield and stdev for the defined interval"""
+        return _StatisticBehavior(
+            mean_yield=interval_yield(self.mean_yield),
+            stdev=interval_stdev(self.stdev),
+        )
 
 
 @dataclass
-class InvestmentBehavior(_StatisticBehavior):
-    """Characteristics for a given investment asset class
+class VariableMix:
+    """A collection of variables and their statistics
 
     Attributes:
-        mean (float): Geometric average yield
+        variable_stats (list[_StatisticBehavior]): list of variable statistics
 
-        stdev (float): Standard deviation of returns
+        correlation_matrix (np.ndarray): matrix of variable correlations
 
-        annualized_high (float): Highest allowed annualized lifetime yield,
-        based on historical data of rolling time periods
-
-        annualized_low (float): Lowest allowed annualized lifetime yield
-
-    Methods:
-        gen_interval_behavior(intervals_per_year: int):
-        Returns InflationBehavior object with modified
-        mean_yield and stdev for a given interval
+        lookup_table (dict[str, int]): lookup table for variable names
     """
 
-    annualized_high: float
-    annualized_low: float
-
-    def gen_interval_behavior(self):
-        return InvestmentBehavior(
-            mean_yield=interval_yield(self.mean_yield),
-            stdev=interval_stdev(self.stdev),
-            annualized_high=self.annualized_high,
-            annualized_low=self.annualized_low,
-        )
+    variable_stats: list[_StatisticBehavior]
+    correlation_matrix: np.ndarray[float]
+    lookup_table: dict[str, int]
 
 
-STOCK_BEHAVIOR = InvestmentBehavior(
-    mean_yield=STOCK_MEAN,
-    stdev=STOCK_STDEV,
-    annualized_high=STOCK_ANNUAL_HIGH,
-    annualized_low=STOCK_ANNUAL_LOW,
-)
-BOND_BEHAVIOR = InvestmentBehavior(
-    mean_yield=BOND_MEAN,
-    stdev=BOND_STDEV,
-    annualized_high=BOND_ANNUAL_HIGH,
-    annualized_low=BOND_ANNUAL_LOW,
-)
-REAL_ESTATE_BEHAVIOR = InvestmentBehavior(
-    mean_yield=RE_MEAN,
-    stdev=RE_STDEV,
-    annualized_high=RE_ANNUAL_HIGH,
-    annualized_low=RE_ANNUAL_LOW,
-)
+class VariableMixRepo(ABC):
+    """Abstract base class for repositories that provide a mix of economic variables."""
+
+    @abstractmethod
+    def get_variable_mix(self) -> VariableMix:
+        """Get a mix of economic variables.
+
+        Returns:
+            VariableMix: An object representing a mix of economic variables.
+        """
+        raise NotImplementedError
 
 
-class InflationBehavior(_StatisticBehavior):
-    """Characteristics for inflation
-
-    By default, an instance of this class is created with constants
-
-    Attributes:
-        mean (float): Geometric average yield
-
-        stdev (float): Standard deviation of returns
-
-        skew (float): Skew of the distribution
+class CsvVariableMixRepo(VariableMixRepo):
+    """A VariableMixRepo that reads data from CSV files.
 
     Methods:
-        gen_interval_behavior(intervals_per_year: int):
-        Returns InflationBehavior object with modified
-        mean_yield and stdev for a given interval
+        get_variable_mix(): Get a mix of economic variables.
     """
 
-    def __init__(
-        self,
-        mean_yield=INFLATION_MEAN,
-        stdev=INFLATION_STDEV,
-        skew=INFLATION_SKEW,
-    ):
-        super().__init__(mean_yield=mean_yield, stdev=stdev)
-        self.skew = skew
+    def __init__(self, statistics_path: Path, correlation_path: Path):
+        self._statistics_path = statistics_path
+        self._correlation_path = correlation_path
+        self._lookup_table = {}
+        self._variable_mix = self._gen_variable_mix()
 
-    def gen_interval_behavior(self):
-        return InflationBehavior(
-            mean_yield=interval_yield(self.mean_yield),
-            stdev=interval_stdev(self.stdev),
-            skew=self.skew,
+    def get_variable_mix(self) -> VariableMix:
+        return self._variable_mix
+
+    def _gen_variable_mix(self) -> VariableMix:
+        variable_stats = self._process_statistics_data()
+        correlation_matrix = self._process_correlation_data()
+        return VariableMix(
+            variable_stats=variable_stats,
+            correlation_matrix=correlation_matrix,
+            lookup_table=self._lookup_table,
         )
 
+    def _process_statistics_data(self) -> list[_StatisticBehavior]:
+        with open(self._statistics_path, "r", encoding="utf-8") as file:
+            csv_reader = csv.reader(file, skipinitialspace=True)
+            next(csv_reader)
+            label_idx = 0
+            mean_idx = 1
+            stdev_idx = 2
+            data = []
+            for idx, csv_row in enumerate(csv_reader):
+                data.append(
+                    _StatisticBehavior(
+                        mean_yield=float(csv_row[mean_idx]),
+                        stdev=float(csv_row[stdev_idx]),
+                    )
+                )
+                self._lookup_table[csv_row[label_idx]] = idx
+            return data
 
-INFLATION_BEHAVIOR = InflationBehavior()
+    def _process_correlation_data(self):
+        with open(self._correlation_path, "r", encoding="utf-8") as file:
+            csv_reader = csv.reader(file, skipinitialspace=True)
+            next(csv_reader)
+            variable_1_idx = 0
+            variable_2_idx = 1
+            correlation_idx = 2
+            correlation_matrix = np.ones(
+                (len(self._lookup_table), len(self._lookup_table))
+            )
+            for csv_row in csv_reader:
+                variable_1 = csv_row[variable_1_idx]
+                variable_2 = csv_row[variable_2_idx]
+                correlation_matrix[self._lookup_table[variable_1]][
+                    self._lookup_table[variable_2]
+                ] = csv_row[correlation_idx]
+                correlation_matrix[self._lookup_table[variable_2]][
+                    self._lookup_table[variable_1]
+                ] = csv_row[correlation_idx]
+            return correlation_matrix
+
+
+def _gen_covariance_matrix(variable_mix: VariableMix):
+    standard_deviations = np.array(
+        [asset.gen_interval_behavior().stdev for asset in variable_mix.variable_stats]
+    )
+    return (
+        np.outer(standard_deviations, standard_deviations)
+        * variable_mix.correlation_matrix
+    )
+
+
+def _gen_covariated_data(
+    variable_mix: VariableMix,
+    trial_qty: int,
+    intervals_per_trial: int,
+    seeded: bool = False,
+) -> np.ndarray:
+    """
+    Generates correlated rates for a given variable mix.
+
+    Args:
+        variable_mix (VariableMix): The variables to generate rates for.
+        trial_qty (int): The number of trials to run.
+        intervals_per_trial (int): The number of intervals per trial.
+        seeded (bool, optional): Whether or not to seed the random number generator.
+        Defaults to False.
+
+    Returns:
+        np.ndarray: A 3D array of covariated data.
+    """
+    if seeded:
+        np.random.seed(0)
+    covariance_matrix = _gen_covariance_matrix(variable_mix)
+    interval_yields = [
+        asset.gen_interval_behavior().mean_yield
+        for asset in variable_mix.variable_stats
+    ]
+    yield_matrix = np.random.multivariate_normal(
+        mean=interval_yields,
+        cov=covariance_matrix,
+        size=(trial_qty, intervals_per_trial),
+    )
+    return yield_matrix
 
 
 @dataclass
@@ -143,19 +183,16 @@ class EconomicStateData:
     """Economic data for a single state
 
     Attributes:
-        stock_return (float)
-
-        bond_return (float)
-
-        real_estate_return (float)
+        asset_rates (np.ndarray): 1D array of asset rates
 
         inflation (float)
+
+        asset_lookup (dict[str, int])
     """
 
-    stock_return: float
-    bond_return: float
-    real_estate_return: float
+    asset_rates: np.ndarray[float]
     inflation: float
+    asset_lookup: dict[str, int]
 
     def __repr__(self) -> str:
         return "Economic Data"
@@ -163,30 +200,27 @@ class EconomicStateData:
 
 @dataclass
 class EconomicTrialData:
-    """1D arrays of economic data
+    """Economic data for a single trial
 
     Attributes:
-        stock_returns (np.ndarray)
+        asset_rates (np.ndarray): 2D array of asset rates
 
-        bond_returns (np.ndarray)
+        inflation (np.ndarray): 1D array of inflation rates
 
-        real_estate_returns (np.ndarray)
-
-        inflation (list)
+        asset_lookup (dict[str, int])
 
     Methods:
         get_state_data(interval_idx: int): Returns a single state's economic data
     """
 
-    stock_returns: np.ndarray
-    bond_returns: np.ndarray
-    real_estate_returns: np.ndarray
-    inflation: list
+    asset_rates: np.ndarray[float]
+    inflation: np.ndarray[float]
+    asset_lookup: dict[str, int]
 
     def __repr__(self) -> str:
         return "Economic Data"
 
-    def get_state_data(self, interval_idx) -> EconomicStateData:
+    def get_state_data(self, interval: int) -> EconomicStateData:
         """Returns a single state's economic data
 
         Args:
@@ -196,39 +230,35 @@ class EconomicTrialData:
             EconomicStateData: Economic data for a single state
         """
         return EconomicStateData(
-            stock_return=self.stock_returns[interval_idx],
-            bond_return=self.bond_returns[interval_idx],
-            real_estate_return=self.real_estate_returns[interval_idx],
-            inflation=self.inflation[interval_idx],
+            asset_rates=self.asset_rates[interval],
+            inflation=self.inflation[interval],
+            asset_lookup=self.asset_lookup,
         )
 
 
 @dataclass
-class EconomicEngineData:
-    """2D arrays of economic data
+class EconomicSimData:
+    """Economic data for the entire simulation
 
     Attributes:
-        stock_returns (list[np.ndarray])
+        asset_rates (np.ndarray): 3D array of asset rates
 
-        bond_returns (list[np.ndarray])
+        inflation (np.ndarray): 2D array of inflation rates
 
-        real_estate_returns (list[np.ndarray])
-
-        inflation (list[list])
+        asset_lookup (dict[str, int])
 
     Methods:
         get_trial_data(trial: int): Returns a single trial's economic data
     """
 
-    stock_returns: list[np.ndarray]
-    bond_returns: list[np.ndarray]
-    real_estate_returns: list[np.ndarray]
-    inflation: list[list]
+    asset_rates: np.ndarray[float]
+    inflation: np.ndarray[float]
+    asset_lookup: dict[str, int]
 
     def __repr__(self) -> str:
         return "Economic Data"
 
-    def get_trial_data(self, trial: int) -> EconomicTrialData:
+    def _get_trial_data(self, trial: int) -> EconomicTrialData:
         """Returns a single trial's economic data
 
         Args:
@@ -238,205 +268,65 @@ class EconomicEngineData:
             EconomicTrialData: 1D arrays of economic data
         """
         return EconomicTrialData(
-            stock_returns=self.stock_returns[trial],
-            bond_returns=self.bond_returns[trial],
-            real_estate_returns=self.real_estate_returns[trial],
+            asset_rates=self.asset_rates[trial],
             inflation=self.inflation[trial],
+            asset_lookup=self.asset_lookup,
         )
 
 
-@dataclass
-class Generator:
-    """Generates economic data for a simulation
+class EconomicEngine:
+    """A class representing an economic engine that generates simulated economic data.
 
     Attributes:
-        intervals_per_trial (int): number of intervals per trial
-        (ex: 42 for 10.5 years of quarterly intervals)
-
-        trial_qty (int): number of trials to run
+        data (EconomicSimData): Economic data for the entire simulation
     """
 
-    intervals_per_trial: int
-    trial_qty: int
+    def __init__(
+        self,
+        intervals_per_trial: int,
+        trial_qty: int,
+        variable_mix_repo: VariableMixRepo,
+    ):
+        self._intervals_per_trial = intervals_per_trial
+        self._trial_qty = trial_qty
+        self._variable_mix = variable_mix_repo.get_variable_mix()
+        self._asset_data = None
+        self._inflation_data = None
+        self._lookup_table = None
+        self.data = self._gen_data()
 
-    def gen_economic_engine_data(self) -> EconomicEngineData:
-        """Generates and returns stock, bond, real estate, and inflation data
+    def _gen_data(self) -> EconomicSimData:
+        covariated_data = _gen_covariated_data(
+            variable_mix=self._variable_mix,
+            trial_qty=self._trial_qty,
+            intervals_per_trial=self._intervals_per_trial,
+        )
+        self._split_inflation_from_assets(covariated_data)
+        self._make_inflation_cumulative()
 
-        Returns:
-            EconomicData: 2D arrays of economic data
-        """
-        return EconomicEngineData(
-            stock_returns=self._generate_2d_rates(STOCK_BEHAVIOR),
-            bond_returns=self._generate_2d_rates(BOND_BEHAVIOR),
-            real_estate_returns=self._generate_2d_rates(REAL_ESTATE_BEHAVIOR),
-            inflation=self._generate_2d_inflation(),
+        return EconomicSimData(
+            asset_rates=self._asset_data - 1,
+            inflation=self._inflation_data,
+            asset_lookup=self._lookup_table,
         )
 
-    def _generate_2d_rates(
-        self, investment_behavior: InvestmentBehavior
-    ) -> list[np.ndarray]:
-        """Generate a two dimensional array of rates.
+    def _split_inflation_from_assets(self, data: np.ndarray[float]):
+        inflation_idx = self._variable_mix.lookup_table["Inflation"]
+        self._inflation_data = data[:, :, inflation_idx]
+        self._asset_data = np.delete(data, inflation_idx, axis=2)
+        self._lookup_table = {
+            k: idx
+            for k, idx in self._variable_mix.lookup_table.items()
+            if idx != inflation_idx
+        }
+        for k, idx in self._lookup_table.items():
+            if idx > inflation_idx:
+                self._lookup_table[k] = idx - 1
 
-        An array of rates for each simulation trial.
-
-        Parameters:
-            investment_behavior (InvestmentBehavior): characteristics of the investment
-
-        Returns:
-            list[np.ndarray]: 2D array. Outer list is each trial run. Inner list is rates.
-
-        """
-        rate_matrix = [
-            self._generate_1d_restricted_rates(
-                investment_behavior.gen_interval_behavior()
-            )[0]
-            for _ in range(self.trial_qty)
-        ]
-        return rate_matrix
-
-    def _generate_1d_restricted_rates(
-        self, interval_behavior: InvestmentBehavior
-    ) -> tuple[np.ndarray, int]:
-        """Uses brute force to generate a single dimension array of rates with
-        an annualized return that is within the given bounds.
-
-
-
-        Parameters:
-            interval_behavior (InvestmentBehavior): interval characteristics of the investment,
-            created using the `<InvestmentBehavior>.gen_interval_behavior` method
-
-        Returns:
-            np.ndarray: array of rates
-
-            int: number of iterations to find a valid set of rates
-        """
-        # Since values need to be tested against annualized limits,
-        # slightly more data may be generated since years need to be tested
-        # in whole quantities, not fractional. Ex: If you need 10 quarters
-        # (2.5 years) of data. year_qty must be 3
-        year_qty = math.ceil(self.intervals_per_trial / INTERVALS_PER_YEAR)
-        # In the case of 4 intervals per year, interval_behavior is the
-        # behavior of the investment over the course of a single quarter.
-        iter_cnt = 0
-        annualized_return = 0
-        while (
-            annualized_return < interval_behavior.annualized_low
-            or annualized_return > interval_behavior.annualized_high
-        ):
-            yields = rng.normal(
-                loc=interval_behavior.mean_yield,
-                scale=interval_behavior.stdev,
-                size=year_qty * INTERVALS_PER_YEAR,
-            )
-            annualized_return = pow(np.prod(yields), 1 / year_qty)
-            iter_cnt += 1
-        rates = yields - 1
-        trimmed_rates = rates[: self.intervals_per_trial]
-        return trimmed_rates, iter_cnt
-
-    def _generate_2d_inflation(self) -> list[list]:
-        """Generate randomized inflation with a skew
-
-        Returns:
-            list[list]: each list has inflation growing cumulatively
-        """
-        interval_behavior = INFLATION_BEHAVIOR.gen_interval_behavior()
-        distribution = self._create_skew_dist(
-            interval_behavior.mean_yield,
-            interval_behavior.stdev,
-            interval_behavior.skew,
-            size=self.intervals_per_trial * self.trial_qty,
-            debug=False,
-        )
-        random.shuffle(distribution)  # create_skew_dist returns ordered items
-        # convert to np array for split, then convert back to 2D list
-        array = np.array(distribution)
-        chunked_arrays = np.array_split(array, indices_or_sections=self.trial_qty)
-        inflation_matrix = [list(array) for array in chunked_arrays]
-        # convert individual inflation yields to cumulative inflation yields
-        for i in range(self.trial_qty):
-            for j in range(1, self.intervals_per_trial):
-                inflation_matrix[i][j] *= inflation_matrix[i][j - 1]
-        return inflation_matrix
-
-    def _create_skew_dist(
-        self, mean: float, stdev: float, skew: float, size: int, debug: bool = False
-    ) -> np.ndarray:
-        """Creates a single dimension array with skewed distribution given skew parameter
-
-        https://stackoverflow.com/questions/49801071/how-can-i-use-skewnorm-to-produce-a-distribution-with-the-specified-skew/58111859#58111859
-
-        Args:
-            mean (float)
-
-            std (float): standard diviation
-
-            skew (float)
-
-            size (int): total qty desired
-
-            debug (bool, optional): Create plot of distribution. Defaults to False
-
-        Returns:
-            np.ndarray: list skewed values with size = size
-        """
-
-        # Calculate the degrees of freedom 1 required to obtain the
-        # specific skewness statistic, derived from simulations
-        loglog_slope = -2.211897875506251
-        loglog_intercept = 1.002555437670879
-        df2 = 500
-        df1 = 10 ** (loglog_slope * np.log10(abs(skew)) + loglog_intercept)
-
-        # Sample from F distribution
-        fsample = np.sort(stats.f(df1, df2).rvs(size=size))
-
-        # Adjust the variance by scaling the distance from each point to
-        # the distribution mean by a constant, derived from simulations
-        k1_slope = 0.5670830069364579
-        k1_intercept = -0.09239985798819927
-        k2_slope = 0.5823114978219056
-        k2_intercept = -0.11748300123471256
-
-        scaling_slope = abs(skew) * k1_slope + k1_intercept
-        scaling_intercept = abs(skew) * k2_slope + k2_intercept
-
-        scale_factor = (stdev - scaling_intercept) / scaling_slope
-        new_dist = (fsample - np.mean(fsample)) * scale_factor + fsample
-
-        # flip the distribution if specified skew is negative
-        if skew < 0:
-            new_dist = np.mean(new_dist) - new_dist
-
-        # adjust the distribution mean to the specified value
-        final_dist = new_dist + (mean - np.mean(new_dist))
-
-        if debug:
-            import matplotlib.pyplot as plt  # pylint: disable=import-outside-toplevel # lazy import
-            import seaborn as sns  # pylint: disable=import-outside-toplevel # lazy import
-
-            print("Input mean: ", mean)
-            print("Result mean: ", np.mean(final_dist), "\n")
-
-            print("Input SD: ", stdev)
-            print("Result SD: ", np.std(final_dist), "\n")
-
-            print("Input skew: ", skew)
-            print("Result skew: ", stats.skew(final_dist))
-            # inspect the plots & moments, try random sample
-            _, axis = plt.subplots(figsize=(12, 7))
-            sns.distplot(
-                final_dist,
-                hist=True,
-                ax=axis,
-                color="green",
-                label="generated distribution",
-            )
-            axis.legend()
-            plt.show()
-
-        return final_dist
+    def _make_inflation_cumulative(self):
+        for i in range(self._trial_qty):
+            for j in range(1, self._intervals_per_trial):
+                self._inflation_data[i][j] *= self._inflation_data[i][j - 1]
 
 
 class Controller:
@@ -451,8 +341,8 @@ class Controller:
         get_economic_state_data(state: State): Returns economic data for a single state
     """
 
-    def __init__(self, economic_engine_data: EconomicEngineData, trial: int):
-        self._economic_trial_data = economic_engine_data.get_trial_data(trial)
+    def __init__(self, economic_sim_data: EconomicSimData, trial: int):
+        self._economic_trial_data = economic_sim_data._get_trial_data(trial)
 
     def get_economic_state_data(self, state: State) -> EconomicStateData:
         """Returns economic data for a single state"""
