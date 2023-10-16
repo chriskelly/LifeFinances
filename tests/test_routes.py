@@ -14,7 +14,7 @@ def routes_to_test() -> dict:
     """Returns dictionary of `route:expected_response`"""
     return {
         "/": "Hello, World!",
-        "/api/simulation": "Here's the simulation!",
+        "/api/simulation": "First Result",
     }
 
 

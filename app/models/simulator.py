@@ -13,6 +13,7 @@ Classes:
     SimulationEngine:
 """
 from dataclasses import dataclass, field
+import pandas as pd
 from app.data import constants
 from app.models.config import User, get_config
 from app.models.controllers import (
@@ -97,6 +98,51 @@ class Results:
     """
 
     trials: list[SimulationTrial] = None
+
+    def as_dataframes(self) -> list[pd.DataFrame]:
+        """
+        Returns a list of pandas DataFrames, where each DataFrame represents a trial in the simulator.
+        Each DataFrame contains the following columns:
+        - Date: The date of the interval.
+        - Net Worth: The net worth of the interval.
+        - Inflation: The inflation rate of the interval.
+        - Job Income: The job income of the interval.
+        - SS User: The social security income of the interval for the user.
+        - SS Partner: The social security income of the interval for the partner.
+        - Pension: The pension income of the interval.
+        - Portfolio Return: The portfolio return of the interval.
+        - Annuity: The annuity income of the interval.
+        """
+        columns = [
+            "Date",
+            "Net Worth",
+            "Inflation",
+            "Job Income",
+            "SS User",
+            "SS Partner",
+            "Pension",
+            "Portfolio Return",
+            "Annuity",
+        ]
+        dataframes = []
+        for trial in self.trials:
+            data = [
+                [
+                    interval.state.date,
+                    interval.state.net_worth,
+                    interval.state.inflation,
+                    interval.state_change_components.net_transactions.income.job_income,
+                    interval.state_change_components.net_transactions.income.social_security_user,
+                    interval.state_change_components.net_transactions.income.social_security_partner,
+                    interval.state_change_components.net_transactions.income.pension,
+                    interval.state_change_components.net_transactions.portfolio_return,
+                    interval.state_change_components.net_transactions.annuity,
+                ]
+                for interval in trial.intervals
+            ]
+            df = pd.DataFrame(data, columns=columns)
+            dataframes.append(df)
+        return dataframes
 
 
 class SimulationEngine:
