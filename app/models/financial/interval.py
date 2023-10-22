@@ -34,13 +34,16 @@ class Interval:
 
     def gen_next_interval(self, controllers: Controllers):
         """Generate the next interval from State + StateChangeComponents"""
+        next_state_interval_idx = self.state.interval_idx + 1
         next_state = State(
             user=self.state.user,
             date=self.state.date + constants.YEARS_PER_INTERVAL,
-            interval_idx=self.state.interval_idx + 1,
+            interval_idx=next_state_interval_idx,
             net_worth=self.state.net_worth
             + self.state_change_components.net_transactions,
-            inflation=self.state.inflation,  #! Figure out next inflation
+            inflation=controllers.economic_data.get_economic_state_data(
+                next_state_interval_idx
+            ).inflation,
         )
         return type(self)(state=next_state, controllers=controllers)
 
