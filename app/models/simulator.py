@@ -101,7 +101,8 @@ class Results:
 
     def as_dataframes(self) -> list[pd.DataFrame]:
         """
-        Returns a list of pandas DataFrames, where each DataFrame represents a trial in the simulator.
+        Returns a list of pandas DataFrames, where each DataFrame
+        represents a trial in the simulator.
         Each DataFrame contains the following columns:
         - Date: The date of the interval.
         - Net Worth: The net worth of the interval.
@@ -121,9 +122,12 @@ class Results:
             "SS User",
             "SS Partner",
             "Pension",
+            "Total Income",
             "Spending",
+            "Total Costs",
             "Portfolio Return",
             "Annuity",
+            "Net Transaction",
         ]
         dataframes = []
         for trial in self.trials:
@@ -136,9 +140,12 @@ class Results:
                     interval.state_change_components.net_transactions.income.social_security_user,
                     interval.state_change_components.net_transactions.income.social_security_partner,
                     interval.state_change_components.net_transactions.income.pension,
+                    interval.state_change_components.net_transactions.income,
                     interval.state_change_components.net_transactions.costs.spending,
+                    interval.state_change_components.net_transactions.costs,
                     interval.state_change_components.net_transactions.portfolio_return,
                     interval.state_change_components.net_transactions.annuity,
+                    interval.state_change_components.net_transactions,
                 ]
                 for interval in trial.intervals
             ]
