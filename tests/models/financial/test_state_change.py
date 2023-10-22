@@ -18,6 +18,7 @@ class TestCalcSpending:
 
     @pytest.fixture(autouse=True)
     def init(self, first_state: State):
+        """Initialize the config and state"""
         self.config = Spending(
             yearly_amount=self.yearly_amount, retirement_change=self.retirement_change
         )
@@ -25,12 +26,14 @@ class TestCalcSpending:
         self.state.inflation = self.inflation
 
     def test_while_working(self, first_state: State):
+        """Spending should be unadjusted while working"""
         is_working = True
         assert _calc_spending(
             state=first_state, config=self.config, is_working=is_working
         ) == pytest.approx(-self.yearly_amount / INTERVALS_PER_YEAR * self.inflation)
 
     def test_after_working(self, first_state: State):
+        """Spending should be adjusted by the retirement change after working"""
         is_working = False
         assert _calc_spending(
             state=first_state, config=self.config, is_working=is_working
