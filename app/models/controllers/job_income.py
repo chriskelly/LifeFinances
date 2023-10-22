@@ -189,4 +189,15 @@ class Controller:
         return self.get_total_income(interval_idx) - self._tax_deferred[interval_idx]
 
     def is_working(self, interval_idx: int) -> bool:
+        """
+        Returns `True` if the total income for the given interval index is greater than 0,
+        indicating that the user and/or partner is working during that interval.
+        Returns `False` otherwise.
+
+        Args:
+        - interval_idx (int): The index of the interval to check
+
+        Returns:
+        - bool: `True` if the user is working during the given interval, `False` otherwise
+        """
         return self.get_total_income(interval_idx) > 0

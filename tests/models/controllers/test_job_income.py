@@ -1,5 +1,5 @@
 """Testing for models/financials/allocation.py"""
-# pylint:disable=protected-access
+# pylint:disable=protected-access,missing-class-docstring
 
 import pytest
 from app.data import constants
@@ -88,3 +88,66 @@ def test_job_income_controller(sample_user: User):
     # Check the generated timelines are the correct size
     assert len(controller.user_timeline) == sample_user.intervals_per_trial
     assert len(controller.partner_timeline) == sample_user.intervals_per_trial
+
+
+class TestIsWorking:
+    user_working_years = 2
+    partner_nonworking_years = 1
+    partner_working_years = 2
+    controller = None
+
+    @pytest.fixture(autouse=True)
+    def setup(self, sample_user: User):
+        """Setup profiles and controller"""
+        user_income_profiles = [
+            {
+                "starting_income": 100,
+                "last_date": constants.TODAY_YR_QT + self.user_working_years,
+            },
+        ]
+        partner_income_profiles = [
+            {
+                "starting_income": 0,
+                "last_date": constants.TODAY_YR_QT + self.partner_nonworking_years,
+            },
+            {
+                "starting_income": 100,
+                "last_date": constants.TODAY_YR_QT
+                + (self.partner_nonworking_years + self.partner_working_years),
+            },
+        ]
+        sample_user.income_profiles = [
+            IncomeProfile(**user_income_profiles[0]),
+        ]
+        sample_user.partner.income_profiles = [
+            IncomeProfile(**partner_income_profiles[0]),
+            IncomeProfile(**partner_income_profiles[1]),
+        ]
+        self.controller = Controller(sample_user)
+
+    def test_when_user_working(self):
+        """Should return True if the user is working during the given interval"""
+        for i in range(self.user_working_years * constants.INTERVALS_PER_YEAR):
+            assert self.controller.is_working(i) is True
+
+    def test_when_partner_working(self):
+        """Should return True if the partner is working during the given interval"""
+        for i in range(
+            self.partner_nonworking_years * constants.INTERVALS_PER_YEAR,
+            (self.partner_nonworking_years + self.partner_working_years)
+            * constants.INTERVALS_PER_YEAR,
+        ):
+            assert self.controller.is_working(i) is True
+
+    def test_when_user_and_partner_not_working(self):
+        """Should return False if neither the user nor the partner is working
+        during the given interval"""
+        first_interval_not_working = (
+            1
+            + max(
+                self.user_working_years,
+                self.partner_nonworking_years + self.partner_working_years,
+            )
+            * constants.INTERVALS_PER_YEAR
+        )
+        assert self.controller.is_working(first_interval_not_working) is False
