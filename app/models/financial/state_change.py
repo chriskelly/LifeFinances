@@ -91,7 +91,9 @@ class StateChangeComponents:
         self._state = state
         self._controllers = controllers
         self.allocation = controllers.allocation.gen_allocation(state)
-        self.economic_data = controllers.economic_data.get_economic_state_data(state)
+        self.economic_data = controllers.economic_data.get_economic_state_data(
+            state.interval_idx
+        )
 
         income = _Income(state, controllers)
         costs = _Costs(

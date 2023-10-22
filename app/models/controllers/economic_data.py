@@ -20,7 +20,6 @@ import csv
 from pathlib import Path
 from dataclasses import dataclass
 import numpy as np
-from app.models.financial.state import State
 from app.util import interval_stdev, interval_yield
 
 rng = np.random.default_rng()
@@ -344,6 +343,6 @@ class Controller:
     def __init__(self, economic_sim_data: EconomicSimData, trial: int):
         self._economic_trial_data = economic_sim_data._get_trial_data(trial)
 
-    def get_economic_state_data(self, state: State) -> EconomicStateData:
+    def get_economic_state_data(self, state_interval_idx: int) -> EconomicStateData:
         """Returns economic data for a single state"""
-        return self._economic_trial_data.get_state_data(state.interval_idx)
+        return self._economic_trial_data.get_state_data(state_interval_idx)
