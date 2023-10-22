@@ -88,7 +88,7 @@ class Controller:
     def _check_for_annuity_payment(
         self, job_income_controller: JobIncomeController, state: State
     ) -> float:
-        working = job_income_controller.get_total_income(state.interval_idx) > 0
+        working = job_income_controller.isWorking(state.interval_idx)
         # Trigger the annuity when net worth is below target. To ensure that
         # it's not triggered too early, wait until at least user isn't working
         # anymore. Also, don't trigger if annuity is already annuitized.
