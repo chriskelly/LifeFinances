@@ -4,9 +4,9 @@
 
 import pytest
 from app.data.constants import INTERVALS_PER_YEAR
-from app.models.config import Spending
+from app.models.config import Kids, Spending
 from app.models.financial.state import State
-from app.models.financial.state_change import _calc_spending
+from app.models.financial.state_change import _calc_cost_of_kids, _calc_spending
 
 
 class TestCalcSpending:
@@ -40,3 +40,51 @@ class TestCalcSpending:
             * self.inflation
             * (1 + self.retirement_change)
         )
+
+
+class TestCalcCostOfKids:
+    spending = -100
+    cost_of_each_kid = -20
+    current_date = 2020
+    years_of_support = 18
+    birth_years = None
+    config = None
+
+    def calc_cost(self):
+        """Helper function to calculate the cost of kids"""
+        config = Kids(
+            fraction_of_spending=self.cost_of_each_kid / self.spending,
+            birth_years=self.birth_years,
+            years_of_support=self.years_of_support,
+        )
+        return _calc_cost_of_kids(
+            current_date=self.current_date,
+            spending=self.spending,
+            config=config,
+        )
+
+    def test_one_kid(self):
+        """Test that the cost of one kid is calculated correctly"""
+        self.birth_years = [2018]
+        cost_of_kid = self.calc_cost()
+        assert cost_of_kid == pytest.approx(self.cost_of_each_kid)
+
+    def test_multiple_kids(self):
+        """Test that the cost of multiple kids is calculated correctly"""
+        self.birth_years = [2018, 2019]
+        cost_of_kids = self.calc_cost()
+        assert cost_of_kids == pytest.approx(
+            len(self.birth_years) * self.cost_of_each_kid
+        )
+
+    def test_kid_not_born_yet(self):
+        """Test that the cost of a kid not born yet is zero"""
+        self.birth_years = [self.current_date + 1]
+        cost_of_kids = self.calc_cost()
+        assert cost_of_kids == pytest.approx(0)
+
+    def test_kid_too_old(self):
+        """Test that the cost of a kid that is older than `years_of_support` is zero"""
+        self.birth_years = [self.current_date - (self.years_of_support + 1)]
+        cost_of_kids = self.calc_cost()
+        assert cost_of_kids == pytest.approx(0)

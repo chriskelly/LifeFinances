@@ -63,7 +63,8 @@ spending:
 state: California
 
 kids:
-  cost_of_kid: 0.12
+  fraction_of_spending: 0.12
+  years_of_support: 18
   birth_years:
     - 2021
     - 2026

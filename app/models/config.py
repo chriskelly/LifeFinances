@@ -361,7 +361,8 @@ class Kids(BaseModel):
         birth_years (list[float])
     """
 
-    cost_of_kid: float
+    fraction_of_spending: float
+    years_of_support: int
     birth_years: list[float]
 
 

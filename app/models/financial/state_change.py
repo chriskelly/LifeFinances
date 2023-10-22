@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 from app import util
 from app.data.constants import INTERVALS_PER_YEAR
-from app.models.config import Spending
+from app.models.config import Kids, Spending
 from app.models.financial.state import State
 from app.models.controllers import Controllers
 
@@ -37,8 +37,8 @@ class _Income(util.FloatRepr):
 
 @dataclass
 class _Costs(util.FloatRepr):
-    spending: float = -1
-    kids: float = -1
+    spending: float
+    kids: float
     income_tax: float = -1
     medicare_tax: float = -1
     ss_tax: float = -1
@@ -62,6 +62,27 @@ def _calc_spending(state: State, config: Spending, is_working: bool) -> float:
     if not is_working:
         base_amount *= 1 + config.retirement_change
     return base_amount
+
+
+def _calc_cost_of_kids(current_date: float, spending: float, config: Kids) -> float:
+    """Calculate the cost of children
+
+    Args:
+        current_date (float): date of state
+        spending (float): base spending in current state
+        config (Kids)
+
+    Returns:
+        float: cost of children for this interval
+    """
+    if config is None:
+        return 0
+    current_kids = [
+        year
+        for year in config.birth_years
+        if current_date - config.years_of_support < year <= current_date
+    ]
+    return len(current_kids) * spending * config.fraction_of_spending
 
 
 @dataclass
@@ -97,12 +118,16 @@ class StateChangeComponents:
         )
 
         income = _Income(state, controllers)
+        spending = _calc_spending(
+            state=state,
+            config=state.user.spending,
+            is_working=(controllers.job_income.is_working(state.interval_idx)),
+        )
         costs = _Costs(
-            spending=_calc_spending(
-                state=state,
-                config=state.user.spending,
-                is_working=(controllers.job_income.is_working(state.interval_idx)),
-            )
+            spending=spending,
+            kids=_calc_cost_of_kids(
+                current_date=state.date, spending=spending, config=state.user.kids
+            ),
         )
         annuity = controllers.annuity.make_annuity_transaction(
             state=state,
