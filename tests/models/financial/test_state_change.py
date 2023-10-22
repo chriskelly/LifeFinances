@@ -3,6 +3,7 @@
 # pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
 
 import pytest
+from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import Spending
 from app.models.financial.state import State
 from app.models.financial.state_change import _calc_spending
@@ -27,12 +28,15 @@ class TestCalcSpending:
         is_working = True
         assert _calc_spending(
             state=first_state, config=self.config, is_working=is_working
-        ) == pytest.approx(-self.yearly_amount * self.inflation)
+        ) == pytest.approx(-self.yearly_amount / INTERVALS_PER_YEAR * self.inflation)
 
     def test_after_working(self, first_state: State):
         is_working = False
         assert _calc_spending(
             state=first_state, config=self.config, is_working=is_working
         ) == pytest.approx(
-            -self.yearly_amount * self.inflation * (1 + self.retirement_change)
+            -self.yearly_amount
+            / INTERVALS_PER_YEAR
+            * self.inflation
+            * (1 + self.retirement_change)
         )

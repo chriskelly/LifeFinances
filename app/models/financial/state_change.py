@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from app import util
+from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import Spending
 from app.models.financial.state import State
 from app.models.controllers import Controllers
@@ -57,7 +58,7 @@ class _Costs(util.FloatRepr):
 
 
 def _calc_spending(state: State, config: Spending, is_working: bool) -> float:
-    base_amount = -config.yearly_amount * state.inflation
+    base_amount = -config.yearly_amount / INTERVALS_PER_YEAR * state.inflation
     if not is_working:
         base_amount *= 1 + config.retirement_change
     return base_amount
