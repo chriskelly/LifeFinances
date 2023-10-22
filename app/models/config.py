@@ -8,6 +8,7 @@ Useful Pydantic documentation
 """
 
 import math
+from pathlib import Path
 from typing import Optional
 import yaml
 from pydantic import BaseModel, ValidationError, field_validator, model_validator
@@ -553,13 +554,16 @@ def attribute_filler(obj, attr: str, fill_value):
                 attribute_filler(field_value, attr, fill_value)
 
 
-def get_config() -> User:
+def get_config(config_path: Path) -> User:
     """Populate the Python object from the YAML configuration file
+
+    Args:
+        config_path (Path)
 
     Returns:
         User
     """
-    with open(constants.CONFIG_PATH, "r", encoding="utf-8") as file:
+    with open(config_path, "r", encoding="utf-8") as file:
         yaml_content = yaml.safe_load(file)
     try:
         config = User(**yaml_content)

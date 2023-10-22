@@ -2,44 +2,35 @@
 # pylint:disable=missing-class-docstring
 
 
+from pathlib import Path
 import pytest
+from app.data import constants
 from app.models.simulator import (
     SimulationEngine,
 )
 
 
 class TestSimulationEngine:
-    def test_gen_all_trials(self):
+    def run_and_test_engine(self, config_path: Path):
         """Ensure simulation runs without error"""
-        engine = SimulationEngine(trial_qty=5)  # speed up tests
+        engine = SimulationEngine(trial_qty=5, config_path=config_path)
         try:
             engine.gen_all_trials()
         except Exception as exception:  # pylint:disable=broad-exception-caught # NA
             pytest.fail(f"Function raised an exception: {exception}")
 
-    def test_gen_all_trails_sample_configs(self, monkeypatch, min_users, sample_user):
-        """Ensure simulation runs without error for sample configs"""
-        min_user_income, min_user_net_worth = min_users
+    def test_user_config(self):
+        """User config should run without error"""
+        self.run_and_test_engine(constants.CONFIG_PATH)
 
-        # Test min config that includes income
-        def mock_get_user_min_income():
-            return min_user_income
+    def test_min_income_config(self):
+        """Min income config should run without error"""
+        self.run_and_test_engine(constants.SAMPLE_MIN_CONFIG_INCOME_PATH)
 
-        monkeypatch.setattr("app.models.simulator.get_config", mock_get_user_min_income)
-        self.test_gen_all_trials()
+    def test_min_net_worth_config(self):
+        """Min net worth config should run without error"""
+        self.run_and_test_engine(constants.SAMPLE_MIN_CONFIG_NET_WORTH_PATH)
 
-        # Test min config that includes net worth
-        def mock_get_user_min_net_worth():
-            return min_user_net_worth
-
-        monkeypatch.setattr(
-            "app.models.simulator.get_config", mock_get_user_min_net_worth
-        )
-        self.test_gen_all_trials()
-
-        # Test sample full config
-        def mock_get_user_sample():
-            return sample_user
-
-        monkeypatch.setattr("app.models.simulator.get_config", mock_get_user_sample)
-        self.test_gen_all_trials()
+    def test_sample_full_config(self):
+        """Sample full config should run without error"""
+        self.run_and_test_engine(constants.SAMPLE_FULL_CONFIG_PATH)

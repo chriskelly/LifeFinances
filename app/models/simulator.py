@@ -13,6 +13,7 @@ Classes:
     SimulationEngine:
 """
 from dataclasses import dataclass
+from pathlib import Path
 import pandas as pd
 from app.data import constants
 from app.models.config import User, get_config
@@ -145,6 +146,10 @@ class Results:
 class SimulationEngine:
     """Simulation Controller
 
+    Args:
+        config_path (Path): Path to user config file. Defaults to constants.CONFIG_PATH.
+        trial_qty (int): Number of trials to run
+
     Attributes
         results (Results)
 
@@ -152,12 +157,14 @@ class SimulationEngine:
         gen_all_trials()
     """
 
-    def __init__(self, trial_qty: int = None):
-        user_config = get_config()
+    def __init__(
+        self, config_path: Path = constants.CONFIG_PATH, trial_qty: int = None
+    ):
+        self._user_config = get_config(config_path)
         self.results: Results = Results()
-        self._trial_qty = trial_qty or user_config.trial_quantity
+        self._trial_qty = trial_qty or self._user_config.trial_quantity
         self._economic_sim_data = economic_data.EconomicEngine(
-            intervals_per_trial=user_config.intervals_per_trial,
+            intervals_per_trial=self._user_config.intervals_per_trial,
             trial_qty=self._trial_qty,
             variable_mix_repo=economic_data.CsvVariableMixRepo(
                 statistics_path=constants.STATISTICS_PATH,
@@ -167,15 +174,14 @@ class SimulationEngine:
 
     def gen_all_trials(self):
         """Create trials and save to `self.results`"""
-        user_config = get_config()
         allocation_controller = allocation.Controller(
-            user=user_config, asset_lookup=self._economic_sim_data.asset_lookup
+            user=self._user_config, asset_lookup=self._economic_sim_data.asset_lookup
         )
-        job_income_controller = job_income.Controller(user_config)
+        job_income_controller = job_income.Controller(self._user_config)
 
         self.results.trials = [
             SimulationTrial(
-                user_config=user_config,
+                user_config=self._user_config,
                 allocation_controller=allocation_controller,
                 economic_data_controller=economic_data.Controller(
                     economic_sim_data=self._economic_sim_data, trial=i
