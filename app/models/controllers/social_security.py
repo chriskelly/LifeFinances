@@ -367,6 +367,9 @@ class _IndividualController:
         ----Remaining is handled by strategies----
         adjust_pia():
         calc_payment():
+
+        Methods:
+            calc_payment(self, state: State) -> float: Calculate social security payment
         """
         earnings_record = ss_config.earnings_records.copy()
         valid_earnings = _gen_earnings(
@@ -448,7 +451,7 @@ class Controller:
     def __init__(self, user_config: User, income_controller: IncomeController):
         self._user_controller = _IndividualController(
             ss_config=user_config.social_security_pension,
-            timeline=income_controller.user_timeline,
+            timeline=income_controller._user_timeline,
             age=user_config.age,
         )
         if user_config.partner is None:
@@ -463,7 +466,7 @@ class Controller:
                 partner_config = user_config.partner.social_security_pension
             self._partner_controller = _IndividualController(
                 ss_config=partner_config,
-                timeline=income_controller.partner_timeline,
+                timeline=income_controller._partner_timeline,
                 age=user_config.partner.age,
             )
 

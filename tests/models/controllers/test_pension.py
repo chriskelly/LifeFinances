@@ -139,29 +139,29 @@ class TestController:
         sample_user.admin.pension.strategy = PensionOptions(
             **{"early": {"chosen": True}}
         )
-        strategy = Controller(sample_user).strategy
+        strategy = Controller(sample_user)._strategy
         assert isinstance(strategy, _AgeStrategy)
         assert strategy._trigger_date == EARLY_YEAR
         sample_user.admin.pension.strategy = PensionOptions(**{"mid": {"chosen": True}})
-        strategy = Controller(sample_user).strategy
+        strategy = Controller(sample_user)._strategy
         assert isinstance(strategy, _AgeStrategy)
         assert strategy._trigger_date == MID_YEAR
         sample_user.admin.pension.strategy = PensionOptions(
             **{"late": {"chosen": True}}
         )
-        strategy = Controller(sample_user).strategy
+        strategy = Controller(sample_user)._strategy
         assert isinstance(strategy, _AgeStrategy)
         assert strategy._trigger_date == LATE_YEAR
         sample_user.admin.pension.strategy = PensionOptions(
             **{"net_worth": {"chosen": True}}
         )
-        assert isinstance(Controller(sample_user).strategy, _NetWorthStrategy)
+        assert isinstance(Controller(sample_user)._strategy, _NetWorthStrategy)
         sample_user.admin.pension.strategy = PensionOptions(
             **{"cash_out": {"chosen": True}}
         )
-        assert isinstance(Controller(sample_user).strategy, _CashOutStrategy)
+        assert isinstance(Controller(sample_user)._strategy, _CashOutStrategy)
         sample_user.admin = None
-        assert Controller(sample_user).strategy is None
+        assert Controller(sample_user)._strategy is None
 
     def test_calc_payment(self, sample_user: User, first_state: State):
         """Should return the strategy's calc_payment result unless there
@@ -169,7 +169,7 @@ class TestController:
         controller = Controller(sample_user)
         first_state.date = LATE_YEAR
         assert controller.calc_payment(first_state) == pytest.approx(
-            controller.strategy.calc_payment(first_state)
+            controller._strategy.calc_payment(first_state)
         )
         sample_user.admin = None
         assert Controller(sample_user).calc_payment(first_state) == 0

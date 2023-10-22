@@ -98,8 +98,8 @@ class _CashOutStrategy(_Strategy):
         self._income_profile = user.partner.income_profiles[0]
         self._interval_raise = interval_yield(1 + self._income_profile.yearly_raise)
         self._est_prev_interval_income = self._calc_est_prev_interval_income()
-        self.cash_out_date = self._income_profile.last_date
-        self.pension_balance = self._calc_pension_balance()
+        self._cash_out_date = self._income_profile.last_date
+        self._pension_balance = self._calc_pension_balance()
 
     def _calc_est_prev_interval_income(self) -> float:
         """Estimate the interval income at the time when account balance was last updated"""
@@ -113,7 +113,7 @@ class _CashOutStrategy(_Strategy):
     def _calc_pension_balance(self) -> float:
         """Estimate pension balance at cash out date"""
         working_intervals = self._intervals_between(
-            self.cash_out_date, self._pension.balance_update
+            self._cash_out_date, self._pension.balance_update
         )
         pension_balance = self._pension.account_balance
         income = self._est_prev_interval_income
@@ -133,8 +133,8 @@ class _CashOutStrategy(_Strategy):
         )
 
     def calc_payment(self, state: State) -> float:
-        if math.isclose(state.date, self.cash_out_date):
-            return self.pension_balance
+        if math.isclose(state.date, self._cash_out_date):
+            return self._pension_balance
         return 0
 
 
@@ -144,8 +144,8 @@ class Controller:
     The Defined Benefit Program provides a monthly benefit based on a formula:
     `service credit x age factor x final compensation = your retirement benefit`
 
-    Attributes:
-        strategy (_Strategy): pension payment strategy
+    Methods:
+        calc_payment(self, state: State) -> float: Calculate pension payment for interval
 
     """
 
@@ -153,9 +153,9 @@ class Controller:
         self._user = user
         if user.admin:
             base = self._calc_base(user.partner.income_profiles[0])
-            self.strategy = self._gen_strategy(base)
+            self._strategy = self._gen_strategy(base)
         else:
-            self.strategy = None
+            self._strategy = None
 
     def _calc_base(self, job_profile: IncomeProfile) -> float:
         """Calculate the interval value to multiply against the benefit rates
@@ -196,6 +196,6 @@ class Controller:
         Returns:
             float: Interval payment
         """
-        if not self.strategy:
+        if not self._strategy:
             return 0
-        return self.strategy.calc_payment(state)
+        return self._strategy.calc_payment(state)

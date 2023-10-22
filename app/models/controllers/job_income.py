@@ -52,11 +52,6 @@ def _gen_empty_timeline(first_date: float, size: int) -> list[Income]:
 class Controller:
     """Class of income timelines
 
-    Attributes:
-        user_timeline (list[Income]): Timeline of user income
-
-        partner_timeline (list[Income]): Timeline of partner income
-
     Methods:
         get_user_income(interval_idx): Get the user income for a given interval
 
@@ -71,25 +66,25 @@ class Controller:
     def __init__(self, user_config: User):
         self._size = user_config.intervals_per_trial
         if user_config.income_profiles:
-            self.user_timeline = self._gen_timeline(user_config.income_profiles)
+            self._user_timeline = self._gen_timeline(user_config.income_profiles)
         else:
-            self.user_timeline = _gen_empty_timeline(
+            self._user_timeline = _gen_empty_timeline(
                 first_date=constants.TODAY_YR_QT, size=self._size
             )
         if user_config.partner and user_config.partner.income_profiles:
-            self.partner_timeline = self._gen_timeline(
+            self._partner_timeline = self._gen_timeline(
                 user_config.partner.income_profiles
             )
         else:
-            self.partner_timeline = _gen_empty_timeline(
+            self._partner_timeline = _gen_empty_timeline(
                 first_date=constants.TODAY_YR_QT, size=self._size
             )
-        self._user_income = [income.amount for income in self.user_timeline]
-        self._partner_income = [income.amount for income in self.partner_timeline]
+        self._user_income = [income.amount for income in self._user_timeline]
+        self._partner_income = [income.amount for income in self._partner_timeline]
         self._tax_deferred = [
             user_income.tax_deferred + partner_income.tax_deferred
             for user_income, partner_income in zip(
-                self.user_timeline, self.partner_timeline
+                self._user_timeline, self._partner_timeline
             )
         ]
 

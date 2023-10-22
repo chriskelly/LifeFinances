@@ -47,10 +47,6 @@ class SimulationTrial:
         job_income_controller (job_income.Controller)
 
     Attributes:
-        user_config (User)
-
-        controllers (Controllers)
-
         intervals (list[Interval])
     """
 
@@ -61,8 +57,8 @@ class SimulationTrial:
         economic_data_controller: economic_data.Controller,
         job_income_controller: job_income.Controller,
     ):
-        self.user_config = user_config
-        self.controllers = Controllers(
+        self._user_config = user_config
+        self._controllers = Controllers(
             allocation=allocation_controller,
             economic_data=economic_data_controller,
             job_income=job_income_controller,
@@ -72,10 +68,10 @@ class SimulationTrial:
             pension=pension.Controller(user_config),
             annuity=annuity.Controller(user_config),
         )
-        self.intervals = [gen_first_interval(user_config, self.controllers)]
-        for _ in range(self.user_config.intervals_per_trial - 1):
+        self.intervals = [gen_first_interval(user_config, self._controllers)]
+        for _ in range(self._user_config.intervals_per_trial - 1):
             self.intervals.append(
-                self.intervals[-1].gen_next_interval(self.controllers)
+                self.intervals[-1].gen_next_interval(self._controllers)
             )
 
 
@@ -152,10 +148,6 @@ class SimulationEngine:
     Attributes
         results (Results)
 
-        trial_qty (int): Number of trials to run
-
-        economic_sim_data (EconomicSimData): Full set of economic data
-
     Methods
         gen_all_trials()
     """
@@ -163,10 +155,10 @@ class SimulationEngine:
     def __init__(self, trial_qty: int = None):
         user_config = get_config()
         self.results: Results = Results()
-        self.trial_qty = trial_qty or user_config.trial_quantity
-        self.economic_sim_data = economic_data.EconomicEngine(
+        self._trial_qty = trial_qty or user_config.trial_quantity
+        self._economic_sim_data = economic_data.EconomicEngine(
             intervals_per_trial=user_config.intervals_per_trial,
-            trial_qty=self.trial_qty,
+            trial_qty=self._trial_qty,
             variable_mix_repo=economic_data.CsvVariableMixRepo(
                 statistics_path=constants.STATISTICS_PATH,
                 correlation_path=constants.CORRELATION_PATH,
@@ -177,7 +169,7 @@ class SimulationEngine:
         """Create trials and save to `self.results`"""
         user_config = get_config()
         allocation_controller = allocation.Controller(
-            user=user_config, asset_lookup=self.economic_sim_data.asset_lookup
+            user=user_config, asset_lookup=self._economic_sim_data.asset_lookup
         )
         job_income_controller = job_income.Controller(user_config)
 
@@ -186,9 +178,9 @@ class SimulationEngine:
                 user_config=user_config,
                 allocation_controller=allocation_controller,
                 economic_data_controller=economic_data.Controller(
-                    economic_sim_data=self.economic_sim_data, trial=i
+                    economic_sim_data=self._economic_sim_data, trial=i
                 ),
                 job_income_controller=job_income_controller,
             )
-            for i in range(self.trial_qty)
+            for i in range(self._trial_qty)
         ]

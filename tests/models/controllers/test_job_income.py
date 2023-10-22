@@ -86,8 +86,8 @@ def test_job_income_controller(sample_user: User):
         expected_taxable_income
     )
     # Check the generated timelines are the correct size
-    assert len(controller.user_timeline) == sample_user.intervals_per_trial
-    assert len(controller.partner_timeline) == sample_user.intervals_per_trial
+    assert len(controller._user_timeline) == sample_user.intervals_per_trial
+    assert len(controller._partner_timeline) == sample_user.intervals_per_trial
 
 
 class TestIsWorking:

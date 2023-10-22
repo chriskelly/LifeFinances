@@ -60,22 +60,18 @@ class _FlatAllocationStrategy(_Strategy):
 class Controller:
     """Manages strategy and allocation generation
 
-    Attributes
-        user (User)
-
     Methods
-        allocation(self) -> np.ndarray:
+        gen_allocation(self) -> np.ndarray:
     """
 
     def __init__(self, user: User, asset_lookup: dict[str, int]):
-        self.user = user
         (
             strategy_str,
             strategy_obj,
         ) = user.portfolio.allocation_strategy.chosen_strategy
         match strategy_str:
             case "flat":
-                self.strategy = _FlatAllocationStrategy(
+                self._strategy = _FlatAllocationStrategy(
                     config=strategy_obj, asset_lookup=asset_lookup
                 )
             case _:
@@ -92,4 +88,4 @@ class Controller:
         Returns:
             np.ndarray: Allocation ratios for each asset
         """
-        return self.strategy.gen_allocation(state)
+        return self._strategy.gen_allocation(state)

@@ -101,19 +101,19 @@ class _NetTransactions(util.FloatRepr):
 class StateChangeComponents:
     """Collection of components needed to calculate transition to next state.
 
+    Args:
+        state (State): current state
+        controllers (Controllers)
+
     Attributes:
-        allocation (np.ndarray): Allocation of assets in provided state
-
-        economic_data (EconomicStateData): Returns and inflation data
-
         net_transactions (NetTransactions): Income, portfolio return, costs, & annuity
     """
 
     def __init__(self, state: State, controllers: Controllers):
         self._state = state
         self._controllers = controllers
-        self.allocation = controllers.allocation.gen_allocation(state)
-        self.economic_data = controllers.economic_data.get_economic_state_data(
+        self._allocation = controllers.allocation.gen_allocation(state)
+        self._economic_data = controllers.economic_data.get_economic_state_data(
             state.interval_idx
         )
 
@@ -135,7 +135,7 @@ class StateChangeComponents:
             initial_net_transaction=income.job_income + costs,
         )
         portfolio_return = state.net_worth * np.dot(
-            self.economic_data.asset_rates, self.allocation
+            self._economic_data.asset_rates, self._allocation
         )
 
         self.net_transactions = _NetTransactions(
