@@ -1,9 +1,8 @@
 """Module for representing portfolio allocation strategies
 
 Classes:
-    AllocationRatios: Dataclass of allocation ratios for a portfolio
     Controller: Manages strategy and allocation generation
-        gen_allocation(self, state: State) -> AllocationRatios: 
+        gen_allocation(self, state: State) -> np.ndarray: 
         Returns allocation ratios for a given state
 """
 from abc import ABC, abstractmethod
@@ -14,36 +13,23 @@ from app.models.config import User
 from app.models import config
 
 
-@dataclass
-class AllocationRatios:
-    """Dataclass of allocation ratios for a portfolio
-
-    A more detailed version of a RiskRatio
-
-    Attributes
-        assets (np.ndarray): array of allocation ratios for each asset
-    """
-
-    assets: np.ndarray
-
-
 class _Strategy(ABC):
     """Abstract allocation strategy class.
 
     Required methods:
 
-        gen_allocation(self, state: State) -> AllocationRatios:
+        gen_allocation(self, state: State) -> np.ndarray:
     """
 
     @abstractmethod
-    def gen_allocation(self, state: State) -> AllocationRatios:
+    def gen_allocation(self, state: State) -> np.ndarray:
         """Generate risk ratios for a portfolio
 
         Args:
             state (financial.State): current state
 
         Returns:
-            AllocationRatios
+            np.ndarray: Allocation ratios for each asset
         """
         return NotImplementedError
 
@@ -58,7 +44,7 @@ class _FlatAllocationStrategy(_Strategy):
         asset_lookup (dict[str, int]): lookup table for asset names
 
     Methods
-        gen_allocation(self, state:State) -> AllocationRatios:
+        gen_allocation(self, state:State) -> np.ndarray:
     """
 
     config: config.FlatAllocationStrategyConfig
@@ -68,7 +54,7 @@ class _FlatAllocationStrategy(_Strategy):
         allocation = np.zeros(len(self.asset_lookup))
         for asset, ratio in self.config.allocation.items():
             allocation[self.asset_lookup[asset]] = ratio
-        return AllocationRatios(assets=allocation)
+        return allocation
 
 
 class Controller:
@@ -78,7 +64,7 @@ class Controller:
         user (User)
 
     Methods
-        allocation(self) -> AllocationRatios:
+        allocation(self) -> np.ndarray:
     """
 
     def __init__(self, user: User, asset_lookup: dict[str, int]):
@@ -97,13 +83,13 @@ class Controller:
                     f"Invalid strategy: {user.portfolio.allocation_strategy.chosen_strategy}"
                 )
 
-    def gen_allocation(self, state: State) -> AllocationRatios:
+    def gen_allocation(self, state: State) -> np.ndarray:
         """Returns allocation ratios for a given state
 
         Args:
             state (State): current state
 
         Returns:
-            AllocationRatios
+            np.ndarray: Allocation ratios for each asset
         """
         return self.strategy.gen_allocation(state)

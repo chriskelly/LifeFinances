@@ -2,11 +2,9 @@
 """
 # pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
 
+import numpy as np
 import pytest
-from app.models.controllers.allocation import (
-    AllocationRatios,
-    _FlatAllocationStrategy,
-)
+from app.models.controllers.allocation import _FlatAllocationStrategy
 from app.models.config import User
 
 
@@ -20,9 +18,9 @@ def asset_lookup():
 
 
 def test_flat_allocation_strategy(sample_user: User, first_state, asset_lookup: dict):
-    """Should return an AllocationRatios object with the correct ratios"""
+    """Should return an np.ndarray with the correct ratios"""
     sample_config = sample_user.portfolio.allocation_strategy.flat
     strategy = _FlatAllocationStrategy(config=sample_config, asset_lookup=asset_lookup)
     allocation = strategy.gen_allocation(first_state)
-    assert isinstance(allocation, AllocationRatios)
-    assert allocation.assets == pytest.approx([0.6, 0.4])
+    assert isinstance(allocation, np.ndarray)
+    assert allocation == pytest.approx([0.6, 0.4])

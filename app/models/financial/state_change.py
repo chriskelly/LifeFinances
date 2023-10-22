@@ -102,7 +102,7 @@ class StateChangeComponents:
     """Collection of components needed to calculate transition to next state.
 
     Attributes:
-        allocation (AllocationRatios): Allocation of assets in provided state
+        allocation (np.ndarray): Allocation of assets in provided state
 
         economic_data (EconomicStateData): Returns and inflation data
 
@@ -135,7 +135,7 @@ class StateChangeComponents:
             initial_net_transaction=income.job_income + costs,
         )
         portfolio_return = state.net_worth * np.dot(
-            self.economic_data.asset_rates, self.allocation.assets
+            self.economic_data.asset_rates, self.allocation
         )
 
         self.net_transactions = _NetTransactions(
