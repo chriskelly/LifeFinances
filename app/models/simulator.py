@@ -12,7 +12,7 @@ Classes:
     
     SimulationEngine:
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import pandas as pd
 from app.data import constants
 from app.models.config import User, get_config
@@ -25,68 +25,58 @@ from app.models.controllers import (
     social_security,
     annuity,
 )
-from app.models.financial.interval import Interval, gen_first_interval
+from app.models.financial.interval import gen_first_interval
 
 
-@dataclass
 class SimulationTrial:
     """A single simulation trial representing one modeled lifetime
 
-    Attributes
+    Allocation and Job Income controllers are passed in
+    since the same controller can be used for all Trials.
+
+    Remaining controllers are generated fresh
+    for every Trial.
+
+    Arguments:
+        user_config (User)
+
+        allocation_controller (allocation.Controller)
+
+        economic_data_controller (economic_data.Controller)
+
+        job_income_controller (job_income.Controller)
+
+    Attributes:
         user_config (User)
 
         controllers (Controllers)
 
         intervals (list[Interval])
-
-    Methods
-        run()
     """
 
-    user_config: User = None
-    controllers: Controllers = Controllers()
-    intervals: list[Interval] = field(default_factory=list)
-
-    def run(self):
-        """Generates subsequent intervals"""
+    def __init__(
+        self,
+        user_config: User,
+        allocation_controller: allocation.Controller,
+        economic_data_controller: economic_data.Controller,
+        job_income_controller: job_income.Controller,
+    ):
+        self.user_config = user_config
+        self.controllers = Controllers(
+            allocation=allocation_controller,
+            economic_data=economic_data_controller,
+            job_income=job_income_controller,
+            social_security=social_security.Controller(
+                user_config=user_config, income_controller=job_income_controller
+            ),
+            pension=pension.Controller(user_config),
+            annuity=annuity.Controller(user_config),
+        )
+        self.intervals = [gen_first_interval(user_config, self.controllers)]
         for _ in range(self.user_config.intervals_per_trial - 1):
             self.intervals.append(
                 self.intervals[-1].gen_next_interval(self.controllers)
             )
-
-
-def gen_trial(
-    user_config: User,
-    allocation_controller: allocation.Controller,
-    economic_data_controller: economic_data.Controller,
-    job_income_controller: job_income.Controller,
-) -> SimulationTrial:
-    """Generate a single simulation trial given the current user config
-
-    Allocation and Job Income controllers are passed in
-    since the same controller can be used for all Trials.
-
-    Social Security, Annuity, and Pension controllers are generated fresh
-    for every Trial.
-
-    Economic Engine Data is parsed into individual Trial data classes before
-    being passed in.
-
-    Args:
-        economic_data_controller (economic_data.Controller)
-    """
-    trial = SimulationTrial(user_config)
-    trial.controllers.allocation = allocation_controller
-    trial.controllers.economic_data = economic_data_controller
-    trial.controllers.job_income = job_income_controller
-    trial.controllers.social_security = social_security.Controller(
-        user_config=user_config, income_controller=job_income_controller
-    )
-    trial.controllers.pension = pension.Controller(user_config)
-    trial.controllers.annuity = annuity.Controller(user_config)
-    trial.intervals.append(gen_first_interval(trial.user_config, trial.controllers))
-    trial.run()
-    return trial
 
 
 @dataclass
@@ -192,7 +182,7 @@ class SimulationEngine:
         job_income_controller = job_income.Controller(user_config)
 
         self.results.trials = [
-            gen_trial(
+            SimulationTrial(
                 user_config=user_config,
                 allocation_controller=allocation_controller,
                 economic_data_controller=economic_data.Controller(
