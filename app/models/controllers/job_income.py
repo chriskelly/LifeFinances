@@ -187,3 +187,6 @@ class Controller:
             float
         """
         return self.get_total_income(interval_idx) - self._tax_deferred[interval_idx]
+
+    def isWorking(self, interval_idx: int) -> bool:
+        return self.get_total_income(interval_idx) > 0

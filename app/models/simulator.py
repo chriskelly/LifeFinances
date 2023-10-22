@@ -121,6 +121,7 @@ class Results:
             "SS User",
             "SS Partner",
             "Pension",
+            "Spending",
             "Portfolio Return",
             "Annuity",
         ]
@@ -135,6 +136,7 @@ class Results:
                     interval.state_change_components.net_transactions.income.social_security_user,
                     interval.state_change_components.net_transactions.income.social_security_partner,
                     interval.state_change_components.net_transactions.income.pension,
+                    interval.state_change_components.net_transactions.costs.spending,
                     interval.state_change_components.net_transactions.portfolio_return,
                     interval.state_change_components.net_transactions.annuity,
                 ]

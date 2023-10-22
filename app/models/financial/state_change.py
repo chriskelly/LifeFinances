@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from app import util
+from app.models.config import Spending
 from app.models.financial.state import State
 from app.models.controllers import Controllers
 
@@ -55,8 +56,11 @@ class _Costs(util.FloatRepr):
         )
 
 
-def gen_costs() -> _Costs:
-    pass
+def _calc_spending(state: State, config: Spending, is_working: bool) -> float:
+    base_amount = -config.yearly_amount * state.inflation
+    if not is_working:
+        base_amount *= 1 + config.retirement_change
+    return base_amount
 
 
 @dataclass
@@ -90,7 +94,13 @@ class StateChangeComponents:
         self.economic_data = controllers.economic_data.get_economic_state_data(state)
 
         income = _Income(state, controllers)
-        costs = _Costs()
+        costs = _Costs(
+            spending=_calc_spending(
+                state=state,
+                config=state.user.spending,
+                is_working=(controllers.job_income.isWorking(state.interval_idx)),
+            )
+        )
         annuity = controllers.annuity.make_annuity_transaction(
             state=state,
             job_income_controller=controllers.job_income,
