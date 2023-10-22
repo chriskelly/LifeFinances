@@ -51,7 +51,7 @@ class Controller:
 
             is_working (bool): if user/partner are still working
 
-            initial_net_transaction (float): net income (minus costs)
+            initial_net_transaction (float): job income (no pensions) minus costs
 
         Returns:
             float: The net transaction of annuity payment minus contribution

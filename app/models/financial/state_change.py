@@ -132,7 +132,7 @@ class StateChangeComponents:
         annuity = controllers.annuity.make_annuity_transaction(
             state=state,
             is_working=controllers.job_income.is_working(state.interval_idx),
-            initial_net_transaction=income + costs,
+            initial_net_transaction=income.job_income + costs,
         )
         portfolio_return = state.net_worth * np.dot(
             self.economic_data.asset_rates, self.allocation.assets
