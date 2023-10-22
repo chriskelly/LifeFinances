@@ -8,7 +8,6 @@ from app.data.constants import (
 )
 from app.models.config import User
 from app.models.financial.state import State
-from app.models.controllers.job_income import Controller as JobIncomeController
 from app.util import interval_yield
 
 
@@ -41,7 +40,7 @@ class Controller:
     def make_annuity_transaction(
         self,
         state: State,
-        job_income_controller: JobIncomeController,
+        is_working: bool,
         initial_net_transaction: float,
     ) -> float:
         """If applicable, contribute to annuity and/or take payment from annuity
@@ -50,8 +49,7 @@ class Controller:
         Args:
             state (State): current state
 
-            job_income_controller (JobIncomeController): used to confirm if
-            user/partner are still working
+            is_working (bool): if user/partner are still working
 
             initial_net_transaction (float): net income (minus costs)
 
@@ -64,9 +62,7 @@ class Controller:
             value=self._contribution_rate * initial_net_transaction, low=0
         )
         self._balance += contribution
-        payment = self._check_for_annuity_payment(
-            job_income_controller=job_income_controller, state=state
-        )
+        payment = self._check_for_annuity_payment(is_working=is_working, state=state)
         net_transaction = payment - contribution
         return net_transaction
 
@@ -85,16 +81,13 @@ class Controller:
         self._prev_transaction_interval_idx = interval_idx
         return self._balance
 
-    def _check_for_annuity_payment(
-        self, job_income_controller: JobIncomeController, state: State
-    ) -> float:
-        working = job_income_controller.isWorking(state.interval_idx)
+    def _check_for_annuity_payment(self, is_working: bool, state: State) -> float:
         # Trigger the annuity when net worth is below target. To ensure that
         # it's not triggered too early, wait until at least user isn't working
         # anymore. Also, don't trigger if annuity is already annuitized.
         if (
             state.net_worth < self._net_worth_target * state.inflation
-            and not working
+            and not is_working
             and not self._annuitized
         ):
             self._annuitize(state.interval_idx)

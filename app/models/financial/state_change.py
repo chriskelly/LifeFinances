@@ -100,12 +100,12 @@ class StateChangeComponents:
             spending=_calc_spending(
                 state=state,
                 config=state.user.spending,
-                is_working=(controllers.job_income.isWorking(state.interval_idx)),
+                is_working=(controllers.job_income.is_working(state.interval_idx)),
             )
         )
         annuity = controllers.annuity.make_annuity_transaction(
             state=state,
-            job_income_controller=controllers.job_income,
+            is_working=controllers.job_income.is_working(state.interval_idx),
             initial_net_transaction=income + costs,
         )
         portfolio_return = state.net_worth * np.dot(

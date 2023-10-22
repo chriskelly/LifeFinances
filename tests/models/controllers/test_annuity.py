@@ -5,7 +5,6 @@ import pytest
 from app.data.constants import ANNUITY_INT_YIELD
 from app.models.controllers.annuity import Controller
 from app.models.financial.state import State
-from app.models.controllers.job_income import Controller as JobIncomeController
 from app.models.config import User
 from app.util import interval_yield
 
@@ -43,18 +42,11 @@ def test_annuitize(controller: Controller):
     assert controller._balance > initial_balance
 
 
-@pytest.fixture
-def job_income_controller(sample_user: User):
-    """Sample JobIncomeController based on `sample_configs/full_config.yml`"""
-    return JobIncomeController(sample_user)
-
-
 class TestCheckForAnnuityPayment:
     def test_net_worth_above_target(
         self,
         controller: Controller,
         first_state: State,
-        job_income_controller: JobIncomeController,
     ):
         """Should return 0 when the net worth is above the
         inflation-adjusted target"""
@@ -63,7 +55,7 @@ class TestCheckForAnnuityPayment:
             2 * first_state.user.portfolio.annuity.net_worth_target + 1
         )
         payout = controller._check_for_annuity_payment(
-            job_income_controller, first_state
+            is_working=False, state=first_state
         )
         assert payout == 0
 
@@ -71,12 +63,10 @@ class TestCheckForAnnuityPayment:
         self,
         controller: Controller,
         first_state: State,
-        job_income_controller: JobIncomeController,
     ):
         """Annuity payout should be 0 when the user is still earning income"""
-        job_income_controller._user_income[first_state.interval_idx] = 100
         payout = controller._check_for_annuity_payment(
-            job_income_controller, first_state
+            is_working=True, state=first_state
         )
         assert payout == 0
 
@@ -84,20 +74,17 @@ class TestCheckForAnnuityPayment:
         self,
         controller: Controller,
         first_state: State,
-        job_income_controller: JobIncomeController,
     ):
         """Annuity shoulld annuitize when the net worth is below the target
         and the user is not working"""
         first_state.net_worth = first_state.user.portfolio.annuity.net_worth_target - 1
-        job_income_controller._user_income[first_state.interval_idx] = 0
-        job_income_controller._partner_income[first_state.interval_idx] = 0
         controller._annuitized = False
-        controller._check_for_annuity_payment(job_income_controller, first_state)
+        controller._check_for_annuity_payment(is_working=False, state=first_state)
         assert controller._annuitized
 
         # Test that the annuity payout is correct when the annuity is annuitized
         controller._balance = 100
         payout = controller._check_for_annuity_payment(
-            job_income_controller, first_state
+            is_working=False, state=first_state
         )
         assert payout == pytest.approx(controller._balance * controller._payout_rate)
