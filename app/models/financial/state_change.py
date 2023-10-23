@@ -7,13 +7,23 @@ from dataclasses import dataclass
 
 import numpy as np
 from app import util
+from app.data.taxes import Taxes, calc_taxes
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import Kids, Spending
 from app.models.financial.state import State
 from app.models.controllers import Controllers
 
 
-class _Income(util.FloatRepr):
+class Income(util.FloatRepr):
+    """Income in a given interval
+
+    Attributes:
+        job_income (float): Job income
+        social_security_user (float): Social security income for user
+        social_security_partner (float): Social security income for partner
+        pension (float): Pension income
+    """
+
     def __init__(self, state: State, controllers: Controllers):
         self.job_income = controllers.job_income.get_total_income(state.interval_idx)
         (
@@ -39,9 +49,7 @@ class _Income(util.FloatRepr):
 class _Costs(util.FloatRepr):
     spending: float
     kids: float
-    income_tax: float = -1
-    medicare_tax: float = -1
-    ss_tax: float = -1
+    taxes: Taxes
 
     def __float__(self):
         return float(
@@ -49,9 +57,7 @@ class _Costs(util.FloatRepr):
                 [
                     self.spending,
                     self.kids,
-                    self.income_tax,
-                    self.medicare_tax,
-                    self.ss_tax,
+                    self.taxes,
                 ]
             )
         )
@@ -87,7 +93,7 @@ def _calc_cost_of_kids(current_date: float, spending: float, config: Kids) -> fl
 
 @dataclass
 class _NetTransactions(util.FloatRepr):
-    income: _Income
+    income: Income
     portfolio_return: float
     costs: _Costs
     annuity: float
@@ -117,7 +123,7 @@ class StateChangeComponents:
             state.interval_idx
         )
 
-        income = _Income(state, controllers)
+        income = Income(state, controllers)
         spending = _calc_spending(
             state=state,
             config=state.user.spending,
@@ -127,6 +133,13 @@ class StateChangeComponents:
             spending=spending,
             kids=_calc_cost_of_kids(
                 current_date=state.date, spending=spending, config=state.user.kids
+            ),
+            taxes=calc_taxes(
+                total_income=income,
+                taxable_income=controllers.job_income.get_taxable_income(
+                    state.interval_idx
+                ),
+                state=state,
             ),
         )
         annuity = controllers.annuity.make_annuity_transaction(
