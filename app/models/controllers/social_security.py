@@ -22,16 +22,16 @@ def _exponential_extrapolator_factory(data_list: list[list]):
     intercept = np.exp(fit[1])
     slope = fit[0]
 
-    def extrapolator(year: float) -> float:
-        """Return estimated value for year based on exponential fit.
+    def extrapolator(date: float) -> float:
+        """Return estimated value for date based on exponential fit.
 
         Args:
-            year (float): year to estimate value for
+            date (float): date to estimate value for
 
         Returns:
             float: estimated value
         """
-        return intercept * np.exp(slope * year)
+        return intercept * np.exp(slope * date)
 
     return extrapolator
 
@@ -355,18 +355,18 @@ class _IndividualController:
         early, mid, and late shouldn't have to calculate the payment, since net_worth
         will, they need to as well.
 
-        gen_earnings:
-            gen_earnings_record_from_config():
-            calc_eligible_income():
-            add_eligible_income_to_earnings_record():
-        calc_pia():
-            calc_aime():
-            apply_bend_points():
-            apply_pia_rates():
-        self.strategy(pia) = switch
+        Generate earnings:
+            - Generate earnings record from config
+            - Calculate eligible income
+            - Add eligible income to earnings record
+        Calculate PIA:
+            - Calculate AIME
+            - Apply bend points
+            - Apply PIA rates
+        Create strategy
         ----Remaining is handled by strategies----
-        adjust_pia():
-        calc_payment():
+        - Adjust PIA
+        - Calculate payment
 
         Methods:
             calc_payment(self, state: State) -> float: Calculate social security payment
@@ -437,11 +437,6 @@ def _calc_spousal_benefit(
 
 class Controller:
     """Manages strategy and payment generation
-
-    Attributes
-        user_config (User)
-
-        income_controller (job_income.Controller)
 
     Methods
         calc_payment(self, state: State) -> float:
