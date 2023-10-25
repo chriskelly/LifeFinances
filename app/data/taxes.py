@@ -136,7 +136,7 @@ class Taxes(util.FloatRepr):
     income: float
     medicare: float
     social_security: float
-    portfolio: float = -1
+    portfolio: float
 
     def __float__(self):
         return float(
@@ -152,19 +152,17 @@ class Taxes(util.FloatRepr):
 
 
 def calc_taxes(
-    total_income: Income, controller: JobIncomeController, state: State
+    total_income: Income,
+    job_income_controller: JobIncomeController,
+    state: State,
+    portfolio_return: float,
 ) -> Taxes:
     """Calculates taxes for a given interval
-
-    Args:
-        total_income (Income)
-        controller (JobIncomeController)
-        state (State)
 
     Returns:
         Taxes: Attributes: income, medicare, social_security, portfolio
     """
-    taxable_income = controller.get_taxable_income(state.interval_idx)
+    taxable_income = job_income_controller.get_taxable_income(state.interval_idx)
     job_income_tax = _calc_income_taxes(interval_income=taxable_income, state=state)
     pension_income_tax = 0.8 * _calc_income_taxes(
         interval_income=total_income.social_security_user
@@ -175,7 +173,11 @@ def calc_taxes(
     return Taxes(
         income=job_income_tax + pension_income_tax,
         medicare=-total_income.job_income * MEDICARE_TAX_RATE,
-        social_security=_social_security_tax(controller, state),
+        social_security=_social_security_tax(job_income_controller, state),
+        # Assumes user tax-loss harvestes, so tax is always has opposite sign of return
+        # There is technically an annual limit to harvesting, but losses carry over,
+        # so for simplicity we assume it is always harvested the year it is incurred.
+        portfolio=-portfolio_return * state.user.portfolio.tax_rate,
     )
 
 

@@ -129,23 +129,22 @@ class StateChangeComponents:
         portfolio_return = self._state.net_worth * np.dot(
             self._economic_data.asset_rates, self._allocation
         )
-        costs = self._gen_costs(income)
-        annuity = self._controllers.annuity.make_annuity_transaction(
-            state=self._state,
-            is_working=self._controllers.job_income.is_working(
-                self._state.interval_idx
-            ),
-            initial_net_transaction=income.job_income + costs,
-        )
+        costs = self._gen_costs(income, portfolio_return)
 
         return _NetTransactions(
             income=income,
             portfolio_return=portfolio_return,
             costs=costs,
-            annuity=annuity,
+            annuity=self._controllers.annuity.make_annuity_transaction(
+                state=self._state,
+                is_working=self._controllers.job_income.is_working(
+                    self._state.interval_idx
+                ),
+                initial_net_transaction=income.job_income + costs,
+            ),
         )
 
-    def _gen_costs(self, income: Income) -> _Costs:
+    def _gen_costs(self, income: Income, portfolio_return: float) -> _Costs:
         spending = _calc_spending(
             state=self._state,
             config=self._state.user.spending,
@@ -162,7 +161,8 @@ class StateChangeComponents:
             ),
             taxes=calc_taxes(
                 total_income=income,
-                controller=self._controllers.job_income,
+                job_income_controller=self._controllers.job_income,
                 state=self._state,
+                portfolio_return=portfolio_return,
             ),
         )

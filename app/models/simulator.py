@@ -90,16 +90,6 @@ class Results:
         """
         Returns a list of pandas DataFrames, where each DataFrame
         represents a trial in the simulator.
-        Each DataFrame contains the following columns:
-        - Date: The date of the interval.
-        - Net Worth: The net worth of the interval.
-        - Inflation: The inflation rate of the interval.
-        - Job Income: The job income of the interval.
-        - SS User: The social security income of the interval for the user.
-        - SS Partner: The social security income of the interval for the partner.
-        - Pension: The pension income of the interval.
-        - Portfolio Return: The portfolio return of the interval.
-        - Annuity: The annuity income of the interval.
         """
         columns = [
             "Date",
@@ -115,6 +105,7 @@ class Results:
             "Income Taxes",
             "Medicare Taxes",
             "Social Security Taxes",
+            "Portfolio Taxes",
             "Total Taxes",
             "Total Costs",
             "Portfolio Return",
@@ -138,6 +129,7 @@ class Results:
                     interval.state_change_components.net_transactions.costs.taxes.income,
                     interval.state_change_components.net_transactions.costs.taxes.medicare,
                     interval.state_change_components.net_transactions.costs.taxes.social_security,
+                    interval.state_change_components.net_transactions.costs.taxes.portfolio,
                     interval.state_change_components.net_transactions.costs.taxes,
                     interval.state_change_components.net_transactions.costs,
                     interval.state_change_components.net_transactions.portfolio_return,

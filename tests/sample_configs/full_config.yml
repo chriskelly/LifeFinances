@@ -8,7 +8,7 @@ net_worth_target: 1500
 
 portfolio:
   current_net_worth: 250
-  drawdown_tax_rate: 0.1
+  tax_rate: 0.1
   annuity:
     net_worth_target: 500
     contribution_rate: 0.1

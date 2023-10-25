@@ -216,7 +216,7 @@ class Portfolio(BaseModel):
     Attributes
         current_net_worth (float): Defaults to 0
 
-        drawdown_tax_rate (float): Defaults to 0.1
+        tax_rate (float): Defaults to 0.1
 
         annuity (AnnuityConfig): Defaults to None
 
@@ -224,7 +224,7 @@ class Portfolio(BaseModel):
     """
 
     current_net_worth: float = 0
-    drawdown_tax_rate: float = 0.1
+    tax_rate: float = 0.1
     annuity: Optional[AnnuityConfig] = None
     allocation_strategy: AllocationOptions
 
