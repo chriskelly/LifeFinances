@@ -122,36 +122,47 @@ class StateChangeComponents:
         self._economic_data = controllers.economic_data.get_economic_state_data(
             state.interval_idx
         )
+        self.net_transactions = self._gen_net_transactions()
 
-        income = Income(state, controllers)
-        spending = _calc_spending(
-            state=state,
-            config=state.user.spending,
-            is_working=(controllers.job_income.is_working(state.interval_idx)),
-        )
-        costs = _Costs(
-            spending=spending,
-            kids=_calc_cost_of_kids(
-                current_date=state.date, spending=spending, config=state.user.kids
-            ),
-            taxes=calc_taxes(
-                total_income=income,
-                controller=controllers.job_income,
-                state=state,
-            ),
-        )
-        annuity = controllers.annuity.make_annuity_transaction(
-            state=state,
-            is_working=controllers.job_income.is_working(state.interval_idx),
-            initial_net_transaction=income.job_income + costs,
-        )
-        portfolio_return = state.net_worth * np.dot(
+    def _gen_net_transactions(self) -> _NetTransactions:
+        income = Income(self._state, self._controllers)
+        portfolio_return = self._state.net_worth * np.dot(
             self._economic_data.asset_rates, self._allocation
         )
+        costs = self._gen_costs(income)
+        annuity = self._controllers.annuity.make_annuity_transaction(
+            state=self._state,
+            is_working=self._controllers.job_income.is_working(
+                self._state.interval_idx
+            ),
+            initial_net_transaction=income.job_income + costs,
+        )
 
-        self.net_transactions = _NetTransactions(
+        return _NetTransactions(
             income=income,
             portfolio_return=portfolio_return,
             costs=costs,
             annuity=annuity,
+        )
+
+    def _gen_costs(self, income: Income) -> _Costs:
+        spending = _calc_spending(
+            state=self._state,
+            config=self._state.user.spending,
+            is_working=(
+                self._controllers.job_income.is_working(self._state.interval_idx)
+            ),
+        )
+        return _Costs(
+            spending=spending,
+            kids=_calc_cost_of_kids(
+                current_date=self._state.date,
+                spending=spending,
+                config=self._state.user.kids,
+            ),
+            taxes=calc_taxes(
+                total_income=income,
+                controller=self._controllers.job_income,
+                state=self._state,
+            ),
         )
