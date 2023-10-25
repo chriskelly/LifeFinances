@@ -5,7 +5,7 @@ Classes:
 """
 import math
 from abc import ABC, abstractmethod
-import numpy as np
+from app.util import index_extrapolator, max_earnings_extrapolator
 from app.data import constants
 from app.models.financial.state import State
 from app.models.config import NetWorthStrategyConfig, SocialSecurity, User
@@ -14,32 +14,6 @@ from app.models.controllers.job_income import Income, Controller as IncomeContro
 EARLY_AGE = 62
 MID_AGE = 66
 LATE_AGE = 70
-
-
-def _exponential_extrapolator_factory(data_list: list[list]):
-    x_array, y_array = np.transpose(np.array(data_list))
-    fit = np.polyfit(x=x_array, y=np.log(y_array), deg=1)
-    intercept = np.exp(fit[1])
-    slope = fit[0]
-
-    def extrapolator(date: float) -> float:
-        """Return estimated value for date based on exponential fit.
-
-        Args:
-            date (float): date to estimate value for
-
-        Returns:
-            float: estimated value
-        """
-        return intercept * np.exp(slope * date)
-
-    return extrapolator
-
-
-_index_extrapolator = _exponential_extrapolator_factory(constants.SS_INDEXES)
-_max_earnings_extrapolator = _exponential_extrapolator_factory(
-    constants.SS_MAX_EARNINGS
-)
 
 
 def _gen_earnings(timeline: list[Income], earnings_record: dict) -> list[float]:
@@ -138,7 +112,7 @@ def _constrain_earnings(earnings_record: dict):
         list[float]: Valid earnings
     """
     return [
-        min(_max_earnings_extrapolator(year), earning) * _index_extrapolator(year)
+        min(max_earnings_extrapolator(year), earning) * index_extrapolator(year)
         for year, earning in earnings_record.items()
     ]
 

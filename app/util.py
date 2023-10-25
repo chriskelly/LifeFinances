@@ -2,6 +2,8 @@
 
 from abc import ABC, abstractmethod
 import math
+
+import numpy as np
 from app.data import constants
 
 
@@ -201,3 +203,27 @@ def interval_stdev(stdev: float) -> float:
         float: interval standard deviation
     """
     return stdev * math.sqrt(constants.YEARS_PER_INTERVAL)
+
+
+def exponential_extrapolator_factory(data_list: list[list]):
+    x_array, y_array = np.transpose(np.array(data_list))
+    fit = np.polyfit(x=x_array, y=np.log(y_array), deg=1)
+    intercept = np.exp(fit[1])
+    slope = fit[0]
+
+    def extrapolator(date: float) -> float:
+        """Return estimated value for date based on exponential fit.
+
+        Args:
+            date (float): date to estimate value for
+
+        Returns:
+            float: estimated value
+        """
+        return intercept * np.exp(slope * date)
+
+    return extrapolator
+
+
+index_extrapolator = exponential_extrapolator_factory(constants.SS_INDEXES)
+max_earnings_extrapolator = exponential_extrapolator_factory(constants.SS_MAX_EARNINGS)
