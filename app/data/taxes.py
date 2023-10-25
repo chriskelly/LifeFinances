@@ -7,10 +7,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from app import util
-from app.data.constants import INTERVALS_PER_YEAR
+from app.util import max_earnings_extrapolator
+from app.data.constants import (
+    INTERVALS_PER_YEAR,
+    MEDICARE_TAX_RATE,
+    SOCIAL_SECURITY_TAX_RATE,
+)
 
 # pylint: disable=used-before-assignment
 if TYPE_CHECKING:
+    from app.models.controllers.job_income import Controller as JobIncomeController
     from app.models.financial.state_change import Income
     from app.models.financial.state import State
 
@@ -128,8 +134,8 @@ class Taxes(util.FloatRepr):
     """
 
     income: float
-    medicare: float = -1
-    social_security: float = -1
+    medicare: float
+    social_security: float
     portfolio: float = -1
 
     def __float__(self):
@@ -145,17 +151,20 @@ class Taxes(util.FloatRepr):
         )
 
 
-def calc_taxes(total_income: Income, taxable_income: float, state: State) -> Taxes:
+def calc_taxes(
+    total_income: Income, controller: JobIncomeController, state: State
+) -> Taxes:
     """Calculates taxes for a given interval
 
     Args:
         total_income (Income)
-        taxable_income (float)
+        controller (JobIncomeController)
         state (State)
 
     Returns:
         Taxes: Attributes: income, medicare, social_security, portfolio
     """
+    taxable_income = controller.get_taxable_income(state.interval_idx)
     job_income_tax = _calc_income_taxes(interval_income=taxable_income, state=state)
     pension_income_tax = 0.8 * _calc_income_taxes(
         interval_income=total_income.social_security_user
@@ -165,6 +174,8 @@ def calc_taxes(total_income: Income, taxable_income: float, state: State) -> Tax
     )
     return Taxes(
         income=job_income_tax + pension_income_tax,
+        medicare=-total_income.job_income * MEDICARE_TAX_RATE,
+        social_security=_social_security_tax(controller, state),
     )
 
 
@@ -227,3 +238,29 @@ def _bracket_math(brackets: list, yearly_income: float) -> float:
                 yearly_income - prev_bracket_cap
             )
         prev_bracket_cap = bracket[cap_idx]
+
+
+def _social_security_tax(controller: JobIncomeController, state: State) -> float:
+    """Computes the Social Security tax for a given income and date.
+
+    The Social Security tax is calculated as a percentage of the eligible income,
+    which is the minimum between the income and the maximum earnings extrapolated
+    for the given date. The tax rate is defined by the constant SOCIAL_SECURITY_TAX_RATE.
+
+    Calculates for both user and partner, if applicable.
+
+    Args:
+        controller (JobIncomeController): Controller for job income
+        state (State): current state
+
+    Returns:
+        float: Social Security tax for the given income and date
+    """
+    max_earnings = max_earnings_extrapolator(state.date)
+    user_eligible_income = min(
+        max_earnings, controller.get_user_income(state.interval_idx)
+    )
+    partner_eligible_income = min(
+        max_earnings, controller.get_partner_income(state.interval_idx)
+    )
+    return SOCIAL_SECURITY_TAX_RATE * -(user_eligible_income + partner_eligible_income)

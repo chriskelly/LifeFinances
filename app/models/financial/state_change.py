@@ -136,9 +136,7 @@ class StateChangeComponents:
             ),
             taxes=calc_taxes(
                 total_income=income,
-                taxable_income=controllers.job_income.get_taxable_income(
-                    state.interval_idx
-                ),
+                controller=controllers.job_income,
                 state=state,
             ),
         )

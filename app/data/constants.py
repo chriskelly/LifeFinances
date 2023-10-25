@@ -101,3 +101,6 @@ https://digital.fidelity.com/prgw/digital/gie/"""
 ANNUITY_PAYOUT_RATE = 0.045
 """Payout rate on annuity (Fidelity used as benchmark).
 https://digital.fidelity.com/prgw/digital/gie/"""
+
+MEDICARE_TAX_RATE = 0.0145
+SOCIAL_SECURITY_TAX_RATE = 0.062
