@@ -205,7 +205,15 @@ def interval_stdev(stdev: float) -> float:
     return stdev * math.sqrt(constants.YEARS_PER_INTERVAL)
 
 
-def exponential_extrapolator_factory(data_list: list[list]):
+def exponential_extrapolator_factory(data_list: list[list]) -> callable:
+    """Factory for creating exponential extrapolators
+
+    Args:
+        data_list (list[list[float,float]]): list of lists of the form [x, y]
+
+    Returns:
+        callable: extrapolator function
+    """
     x_array, y_array = np.transpose(np.array(data_list))
     fit = np.polyfit(x=x_array, y=np.log(y_array), deg=1)
     intercept = np.exp(fit[1])
