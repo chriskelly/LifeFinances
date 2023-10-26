@@ -142,6 +142,12 @@ class Results:
             dataframes.append(df)
         return dataframes
 
+    def success_rate(self) -> float:
+        """Returns the percentage of trials that ended with a positive net worth"""
+        return sum(
+            trial.intervals[-1].state.net_worth > 0 for trial in self.trials
+        ) / len(self.trials)
+
 
 class SimulationEngine:
     """Simulation Controller

@@ -11,6 +11,9 @@ def run_simulation():
     engine = SimulationEngine()
     engine.gen_all_trials()
     df = engine.results.as_dataframes()[0]
+    success_rate = round(engine.results.success_rate(), ndigits=1)
     return render_template(
-        "simulation.html", table=df.to_html(classes="table table-striped")
+        "simulation.html",
+        table=df.to_html(classes="table table-striped"),
+        success_rate=success_rate,
     )
