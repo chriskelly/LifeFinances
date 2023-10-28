@@ -103,3 +103,4 @@ sum of tax owed in previous brackets]"""
 
 MEDICARE_TAX_RATE = 0.0145
 SOCIAL_SECURITY_TAX_RATE = 0.062
+DISCOUNT_ON_PENSION_TAX = 0.2
