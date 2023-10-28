@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from app import util
-from app.models.taxes import Taxes, calc_taxes
+from app.models.financial.taxes import Taxes, calc_taxes
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import Kids, Spending
 from app.models.financial.state import State

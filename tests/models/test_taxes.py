@@ -10,7 +10,7 @@ from app.models.config import IncomeProfile, User
 from app.models.financial.state import State
 
 from app.util import max_earnings_extrapolator
-from app.models.taxes import (
+from app.models.financial.taxes import (
     _TaxRules,
     _bracket_math,
     _calc_income_taxes,
@@ -29,13 +29,14 @@ class TestCalcTaxes:
     def monkeypatch(self, monkeypatch: pytest.MonkeyPatch):
         """Patch functions and constants for testing"""
         monkeypatch.setattr(
-            "app.models.taxes._calc_income_taxes", lambda **_: self.income_tax
+            "app.models.financial.taxes._calc_income_taxes", lambda **_: self.income_tax
         )
         monkeypatch.setattr(
-            "app.models.taxes.MEDICARE_TAX_RATE", self.medicare_tax_rate
+            "app.models.financial.taxes.MEDICARE_TAX_RATE", self.medicare_tax_rate
         )
         monkeypatch.setattr(
-            "app.models.taxes._social_security_tax", lambda *_: self.social_security_tax
+            "app.models.financial.taxes._social_security_tax",
+            lambda *_: self.social_security_tax,
         )
 
     def test_calc_taxes(self, sample_user: User, first_state: State):
@@ -82,7 +83,7 @@ class TestCalcIncomeTaxes:
     @pytest.fixture(autouse=True)
     def monkeypatch_bracket_math(self, monkeypatch: pytest.MonkeyPatch):
         """Bracket math will return -1 for each time it's called."""
-        monkeypatch.setattr("app.models.taxes._bracket_math", lambda **_: -1)
+        monkeypatch.setattr("app.models.financial.taxes._bracket_math", lambda **_: -1)
 
     def test_when_taxable_income_is_zero(self, first_state: State):
         """
@@ -137,16 +138,20 @@ class TestTaxRules:
     def monkeypatch_tax_constants(self, monkeypatch: pytest.MonkeyPatch):
         """Fix constants for testing."""
         monkeypatch.setattr(
-            "app.models.taxes.FED_STD_DEDUCTION", self.federal_standard_deduction_mock
+            "app.models.financial.taxes.FED_STD_DEDUCTION",
+            self.federal_standard_deduction_mock,
         )
         monkeypatch.setattr(
-            "app.models.taxes.FED_BRACKET_RATES", self.federal_bracket_rates_mock
+            "app.models.financial.taxes.FED_BRACKET_RATES",
+            self.federal_bracket_rates_mock,
         )
         monkeypatch.setattr(
-            "app.models.taxes.STATE_STD_DEDUCTION", self.state_standard_deduction_mock
+            "app.models.financial.taxes.STATE_STD_DEDUCTION",
+            self.state_standard_deduction_mock,
         )
         monkeypatch.setattr(
-            "app.models.taxes.STATE_BRACKET_RATES", self.state_bracket_rates_mock
+            "app.models.financial.taxes.STATE_BRACKET_RATES",
+            self.state_bracket_rates_mock,
         )
 
     def test_when_residence_state_is_none(self, sample_user: User):
