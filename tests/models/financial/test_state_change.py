@@ -6,7 +6,21 @@ import pytest
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import Kids, Spending
 from app.models.financial.state import State
-from app.models.financial.state_change import _calc_cost_of_kids, _calc_spending
+from app.models.financial.state_change import Income, _calc_cost_of_kids, _calc_spending
+
+
+def test_income(mocker, first_state):
+    """Test that income is summed up correctly"""
+    fake_values = [1, 2, 3, 4]
+    controllers_mock = mocker.MagicMock()
+    controllers_mock.job_income.get_total_income = lambda *arg: fake_values[0]
+    controllers_mock.social_security.calc_payment = lambda *arg: (
+        fake_values[1],
+        fake_values[2],
+    )
+    controllers_mock.pension.calc_payment = lambda *arg: fake_values[3]
+    income = Income(state=first_state, controllers=controllers_mock)
+    assert float(income) == pytest.approx(sum(fake_values))
 
 
 class TestCalcSpending:
