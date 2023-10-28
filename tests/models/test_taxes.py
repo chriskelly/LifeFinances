@@ -2,7 +2,6 @@
 """
 # pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
 
-from unittest.mock import Mock
 import pytest
 from app.data.constants import INTERVALS_PER_YEAR
 from app.data.taxes import DISCOUNT_ON_PENSION_TAX, SOCIAL_SECURITY_TAX_RATE
@@ -39,14 +38,13 @@ class TestCalcTaxes:
             lambda *_: self.social_security_tax,
         )
 
-    def test_calc_taxes(self, sample_user: User, first_state: State):
+    def test_calc_taxes(self, mocker, sample_user: User, first_state: State):
         """Test that the Taxes object is calculated correctly"""
-        interval_income = 25
         portfolio_return = 10
         portfolio_tax_rate = 0.2
 
-        mock_income = Mock()
-        mock_income.job_income = interval_income
+        mock_income = mocker.MagicMock()
+        mock_income.job_income = 25
         mock_income.social_security_user = 0
         mock_income.social_security_partner = 0
         mock_income.pension = 0
@@ -54,7 +52,7 @@ class TestCalcTaxes:
         sample_user.income_profiles = [
             IncomeProfile(
                 **{
-                    "starting_income": interval_income * INTERVALS_PER_YEAR,
+                    "starting_income": mock_income.job_income * INTERVALS_PER_YEAR,
                     "last_date": 3000,
                 }
             ),
@@ -73,7 +71,7 @@ class TestCalcTaxes:
         expected_pension_tax = (1 - DISCOUNT_ON_PENSION_TAX) * self.income_tax
         assert taxes.income == pytest.approx(self.income_tax + expected_pension_tax)
         assert taxes.medicare == pytest.approx(
-            interval_income * -self.medicare_tax_rate
+            mock_income.job_income * -self.medicare_tax_rate
         )
         assert taxes.social_security == pytest.approx(self.social_security_tax)
         assert taxes.portfolio == pytest.approx(portfolio_return * -portfolio_tax_rate)
