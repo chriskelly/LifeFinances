@@ -84,6 +84,24 @@ class FloatRepr(ABC):
     def __rpow__(self, value):
         return value ** float(self)
 
+    def __eq__(self, value):
+        return float(self) == value
+
+    def __ne__(self, value):
+        return float(self) != value
+
+    def __gt__(self, value):
+        return float(self) > value
+
+    def __ge__(self, value):
+        return float(self) >= value
+
+    def __lt__(self, value):
+        return float(self) < value
+
+    def __le__(self, value):
+        return float(self) <= value
+
 
 class IntRepr(ABC):
     """Abstract class for representing a class as an int
@@ -161,6 +179,24 @@ class IntRepr(ABC):
 
     def __rpow__(self, value):
         return value ** int(self)
+
+    def __eq__(self, value):
+        return int(self) == value
+
+    def __ne__(self, value):
+        return int(self) != value
+
+    def __gt__(self, value):
+        return int(self) > value
+
+    def __ge__(self, value):
+        return int(self) >= value
+
+    def __lt__(self, value):
+        return int(self) < value
+
+    def __le__(self, value):
+        return int(self) <= value
 
 
 def constrain(value, low=float("-inf"), high=float("inf")):
