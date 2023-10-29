@@ -3,15 +3,16 @@
 Classes:    
     StateChangeComponents: Collection of components needed to calculate transition to next state
 """
+from __future__ import annotations
 from dataclasses import dataclass
-
 import numpy as np
 from app import util
 from app.models.financial.taxes import Taxes, calc_taxes
 from app.data.constants import INTERVALS_PER_YEAR
-from app.models.config import Kids, Spending
 from app.models.financial.state import State
 from app.models.controllers import Controllers
+
+# pylint: disable=redefined-builtin
 
 
 class Income(util.FloatRepr):
@@ -24,7 +25,10 @@ class Income(util.FloatRepr):
         pension (float): Pension income
     """
 
-    def __init__(self, state: State, controllers: Controllers):
+    def __init__(self, components: StateChangeComponents):
+        controllers = components.controllers
+        state = components.state
+
         self.job_income = controllers.job_income.get_total_income(state.interval_idx)
         (
             self.social_security_user,
@@ -63,34 +67,6 @@ class _Costs(util.FloatRepr):
         )
 
 
-def _calc_spending(state: State, config: Spending, is_working: bool) -> float:
-    base_amount = -config.yearly_amount / INTERVALS_PER_YEAR * state.inflation
-    if not is_working:
-        base_amount *= 1 + config.retirement_change
-    return base_amount
-
-
-def _calc_cost_of_kids(current_date: float, spending: float, config: Kids) -> float:
-    """Calculate the cost of children
-
-    Args:
-        current_date (float): date of state
-        spending (float): base spending in current state
-        config (Kids)
-
-    Returns:
-        float: cost of children for this interval
-    """
-    if config is None:
-        return 0
-    current_kids = [
-        year
-        for year in config.birth_years
-        if current_date - config.years_of_support < year <= current_date
-    ]
-    return len(current_kids) * spending * config.fraction_of_spending
-
-
 @dataclass
 class _NetTransactions(util.FloatRepr):
     income: Income
@@ -116,53 +92,87 @@ class StateChangeComponents:
     """
 
     def __init__(self, state: State, controllers: Controllers):
-        self._state = state
-        self._controllers = controllers
-        self._allocation = controllers.allocation.gen_allocation(state)
-        self._economic_data = controllers.economic_data.get_economic_state_data(
+        self.state = state
+        self.controllers = controllers
+        self.allocation = controllers.allocation.gen_allocation(state)
+        self.economic_data = controllers.economic_data.get_economic_state_data(
             state.interval_idx
         )
-        self.net_transactions = self._gen_net_transactions()
 
-    def _gen_net_transactions(self) -> _NetTransactions:
-        income = Income(self._state, self._controllers)
-        portfolio_return = self._state.net_worth * np.dot(
-            self._economic_data.asset_rates, self._allocation
+        self.net_transactions = StateChangeComponents._gen_net_transactions(
+            components=self
         )
-        costs = self._gen_costs(income, portfolio_return)
+
+    @staticmethod
+    def _gen_net_transactions(components: StateChangeComponents) -> _NetTransactions:
+        income = Income(components)
+        portfolio_return = components.state.net_worth * np.dot(
+            components.economic_data.asset_rates, components.allocation
+        )
+        costs = StateChangeComponents._gen_costs(
+            components=components, income=income, portfolio_return=portfolio_return
+        )
 
         return _NetTransactions(
             income=income,
             portfolio_return=portfolio_return,
             costs=costs,
-            annuity=self._controllers.annuity.make_annuity_transaction(
-                state=self._state,
-                is_working=self._controllers.job_income.is_working(
-                    self._state.interval_idx
+            annuity=components.controllers.annuity.make_annuity_transaction(
+                state=components.state,
+                is_working=components.controllers.job_income.is_working(
+                    components.state.interval_idx
                 ),
                 initial_net_transaction=income.job_income + costs,
             ),
         )
 
-    def _gen_costs(self, income: Income, portfolio_return: float) -> _Costs:
-        spending = _calc_spending(
-            state=self._state,
-            config=self._state.user.spending,
-            is_working=(
-                self._controllers.job_income.is_working(self._state.interval_idx)
-            ),
-        )
+    @staticmethod
+    def _gen_costs(
+        components: StateChangeComponents, income: Income, portfolio_return: float
+    ) -> _Costs:
+        spending = StateChangeComponents._calc_spending(components)
         return _Costs(
             spending=spending,
-            kids=_calc_cost_of_kids(
-                current_date=self._state.date,
+            kids=StateChangeComponents._calc_cost_of_kids(
+                components=components,
                 spending=spending,
-                config=self._state.user.kids,
             ),
             taxes=calc_taxes(
                 total_income=income,
-                job_income_controller=self._controllers.job_income,
-                state=self._state,
+                job_income_controller=components.controllers.job_income,
+                state=components.state,
                 portfolio_return=portfolio_return,
             ),
         )
+
+    @staticmethod
+    def _calc_spending(components: StateChangeComponents) -> float:
+        config = components.state.user.spending
+        inflation = components.state.inflation
+        is_working = components.controllers.job_income.is_working(
+            components.state.interval_idx
+        )
+
+        base_amount = -config.yearly_amount / INTERVALS_PER_YEAR * inflation
+        if not is_working:
+            base_amount *= 1 + config.retirement_change
+        return base_amount
+
+    @staticmethod
+    def _calc_cost_of_kids(components: StateChangeComponents, spending: float) -> float:
+        """Calculate the cost of children
+
+        Returns:
+            float: cost of children for this interval
+        """
+        current_date = components.state.date
+        config = components.state.user.kids
+
+        if config is None:
+            return 0
+        current_kids = [
+            year
+            for year in config.birth_years
+            if current_date - config.years_of_support < year <= current_date
+        ]
+        return len(current_kids) * spending * config.fraction_of_spending
