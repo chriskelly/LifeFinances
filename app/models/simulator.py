@@ -13,6 +13,7 @@ Classes:
     SimulationEngine:
 """
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 import pandas as pd
 from app.data import constants
@@ -27,6 +28,30 @@ from app.models.controllers import (
     annuity,
 )
 from app.models.financial.interval import gen_first_interval
+
+
+class ResultLabels(Enum):
+    """Labels for the columns in the results DataFrame"""
+
+    DATE = "Date"
+    NET_WORTH = "Net Worth"
+    INFLATION = "Inflation"
+    JOB_INCOME = "Job Income"
+    SS_USER = "SS User"
+    SS_PARTNER = "SS Partner"
+    PENSION = "Pension"
+    TOTAL_INCOME = "Total Income"
+    SPENDING = "Spending"
+    KIDS = "Kids"
+    INCOME_TAXES = "Income Taxes"
+    MEDICARE_TAXES = "Medicare Taxes"
+    SOCIAL_SECURITY_TAXES = "Social Security Taxes"
+    PORTFOLIO_TAXES = "Portfolio Taxes"
+    TOTAL_TAXES = "Total Taxes"
+    TOTAL_COSTS = "Total Costs"
+    PORTFOLIO_RETURN = "Portfolio Return"
+    ANNUITY = "Annuity"
+    NET_TRANSACTION = "Net Transaction"
 
 
 class SimulationTrial:
@@ -91,27 +116,7 @@ class Results:
         Returns a list of pandas DataFrames, where each DataFrame
         represents a trial in the simulator.
         """
-        columns = [
-            "Date",
-            "Net Worth",
-            "Inflation",
-            "Job Income",
-            "SS User",
-            "SS Partner",
-            "Pension",
-            "Total Income",
-            "Spending",
-            "Kids",
-            "Income Taxes",
-            "Medicare Taxes",
-            "Social Security Taxes",
-            "Portfolio Taxes",
-            "Total Taxes",
-            "Total Costs",
-            "Portfolio Return",
-            "Annuity",
-            "Net Transaction",
-        ]
+        columns = [label.value for label in ResultLabels]
         dataframes = []
         for trial in self.trials:
             data = [

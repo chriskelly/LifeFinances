@@ -7,6 +7,7 @@ import pytest
 from app.data import constants
 from app.models.simulator import (
     SimulationEngine,
+    ResultLabels,
 )
 
 
@@ -34,3 +35,31 @@ class TestSimulationEngine:
     def test_sample_full_config(self):
         """Sample full config should run without error"""
         self.run_and_test_engine(constants.SAMPLE_FULL_CONFIG_PATH)
+
+
+def _gen_results():
+    engine = SimulationEngine(
+        trial_qty=1, config_path=constants.SAMPLE_FULL_CONFIG_PATH
+    )
+    engine.gen_all_trials()
+    return engine.results.as_dataframes()
+
+
+class TestResults:
+    results = _gen_results()[0]
+
+    def test_incomes(self):
+        """All incomes should be positive or 0"""
+        assert (self.results[ResultLabels.JOB_INCOME.value] >= 0).all()
+        assert (self.results[ResultLabels.SS_USER.value] >= 0).all()
+        assert (self.results[ResultLabels.SS_PARTNER.value] >= 0).all()
+        assert (self.results[ResultLabels.PENSION.value] >= 0).all()
+        assert (self.results[ResultLabels.TOTAL_INCOME.value] >= 0).all()
+
+    def test_costs(self):
+        """These costs should be negative or 0"""
+        assert (self.results[ResultLabels.SPENDING.value] <= 0).all()
+        assert (self.results[ResultLabels.KIDS.value] <= 0).all()
+        assert (self.results[ResultLabels.INCOME_TAXES.value] <= 0).all()
+        assert (self.results[ResultLabels.MEDICARE_TAXES.value] <= 0).all()
+        assert (self.results[ResultLabels.SOCIAL_SECURITY_TAXES.value] <= 0).all()
