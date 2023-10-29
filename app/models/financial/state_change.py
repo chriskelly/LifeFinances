@@ -106,9 +106,7 @@ class StateChangeComponents:
     @staticmethod
     def _gen_net_transactions(components: StateChangeComponents) -> _NetTransactions:
         income = Income(components)
-        portfolio_return = components.state.net_worth * np.dot(
-            components.economic_data.asset_rates, components.allocation
-        )
+        portfolio_return = StateChangeComponents._calc_portfolio_return(components)
         costs = StateChangeComponents._gen_costs(
             components=components, income=income, portfolio_return=portfolio_return
         )
@@ -124,6 +122,12 @@ class StateChangeComponents:
                 ),
                 initial_net_transaction=income.job_income + costs,
             ),
+        )
+
+    @staticmethod
+    def _calc_portfolio_return(components: StateChangeComponents) -> float:
+        return components.state.net_worth * np.dot(
+            components.economic_data.asset_rates, components.allocation
         )
 
     @staticmethod

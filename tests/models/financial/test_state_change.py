@@ -27,16 +27,38 @@ def test_income(
 ):
     """Test that income is summed up correctly"""
     fake_values = [1, 2, 3, 4]
-    controllers_mock.job_income.get_total_income = lambda *_: fake_values[0]
-    controllers_mock.social_security.calc_payment = lambda *_: (
+    controllers_mock.job_income.get_total_income = lambda *_, **__: fake_values[0]
+    controllers_mock.social_security.calc_payment = lambda *_, **__: (
         fake_values[1],
         fake_values[2],
     )
-    controllers_mock.pension.calc_payment = lambda *_: fake_values[3]
+    controllers_mock.pension.calc_payment = lambda *_, **__: fake_values[3]
     components_mock.controllers = controllers_mock
     components_mock.state = first_state
     income = Income(components_mock)
     assert float(income) == pytest.approx(sum(fake_values))
+
+
+def test_portfolio_return(
+    mocker,
+    components_mock: StateChangeComponents,
+):
+    """Test that portfolio return is calculated correctly"""
+    net_worth = 100
+    asset_rates = [0.2, -0.2]
+    allocation = [0.4, 0.6]
+    dot_product = -0.04
+    expected_return = net_worth * dot_product
+
+    components_mock.state = mocker.MagicMock()
+    components_mock.state.net_worth = net_worth
+    components_mock.economic_data = mocker.MagicMock()
+    components_mock.economic_data.asset_rates = asset_rates
+    components_mock.allocation = allocation
+    components_mock.controllers = mocker.MagicMock()
+
+    portfolio_return = StateChangeComponents._calc_portfolio_return(components_mock)
+    assert portfolio_return == pytest.approx(expected_return)
 
 
 class TestCalcSpending:
@@ -62,14 +84,14 @@ class TestCalcSpending:
 
     def test_while_working(self, components_mock: StateChangeComponents):
         """Spending should be unadjusted while working"""
-        components_mock.controllers.job_income.is_working = lambda *_: True
+        components_mock.controllers.job_income.is_working = lambda *_, **__: True
         assert StateChangeComponents._calc_spending(components_mock) == pytest.approx(
             -self.yearly_amount / INTERVALS_PER_YEAR * self.inflation
         )
 
     def test_after_working(self, components_mock: StateChangeComponents):
         """Spending should be adjusted by the retirement change after working"""
-        components_mock.controllers.job_income.is_working = lambda *_: False
+        components_mock.controllers.job_income.is_working = lambda *_, **__: False
         assert StateChangeComponents._calc_spending(components_mock) == pytest.approx(
             -self.yearly_amount
             / INTERVALS_PER_YEAR
