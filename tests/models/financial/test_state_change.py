@@ -10,18 +10,6 @@ from app.models.financial.state import State
 from app.models.financial.state_change import Income, StateChangeComponents
 
 
-@pytest.fixture
-def controllers_mock(mocker):
-    """Fixture for an empty Controllers"""
-    return mocker.MagicMock(spec=Controllers)
-
-
-@pytest.fixture
-def components_mock(mocker):
-    """Fixture for an empty StateChangeComponents"""
-    return mocker.MagicMock(spec=StateChangeComponents)
-
-
 def test_income(
     controllers_mock: Controllers, first_state, components_mock: StateChangeComponents
 ):
