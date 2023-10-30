@@ -1,9 +1,0 @@
-providers = ["python"]
-
-[phases.setup]
-nixPkgs = [
-  "python39"
-]
-
-[start]
-cmds = ['pip install -r dependencies.txt']

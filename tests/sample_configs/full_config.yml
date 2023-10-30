@@ -1,0 +1,129 @@
+age: 30
+
+trial_quantity: 500
+
+calculate_til: 2090
+
+net_worth_target: 1500
+
+portfolio:
+  current_net_worth: 250
+  tax_rate: 0.1
+  annuity:
+    net_worth_target: 500
+    contribution_rate: 0.1
+  allocation_strategy:
+    flat:
+      chosen: true
+      allocation:
+        US_Bond: 0.4
+        US_Stock: 0.6
+    x_minus_age:
+      enabled: true
+      x: 120
+    bond_tent:
+      enabled: true
+      start_allocation: 0
+      start_date: 2035
+      peak_allocation: 0.8
+      peak_date: 2040
+      end_allocation: 0.0
+      end_date: 2060
+    life_cycle:
+      enabled: true
+      net_worth_target: 1500
+
+social_security_pension:
+  trust_factor: 0.8
+  pension_eligible: false
+  strategy:
+    early:
+      enabled: true
+    mid:
+      chosen: true
+    late:
+      enabled: true
+    net_worth:
+      enabled: true
+      net_worth_target: 2000
+  earnings_records:
+    2010: 75
+    2011: 78
+
+spending:
+  yearly_amount: 60
+  spending_strategy:
+    inflation_only:
+      chosen: true
+    ceil_floor:
+      enabled: true
+      allowed_fluctuation: 0.05
+  retirement_change: -0.12
+
+state: California
+
+kids:
+  fraction_of_spending: 0.12
+  years_of_support: 18
+  birth_years:
+    - 2021
+    - 2026
+
+income_profiles:
+  - starting_income: 80
+    tax_deferred_income: 10
+    yearly_raise: 0.04
+    try_to_optimize: true
+    social_security_eligible: true
+    last_date: 2035.25
+  - starting_income: 45
+    tax_deferred_income: 5
+    yearly_raise: 0.04
+    try_to_optimize: false
+    social_security_eligible: true
+    last_date: 2040.25
+
+partner:
+  age: 35
+
+  social_security_pension:
+    pension_eligible: true
+    strategy:
+      early:
+        enabled: false
+      mid:
+        chosen: false
+      late:
+        enabled: false
+      net_worth:
+        enabled: false
+      same:
+        chosen: true
+    earnings_records:
+      2008: 80
+      2010: 95
+
+  income_profiles:
+    - starting_income: 100
+      tax_deferred_income: 20
+      yearly_raise: 0.04
+      try_to_optimize: true
+      social_security_eligible: false
+      last_date: 2035.25
+
+admin:
+  pension:
+    trust_factor: 0.8
+    account_balance: 10
+    balance_update: 2022.5
+    strategy:
+      early:
+        enabled: true
+      mid:
+        chosen: true
+      late:
+        enabled: true
+      net_worth:
+        enabled: true
+      cash_out:
+        enabled: true

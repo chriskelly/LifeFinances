@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Simulation</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <style>
+    .table-container {
+      max-height: 450px;
+      /* Set the maximum height of the table container */
+      overflow-y: auto;
+      /* Enable vertical scrolling if the table overflows */
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    /* All cell rules */
+    th,
+    td {
+      padding: 8px;
+      text-align: left;
+    }
+
+    /* Header rules */
+    th {
+      position: -webkit-sticky;
+      /* For Safari */
+      position: sticky;
+      top: 0;
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Success Rate: {{success_rate*100}}%</h1>
+    <h1>First Result</h1>
+    <div class="table-container">
+      <table class="table table-striped">
+        {{ table | safe }}
+      </table>
+    </div>
+  </div>
+</body>
+
+</html>

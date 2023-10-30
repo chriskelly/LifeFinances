@@ -2,9 +2,7 @@
 # guide: https://www.atlassian.com/git/tutorials/saving-changes/gitignore
 
 # LifeFinances Specific
-param_success.json
-**/data/data.db
-diagnostics/saved/
+config.yml
 temporary*
 *.prof
 .vscode/

@@ -1,0 +1,4 @@
+Variable_1, Variable_2, Correlation
+US_Stock, US_Bond, 0.5
+US_Stock, Inflation, 0.4
+US_Bond, Inflation, -0.7
