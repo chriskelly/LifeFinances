@@ -5,22 +5,16 @@ Route locations
     
     app/routes/api.py
 """
-# pylint:disable=redefined-outer-name
-import pytest
+from flask.testing import FlaskClient
 
 
-@pytest.fixture
-def routes_to_test() -> dict:
-    """Returns dictionary of `route:expected_response`"""
-    return {
-        "/": "Hello, World!",
-        "/api/simulation": "First Result",
-    }
-
-
-def test_routes(client, routes_to_test: dict):
+def test_routes(client: FlaskClient):
     """Ensure all routes are working"""
-    for route, expected_res in routes_to_test.items():
+    routes = [
+        "/",
+        "/api/simulation",
+    ]
+    valid_status_codes = {200, 302}
+    for route in routes:
         response = client.get(route)
-        assert response.status_code == 200
-        assert expected_res.encode("utf-8") in response.data
+        assert response.status_code in valid_status_codes

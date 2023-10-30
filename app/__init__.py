@@ -1,6 +1,6 @@
 """Flask app definition"""
 
-from flask import Flask
+from flask import Flask, redirect, url_for
 from app.routes.api import api as api_blueprint
 
 
@@ -9,7 +9,7 @@ def create_app():
     app.register_blueprint(api_blueprint, url_prefix="/api")
 
     @app.route("/")
-    def hello():
-        return "Hello, World!"
+    def redirect_to_simulation():
+        return redirect(url_for("api.run_simulation"))
 
     return app
