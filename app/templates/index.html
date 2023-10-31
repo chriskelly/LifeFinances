@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Life Finances</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+    <style>
+        .container {
+            width: 100%;
+            display: flex;
+        }
+
+        .left-column {
+            width: 28%;
+            background-color: #f2f2f2;
+            padding: 20px;
+        }
+
+        .right-column {
+            width: 68%;
+            background-color: #e0e0e0;
+            padding: 20px;
+        }
+
+        .table-container {
+            max-height: 450px;
+            /* Set the maximum height of the table container */
+            overflow-y: auto;
+            /* Enable vertical scrolling if the table overflows */
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        /* All cell rules */
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        /* Header rules */
+        th {
+            position: -webkit-sticky;
+            /* For Safari */
+            position: sticky;
+            top: 0;
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="left-column">
+            <h1>Edit Config</h1>
+            <form method="POST">
+                <input type="submit" name="save" value="Save">
+                <input type="submit" name="run_simulation" value="Save & Run Simulation">
+                <textarea name="edited_config" rows="20" cols="40">{{ config }}</textarea><br><br>
+            </form>
+        </div>
+        <div class="right-column">
+            <h1>Chance of Success: {{success_percentage}}%</h1>
+            <h1>First Result</h1>
+            <div class="table-container">
+                <table class="table table-striped">
+                    {{ table | safe }}
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+
+<body>
+
+</body>
+
+</html>

@@ -12,7 +12,6 @@ def test_routes(client: FlaskClient):
     """Ensure all routes are working"""
     routes = [
         "/",
-        "/api/simulation",
     ]
     valid_status_codes = {200, 302}
     for route in routes:
