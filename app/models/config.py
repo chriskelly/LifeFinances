@@ -568,7 +568,7 @@ def get_config(config_path: Path) -> User:
     try:
         config = User(**yaml_content)
     except ValidationError as error:
-        print(error)
+        raise error
 
     # config.net_worth_target is considered global
     # and overwrites any net_worth_target value left unspecified
@@ -576,3 +576,25 @@ def get_config(config_path: Path) -> User:
         attribute_filler(config, "net_worth_target", config.net_worth_target)
 
     return config
+
+
+def read_config_file(config_path: Path = constants.CONFIG_PATH) -> str:
+    """Reads the config file and returns the text"""
+    with open(config_path, "r", encoding="utf-8") as config_file:
+        config_text = config_file.read()
+    return config_text
+
+
+def write_config_file(config_text: str, config_path: Path = constants.CONFIG_PATH):
+    """Writes the config file after validation"""
+    try:
+        data_as_yaml = yaml.safe_load(config_text)
+        User(**data_as_yaml)
+    except (yaml.YAMLError, TypeError) as error:
+        print(f"Invalid YAML format: {error}")
+        raise error
+    except ValidationError as error:
+        print(f"Invalid config: {error}")
+        raise error
+    with open(config_path, "w", encoding="utf-8") as config_file:
+        config_file.write(config_text)

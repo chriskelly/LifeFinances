@@ -8,9 +8,14 @@ Generation functions should be in the same module as the class they generate.
 Classes:
     SimulationTrial: A single simulation trial representing one modeled lifetime
     
-    Results:
+    ResultsLabels: Labels for the columns in the results DataFrame
     
-    SimulationEngine:
+    Results: Results of a series of simulation trials
+    
+    SimulationEngine: Simulation Controller
+
+Functions:
+    gen_simulation_results(): Generates a Results object
 """
 from dataclasses import dataclass
 from enum import Enum
@@ -28,30 +33,6 @@ from app.models.controllers import (
     annuity,
 )
 from app.models.financial.interval import gen_first_interval
-
-
-class ResultLabels(Enum):
-    """Labels for the columns in the results DataFrame"""
-
-    DATE = "Date"
-    NET_WORTH = "Net Worth"
-    INFLATION = "Inflation"
-    JOB_INCOME = "Job Income"
-    SS_USER = "SS User"
-    SS_PARTNER = "SS Partner"
-    PENSION = "Pension"
-    TOTAL_INCOME = "Total Income"
-    SPENDING = "Spending"
-    KIDS = "Kids"
-    INCOME_TAXES = "Income Taxes"
-    MEDICARE_TAXES = "Medicare Taxes"
-    SOCIAL_SECURITY_TAXES = "Social Security Taxes"
-    PORTFOLIO_TAXES = "Portfolio Taxes"
-    TOTAL_TAXES = "Total Taxes"
-    TOTAL_COSTS = "Total Costs"
-    PORTFOLIO_RETURN = "Portfolio Return"
-    ANNUITY = "Annuity"
-    NET_TRANSACTION = "Net Transaction"
 
 
 class SimulationTrial:
@@ -100,6 +81,34 @@ class SimulationTrial:
                 self.intervals[-1].gen_next_interval(self._controllers)
             )
 
+    def get_success(self) -> bool:
+        """Returns True if the trial ended with a positive net worth"""
+        return self.intervals[-1].state.net_worth > 0
+
+
+class ResultLabels(Enum):
+    """Labels for the columns in the results DataFrame"""
+
+    DATE = "Date"
+    NET_WORTH = "Net Worth"
+    INFLATION = "Inflation"
+    JOB_INCOME = "Job Income"
+    SS_USER = "SS User"
+    SS_PARTNER = "SS Partner"
+    PENSION = "Pension"
+    TOTAL_INCOME = "Total Income"
+    SPENDING = "Spending"
+    KIDS = "Kids"
+    INCOME_TAXES = "Income Taxes"
+    MEDICARE_TAXES = "Medicare Taxes"
+    SOCIAL_SECURITY_TAXES = "Social Security Taxes"
+    PORTFOLIO_TAXES = "Portfolio Taxes"
+    TOTAL_TAXES = "Total Taxes"
+    TOTAL_COSTS = "Total Costs"
+    PORTFOLIO_RETURN = "Portfolio Return"
+    ANNUITY = "Annuity"
+    NET_TRANSACTION = "Net Transaction"
+
 
 @dataclass
 class Results:
@@ -147,11 +156,13 @@ class Results:
             dataframes.append(df)
         return dataframes
 
-    def success_rate(self) -> float:
-        """Returns the percentage of trials that ended with a positive net worth"""
-        return sum(
-            trial.intervals[-1].state.net_worth > 0 for trial in self.trials
-        ) / len(self.trials)
+    def calc_success_rate(self) -> float:
+        """Returns the rate of trials that ended with a positive net worth"""
+        return sum(trial.get_success() for trial in self.trials) / len(self.trials)
+
+    def calc_success_percentage(self) -> str:
+        """Returns the formatted percentage of trials that ended with a positive net worth"""
+        return str(round(100 * self.calc_success_rate(), ndigits=1))
 
 
 class SimulationEngine:
@@ -201,3 +212,10 @@ class SimulationEngine:
             )
             for i in range(self._trial_qty)
         ]
+
+
+def gen_simulation_results() -> Results:
+    """Runs a simulation and returns the results"""
+    engine = SimulationEngine()
+    engine.gen_all_trials()
+    return engine.results

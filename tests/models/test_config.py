@@ -5,6 +5,7 @@ run `python3 -m pytest` if VSCode Testing won't load
 
 from typing import Optional
 from dataclasses import dataclass
+from pytest_mock import MockerFixture
 import yaml
 import pytest
 from pydantic import ValidationError
@@ -16,6 +17,7 @@ from app.models.config import (
     StrategyOptions,
     attribute_filler,
     _income_profiles_in_order,
+    write_config_file,
 )
 
 
@@ -185,3 +187,37 @@ def test_either_income_or_net_worth():
     }
     with pytest.raises(ValidationError, match="1 validation error"):
         User(**data)
+
+
+def test_write_config_file(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+    """Ensure write_config_file works as expected and fails when necessary"""
+    with open(
+        constants.SAMPLE_MIN_CONFIG_NET_WORTH_PATH, "r", encoding="utf-8"
+    ) as file:
+        min_config = file.read()
+
+    mock_open = mocker.MagicMock()
+    monkeypatch.setattr("builtins.open", mock_open)
+
+    # Test valid YAML
+    write_config_file(min_config)
+    mock_open.assert_called_once()
+
+    # Test invalid YAML loading
+    config_text = min_config.replace(":", "")
+    with pytest.raises(TypeError):
+        write_config_file(config_text)
+
+    # Test invalid YAML format
+    invalid_yaml = """
+    key: value
+    - item1
+    - item2
+    """
+    with pytest.raises(yaml.YAMLError):
+        write_config_file(invalid_yaml)
+
+    # Test invalid config
+    config_text = min_config.replace("age", "wrong_key")
+    with pytest.raises(ValidationError):
+        write_config_file(config_text)

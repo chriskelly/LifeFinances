@@ -4,10 +4,13 @@
 
 from pathlib import Path
 import pytest
+from pytest_mock import MockerFixture
 from app.data import constants
 from app.models.simulator import (
+    Results,
     SimulationEngine,
     ResultLabels,
+    SimulationTrial,
 )
 
 
@@ -63,3 +66,21 @@ class TestResults:
         assert (self.results[ResultLabels.INCOME_TAXES.value] <= 0).all()
         assert (self.results[ResultLabels.MEDICARE_TAXES.value] <= 0).all()
         assert (self.results[ResultLabels.SOCIAL_SECURITY_TAXES.value] <= 0).all()
+
+    def test_calc_success_rate(self, mocker: MockerFixture):
+        """calc_success_rate should return the correct value"""
+        successful_trial_mock = mocker.MagicMock(spec=SimulationTrial)
+        successful_trial_mock.get_success.return_value = True
+        failed_trial_mock = mocker.MagicMock(spec=SimulationTrial)
+        failed_trial_mock.get_success.return_value = False
+        results = Results(
+            trials=[
+                successful_trial_mock,
+                successful_trial_mock,
+                successful_trial_mock,
+                failed_trial_mock,
+                failed_trial_mock,
+            ]
+        )
+        assert results.calc_success_rate() == pytest.approx(0.6)
+        assert results.calc_success_percentage() == "60.0"
