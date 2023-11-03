@@ -40,13 +40,8 @@ class Taxes(util.FloatRepr):
     _sum: float = None
 
     def __post_init__(self):
-        self._sum = sum(
-            (
-                self.income,
-                self.medicare,
-                self.social_security,
-                self.portfolio,
-            )
+        self._sum = float(
+            self.income + self.medicare + self.social_security + self.portfolio
         )
 
     def __float__(self):

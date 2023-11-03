@@ -36,14 +36,10 @@ class Income(util.FloatRepr):
         ) = controllers.social_security.calc_payment(state)
         self.pension = controllers.pension.calc_payment(state)
         self._sum = float(
-            sum(
-                (
-                    self.job_income,
-                    self.social_security_user,
-                    self.social_security_partner,
-                    self.pension,
-                )
-            )
+            self.job_income
+            + self.social_security_user
+            + self.social_security_partner
+            + self.pension
         )
 
     def __float__(self):
@@ -58,13 +54,7 @@ class _Costs(util.FloatRepr):
     _sum: float = None
 
     def __post_init__(self):
-        self._sum = sum(
-            (
-                self.spending,
-                self.kids,
-                self.taxes,
-            )
-        )
+        self._sum = float(self.spending + self.kids + self.taxes)
 
     def __float__(self):
         return self._sum
@@ -79,7 +69,9 @@ class _NetTransactions(util.FloatRepr):
     _sum: float = None
 
     def __post_init__(self):
-        self._sum = sum((self.income, self.portfolio_return, self.costs, self.annuity))
+        self._sum = float(
+            self.income + self.portfolio_return + self.costs + self.annuity
+        )
 
     def __float__(self):
         return self._sum
