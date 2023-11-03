@@ -137,18 +137,18 @@ class Results:
                     interval.state_change_components.net_transactions.income.social_security_user,
                     interval.state_change_components.net_transactions.income.social_security_partner,
                     interval.state_change_components.net_transactions.income.pension,
-                    interval.state_change_components.net_transactions.income,
+                    interval.state_change_components.net_transactions.income.sum,
                     interval.state_change_components.net_transactions.costs.spending,
                     interval.state_change_components.net_transactions.costs.kids,
                     interval.state_change_components.net_transactions.costs.taxes.income,
                     interval.state_change_components.net_transactions.costs.taxes.medicare,
                     interval.state_change_components.net_transactions.costs.taxes.social_security,
                     interval.state_change_components.net_transactions.costs.taxes.portfolio,
-                    interval.state_change_components.net_transactions.costs.taxes,
-                    interval.state_change_components.net_transactions.costs,
+                    interval.state_change_components.net_transactions.costs.taxes.sum,
+                    interval.state_change_components.net_transactions.costs.sum,
                     interval.state_change_components.net_transactions.portfolio_return,
                     interval.state_change_components.net_transactions.annuity,
-                    interval.state_change_components.net_transactions,
+                    interval.state_change_components.net_transactions.sum,
                 ]
                 for interval in trial.intervals
             ]

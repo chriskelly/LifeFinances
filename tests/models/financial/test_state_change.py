@@ -24,7 +24,7 @@ def test_income(
     components_mock.controllers = controllers_mock
     components_mock.state = first_state
     income = Income(components_mock)
-    assert float(income) == pytest.approx(sum(fake_values))
+    assert income.sum == pytest.approx(sum(fake_values))
 
 
 def test_portfolio_return(

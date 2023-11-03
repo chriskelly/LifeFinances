@@ -6,7 +6,6 @@ Classes:
 from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
-from app import util
 from app.models.financial.taxes import Taxes, calc_taxes
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.financial.state import State
@@ -15,7 +14,7 @@ from app.models.controllers import Controllers
 # pylint: disable=redefined-builtin
 
 
-class Income(util.FloatRepr):
+class Income:
     """Income in a given interval
 
     Attributes:
@@ -23,6 +22,7 @@ class Income(util.FloatRepr):
         social_security_user (float): Social security income for user
         social_security_partner (float): Social security income for partner
         pension (float): Pension income
+        sum (float): Sum of all income
     """
 
     def __init__(self, components: StateChangeComponents):
@@ -35,46 +35,37 @@ class Income(util.FloatRepr):
             self.social_security_partner,
         ) = controllers.social_security.calc_payment(state)
         self.pension = controllers.pension.calc_payment(state)
-        self._sum = float(
+        self.sum = float(
             self.job_income
             + self.social_security_user
             + self.social_security_partner
             + self.pension
         )
 
-    def __float__(self):
-        return self._sum
-
 
 @dataclass
-class _Costs(util.FloatRepr):
+class _Costs:
     spending: float
     kids: float
     taxes: Taxes
-    _sum: float = None
+    sum: float = None
 
     def __post_init__(self):
-        self._sum = float(self.spending + self.kids + self.taxes)
-
-    def __float__(self):
-        return self._sum
+        self.sum = self.spending + self.kids + self.taxes.sum
 
 
 @dataclass
-class _NetTransactions(util.FloatRepr):
+class _NetTransactions:
     income: Income
     portfolio_return: float
     costs: _Costs
     annuity: float
-    _sum: float = None
+    sum: float = None
 
     def __post_init__(self):
-        self._sum = float(
-            self.income + self.portfolio_return + self.costs + self.annuity
+        self.sum = (
+            self.income.sum + self.portfolio_return + self.costs.sum + self.annuity
         )
-
-    def __float__(self):
-        return self._sum
 
 
 class StateChangeComponents:
@@ -117,7 +108,7 @@ class StateChangeComponents:
                 is_working=components.controllers.job_income.is_working(
                     components.state.interval_idx
                 ),
-                initial_net_transaction=income.job_income + costs,
+                initial_net_transaction=income.job_income + costs.sum,
             ),
         )
 

@@ -40,7 +40,7 @@ class Interval:
             date=self.state.date + constants.YEARS_PER_INTERVAL,
             interval_idx=next_state_interval_idx,
             net_worth=self.state.net_worth
-            + self.state_change_components.net_transactions,
+            + self.state_change_components.net_transactions.sum,
             inflation=controllers.economic_data.get_economic_state_data(
                 next_state_interval_idx
             ).inflation,

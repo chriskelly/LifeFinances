@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class Taxes(util.FloatRepr):
+class Taxes:
     """Taxes paid in a given interval
 
     Attributes:
@@ -28,24 +28,19 @@ class Taxes(util.FloatRepr):
         medicare (float): medicare taxes as part of FICA
         social_security (float): social security taxes as part of FICA
         portfolio (float): taxes on portfolio income
-
-    Returns:
-        _type_: _description_
+        sum (float): sum of all taxes
     """
 
     income: float
     medicare: float
     social_security: float
     portfolio: float
-    _sum: float = None
+    sum: float = None
 
     def __post_init__(self):
-        self._sum = float(
+        self.sum = float(
             self.income + self.medicare + self.social_security + self.portfolio
         )
-
-    def __float__(self):
-        return self._sum
 
 
 def calc_taxes(

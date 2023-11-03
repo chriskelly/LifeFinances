@@ -26,7 +26,8 @@ def test_gen_next_interval(
     interval = Interval(state=first_state, controllers=controllers_mock)
     interval.state_change_components = components_mock
     net_transactions_mock = 100
-    interval.state_change_components.net_transactions = net_transactions_mock
+    interval.state_change_components.net_transactions = mocker.MagicMock()
+    interval.state_change_components.net_transactions.sum = net_transactions_mock
     economic_state_data_mock = mocker.MagicMock(spec=EconomicStateData)
     next_inflation = 2
     economic_state_data_mock.inflation = next_inflation
