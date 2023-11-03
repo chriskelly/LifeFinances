@@ -49,12 +49,15 @@ class _FlatAllocationStrategy(_Strategy):
 
     config: config.FlatAllocationStrategyConfig
     asset_lookup: dict[str, int]
+    allocation: np.ndarray = None
+
+    def __post_init__(self):
+        self.allocation = np.zeros(len(self.asset_lookup))
+        for asset, ratio in self.config.allocation.items():
+            self.allocation[self.asset_lookup[asset]] = ratio
 
     def gen_allocation(self, state: State):
-        allocation = np.zeros(len(self.asset_lookup))
-        for asset, ratio in self.config.allocation.items():
-            allocation[self.asset_lookup[asset]] = ratio
-        return allocation
+        return self.allocation
 
 
 class Controller:
