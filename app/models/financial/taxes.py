@@ -37,18 +37,20 @@ class Taxes(util.FloatRepr):
     medicare: float
     social_security: float
     portfolio: float
+    _sum: float = None
 
-    def __float__(self):
-        return float(
-            sum(
-                [
-                    self.income,
-                    self.medicare,
-                    self.social_security,
-                    self.portfolio,
-                ]
+    def __post_init__(self):
+        self._sum = sum(
+            (
+                self.income,
+                self.medicare,
+                self.social_security,
+                self.portfolio,
             )
         )
+
+    def __float__(self):
+        return self._sum
 
 
 def calc_taxes(

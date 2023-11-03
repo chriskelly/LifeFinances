@@ -4,6 +4,7 @@
 
 from pathlib import Path
 import pytest
+import numpy as np
 from pytest_mock import MockerFixture
 from app.data import constants
 from app.models.simulator import (
@@ -40,16 +41,16 @@ class TestSimulationEngine:
         self.run_and_test_engine(constants.SAMPLE_FULL_CONFIG_PATH)
 
 
-def _gen_results():
+def _gen_single_trial_results():
     engine = SimulationEngine(
         trial_qty=1, config_path=constants.SAMPLE_FULL_CONFIG_PATH
     )
     engine.gen_all_trials()
-    return engine.results.as_dataframes()
+    return engine.results.as_dataframes()[0]
 
 
 class TestResults:
-    results = _gen_results()[0]
+    results = _gen_single_trial_results()
 
     def test_incomes(self):
         """All incomes should be positive or 0"""
@@ -84,3 +85,52 @@ class TestResults:
         )
         assert results.calc_success_rate() == pytest.approx(0.6)
         assert results.calc_success_percentage() == "60.0"
+
+    def test_summations(self):
+        """Column summations should be correct
+
+        Since summation is only calculated once, this test ensures the component
+        values aren't being changed post-initilization.
+        """
+        net_transaction = self.results[ResultLabels.NET_TRANSACTION.value].astype(float)
+        sum_of_net_transaction_components = sum(
+            (
+                self.results[ResultLabels.TOTAL_INCOME.value],
+                self.results[ResultLabels.PORTFOLIO_RETURN.value],
+                self.results[ResultLabels.TOTAL_COSTS.value],
+                self.results[ResultLabels.ANNUITY.value],
+            )
+        ).astype(float)
+        assert np.all(np.isclose(net_transaction, sum_of_net_transaction_components))
+
+        total_income = self.results[ResultLabels.TOTAL_INCOME.value].astype(float)
+        sum_of_income_components = sum(
+            (
+                self.results[ResultLabels.JOB_INCOME.value],
+                self.results[ResultLabels.SS_USER.value],
+                self.results[ResultLabels.SS_PARTNER.value],
+                self.results[ResultLabels.PENSION.value],
+            )
+        ).astype(float)
+        assert np.all(np.isclose(total_income, sum_of_income_components))
+
+        total_costs = self.results[ResultLabels.TOTAL_COSTS.value].astype(float)
+        sum_of_cost_components = sum(
+            (
+                self.results[ResultLabels.SPENDING.value],
+                self.results[ResultLabels.KIDS.value],
+                self.results[ResultLabels.TOTAL_TAXES.value],
+            )
+        ).astype(float)
+        assert np.all(np.isclose(total_costs, sum_of_cost_components))
+
+        total_taxes = self.results[ResultLabels.TOTAL_TAXES.value].astype(float)
+        sum_of_tax_components = sum(
+            (
+                self.results[ResultLabels.INCOME_TAXES.value],
+                self.results[ResultLabels.MEDICARE_TAXES.value],
+                self.results[ResultLabels.SOCIAL_SECURITY_TAXES.value],
+                self.results[ResultLabels.PORTFOLIO_TAXES.value],
+            )
+        ).astype(float)
+        assert np.all(np.isclose(total_taxes, sum_of_tax_components))

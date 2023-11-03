@@ -35,18 +35,19 @@ class Income(util.FloatRepr):
             self.social_security_partner,
         ) = controllers.social_security.calc_payment(state)
         self.pension = controllers.pension.calc_payment(state)
-
-    def __float__(self):
-        return float(
+        self._sum = float(
             sum(
-                [
+                (
                     self.job_income,
                     self.social_security_user,
                     self.social_security_partner,
                     self.pension,
-                ]
+                )
             )
         )
+
+    def __float__(self):
+        return self._sum
 
 
 @dataclass
@@ -54,17 +55,19 @@ class _Costs(util.FloatRepr):
     spending: float
     kids: float
     taxes: Taxes
+    _sum: float = None
 
-    def __float__(self):
-        return float(
-            sum(
-                [
-                    self.spending,
-                    self.kids,
-                    self.taxes,
-                ]
+    def __post_init__(self):
+        self._sum = sum(
+            (
+                self.spending,
+                self.kids,
+                self.taxes,
             )
         )
+
+    def __float__(self):
+        return self._sum
 
 
 @dataclass
@@ -73,11 +76,13 @@ class _NetTransactions(util.FloatRepr):
     portfolio_return: float
     costs: _Costs
     annuity: float
+    _sum: float = None
+
+    def __post_init__(self):
+        self._sum = sum((self.income, self.portfolio_return, self.costs, self.annuity))
 
     def __float__(self):
-        return float(
-            sum([self.income, self.portfolio_return, self.costs, self.annuity])
-        )
+        return self._sum
 
 
 class StateChangeComponents:
