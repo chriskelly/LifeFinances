@@ -23,7 +23,7 @@ class _Strategy(ABC):
 
     @abstractmethod
     def gen_allocation(self, state: State) -> np.ndarray:
-        """Generate risk ratios for a portfolio
+        """Generate allocation array for a portfolio
 
         Args:
             state (financial.State): current state
@@ -52,12 +52,60 @@ class _FlatAllocationStrategy(_Strategy):
     allocation: np.ndarray = None
 
     def __post_init__(self):
-        self.allocation = np.zeros(len(self.asset_lookup))
-        for asset, ratio in self.config.allocation.items():
-            self.allocation[self.asset_lookup[asset]] = ratio
+        self.allocation = _allocation_dict_to_array(
+            allocation_dict=self.config.allocation, asset_lookup=self.asset_lookup
+        )
 
     def gen_allocation(self, state: State):
         return self.allocation
+
+
+@dataclass
+class _NetWorthPivotStrategy(_Strategy):
+    config: config.NetWorthPivotStrategyConfig
+    asset_lookup: dict[str, int]
+    under_target_allocation: np.ndarray = None
+    over_target_allocation: np.ndarray = None
+
+    def __post_init__(self):
+        self.under_target_allocation = _allocation_dict_to_array(
+            allocation_dict=self.config.under_target_allocation,
+            asset_lookup=self.asset_lookup,
+        )
+        self.over_target_allocation = _allocation_dict_to_array(
+            allocation_dict=self.config.over_target_allocation,
+            asset_lookup=self.asset_lookup,
+        )
+
+    def gen_allocation(self, state: State):
+        present_value_net_worth = state.net_worth / state.inflation
+        target_multiple = present_value_net_worth / self.config.net_worth_target
+        if target_multiple <= 1:
+            return self.under_target_allocation
+        under_target_ratio = 1 / target_multiple
+        over_target_ratio = 1 - under_target_ratio
+        return (
+            self.under_target_allocation * under_target_ratio
+            + self.over_target_allocation * over_target_ratio
+        )
+
+
+def _allocation_dict_to_array(
+    allocation_dict: dict[str, float], asset_lookup: dict[str, int]
+) -> np.ndarray:
+    """Converts an allocation dict to an array
+
+    Args:
+        allocation_dict (dict[str, float]): allocation dict
+        asset_lookup (dict[str, int]): lookup table for asset names
+
+    Returns:
+        np.ndarray: allocation array
+    """
+    allocation = np.zeros(len(asset_lookup))
+    for asset, ratio in allocation_dict.items():
+        allocation[asset_lookup[asset]] = ratio
+    return allocation
 
 
 class Controller:
@@ -75,6 +123,10 @@ class Controller:
         match strategy_str:
             case "flat":
                 self._strategy = _FlatAllocationStrategy(
+                    config=strategy_obj, asset_lookup=asset_lookup
+                )
+            case "net_worth_pivot":
+                self._strategy = _NetWorthPivotStrategy(
                     config=strategy_obj, asset_lookup=asset_lookup
                 )
             case _:

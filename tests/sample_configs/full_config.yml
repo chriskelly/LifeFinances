@@ -18,20 +18,14 @@ portfolio:
       allocation:
         US_Bond: 0.4
         US_Stock: 0.6
-    x_minus_age:
+    net_worth_pivot:
       enabled: true
-      x: 120
-    bond_tent:
-      enabled: true
-      start_allocation: 0
-      start_date: 2035
-      peak_allocation: 0.8
-      peak_date: 2040
-      end_allocation: 0.0
-      end_date: 2060
-    life_cycle:
-      enabled: true
-      net_worth_target: 1500
+      net_worth_target: 1000
+      under_target_allocation:
+        US_Stock: 0.8
+        US_Bond: 0.2
+      over_target_allocation:
+        US_Bond: 1
 
 social_security_pension:
   trust_factor: 0.8

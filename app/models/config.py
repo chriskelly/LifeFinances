@@ -7,6 +7,7 @@ Useful Pydantic documentation
         
 """
 
+import csv
 import math
 from pathlib import Path
 from typing import Optional
@@ -15,6 +16,12 @@ from pydantic import BaseModel, ValidationError, field_validator, model_validato
 from pydantic_core.core_schema import FieldValidationInfo
 from app.data.taxes import STATE_BRACKET_RATES
 from app.data import constants
+
+with open(constants.STATISTICS_PATH, "r", encoding="utf-8") as file:
+    reader = csv.reader(file)
+    next(reader)  # Skip the first row
+    ALLOWED_ASSETS = {row[0] for row in reader}
+    ALLOWED_ASSETS.discard("Inflation")
 
 
 class StrategyConfig(BaseModel):
@@ -93,6 +100,25 @@ class AnnuityConfig(BaseModel):
     contribution_rate: float
 
 
+def _allocation_sums_to_1(allocation: dict[str, float]):
+    """Restrict allocation to sum to 1 if provided"""
+    if allocation and not math.isclose(1, sum(allocation.values())):
+        raise ValueError("flat strategy allocation must sum to 1")
+
+
+def _allocation_options_valid(allocation_options: dict[str, float]):
+    """All assets must be allowed in allocation options"""
+    for asset in allocation_options.keys():
+        if asset not in ALLOWED_ASSETS:
+            raise ValueError(f"{asset} is not allowed in allocation options")
+
+
+def _validate_allocation(allocation: dict[str, float]):
+    """Validate allocation if provided"""
+    _allocation_sums_to_1(allocation)
+    _allocation_options_valid(allocation)
+
+
 class FlatAllocationStrategyConfig(StrategyConfig):
     """
     Attributes
@@ -102,88 +128,21 @@ class FlatAllocationStrategyConfig(StrategyConfig):
     allocation: Optional[dict[str, float]] = None
 
     @model_validator(mode="after")
-    def allocation_sums_to_1(self):
-        """Restrict allocation to sum to 1 if provided"""
-        if self.allocation and not math.isclose(1, sum(self.allocation.values())):
-            raise ValueError("flat strategy allocation must sum to 1")
+    def validate_allocation(self):
+        """Validate allocation"""
+        _validate_allocation(self.allocation)
         return self
 
 
-class XMinusAgeStrategyConfig(StrategyConfig):
+class NetWorthPivotStrategyConfig(StrategyConfig):
     """
     Attributes
-        x (int): Defaults to None
+        net_worth_target (float): Also referred to as equity target
     """
 
-    x: Optional[int] = None
-
-
-class BondTentStrategyConfig(StrategyConfig):
-    """
-    While called a Bond Tent, this strategy also applies to annuities if selected.
-
-    Attributes
-        start_allocation (float): Defaults to None
-
-        start_date (float): Defaults to None
-
-        peak_allocation (float): Defaults to None
-
-        peak_date (float): Defaults to None
-
-        end_allocation (float): Defaults to None
-
-        end_date (float): Defaults to None
-    """
-
-    start_allocation: Optional[float] = None
-    start_date: Optional[float] = None
-    peak_allocation: Optional[float] = None
-    peak_date: Optional[float] = None
-    end_allocation: Optional[float] = None
-    end_date: Optional[float] = None
-
-    @field_validator("start_allocation", "peak_allocation", "end_allocation")
-    @classmethod
-    def allocation_between_0_and_1(cls, allocation: float):
-        """Restrict allocations to be between 0 and 1 if provided"""
-        if allocation < 0 or allocation > 1:
-            raise ValueError("Allocation must be between 0 and 1")
-        return allocation
-
-    @model_validator(mode="after")
-    def dates_in_order(self):
-        """Restrict dates to be in order if provided"""
-        if self.start_date and self.peak_date and self.end_date:
-            if self.start_date >= self.peak_date:
-                raise ValueError("Start date must be before peak date")
-            if self.peak_date >= self.end_date:
-                raise ValueError("Peak date must be before end date")
-        return self
-
-    @model_validator(mode="after")
-    def all_attributes_or_none(self):
-        """Restrict attributes to be all present or all absent"""
-        values = list(
-            {
-                k: v for k, v in vars(self).items() if k not in {"enabled", "chosen"}
-            }.values()
-        )
-        none_values = [value is None for value in values]
-        if any(none_values) and not all(none_values):
-            raise ValueError(
-                "All Bond Tent attributes must be defined if any are defined"
-            )
-        return self
-
-
-class LifeCycleStrategyConfig(StrategyConfig):
-    """
-    Attributes
-        net_worth_target (float): Also referred to as equity target. Defaults to None
-    """
-
-    net_worth_target: Optional[float] = None
+    net_worth_target: float
+    under_target_allocation: dict[str, float]
+    over_target_allocation: dict[str, float]
 
     @model_validator(mode="after")
     def net_worth_target_greater_or_equal_to_0(self):
@@ -192,23 +151,24 @@ class LifeCycleStrategyConfig(StrategyConfig):
             raise ValueError("Net worth target must be greater or equal to 0")
         return self
 
+    @model_validator(mode="after")
+    def validate_allocations(self):
+        """Validate allocations"""
+        _validate_allocation(self.under_target_allocation)
+        _validate_allocation(self.over_target_allocation)
+        return self
+
 
 class AllocationOptions(StrategyOptions):
     """
     Attributes
         flat (FlatAllocationStrategyConfig): Defaults to None
 
-        x_minus_age (XMinusAgeStrategyConfig): Defaults to None
-
-        bond_tent (BondTentStrategyConfig): Defaults to None
-
-        life_cycle (LifeCycleStrategyConfig): Defaults to None
+        net_worth_pivot (LifeCycleStrategyConfig): Defaults to None
     """
 
     flat: Optional[FlatAllocationStrategyConfig] = None
-    x_minus_age: Optional[XMinusAgeStrategyConfig] = None
-    bond_tent: Optional[BondTentStrategyConfig] = None
-    life_cycle: Optional[LifeCycleStrategyConfig] = None
+    net_worth_pivot: Optional[NetWorthPivotStrategyConfig] = None
 
 
 class Portfolio(BaseModel):
@@ -563,7 +523,9 @@ def get_config(config_path: Path) -> User:
     Returns:
         User
     """
-    with open(config_path, "r", encoding="utf-8") as file:
+    with open(
+        config_path, "r", encoding="utf-8"
+    ) as file:  # pylint:disable=redefined-outer-name
         yaml_content = yaml.safe_load(file)
     try:
         config = User(**yaml_content)
