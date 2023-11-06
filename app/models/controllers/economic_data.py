@@ -346,3 +346,7 @@ class Controller:
     def get_economic_state_data(self, state_interval_idx: int) -> EconomicStateData:
         """Returns economic data for a single state"""
         return self._economic_trial_data.get_state_data(state_interval_idx)
+
+    def get_economic_trial_data(self) -> EconomicTrialData:
+        """Returns economic data for the associated trial"""
+        return self._economic_trial_data

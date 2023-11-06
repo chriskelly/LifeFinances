@@ -65,7 +65,7 @@ class SimulationTrial:
         job_income_controller: job_income.Controller,
     ):
         self._user_config = user_config
-        self._controllers = Controllers(
+        self.controllers = Controllers(
             allocation=allocation_controller,
             economic_data=economic_data_controller,
             job_income=job_income_controller,
@@ -75,10 +75,10 @@ class SimulationTrial:
             pension=pension.Controller(user_config),
             annuity=annuity.Controller(user_config),
         )
-        self.intervals = [gen_first_interval(user_config, self._controllers)]
+        self.intervals = [gen_first_interval(user_config, self.controllers)]
         for _ in range(self._user_config.intervals_per_trial - 1):
             self.intervals.append(
-                self.intervals[-1].gen_next_interval(self._controllers)
+                self.intervals[-1].gen_next_interval(self.controllers)
             )
 
     def get_success(self) -> bool:
@@ -119,42 +119,81 @@ class Results:
     """
 
     trials: list[SimulationTrial] = None
+    _state_columns = [label.value for label in ResultLabels]
+    _allocation_columns: list[str] = None
+    _performance_columns: list[str] = None
 
     def as_dataframes(self) -> list[pd.DataFrame]:
         """
         Returns a list of pandas DataFrames, where each DataFrame
         represents a trial in the simulator.
         """
-        columns = [label.value for label in ResultLabels]
+        self._set_asset_columns()
         dataframes = []
         for trial in self.trials:
-            data = [
-                [
-                    interval.state.date,
-                    interval.state.net_worth,
-                    interval.state.inflation,
-                    interval.state_change_components.net_transactions.income.job_income,
-                    interval.state_change_components.net_transactions.income.social_security_user,
-                    interval.state_change_components.net_transactions.income.social_security_partner,
-                    interval.state_change_components.net_transactions.income.pension,
-                    interval.state_change_components.net_transactions.income.sum,
-                    interval.state_change_components.net_transactions.costs.spending,
-                    interval.state_change_components.net_transactions.costs.kids,
-                    interval.state_change_components.net_transactions.costs.taxes.income,
-                    interval.state_change_components.net_transactions.costs.taxes.medicare,
-                    interval.state_change_components.net_transactions.costs.taxes.social_security,
-                    interval.state_change_components.net_transactions.costs.taxes.portfolio,
-                    interval.state_change_components.net_transactions.costs.taxes.sum,
-                    interval.state_change_components.net_transactions.costs.sum,
-                    interval.state_change_components.net_transactions.portfolio_return,
-                    interval.state_change_components.net_transactions.annuity,
-                    interval.state_change_components.net_transactions.sum,
-                ]
-                for interval in trial.intervals
-            ]
-            df = pd.DataFrame(data, columns=columns)
+            states_df = self._gen_states_df(trial)
+            allocations_df = self._gen_allocations_df(trial)
+            asset_performances_df = self._gen_asset_performances_df(trial)
+            df = pd.concat([states_df, allocations_df, asset_performances_df], axis=1)
             dataframes.append(df)
         return dataframes
+
+    def _set_asset_columns(self) -> list[str]:
+        """Sets asset column names"""
+        asset_lookup = (
+            self.trials[0]
+            .controllers.economic_data.get_economic_trial_data()
+            .asset_lookup
+        )
+        asset_columns = [None] * len(asset_lookup)
+        for asset, index in asset_lookup.items():
+            asset_columns[index] = asset
+        self._allocation_columns = [f"{asset}_%" for asset in asset_columns]
+        self._performance_columns = [f"{asset}_rate" for asset in asset_columns]
+
+    def _gen_states_df(self, trial: SimulationTrial) -> pd.DataFrame:
+        data = [
+            [
+                interval.state.date,
+                interval.state.net_worth,
+                interval.state.inflation,
+                interval.state_change_components.net_transactions.income.job_income,
+                interval.state_change_components.net_transactions.income.social_security_user,
+                interval.state_change_components.net_transactions.income.social_security_partner,
+                interval.state_change_components.net_transactions.income.pension,
+                interval.state_change_components.net_transactions.income.sum,
+                interval.state_change_components.net_transactions.costs.spending,
+                interval.state_change_components.net_transactions.costs.kids,
+                interval.state_change_components.net_transactions.costs.taxes.income,
+                interval.state_change_components.net_transactions.costs.taxes.medicare,
+                interval.state_change_components.net_transactions.costs.taxes.social_security,
+                interval.state_change_components.net_transactions.costs.taxes.portfolio,
+                interval.state_change_components.net_transactions.costs.taxes.sum,
+                interval.state_change_components.net_transactions.costs.sum,
+                interval.state_change_components.net_transactions.portfolio_return,
+                interval.state_change_components.net_transactions.annuity,
+                interval.state_change_components.net_transactions.sum,
+            ]
+            for interval in trial.intervals
+        ]
+        return pd.DataFrame(data, columns=self._state_columns)
+
+    def _gen_allocations_df(self, trial: SimulationTrial) -> pd.DataFrame:
+        """Returns a DataFrame of allocation data"""
+        return pd.DataFrame(
+            [
+                interval.state_change_components.allocation
+                for interval in trial.intervals
+            ],
+            columns=self._allocation_columns,
+        )
+
+    def _gen_asset_performances_df(self, trial: SimulationTrial) -> pd.DataFrame:
+        """Returns a DataFrame of asset performance data"""
+        economic_trial_data = trial.controllers.economic_data.get_economic_trial_data()
+        return pd.DataFrame(
+            economic_trial_data.asset_rates, columns=self._performance_columns
+        )
 
     def calc_success_rate(self) -> float:
         """Returns the rate of trials that ended with a positive net worth"""
