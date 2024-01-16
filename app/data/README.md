@@ -11,5 +11,5 @@ All correlation data from [Portfolio Visualizer](https://www.portfoliovisualizer
 - Short_term_Treasury: VFISX (1992-2023)
 - Mid_term_Treasury: VFITX (1992-2023)
 - REIT: VGSIX (1997-2023)
-- Commondities: GSG (2007-2023)
+- Commodities: GSG (2007-2023)
 - Gold: GLD (2005-2023)
