@@ -1,6 +1,7 @@
 """Testing for models/config.py
 run `python3 -m pytest` if VSCode Testing won't load
 """
+
 # pylint:disable=redefined-outer-name,missing-class-docstring,no-name-in-module
 
 from typing import Optional
@@ -12,11 +13,13 @@ from pydantic import ValidationError
 from app.data import constants
 from app.models.config import (
     IncomeProfile,
+    SpendingProfile,
     User,
     StrategyConfig,
     StrategyOptions,
     attribute_filler,
     _income_profiles_in_order,
+    _spending_profiles_validation,
     write_config_file,
 )
 
@@ -167,6 +170,29 @@ def test_income_profiles_in_order():
         _income_profiles_in_order(profiles)
 
 
+class TestSpendingProfileValidation:
+    profile1 = SpendingProfile(yearly_amount=10000, end_date=1)
+    profile2 = SpendingProfile(yearly_amount=20000, end_date=2)
+    profile3 = SpendingProfile(yearly_amount=30000)
+
+    def test_profiles_not_in_order(self):
+        """Spending profiles must be in order"""
+        profiles = [self.profile2, self.profile1, self.profile3]
+        with pytest.raises(ValueError):
+            _spending_profiles_validation(profiles)
+
+    def test_last_profile_has_end_date(self):
+        """The last spending profile must not have an end_date"""
+        profiles = [self.profile1, self.profile2]
+        with pytest.raises(ValueError):
+            _spending_profiles_validation(profiles)
+
+    def test_valid_profiles(self):
+        """Valid profiles should pass"""
+        profiles = [self.profile1, self.profile2, self.profile3]
+        _spending_profiles_validation(profiles)
+
+
 def test_social_security_user_same_strategy(sample_config_data):
     """If the user enables the `same` strategy for social_security_pension,
     a ValidationError should be captured."""
@@ -182,7 +208,7 @@ def test_either_income_or_net_worth():
     data = {
         "age": 30,
         "spending": {
-            "yearly_amount": 60,
+            "profiles": [{"yearly_amount": 10000}],
         },
     }
     with pytest.raises(ValidationError, match="1 validation error"):

@@ -276,15 +276,6 @@ class Pension(BaseModel):
     strategy: Optional[PensionOptions] = PensionOptions(mid=StrategyConfig(chosen=True))
 
 
-class CeilFloorStrategyConfig(StrategyConfig):
-    """
-    Attributes
-        allowed_fluctuation (float): Defaults to None
-    """
-
-    allowed_fluctuation: Optional[float] = None
-
-
 class SpendingOptions(StrategyOptions):
     """
     Attributes
@@ -293,25 +284,50 @@ class SpendingOptions(StrategyOptions):
         ceil_floor (CeilFloorStrategy): Defaults to None
     """
 
-    inflation_only: Optional[StrategyConfig] = None
-    ceil_floor: Optional[CeilFloorStrategyConfig] = None
+    inflation_only: Optional[StrategyConfig] = StrategyConfig(chosen=True)
+
+
+class SpendingProfile(BaseModel):
+    """
+    Attributes
+        yearly_amount (float)
+
+        end_date (float)
+    """
+
+    yearly_amount: int
+    end_date: Optional[float] = None
+
+
+def _spending_profiles_validation(spending_profiles: list[SpendingProfile]):
+    """Spending profiles must be in order and last profile should have no end date"""
+    if spending_profiles:
+        if len(spending_profiles) > 2:
+            for i in range(1, len(spending_profiles) - 1):
+                if spending_profiles[i].end_date < spending_profiles[i - 1].end_date:
+                    raise ValueError("Spending profiles must be in order")
+        if spending_profiles[-1].end_date:
+            raise ValueError("Last spending profile should have no end date")
 
 
 class Spending(BaseModel):
     """
     Attributes
-        yearly_amount (int)
-
         spending_strategy (SpendingOptions): Defaults to `inflation_only` strategy
 
-        retirement_change (float): Defaults to 0
+        profiles (list[SpendingProfile])
     """
 
-    yearly_amount: int
     spending_strategy: SpendingOptions = SpendingOptions(
         inflation_only=StrategyConfig(chosen=True)
     )
-    retirement_change: float = 0
+    profiles: list[SpendingProfile]
+
+    @model_validator(mode="after")
+    def validate_profiles(self):
+        """Spending profiles must be in order and last profile should have no end date"""
+        _spending_profiles_validation(self.profiles)
+        return self
 
 
 class Kids(BaseModel):

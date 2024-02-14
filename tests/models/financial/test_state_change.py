@@ -1,10 +1,11 @@
 """Testing for models/financial/state_change.py
 """
+
 # pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
 
 import pytest
 from app.data.constants import INTERVALS_PER_YEAR
-from app.models.config import Kids, Spending
+from app.models.config import Kids, Spending, SpendingProfile
 from app.models.controllers import Controllers
 from app.models.financial.state import State
 from app.models.financial.state_change import Income, StateChangeComponents
@@ -50,42 +51,55 @@ def test_portfolio_return(
 
 
 class TestCalcSpending:
-    yearly_amount = 50
-    retirement_change = -0.1
     inflation = 2
+    yearly_amounts = [5000, 6000, 7000]
+    dates = [2021, 2022, 2023]
 
     @pytest.fixture()
     def components_mock(
         self,
         first_state: State,
         components_mock: StateChangeComponents,
-        controllers_mock: Controllers,
     ):
         """Initialize the mock components"""
         components_mock.state = first_state
+        components_mock.state.date = self.dates[0]
         components_mock.state.user.spending = Spending(
-            yearly_amount=self.yearly_amount, retirement_change=self.retirement_change
+            profiles=[SpendingProfile(yearly_amount=self.yearly_amounts[0])]
         )
         components_mock.state.inflation = self.inflation
-        components_mock.controllers = controllers_mock
         return components_mock
 
-    def test_while_working(self, components_mock: StateChangeComponents):
-        """Spending should be unadjusted while working"""
-        components_mock.controllers.job_income.is_working = lambda *_, **__: True
-        assert StateChangeComponents._calc_spending(components_mock) == pytest.approx(
-            -self.yearly_amount / INTERVALS_PER_YEAR * self.inflation
+    def test_single_profile(self, components_mock: StateChangeComponents):
+        """Test that the spending is calculated correctly for a single profile"""
+        spending = StateChangeComponents._calc_spending(components_mock)
+        assert spending == pytest.approx(
+            -self.yearly_amounts[0] / INTERVALS_PER_YEAR * self.inflation
         )
 
-    def test_after_working(self, components_mock: StateChangeComponents):
-        """Spending should be adjusted by the retirement change after working"""
-        components_mock.controllers.job_income.is_working = lambda *_, **__: False
-        assert StateChangeComponents._calc_spending(components_mock) == pytest.approx(
-            -self.yearly_amount
-            / INTERVALS_PER_YEAR
-            * self.inflation
-            * (1 + self.retirement_change)
-        )
+    def test_multiple_profiles(self, components_mock: StateChangeComponents):
+        """Test that the spending is calculated correctly for multiple profiles"""
+        components_mock.state.user.spending.profiles = [
+            SpendingProfile(yearly_amount=yearly_amount, end_date=date)
+            for yearly_amount, date in zip(self.yearly_amounts, self.dates)
+        ]
+        for i, date in enumerate(self.dates):
+            components_mock.state.date = date
+            spending = StateChangeComponents._calc_spending(components_mock)
+            assert spending == pytest.approx(
+                -self.yearly_amounts[i] / INTERVALS_PER_YEAR * self.inflation
+            )
+
+    def test_no_matching_profile(self, components_mock: StateChangeComponents):
+        """Test that an error is raised if the last profile has a date (which it shouldn't)
+        before the current date"""
+        date = 2020
+        components_mock.state.user.spending.profiles = [
+            SpendingProfile(yearly_amount=1000, end_date=date)
+        ]
+        components_mock.state.date = date + 1
+        with pytest.raises(ValueError):
+            StateChangeComponents._calc_spending(components_mock)
 
 
 class TestCalcCostOfKids:

@@ -45,14 +45,15 @@ social_security_pension:
     2011: 78
 
 spending:
-  yearly_amount: 60
   spending_strategy:
     inflation_only:
       chosen: true
-    ceil_floor:
-      enabled: true
-      allowed_fluctuation: 0.05
-  retirement_change: -0.12
+  profiles:
+    - yearly_amount: 60
+      end_date: 2035.25
+    - yearly_amount: 70
+      end_date: 2040.25
+    - yearly_amount: 55
 
 state: California
 

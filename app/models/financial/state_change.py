@@ -3,6 +3,7 @@
 Classes:    
     StateChangeComponents: Collection of components needed to calculate transition to next state
 """
+
 from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
@@ -10,8 +11,6 @@ from app.models.financial.taxes import Taxes, calc_taxes
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.financial.state import State
 from app.models.controllers import Controllers
-
-# pylint: disable=redefined-builtin
 
 
 class Income:
@@ -139,16 +138,22 @@ class StateChangeComponents:
 
     @staticmethod
     def _calc_spending(components: StateChangeComponents) -> float:
+        """
+        Calculate the spending amount based on the user's config and the current state.
+
+        Args:
+            components (StateChangeComponents): The components required for the calculation.
+
+        Returns:
+            float: The calculated spending amount for that state.
+        """
         config = components.state.user.spending
         inflation = components.state.inflation
-        is_working = components.controllers.job_income.is_working(
-            components.state.interval_idx
-        )
 
-        base_amount = -config.yearly_amount / INTERVALS_PER_YEAR * inflation
-        if not is_working:
-            base_amount *= 1 + config.retirement_change
-        return base_amount
+        for profile in config.profiles:
+            if not profile.end_date or profile.end_date >= components.state.date:
+                return -profile.yearly_amount / INTERVALS_PER_YEAR * inflation
+        raise ValueError("No spending profile found for the current date")
 
     @staticmethod
     def _calc_cost_of_kids(components: StateChangeComponents, spending: float) -> float:
