@@ -87,6 +87,21 @@ class Controller:
                 self._user_timeline, self._partner_timeline
             )
         ]
+        total_income = [
+            user_income.amount + partner_income.amount
+            for user_income, partner_income in zip(
+                self._user_timeline, self._partner_timeline
+            )
+        ]
+        # retirement interval should be the first interval where total income is 0
+        # and all future intervals also have 0 income. If there is no such interval,
+        # retirement interval is set to the last interval.
+        for i, income in enumerate(reversed(total_income)):
+            if income > 0:
+                self._retirement_interval = self._size - i
+                break
+            if i == len(total_income) - 1:
+                self._retirement_interval = 0
 
     def _gen_timeline(self, profiles: list[IncomeProfile]) -> list[Income]:
         """Generate a list of Income objects
@@ -183,16 +198,8 @@ class Controller:
         """
         return self.get_total_income(interval_idx) - self._tax_deferred[interval_idx]
 
-    def is_working(self, interval_idx: int) -> bool:
+    def is_retired(self, interval_idx: int) -> bool:
         """
-        Returns `True` if the total income for the given interval index is greater than 0,
-        indicating that the user and/or partner is working during that interval.
-        Returns `False` otherwise.
-
-        Args:
-        - interval_idx (int): The index of the interval to check
-
-        Returns:
-        - bool: `True` if the user is working during the given interval, `False` otherwise
-        """
-        return self.get_total_income(interval_idx) > 0
+        Returns `True` when both the user and partner have no future income, indicating that
+        both are retired during the given interval. Returns `False` otherwise."""
+        return interval_idx >= self._retirement_interval

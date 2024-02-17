@@ -104,7 +104,7 @@ class StateChangeComponents:
             costs=costs,
             annuity=components.controllers.annuity.make_annuity_transaction(
                 state=components.state,
-                is_working=components.controllers.job_income.is_working(
+                is_working=not components.controllers.job_income.is_retired(
                     components.state.interval_idx
                 ),
                 initial_net_transaction=income.job_income + costs.sum,

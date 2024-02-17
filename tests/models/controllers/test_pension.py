@@ -1,9 +1,15 @@
 """Testing for models/controllers/pension.py"""
+
 # pylint:disable=missing-class-docstring,protected-access
 
 import pytest
 from app.data.constants import INTERVALS_PER_YEAR
-from app.models.config import NetWorthStrategyConfig, PensionOptions, User
+from app.models.config import (
+    IncomeProfile,
+    NetWorthStrategyConfig,
+    PensionOptions,
+    User,
+)
 from app.models.controllers.pension import (
     LATE_YEAR,
     _AgeStrategy,
@@ -128,11 +134,60 @@ class TestCashOutStrategy:
 
 
 class TestController:
-    def test_calc_base(self, sample_user: User):
-        """Should return the correct base value"""
-        controller = Controller(sample_user)
-        income_profile = sample_user.partner.income_profiles[0]
-        assert controller._calc_base(income_profile) == pytest.approx(481.25, 0.1)
+    class TestCalcBase:
+        def test_sample_user(self, sample_user: User):
+            """Should return the correct base value"""
+            assert Controller._calc_base(
+                sample_user.partner.income_profiles
+            ) == pytest.approx(481.25, 0.1)
+
+    class TestCalcYearsOnBreak:
+        def test_base_case(self):
+            """Should return the correct number of years on break"""
+            job_breaks = [(2000, 2002), (2005, 2007), (2010, 2011)]
+            assert Controller._calc_years_on_break(job_breaks) == 5
+
+        def test_empty_list(self):
+            """Should return 0 if the job_breaks list is empty"""
+            job_breaks = []
+            assert Controller._calc_years_on_break(job_breaks) == 0
+
+        def test_single_break(self):
+            """Should return the duration of a single job break"""
+            job_breaks = [(2000, 2006)]
+            assert Controller._calc_years_on_break(job_breaks) == 6
+
+    class TestYearsLeftToWork:
+        current_date = 2021
+
+        def test_base_case(self):
+            """Should return the correct number of years left to work"""
+            income_profiles = [
+                IncomeProfile(starting_income=1000, last_date=2022),
+                IncomeProfile(starting_income=2000, last_date=2024),
+                IncomeProfile(starting_income=3000, last_date=2026),
+            ]
+            assert (
+                Controller._years_left_to_work(income_profiles, self.current_date) == 5
+            )
+
+        def test_with_zero_starting_income(self):
+            """Should not count years with zero starting income"""
+            income_profiles = [
+                IncomeProfile(starting_income=0, last_date=2022),
+                IncomeProfile(starting_income=2000, last_date=2024),
+                IncomeProfile(starting_income=3000, last_date=2026),
+            ]
+            assert (
+                Controller._years_left_to_work(income_profiles, self.current_date) == 4
+            )
+
+        def test_with_empty_income_profiles(self):
+            """Should return 0 if the income_profiles list is empty"""
+            income_profiles = []
+            assert (
+                Controller._years_left_to_work(income_profiles, self.current_date) == 0
+            )
 
     def test_gen_strategy(self, sample_user: User):
         """Ensure Controller.strategy has been set correctly"""

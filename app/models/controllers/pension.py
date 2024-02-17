@@ -34,6 +34,9 @@ EARLY_YEAR = 2043
 MID_YEAR = 2048
 LATE_YEAR = 2053
 JOB_START_DATE = 2016
+JOB_BREAKS: list[tuple[float, float]] = []
+"""Any unpaid breaks in format [(start date, end date), ...]"""
+FINAL_COMPENSATION = 109.5
 
 
 class _Strategy(ABC):
@@ -152,23 +155,51 @@ class Controller:
     def __init__(self, user: User):
         self._user = user
         if user.admin:
-            base = self._calc_base(user.partner.income_profiles[0])
+            base = Controller._calc_base(user.partner.income_profiles)
             self._strategy = self._gen_strategy(base)
         else:
             self._strategy = None
 
-    def _calc_base(self, job_profile: IncomeProfile) -> float:
+    @staticmethod
+    def _calc_base(income_profiles: list[IncomeProfile]) -> float:
         """Calculate the interval value to multiply against the benefit rates
 
         This is the `service credit x final compensation` portion of the pension formula
         """
-        years_worked = job_profile.last_date - JOB_START_DATE
+        prev_years_on_break = Controller._calc_years_on_break(JOB_BREAKS)
+        prev_years_worked = constants.TODAY_YR_QT - JOB_START_DATE - prev_years_on_break
+        years_worked = prev_years_worked + Controller._years_left_to_work(
+            income_profiles=income_profiles, current_date=constants.TODAY_YR_QT
+        )
+        final_compensation = (
+            FINAL_COMPENSATION
+            if not income_profiles
+            else income_profiles[-1].starting_income
+        )
+
         # This base should technically be the present value of income level
         # at the last year of work, but seeing as I don't have access to inflation
         # when this is initialized and we're not too far from retirement
         # anyway, I'll just say that the present value of the future income
         # is roughly equal to the current income
-        return job_profile.starting_income * years_worked / INTERVALS_PER_YEAR
+        return final_compensation * years_worked / INTERVALS_PER_YEAR
+
+    @staticmethod
+    def _calc_years_on_break(job_breaks: list[tuple[float, float]]) -> float:
+        """Calculate the years on break"""
+        return sum(end - start for start, end in job_breaks)
+
+    @staticmethod
+    def _years_left_to_work(
+        income_profiles: list[IncomeProfile], current_date: float
+    ) -> float:
+        years_worked = 0
+        date = current_date
+        for profile in income_profiles:
+            if profile.starting_income != 0:
+                years_worked += profile.last_date - date
+            date = profile.last_date
+        return years_worked
 
     def _gen_strategy(self, base: float) -> _Strategy:
         (
