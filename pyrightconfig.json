@@ -1,0 +1,12 @@
+{
+  "venvPath": ".",
+  "venv": "venv",
+  "include": [
+    "app",
+    "tests",
+    "tpaw_planner.ipynb",
+    "run.py"
+  ]
+}
+
+
