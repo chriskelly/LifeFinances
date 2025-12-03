@@ -4,7 +4,7 @@ Useful Pydantic documentation
     Required, optional, and nullable fields
         https://docs.pydantic.dev/latest/migration/#required-optional-and-nullable-fields
     V2 Validators
-        
+
 """
 
 import csv
@@ -397,6 +397,15 @@ class Partner(BaseModel):
     income_profiles: Optional[list[IncomeProfile]] = None
 
 
+class TPAWPlanner(BaseModel):
+    """
+    Attributes
+        group_tol (float): Defaults to 1.0
+    """
+
+    group_tol: float = 1.0
+
+
 class Admin(BaseModel):
     """
     Attributes
@@ -431,6 +440,8 @@ class User(BaseModel):
 
         partner (Partner): Defaults to None
 
+        tpaw_planner (TPAWPlanner): Defaults to None
+
         admin (Admin): Defaults to None
     """
 
@@ -445,6 +456,7 @@ class User(BaseModel):
     kids: Optional[Kids] = None
     income_profiles: list[IncomeProfile] = None
     partner: Optional[Partner] = None
+    tpaw_planner: Optional[TPAWPlanner] = TPAWPlanner()
     admin: Optional[Admin] = None
 
     @property

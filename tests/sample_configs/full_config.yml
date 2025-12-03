@@ -106,6 +106,9 @@ partner:
       social_security_eligible: false
       last_date: 2035.25
 
+tpaw_planner:
+  group_tol: 1.0
+
 admin:
   pension:
     trust_factor: 0.8
