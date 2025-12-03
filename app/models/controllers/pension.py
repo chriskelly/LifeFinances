@@ -176,12 +176,6 @@ class Controller:
             if not income_profiles
             else income_profiles[-1].starting_income
         )
-
-        # This base should technically be the present value of income level
-        # at the last year of work, but seeing as I don't have access to inflation
-        # when this is initialized and we're not too far from retirement
-        # anyway, I'll just say that the present value of the future income
-        # is roughly equal to the current income
         return final_compensation * years_worked / INTERVALS_PER_YEAR
 
     @staticmethod
@@ -229,4 +223,9 @@ class Controller:
         """
         if not self._strategy:
             return 0
-        return self._strategy.calc_payment(state)
+        payment = self._strategy.calc_payment(state)
+        return (
+            payment * state.user.admin.pension.trust_factor
+            if state.user.admin
+            else payment
+        )

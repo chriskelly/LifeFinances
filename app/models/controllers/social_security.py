@@ -3,6 +3,7 @@
 Classes:
     Controller: Generate and provide social security payments
 """
+
 import math
 from abc import ABC, abstractmethod
 from app.util import index_extrapolator, max_earnings_extrapolator
@@ -471,4 +472,6 @@ class Controller:
             )
             if partners_spousal_benefit > partner_payment:
                 partner_payment = partners_spousal_benefit
+        user_payment *= state.user.social_security_pension.trust_factor
+        partner_payment *= state.user.partner.social_security_pension.trust_factor
         return user_payment, partner_payment
