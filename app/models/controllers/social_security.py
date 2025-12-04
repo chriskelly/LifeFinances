@@ -472,6 +472,8 @@ class Controller:
             )
             if partners_spousal_benefit > partner_payment:
                 partner_payment = partners_spousal_benefit
+
         user_payment *= state.user.social_security_pension.trust_factor
-        partner_payment *= state.user.partner.social_security_pension.trust_factor
+        if state.user.partner is not None:
+            partner_payment *= state.user.partner.social_security_pension.trust_factor
         return user_payment, partner_payment
