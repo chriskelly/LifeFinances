@@ -108,6 +108,7 @@ partner:
 
 tpaw_planner:
   group_tol: 1.0
+  inflation_rate: 0.02
 
 admin:
   pension:

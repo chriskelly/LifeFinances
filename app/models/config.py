@@ -401,9 +401,14 @@ class TPAWPlanner(BaseModel):
     """
     Attributes
         group_tol (float): Defaults to 1.0
+        inflation_rate (float): Optional constant real annual inflation rate (e.g. 0.02 for 2%).
+            When set, the TPAW planner export notebook can override
+            the simulated inflation path with a deterministic one based on this rate.
+            Defaults to None.
     """
 
     group_tol: float = 1.0
+    inflation_rate: Optional[float] = None
 
 
 class Admin(BaseModel):
