@@ -219,12 +219,12 @@ class TestController:
         assert Controller(sample_user)._strategy is None
 
     def test_calc_payment(self, sample_user: User, first_state: State):
-        """Should return the strategy's calc_payment result unless there
+        """Should return the strategy's calc_payment (adjusted by trust factor) result unless there
         is no admin, in which case it should return 0"""
         controller = Controller(sample_user)
         first_state.date = LATE_YEAR
         assert controller.calc_payment(first_state) == pytest.approx(
-            controller._strategy.calc_payment(first_state)
+            controller._strategy.calc_payment(first_state) * sample_user.admin.pension.trust_factor
         )
         sample_user.admin = None
         assert Controller(sample_user).calc_payment(first_state) == 0

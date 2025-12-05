@@ -213,19 +213,22 @@ class Controller:
                 return _CashOutStrategy(self._user)
 
     def calc_payment(self, state: State) -> float:
-        """Calculate pension payment for interval
+        """Calculate pension payment for interval adjusted by trust factor
 
         Args:
             state (State): current state
 
         Returns:
             float: Interval payment
+
+        Raises:
+            ValueError: If state.user.admin is None
         """
         if not self._strategy:
             return 0
+        if state.user.admin is None:
+            raise ValueError(
+                "state.user.admin cannot be None when calculating pension payment"
+            )
         payment = self._strategy.calc_payment(state)
-        return (
-            payment * state.user.admin.pension.trust_factor
-            if state.user.admin
-            else payment
-        )
+        return payment * state.user.admin.pension.trust_factor
