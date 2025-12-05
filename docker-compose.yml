@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   life_finances:
     build:
