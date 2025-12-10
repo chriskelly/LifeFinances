@@ -1,0 +1,46 @@
+{
+	"name": "LifeFinances DevContainer",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": ".."
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-python.pylint",
+				"ms-python.debugpy",
+				"ms-toolsai.jupyter"
+			],
+			"settings": {
+				"python.defaultInterpreterPath": "/usr/local/bin/python",
+				"python.linting.enabled": true,
+				"python.linting.pylintEnabled": true,
+				"python.formatting.provider": "none",
+				"python.testing.pytestEnabled": true,
+				"python.testing.unittestEnabled": false,
+				"python.testing.pytestArgs": [
+					"tests"
+				],
+				"files.exclude": {
+					"**/__pycache__": true,
+					"**/*.pyc": true
+				}
+			}
+		}
+	},
+	"forwardPorts": [3500],
+	"portsAttributes": {
+		"3500": {
+			"label": "Flask App",
+			"onAutoForward": "notify"
+		}
+	},
+	"postCreateCommand": "pip install -r requirements/dev.txt && cp tests/sample_configs/full_config.yml config.yml || true",
+	"remoteUser": "root",
+	"workspaceFolder": "/workspace",
+	"mounts": [
+		"source=${localWorkspaceFolder},target=/workspace,type=bind"
+	]
+}
