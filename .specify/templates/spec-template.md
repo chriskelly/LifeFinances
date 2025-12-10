@@ -113,3 +113,18 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+
+### Testing Requirements *(constitution-aligned)*
+
+- **TR-001**: Test coverage MUST achieve minimum 80% (95%+ for financial calculations and simulation logic)
+- **TR-002**: All tests MUST use pytest framework with appropriate fixtures
+- **TR-003**: Unit tests MUST complete in under 1 second per test
+- **TR-004**: Integration tests MUST complete in under 10 seconds per test
+- **TR-005**: API endpoints MUST have integration tests verifying status codes, response formats, and error handling
+
+### Performance Requirements *(constitution-aligned)*
+
+- **PR-001**: Interactive API endpoints MUST respond within 2 seconds under normal load
+- **PR-002**: Simulation operations MUST meet performance targets (specify: e.g., <100ms per trial)
+- **PR-003**: Memory usage MUST be bounded and monitored
+- **PR-004**: Performance-critical code paths MUST be profiled before merge

@@ -31,7 +31,30 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+**Code Quality Gates:**
+- [ ] All code will include type hints for public functions and classes
+- [ ] Code will pass pylint with minimum score of 8.0/10.0
+- [ ] All modules will include module-level docstrings
+- [ ] All public classes and functions will include docstrings
+- [ ] No circular dependencies will be introduced
+
+**Testing Gates:**
+- [ ] Test coverage plan achieves minimum 80% (95%+ for financial calculations)
+- [ ] Tests will use pytest framework with proper fixtures
+- [ ] Integration tests planned for API endpoints
+- [ ] Test performance targets defined (<1s unit, <10s integration)
+
+**User Experience Gates:**
+- [ ] API endpoints follow consistent naming conventions
+- [ ] Error messages will be clear and actionable
+- [ ] Response time targets defined (<2s for interactive endpoints)
+- [ ] Configuration validation planned
+
+**Performance Gates:**
+- [ ] Performance benchmarks defined for simulation operations
+- [ ] Profiling strategy identified for critical paths
+- [ ] Memory usage constraints considered
+- [ ] Scalability considerations documented
 
 ## Project Structure
 

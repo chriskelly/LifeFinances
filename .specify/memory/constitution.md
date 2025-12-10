@@ -1,0 +1,108 @@
+<!--
+Sync Impact Report:
+Version: 0.0.0 → 1.0.0
+Type: Initial creation (MAJOR)
+Modified principles: N/A (initial creation)
+Added sections:
+  - Code Quality Standards
+  - Testing Standards
+  - User Experience Consistency
+  - Performance Requirements
+  - Governance
+Templates requiring updates:
+  - ✅ updated: .specify/templates/plan-template.md (Constitution Check section with specific gates)
+  - ✅ updated: .specify/templates/spec-template.md (Testing and Performance Requirements sections)
+  - ✅ updated: .specify/templates/tasks-template.md (Code quality, testing, and performance tasks added)
+  - ⚠ pending: .specify/templates/commands/*.md (no command templates found)
+Follow-up TODOs: None
+-->
+
+# LifeFInances Project Constitution
+
+**Version:** 1.0.0  
+**Ratification Date:** 2025-12-10  
+**Last Amended:** 2025-12-10
+
+## Purpose
+
+This constitution establishes the non-negotiable principles governing the LifeFInances project. All code contributions, architectural decisions, and development practices MUST align with these principles. Violations require explicit justification and constitutional amendment.
+
+## Principles
+
+### Code Quality Standards
+
+**All code MUST maintain high quality standards through static analysis, type safety, and documentation.**
+
+- **Static Analysis Compliance**: All Python code MUST pass pylint with a minimum score of 8.0/10.0. Code MUST be formatted consistently using project-standard tools (isort, black if adopted, or equivalent).
+
+- **Type Safety**: All public functions, class methods, and module-level functions MUST include type hints. Internal helper functions SHOULD include type hints unless doing so would significantly reduce readability. Type checking MUST pass via pyright or mypy as configured in `pyrightconfig.json`.
+
+- **Documentation Requirements**: All modules MUST include module-level docstrings. All public classes and functions MUST include docstrings following Google or NumPy style conventions. Complex algorithms or business logic MUST include inline comments explaining non-obvious decisions.
+
+- **Code Organization**: Code MUST follow the established project structure (app/, tests/, requirements/). Related functionality MUST be grouped logically. Circular dependencies MUST be avoided. Import statements MUST be organized (stdlib, third-party, local) and unused imports MUST be removed.
+
+- **Error Handling**: All user-facing code paths MUST handle expected error conditions gracefully. Exceptions MUST include meaningful error messages. Critical errors MUST be logged appropriately. Broad exception catching (except Exception) MUST be justified with comments when used.
+
+### Testing Standards
+
+**All functionality MUST be covered by automated tests that validate correctness, edge cases, and integration points.**
+
+- **Test Coverage**: All new code MUST include corresponding tests. Test coverage MUST maintain a minimum of 80% for all modules. Critical business logic (financial calculations, state transitions, simulation logic) MUST achieve 95%+ coverage.
+
+- **Test Structure**: Tests MUST use pytest as the testing framework. Test files MUST mirror the source code structure under `tests/`. Test functions MUST have descriptive names following `test_<functionality>` or `test_<scenario>` patterns. Test classes MUST follow `Test<ClassName>` naming.
+
+- **Test Quality**: Tests MUST be independent and executable in any order. Tests MUST use fixtures from `conftest.py` for shared setup. Tests MUST clean up after themselves (no persistent side effects). Tests MUST validate both success and failure cases.
+
+- **Integration Testing**: API endpoints MUST have integration tests verifying HTTP status codes, response formats, and error handling. Simulation engine MUST be tested with multiple configuration scenarios. Data loading and transformation MUST be tested with sample data files.
+
+- **Test Performance**: Unit tests MUST complete in under 1 second per test. Integration tests MUST complete in under 10 seconds per test. Slow tests MUST be marked with `@pytest.mark.slow` and excluded from default test runs. Test suites MUST complete in under 5 minutes total.
+
+### User Experience Consistency
+
+**All user-facing interfaces MUST provide consistent, predictable, and intuitive experiences across the application.**
+
+- **API Consistency**: All REST API endpoints MUST follow consistent naming conventions (snake_case for Python, kebab-case for URLs). Response formats MUST be consistent (JSON structure, error message format, status codes). API versioning MUST be implemented when breaking changes are introduced.
+
+- **Error Messages**: All user-facing error messages MUST be clear, actionable, and non-technical when possible. Error responses MUST include appropriate HTTP status codes. Validation errors MUST identify specific fields and provide guidance on correction.
+
+- **Response Times**: Interactive API endpoints MUST respond within 2 seconds under normal load. Long-running operations (simulations) MUST provide progress indicators or asynchronous processing with status endpoints. Timeout errors MUST be handled gracefully with informative messages.
+
+- **Configuration Validation**: User configuration files (config.yml) MUST be validated on load with clear error messages for invalid values. Default values MUST be provided where appropriate. Configuration schema MUST be documented.
+
+### Performance Requirements
+
+**The application MUST meet performance benchmarks and be optimized for production workloads.**
+
+- **Simulation Performance**: Single simulation trials MUST complete within reasonable time bounds (target: <100ms per trial for standard configurations). Simulation engines MUST support parallel execution where applicable. Memory usage MUST be bounded and monitored.
+
+- **API Performance**: API endpoints MUST handle concurrent requests without degradation. Database queries (if applicable) MUST be optimized and avoid N+1 problems. Caching MUST be implemented for expensive computations or frequently accessed data.
+
+- **Profiling and Monitoring**: Performance-critical code paths MUST be profiled using cProfile or equivalent tools. Profiling results MUST be reviewed before merging performance-sensitive changes. Memory leaks MUST be identified and resolved.
+
+- **Resource Efficiency**: The application MUST operate within reasonable memory constraints. Large datasets MUST be processed incrementally or streamed when possible. Unnecessary data loading or computation MUST be avoided.
+
+## Governance
+
+### Amendment Procedure
+
+Constitutional amendments require:
+
+1. **Proposal**: A detailed proposal describing the principle change, rationale, and impact assessment.
+2. **Review**: Review by project maintainers with consideration of backward compatibility and migration paths.
+3. **Version Update**: Semantic versioning update (MAJOR.MINOR.PATCH) based on change impact:
+   - **MAJOR**: Backward-incompatible principle changes, removal of principles, or fundamental redefinitions.
+   - **MINOR**: Addition of new principles or significant expansion of existing guidance.
+   - **PATCH**: Clarifications, wording improvements, typo fixes, or non-semantic refinements.
+4. **Documentation**: Update of all dependent templates and documentation to reflect changes.
+5. **Communication**: Clear communication of changes to all contributors.
+
+### Compliance Review
+
+- All pull requests MUST be reviewed for constitutional compliance before merging.
+- Automated checks (linting, type checking, tests) MUST pass as a minimum compliance threshold.
+- Manual review MUST verify adherence to principles not covered by automation.
+- Violations MUST be addressed before merge approval unless explicitly exempted via constitutional amendment.
+
+### Version History
+
+- **1.0.0** (2025-23-20): Initial constitution establishing code quality, testing, UX consistency, and performance principles.
