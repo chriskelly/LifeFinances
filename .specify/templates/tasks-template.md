@@ -84,7 +84,7 @@ Examples of foundational tasks (adjust based on your project):
 ### Tests for User Story 1 (REQUIRED per constitution) ⚠️
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
-> **CONSTITUTION**: All new code MUST include tests. Test coverage MUST meet minimum 80% (95%+ for financial calculations).
+> **CONSTITUTION**: All new application code (simulator and Flask app) MUST include tests. Test coverage MUST meet minimum 80% (95%+ for financial calculations). *Exception*: Standalone scripts/notebooks not used as application inputs MAY be exempted.
 
 - [ ] T010 [P] [US1] Unit tests for [component] in tests/unit/test_[name].py
 - [ ] T011 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
@@ -115,10 +115,12 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 2 (REQUIRED per constitution) ⚠️
 
+> **CONSTITUTION**: All new application code MUST include tests. *Exception*: Standalone scripts/notebooks not used as application inputs MAY be exempted.
+
 - [ ] T023 [P] [US2] Unit tests for [component] in tests/unit/test_[name].py
 - [ ] T024 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
 - [ ] T025 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
-- [ ] T026 [US2] Verify test coverage meets constitution requirements
+- [ ] T026 [US2] Verify test coverage meets constitution requirements (80% minimum, 95%+ for financial logic)
 
 ### Implementation for User Story 2
 
@@ -142,10 +144,12 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 3 (REQUIRED per constitution) ⚠️
 
+> **CONSTITUTION**: All new application code MUST include tests. *Exception*: Standalone scripts/notebooks not used as application inputs MAY be exempted.
+
 - [ ] T034 [P] [US3] Unit tests for [component] in tests/unit/test_[name].py
 - [ ] T035 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
 - [ ] T036 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
-- [ ] T037 [US3] Verify test coverage meets constitution requirements
+- [ ] T037 [US3] Verify test coverage meets constitution requirements (80% minimum, 95%+ for financial logic)
 
 ### Implementation for User Story 3
 
@@ -171,7 +175,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Verify overall test coverage meets 80% minimum (95%+ for financial logic)
+- [ ] TXXX [P] Verify overall test coverage meets 80% minimum (95%+ for financial logic) for application code
 - [ ] TXXX [P] Profile performance-critical paths using cProfile
 - [ ] TXXX [P] Verify all tests complete within performance targets (<1s unit, <10s integration)
 - [ ] TXXX [P] Run pylint on entire codebase, ensure all modules ≥ 8.0/10.0

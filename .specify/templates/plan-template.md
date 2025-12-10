@@ -39,10 +39,11 @@
 - [ ] No circular dependencies will be introduced
 
 **Testing Gates:**
-- [ ] Test coverage plan achieves minimum 80% (95%+ for financial calculations)
+- [ ] Test coverage plan achieves minimum 80% (95%+ for financial calculations) for application code (simulator and Flask app)
 - [ ] Tests will use pytest framework with proper fixtures
 - [ ] Integration tests planned for API endpoints
 - [ ] Test performance targets defined (<1s unit, <10s integration)
+- [ ] If feature includes standalone scripts/notebooks: Exception documented per constitution Testing Standards
 
 **User Experience Gates:**
 - [ ] API endpoints follow consistent naming conventions

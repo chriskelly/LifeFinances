@@ -1,25 +1,21 @@
 <!--
 Sync Impact Report:
-Version: 0.0.0 → 1.0.0
-Type: Initial creation (MAJOR)
-Modified principles: N/A (initial creation)
-Added sections:
-  - Code Quality Standards
-  - Testing Standards
-  - User Experience Consistency
-  - Performance Requirements
-  - Governance
+Version: 1.0.0 → 1.1.0
+Type: Testing Standards clarification (MINOR)
+Modified principles:
+  - Testing Standards: Added exception for standalone scripts/notebooks not used as application inputs
+Added sections: None
+Removed sections: None
 Templates requiring updates:
-  - ✅ updated: .specify/templates/plan-template.md (Constitution Check section with specific gates)
-  - ✅ updated: .specify/templates/spec-template.md (Testing and Performance Requirements sections)
-  - ✅ updated: .specify/templates/tasks-template.md (Code quality, testing, and performance tasks added)
-  - ⚠ pending: .specify/templates/commands/*.md (no command templates found)
+  - ✅ updated: .specify/templates/spec-template.md (Testing Requirements section includes exception note)
+  - ✅ updated: .specify/templates/plan-template.md (Testing Gates section includes exception note)
+  - ✅ updated: .specify/templates/tasks-template.md (Test tasks include exception note)
 Follow-up TODOs: None
 -->
 
 # LifeFInances Project Constitution
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Ratification Date:** 2025-12-10  
 **Last Amended:** 2025-12-10
 
@@ -45,9 +41,15 @@ This constitution establishes the non-negotiable principles governing the LifeFI
 
 ### Testing Standards
 
-**All functionality MUST be covered by automated tests that validate correctness, edge cases, and integration points.**
+**All functionality related to the application (simulator and Flask app) MUST be covered by automated tests that validate correctness, edge cases, and integration points.**
 
-- **Test Coverage**: All new code MUST include corresponding tests. Test coverage MUST maintain a minimum of 80% for all modules. Critical business logic (financial calculations, state transitions, simulation logic) MUST achieve 95%+ coverage.
+- **Test Coverage**: All new code in the application (simulator and Flask app) MUST include corresponding tests. Test coverage MUST maintain a minimum of 80% for all modules. Critical business logic (financial calculations, state transitions, simulation logic) MUST achieve 95%+ coverage.
+
+- **Exception for Standalone Scripts/Notebooks**: Scripts and notebooks that are standalone tools and NOT used as inputs for the application (simulator or Flask app) MAY be exempted from testing requirements. This exception applies only to:
+  - Standalone analysis scripts
+  - Jupyter notebooks used for exploration or one-off calculations
+  - Utility scripts that do not feed data or logic into the main application
+  - Scripts explicitly documented as experimental or exploratory
 
 - **Test Structure**: Tests MUST use pytest as the testing framework. Test files MUST mirror the source code structure under `tests/`. Test functions MUST have descriptive names following `test_<functionality>` or `test_<scenario>` patterns. Test classes MUST follow `Test<ClassName>` naming.
 
@@ -105,4 +107,6 @@ Constitutional amendments require:
 
 ### Version History
 
-- **1.0.0** (2025-23-20): Initial constitution establishing code quality, testing, UX consistency, and performance principles.
+- **1.1.0** (2025-12-10): Added exception to testing requirements for standalone scripts/notebooks not used as application inputs. Testing standards remain strict for simulator and Flask app functionality.
+
+- **1.0.0** (2025-12-10): Initial constitution establishing code quality, testing, UX consistency, and performance principles.
