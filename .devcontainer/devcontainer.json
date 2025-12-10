@@ -37,7 +37,7 @@
 			"onAutoForward": "notify"
 		}
 	},
-	"postCreateCommand": "pip install -r requirements/dev.txt && cp tests/sample_configs/full_config.yml config.yml || true",
+	"postCreateCommand": "pip install -r requirements/dev.txt && if [ ! -f config.yml ]; then cp tests/sample_configs/full_config.yml config.yml; fi",
 	"remoteUser": "root",
 	"workspaceFolder": "/workspace",
 	"mounts": [
