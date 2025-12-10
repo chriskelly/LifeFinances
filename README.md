@@ -23,8 +23,20 @@ Without Docker:
 - Review the options for allocation at [`app/data/README.md`](https://github.com/chriskelly/LifeFinances/blob/main/app/data/README.md)
 - Run `flask run` from your terminal
 
-With Docker:
-- Pending...
+With DevContainer (VS Code):
+- Ensure you have Docker installed and running
+- Open the repository in VS Code
+- When prompted, click "Reopen in Container" or use the Command Palette (Ctrl+Shift+P / Cmd+Shift+P) and select "Dev Containers: Reopen in Container"
+- The devcontainer will automatically:
+  - Build the container with Python 3.10 and development dependencies
+  - Install required packages from `requirements/dev.txt`
+  - Create a default `config.yml` from `tests/sample_configs/full_config.yml` if one doesn't exist
+  - Forward port 3500 for the Flask application
+- Once the container is running, you can:
+  - Run `flask run` to start the application (port 3500 will be automatically forwarded)
+  - Run tests using `pytest` (configured to run from the `tests` directory)
+  - Use the integrated Python debugger and linting tools
+- Review the options for allocation at [`app/data/README.md`](https://github.com/chriskelly/LifeFinances/blob/main/app/data/README.md)
 
 
 ## Code Structure

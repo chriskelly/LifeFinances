@@ -6,6 +6,7 @@ config.yml
 temporary*
 *.prof
 .vscode/
+.devcontainer/history/.zsh_history
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
