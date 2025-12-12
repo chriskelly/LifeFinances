@@ -11,13 +11,14 @@
                 "ms-python.vscode-pylance",
                 "ms-python.pylint",
                 "ms-python.debugpy",
-                "ms-toolsai.jupyter"
+                "ms-toolsai.jupyter",
+                "ms-python.black-formatter"
             ],
             "settings": {
                 "python.defaultInterpreterPath": "/usr/local/bin/python",
                 "python.linting.enabled": true,
                 "python.linting.pylintEnabled": true,
-                "python.formatting.provider": "none",
+                "python.formatting.provider": "black",
                 "python.testing.pytestEnabled": true,
                 "python.testing.unittestEnabled": false,
                 "python.testing.pytestArgs": [
