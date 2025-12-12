@@ -222,6 +222,16 @@ benefit_percentage = (coverage_gap / years_until_benefit_cutoff_age) / current_a
 - Display coverage replacement calculation breakdown
 - Display final gap and benefit percentage
 
+### Final Summary Section
+
+The notebook includes a "Final Summary" section at the end that consolidates all results using the `display_insurance_results()` helper function. This section:
+- Displays user disability insurance calculation results separately (per FR-015)
+- Displays partner disability insurance calculation results separately (per FR-015)
+- Provides structured output per FR-009 requirements:
+  1. Total income replacement needed (with component breakdown)
+  2. Existing coverage replacement (after taxes, with breakdown)
+  3. Remaining coverage gap in standard disability insurance format (% of income for x years)
+
 ## Edge Cases
 
 ### No Income Profiles

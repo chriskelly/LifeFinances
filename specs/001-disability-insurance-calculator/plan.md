@@ -186,6 +186,22 @@ existing_coverage = coverage_results.total_net_replacement
 
 This class-based approach is used consistently across baseline, disability, and partner disability scenarios to eliminate code duplication and ensure consistent calculations.
 
+**`display_insurance_results()` helper function**:
+- **Purpose**: Consolidates structured output formatting for insurance calculation results, following DRY principles
+- **Parameters**: 
+  - `header`: Section header (e.g., "USER DISABILITY INSURANCE CALCULATION RESULTS")
+  - `total_replacement_needs`: Total post-tax income replacement needed
+  - `lost_pre_tax_job_income`, `reduced_pre_tax_ss`, `reduced_pre_tax_pension`: Component breakdown (pre-tax, for reference)
+  - `coverage_results`: `CoverageResults` object with existing coverage details
+  - `coverage_pct`, `coverage_duration`: Existing coverage percentage and duration
+  - `coverage_gap`: Remaining coverage gap
+  - `benefit_percentage`, `years_until_benefit_cutoff_age`, `current_annual_income`: Recommended coverage details
+- **Output**: Structured text output per FR-009 requirements:
+  1. Total income replacement needed (with component breakdown)
+  2. Existing coverage replacement (after taxes, with breakdown)
+  3. Remaining coverage gap in standard disability insurance format (% of income for x years)
+- **Usage**: Called separately for user and partner scenarios (per FR-015) in the "Final Summary" section of the notebook
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
@@ -283,8 +299,9 @@ The plan is complete and ready for task breakdown. Key implementation steps:
 9. Implement disability scenario (modify `engine._user_config.income_profiles` directly to zero job income, clear results, run `gen_all_trials()` again - fixed inflation already set, use helper functions to extract and process income streams)
 10. Implement income comparison and gap calculation (including post-Benefit cutoff age income reductions, using post-tax income values)
 11. Implement coverage replacement calculation with taxes
-12. Implement structured output formatting
+12. Implement `display_insurance_results()` helper function for structured output formatting (consolidates user and partner output, meets FR-009 requirements)
 13. Add periodic sanity check outputs throughout notebook
+14. Add "Final Summary" section with consolidated results display using `display_insurance_results()` function
 
 ## Complexity Tracking
 
