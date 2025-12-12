@@ -88,7 +88,24 @@ The notebook uses a `RealFinancialData` class to encapsulate income stream extra
 - `dates`: Date series for filtering operations
 - Individual real income series: `job_real_q`, `ss_user_real_q`, `ss_partner_real_q`, `pension_real_q`, `income_taxes_real_q`, `medicare_taxes_real_q`
 - **Methods**:
-  - `get_coverage_results(coverage: DisabilityCoverage, benefit_cutoff_date: float)`: Calculates existing coverage replacement (net after taxes). Takes a `DisabilityCoverage` Pydantic model object (from `app.models.config`) with `percentage` and `duration_years` attributes. Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Coverage end date is capped at `benefit_cutoff_date` using `min(coverage_start + coverage.duration_years, benefit_cutoff_date)`. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline scenario.
+  - `get_coverage_results(coverage: DisabilityCoverage, benefit_cutoff_date: float)`: Calculates existing coverage replacement (net after taxes). Takes a `DisabilityCoverage` Pydantic model object (from `app.models.config`) with `percentage` and `duration_years` attributes. Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Handles zero coverage internally by returning `CoverageResults(0.0, 0.0, 0.0)` if `coverage.percentage == 0` or `coverage.duration_years == 0`. Coverage end date is capped at `benefit_cutoff_date` using `min(coverage_start + coverage.duration_years, benefit_cutoff_date)`. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline scenario.
+
+**Additional helper functions and classes** (for DRY principles, eliminating duplication between user and partner scenarios):
+
+- **`build_engine()`**: Creates and configures a `SimulationEngine` instance with fixed inflation. Used for both baseline and partner scenario engine creation.
+
+- **`build_mask_until_benefit_cutoff_age(benefit_cutoff_date: float) -> pd.Series`**: Creates a pandas Series mask for filtering dates up to the benefit cutoff age. Used consistently for both user and partner scenarios.
+
+- **`IncomeComparison` class**: Encapsulates income comparison calculations between baseline and disability scenarios. Properties:
+  - `total_replacement_needs`: Post-tax income replacement needed (baseline - disability)
+  - `lost_pre_tax_job_income`: Lost job income (pre-tax, for reference)
+  - `reduced_pre_tax_ss`: Reduced Social Security (pre-tax, for reference)
+  - `reduced_pre_tax_pension`: Reduced pension (pre-tax, for reference)
+  Used for both user and partner scenarios.
+
+- **`calculate_coverage_gap(total_replacement_needs: float, total_net_replacement: float) -> float`**: Calculates remaining coverage gap as `max(0, total_replacement_needs - total_net_replacement)`. Used for both user and partner scenarios.
+
+- **`calculate_benefit_percentage(coverage_gap: float, years_until_benefit_cutoff_age: float, current_annual_income: float) -> float`**: Calculates recommended benefit percentage using formula: `(coverage_gap / years_until_benefit_cutoff_age) / current_annual_income * 100`. Returns 0.0 if years or income is 0. Used for both user and partner scenarios.
 
 **Usage**: 
 - `baseline = RealFinancialData(baseline_df)`
@@ -146,19 +163,24 @@ disability_results = engine.results
 baseline = RealFinancialData(baseline_df)
 disability = RealFinancialData(disability_df)
 
-# Filter until Benefit cutoff age (using dates from RealFinancialData)
+# Use helper functions and classes for calculations
 benefit_cutoff_date = BENEFIT_CUTOFF_AGE - user_config.age + TODAY_YR_QT
-mask_until_benefit_cutoff_age = baseline.dates <= benefit_cutoff_date
+mask_until_benefit_cutoff_age = build_mask_until_benefit_cutoff_age(benefit_cutoff_date)
 
-# Access pre-tax and post-tax totals via properties
-baseline_pre_tax_job_total_lifetime = baseline.pre_tax_job_total_lifetime
-baseline_pre_tax_ss_total_lifetime = baseline.pre_tax_ss_total_lifetime
-baseline_pre_tax_pension_total_lifetime = baseline.pre_tax_pension_total_lifetime
-baseline_post_tax_total_lifetime = baseline.post_tax_total_lifetime
+# Use IncomeComparison class to encapsulate income comparison calculations
+user_income_comparison = IncomeComparison(baseline, disability)
+# Access properties: total_replacement_needs, lost_pre_tax_job_income, reduced_pre_tax_ss, reduced_pre_tax_pension
 
-# Calculate total replacement needs (post-tax)
-total_replacement_needs = baseline.post_tax_total_lifetime - disability.post_tax_total_lifetime
-```
+# Calculate coverage gap and benefit percentage using helper functions
+coverage_gap = calculate_coverage_gap(
+    user_income_comparison.total_replacement_needs,
+    coverage_results.total_net_replacement
+)
+benefit_percentage = calculate_benefit_percentage(
+    coverage_gap,
+    years_until_benefit_cutoff_age,
+    current_annual_income
+)
 
 ### 3. Coverage Replacement Calculation
 
@@ -193,15 +215,20 @@ existing_coverage = coverage_results.total_net_replacement
 **Output**: Coverage gap and benefit percentage
 
 ```python
-# Calculate gap
-coverage_gap = total_replacement_needs - existing_coverage_replacement
-coverage_gap = max(0, coverage_gap)  # Cannot be negative
+# Calculate gap using helper function
+coverage_gap = calculate_coverage_gap(
+    user_income_comparison.total_replacement_needs,
+    coverage_results.total_net_replacement
+)
 
-# Calculate benefit percentage
+# Calculate benefit percentage using helper function
 years_until_benefit_cutoff_age = calculate_years_until_benefit_cutoff_age(user_config.age)
 current_annual_income = get_current_annual_income(user_config, is_partner=False)
-coverage_gap = total_replacement_needs - existing_coverage_replacement
-benefit_percentage = (coverage_gap / years_until_benefit_cutoff_age) / current_annual_income * 100
+benefit_percentage = calculate_benefit_percentage(
+    coverage_gap,
+    years_until_benefit_cutoff_age,
+    current_annual_income
+)
 ```
 
 ## Validation Rules

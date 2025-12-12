@@ -187,6 +187,25 @@ existing_coverage = coverage_results.total_net_replacement
 
 This class-based approach is used consistently across baseline, disability, and partner disability scenarios to eliminate code duplication and ensure consistent calculations.
 
+**Additional helper functions and classes for DRY principles**:
+
+- **`build_engine()`**: Creates and configures a `SimulationEngine` instance with fixed inflation. Used for both baseline and partner scenario engine creation to avoid duplication.
+
+- **`build_mask_until_benefit_cutoff_age(benefit_cutoff_date: float)`**: Creates a pandas Series mask for filtering dates up to the benefit cutoff age. Used consistently for both user and partner scenarios.
+
+- **`IncomeComparison` class**: Encapsulates income comparison calculations between baseline and disability scenarios. Properties include:
+  - `total_replacement_needs`: Post-tax income replacement needed (baseline - disability)
+  - `lost_pre_tax_job_income`: Lost job income (pre-tax, for reference)
+  - `reduced_pre_tax_ss`: Reduced Social Security (pre-tax, for reference)
+  - `reduced_pre_tax_pension`: Reduced pension (pre-tax, for reference)
+  Used for both user and partner scenarios to eliminate duplicate calculation code.
+
+- **`calculate_coverage_gap(total_replacement_needs: float, total_net_replacement: float) -> float`**: Calculates remaining coverage gap as `max(0, total_replacement_needs - total_net_replacement)`. Used for both user and partner scenarios.
+
+- **`calculate_benefit_percentage(coverage_gap: float, years_until_benefit_cutoff_age: float, current_annual_income: float) -> float`**: Calculates recommended benefit percentage using the formula: `(coverage_gap / years_until_benefit_cutoff_age) / current_annual_income * 100`. Returns 0.0 if years or income is 0. Used for both user and partner scenarios.
+
+- **`get_coverage_results()` enhancement**: Now handles zero coverage internally by returning `CoverageResults(0.0, 0.0, 0.0)` if `coverage.percentage == 0` or `coverage.duration_years == 0`, eliminating the need for external zero-coverage checks in user and partner scenarios.
+
 **`display_insurance_results()` helper function**:
 - **Purpose**: Consolidates structured output formatting for insurance calculation results, following DRY principles
 - **Parameters**: 
@@ -295,14 +314,22 @@ The plan is complete and ready for task breakdown. Key implementation steps:
 4. Implement config loading and validation
 5. Implement Benefit cutoff age configuration (configurable in script, default value is 65)
 6. Implement `set_fixed_inflation()` helper function (following `tpaw_planner.ipynb` pattern) to set deterministic inflation rate
-7. Implement helper functions for DRY principles to eliminate repeated calculations
-8. Implement baseline scenario (SimulationEngine with `config_path`, set fixed inflation, run `gen_all_trials()`, use helper functions to extract and process income streams)
-9. Implement disability scenario (modify `engine._user_config.income_profiles` directly to zero job income, clear results, run `gen_all_trials()` again - fixed inflation already set, use helper functions to extract and process income streams)
-10. Implement income comparison and gap calculation (including post-Benefit cutoff age income reductions, using post-tax income values)
-11. Implement coverage replacement calculation with taxes
-12. Implement `display_insurance_results()` helper function for structured output formatting (consolidates user and partner output, meets FR-009 requirements)
-13. Add periodic sanity check outputs throughout notebook
-14. Add "Final Summary" section with consolidated results display using `display_insurance_results()` function
+7. Implement helper functions for DRY principles to eliminate repeated calculations:
+   - `build_engine()`: Engine creation and configuration
+   - `build_mask_until_benefit_cutoff_age()`: Date filtering mask creation
+   - `IncomeComparison` class: Income comparison calculations
+   - `calculate_coverage_gap()`: Coverage gap calculation
+   - `calculate_benefit_percentage()`: Benefit percentage calculation
+   - Enhance `get_coverage_results()` to handle zero coverage internally
+8. Implement baseline scenario (use `build_engine()`, run `gen_all_trials()`, use helper functions to extract and process income streams)
+9. Implement disability scenario (modify `engine._user_config.income_profiles` directly to zero job income, clear results, run `gen_all_trials()` again, use `IncomeComparison` class for calculations)
+10. Implement income comparison using `IncomeComparison` class (including post-Benefit cutoff age income reductions, using post-tax income values)
+11. Implement coverage replacement calculation with taxes (using `get_coverage_results()` which handles zero coverage internally)
+12. Implement gap and benefit percentage calculations using `calculate_coverage_gap()` and `calculate_benefit_percentage()` helper functions
+13. Implement `display_insurance_results()` helper function for structured output formatting (consolidates user and partner output, meets FR-009 requirements)
+14. Add periodic sanity check outputs throughout notebook
+15. Add "Final Summary" section with consolidated results display using `display_insurance_results()` function
+16. Implement partner scenario using same helper functions and classes (eliminates code duplication between user and partner calculations)
 
 ## Complexity Tracking
 
