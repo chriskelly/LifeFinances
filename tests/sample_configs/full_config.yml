@@ -110,6 +110,14 @@ tpaw_planner:
   group_tol: 1.0
   inflation_rate: 0.02
 
+disability_insurance_calculator:
+  user_disability_coverage:
+    percentage: 60.0
+    duration_years: 5
+  partner_disability_coverage:
+    percentage: 50.0
+    duration_years: 10
+
 admin:
   pension:
     trust_factor: 0.8

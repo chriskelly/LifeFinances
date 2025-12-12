@@ -168,7 +168,7 @@ To follow DRY (Don't Repeat Yourself) principles, the notebook uses a `RealFinan
   - `dates`: Date series for filtering operations
   - Individual real income series: `job_real_q`, `ss_user_real_q`, `ss_partner_real_q`, `pension_real_q`, `income_taxes_real_q`, `medicare_taxes_real_q`
 - **Methods**:
-  - `get_coverage_results(coverage_percentage, coverage_duration_years, benefit_cutoff_date)`: Calculates existing coverage replacement (net after taxes). Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Coverage end date is capped at `benefit_cutoff_date` using `min(coverage_start + coverage_duration_years, benefit_cutoff_date)`. Coverage percentage is capped at 100% for calculation. Uses average tax rate from baseline scenario for covered intervals: `(total income taxes + total Medicare taxes) / total income` for the coverage period.
+  - `get_coverage_results(coverage: DisabilityCoverage, benefit_cutoff_date: float)`: Calculates existing coverage replacement (net after taxes). Takes a `DisabilityCoverage` Pydantic model object (from `app.models.config`) with `percentage` and `duration_years` attributes. Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Coverage end date is capped at `benefit_cutoff_date` using `min(coverage_start + coverage.duration_years, benefit_cutoff_date)`. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline scenario for covered intervals: `(total income taxes + total Medicare taxes) / total income` for the coverage period.
 
 **Usage pattern**:
 ```python
@@ -178,8 +178,9 @@ total_replacement_needs = baseline.post_tax_total_lifetime - disability.post_tax
 
 # Calculate existing coverage
 benefit_cutoff_date = BENEFIT_CUTOFF_AGE - user_config.age + TODAY_YR_QT
+user_disability_coverage = user_config.disability_insurance_calculator.user_disability_coverage
 coverage_results = baseline.get_coverage_results(
-    coverage_percentage, coverage_duration_years, benefit_cutoff_date
+    user_disability_coverage, benefit_cutoff_date
 )
 existing_coverage = coverage_results.total_net_replacement
 ```
@@ -193,7 +194,7 @@ This class-based approach is used consistently across baseline, disability, and 
   - `total_replacement_needs`: Total post-tax income replacement needed
   - `lost_pre_tax_job_income`, `reduced_pre_tax_ss`, `reduced_pre_tax_pension`: Component breakdown (pre-tax, for reference)
   - `coverage_results`: `CoverageResults` object with existing coverage details
-  - `coverage_pct`, `coverage_duration`: Existing coverage percentage and duration
+  - `coverage`: `DisabilityCoverage` Pydantic model object (from `app.models.config`) with `percentage` and `duration_years` attributes
   - `coverage_gap`: Remaining coverage gap
   - `benefit_percentage`, `years_until_benefit_cutoff_age`, `current_annual_income`: Recommended coverage details
 - **Output**: Structured text output per FR-009 requirements:

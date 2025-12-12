@@ -42,9 +42,13 @@ Uses existing `User` model from `app.models.config`:
 - **User.partner**: Optional Partner object with income_profiles
 - **User.social_security_pension**: SocialSecurity configuration
 - **User.partner.social_security_pension**: Partner SocialSecurity configuration (if partner exists)
-- **Disability Coverage** (to be added to config):
-  - `user_disability_coverage`: Dict with `percentage` (float) and `duration_years` (int)
-  - `partner_disability_coverage`: Optional dict with `percentage` and `duration_years`
+- **Disability Coverage**: Uses `DisabilityInsuranceCalculator` model from `app.models.config`:
+  - `User.disability_insurance_calculator`: Optional `DisabilityInsuranceCalculator` object
+  - `DisabilityInsuranceCalculator.user_disability_coverage`: `DisabilityCoverage` object with `percentage` (float, defaults to 0.0) and `duration_years` (int, defaults to 0)
+  - `DisabilityInsuranceCalculator.partner_disability_coverage`: `DisabilityCoverage` object with `percentage` (float, defaults to 0.0) and `duration_years` (int, defaults to 0)
+  - `DisabilityCoverage` is a Pydantic BaseModel with attributes:
+    - `percentage`: float (defaults to 0.0)
+    - `duration_years`: int (defaults to 0)
 
 ### Processing: SimulationEngine Results DataFrame
 
@@ -84,13 +88,14 @@ The notebook uses a `RealFinancialData` class to encapsulate income stream extra
 - `dates`: Date series for filtering operations
 - Individual real income series: `job_real_q`, `ss_user_real_q`, `ss_partner_real_q`, `pension_real_q`, `income_taxes_real_q`, `medicare_taxes_real_q`
 - **Methods**:
-  - `get_coverage_results(coverage_percentage, coverage_duration_years, benefit_cutoff_date)`: Calculates existing coverage replacement (net after taxes). Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Coverage end date is capped at `benefit_cutoff_date`. Coverage percentage is capped at 100% for calculation. Uses average tax rate from baseline scenario.
+  - `get_coverage_results(coverage: DisabilityCoverage, benefit_cutoff_date: float)`: Calculates existing coverage replacement (net after taxes). Takes a `DisabilityCoverage` Pydantic model object (from `app.models.config`) with `percentage` and `duration_years` attributes. Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Coverage end date is capped at `benefit_cutoff_date` using `min(coverage_start + coverage.duration_years, benefit_cutoff_date)`. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline scenario.
 
 **Usage**: 
 - `baseline = RealFinancialData(baseline_df)`
 - `disability = RealFinancialData(disability_df)`
 - `partner_disability = RealFinancialData(partner_disability_df)`
-- `coverage_results = baseline.get_coverage_results(coverage_pct, duration_years, benefit_cutoff_date)`
+- `coverage_results = baseline.get_coverage_results(user_disability_coverage, benefit_cutoff_date)`
+  - Where `user_disability_coverage` is a `DisabilityCoverage` object from `user_config.disability_insurance_calculator.user_disability_coverage`
 
 ### Calculated Values (in-memory)
 
@@ -157,14 +162,15 @@ total_replacement_needs = baseline.post_tax_total_lifetime - disability.post_tax
 
 ### 3. Coverage Replacement Calculation
 
-**Input**: `RealFinancialData` instance (baseline), coverage percentage, coverage duration, benefit cutoff date  
+**Input**: `RealFinancialData` instance (baseline), `DisabilityCoverage` object, benefit cutoff date  
 **Output**: `CoverageResults` object with gross_benefits, taxes, and total_net_replacement
 
 ```python
 # Use RealFinancialData method to calculate coverage replacement
 benefit_cutoff_date = BENEFIT_CUTOFF_AGE - user_config.age + TODAY_YR_QT
+user_disability_coverage = user_config.disability_insurance_calculator.user_disability_coverage
 coverage_results = baseline.get_coverage_results(
-    coverage_percentage, coverage_duration_years, benefit_cutoff_date
+    user_disability_coverage, benefit_cutoff_date
 )
 
 # CoverageResults contains:
@@ -176,8 +182,8 @@ existing_coverage = coverage_results.total_net_replacement
 ```
 
 **Implementation details** (inside `get_coverage_results`):
-- Coverage period: `coverage_start` to `min(coverage_start + coverage_duration_years, benefit_cutoff_date)`
-- Coverage percentage capped at 100% for calculation: `min(coverage_percentage, 100.0) / 100.0`
+- Coverage period: `coverage_start` to `min(coverage_start + coverage.duration_years, benefit_cutoff_date)`
+- Coverage percentage capped at 100% for calculation: `min(coverage.percentage, 100.0) / 100.0`
 - Average tax rate calculated from baseline scenario: `(total income taxes + total Medicare taxes) / total income` for coverage period
 - Net benefits: `coverage_benefits - taxes_on_benefits`
 

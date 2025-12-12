@@ -410,6 +410,26 @@ class TPAWPlanner(BaseModel):
     group_tol: float = 1.0
     inflation_rate: Optional[float] = None
 
+class DisabilityCoverage(BaseModel):
+    """
+    Attributes
+        percentage (float): Defaults to 0.0
+        duration_years (int): Defaults to 0
+    """
+
+    percentage: float = 0.0
+    duration_years: int = 0
+
+class DisabilityInsuranceCalculator(BaseModel):
+    """
+    Attributes
+        user_disability_coverage (DisabilityCoverage): Defaults to DisabilityCoverage()
+        partner_disability_coverage (DisabilityCoverage): Defaults to DisabilityCoverage()
+    """
+
+    user_disability_coverage: DisabilityCoverage = DisabilityCoverage()
+    partner_disability_coverage: DisabilityCoverage = DisabilityCoverage()
+
 
 class Admin(BaseModel):
     """
@@ -462,6 +482,7 @@ class User(BaseModel):
     income_profiles: list[IncomeProfile] = None
     partner: Optional[Partner] = None
     tpaw_planner: Optional[TPAWPlanner] = TPAWPlanner()
+    disability_insurance_calculator: Optional[DisabilityInsuranceCalculator] = None
     admin: Optional[Admin] = None
 
     @property
