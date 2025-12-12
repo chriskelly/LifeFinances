@@ -167,12 +167,21 @@ To follow DRY (Don't Repeat Yourself) principles, the notebook uses a `RealFinan
   - `pre_tax_total_lifetime`: Sum of all pre-tax income components
   - `dates`: Date series for filtering operations
   - Individual real income series: `job_real_q`, `ss_user_real_q`, `ss_partner_real_q`, `pension_real_q`, `income_taxes_real_q`, `medicare_taxes_real_q`
+- **Methods**:
+  - `get_coverage_results(coverage_percentage, coverage_duration_years, benefit_cutoff_date)`: Calculates existing coverage replacement (net after taxes). Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Coverage end date is capped at `benefit_cutoff_date` using `min(coverage_start + coverage_duration_years, benefit_cutoff_date)`. Coverage percentage is capped at 100% for calculation. Uses average tax rate from baseline scenario for covered intervals: `(total income taxes + total Medicare taxes) / total income` for the coverage period.
 
 **Usage pattern**:
 ```python
 baseline = RealFinancialData(baseline_df)
 disability = RealFinancialData(disability_df)
 total_replacement_needs = baseline.post_tax_total_lifetime - disability.post_tax_total_lifetime
+
+# Calculate existing coverage
+benefit_cutoff_date = BENEFIT_CUTOFF_AGE - user_config.age + TODAY_YR_QT
+coverage_results = baseline.get_coverage_results(
+    coverage_percentage, coverage_duration_years, benefit_cutoff_date
+)
+existing_coverage = coverage_results.total_net_replacement
 ```
 
 This class-based approach is used consistently across baseline, disability, and partner disability scenarios to eliminate code duplication and ensure consistent calculations.

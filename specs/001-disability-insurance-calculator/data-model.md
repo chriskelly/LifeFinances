@@ -58,9 +58,16 @@ Columns from `results.as_dataframes()[0]`:
 - **Inflation** (float): Cumulative inflation factor per interval
 - Additional columns (Income Taxes, Medicare Taxes, etc.) available but not primary focus
 
-### Processing: RealFinancialData Class
+### Processing: RealFinancialData Class and CoverageResults
 
-The notebook uses a `RealFinancialData` class to encapsulate income stream extraction, conversion to real values, and post-tax calculations:
+The notebook uses a `RealFinancialData` class to encapsulate income stream extraction, conversion to real values, and post-tax calculations. Coverage calculations return a `CoverageResults` dataclass:
+
+**`CoverageResults` dataclass**:
+- `gross_benefits`: Total gross coverage benefits (before taxes)
+- `taxes`: Total taxes on benefits
+- `total_net_replacement`: Net after-tax coverage replacement
+
+**`RealFinancialData` class**:
 
 **Initialization**: `RealFinancialData(df: pd.DataFrame)`
 - Extracts income streams and tax columns from simulation results DataFrame
@@ -76,18 +83,25 @@ The notebook uses a `RealFinancialData` class to encapsulate income stream extra
 - `pre_tax_total_lifetime`: Sum of all pre-tax income components
 - `dates`: Date series for filtering operations
 - Individual real income series: `job_real_q`, `ss_user_real_q`, `ss_partner_real_q`, `pension_real_q`, `income_taxes_real_q`, `medicare_taxes_real_q`
+- **Methods**:
+  - `get_coverage_results(coverage_percentage, coverage_duration_years, benefit_cutoff_date)`: Calculates existing coverage replacement (net after taxes). Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Coverage end date is capped at `benefit_cutoff_date`. Coverage percentage is capped at 100% for calculation. Uses average tax rate from baseline scenario.
 
 **Usage**: 
 - `baseline = RealFinancialData(baseline_df)`
 - `disability = RealFinancialData(disability_df)`
 - `partner_disability = RealFinancialData(partner_disability_df)`
+- `coverage_results = baseline.get_coverage_results(coverage_pct, duration_years, benefit_cutoff_date)`
 
 ### Calculated Values (in-memory)
 
 - **baseline.post_tax_total_lifetime**: Total post-tax income from baseline scenario (lifetime)
 - **disability.post_tax_total_lifetime**: Total post-tax income from disability scenario (lifetime)
 - **total_replacement_needs**: Baseline post-tax income - Disability post-tax income (per FR-005, FR-008)
-- **existing_coverage_replacement**: Net after-tax benefits from existing coverage
+- **coverage_results**: `CoverageResults` object from `baseline.get_coverage_results()` containing:
+  - `gross_benefits`: Total gross coverage benefits (before taxes)
+  - `taxes`: Total taxes on benefits
+  - `total_net_replacement`: Net after-tax coverage replacement
+- **existing_coverage_replacement**: Net after-tax benefits from existing coverage (from `coverage_results.total_net_replacement`)
 - **coverage_gap**: Total needs - Existing coverage
 - **benefit_percentage**: (Coverage gap / Years until Benefit cutoff age) / Current annual income
 - **years_until_benefit_cutoff_age**: Benefit cutoff age - user_age (or partner_age for partner scenario, using configurable Benefit cutoff age, default 65)
@@ -128,8 +142,8 @@ baseline = RealFinancialData(baseline_df)
 disability = RealFinancialData(disability_df)
 
 # Filter until Benefit cutoff age (using dates from RealFinancialData)
-benefit_cutoff_age_date = BENEFIT_CUTOFF_AGE - user_config.age + TODAY_YR_QT
-mask_until_benefit_cutoff_age = baseline.dates <= benefit_cutoff_age_date
+benefit_cutoff_date = BENEFIT_CUTOFF_AGE - user_config.age + TODAY_YR_QT
+mask_until_benefit_cutoff_age = baseline.dates <= benefit_cutoff_date
 
 # Access pre-tax and post-tax totals via properties
 baseline_pre_tax_job_total_lifetime = baseline.pre_tax_job_total_lifetime
@@ -143,26 +157,29 @@ total_replacement_needs = baseline.post_tax_total_lifetime - disability.post_tax
 
 ### 3. Coverage Replacement Calculation
 
-**Input**: Baseline job income, coverage percentage, coverage duration, tax rates  
-**Output**: Net after-tax coverage replacement
+**Input**: `RealFinancialData` instance (baseline), coverage percentage, coverage duration, benefit cutoff date  
+**Output**: `CoverageResults` object with gross_benefits, taxes, and total_net_replacement
 
 ```python
-# Extract job income for coverage period
-coverage_start = dates.iloc[0]
-coverage_end = coverage_start + coverage_duration_years
-coverage_mask = (dates >= coverage_start) & (dates <= coverage_end)
+# Use RealFinancialData method to calculate coverage replacement
+benefit_cutoff_date = BENEFIT_CUTOFF_AGE - user_config.age + TODAY_YR_QT
+coverage_results = baseline.get_coverage_results(
+    coverage_percentage, coverage_duration_years, benefit_cutoff_date
+)
 
-# Apply coverage percentage (capped at 100%)
-coverage_per_interval = min(coverage_percentage, 100.0) / 100.0 * job_income[coverage_mask]
+# CoverageResults contains:
+# - gross_benefits: Total gross coverage benefits (before taxes)
+# - taxes: Total taxes on benefits
+# - total_net_replacement: Net after-tax coverage replacement
 
-# Calculate taxes (simplified - use average tax rate or extract from results)
-# For accuracy, could extract tax rates from baseline scenario results
-tax_rate = 0.25  # Example - should be calculated from actual tax data
-net_coverage = coverage_per_interval * (1 - tax_rate)
-
-# Sum total coverage replacement
-total_coverage_replacement = net_coverage.sum()
+existing_coverage = coverage_results.total_net_replacement
 ```
+
+**Implementation details** (inside `get_coverage_results`):
+- Coverage period: `coverage_start` to `min(coverage_start + coverage_duration_years, benefit_cutoff_date)`
+- Coverage percentage capped at 100% for calculation: `min(coverage_percentage, 100.0) / 100.0`
+- Average tax rate calculated from baseline scenario: `(total income taxes + total Medicare taxes) / total income` for coverage period
+- Net benefits: `coverage_benefits - taxes_on_benefits`
 
 ### 4. Gap Calculation
 
@@ -229,7 +246,7 @@ benefit_percentage = (coverage_gap / years_until_benefit_cutoff_age) / current_a
 
 ### Coverage Duration Beyond Benefit Cutoff Age
 
-**Detection**: `coverage_start + coverage_duration_years > benefit_cutoff_age_date`  
+**Detection**: `coverage_start + coverage_duration_years > benefit_cutoff_date`  
 **Action**: Apply coverage until Benefit cutoff age (coverage naturally ends at LTD age limit, configurable, default 65)
 
 ## Data Persistence
