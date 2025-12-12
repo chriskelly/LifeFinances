@@ -116,12 +116,13 @@
 
 ### Testing Requirements *(constitution-aligned)*
 
-- **TR-001**: Test coverage MUST achieve minimum 80% (95%+ for financial calculations and simulation logic) for application code (simulator and Flask app)
-- **TR-002**: All tests MUST use pytest framework with appropriate fixtures
-- **TR-003**: Unit tests MUST complete in under 1 second per test
-- **TR-004**: Integration tests MUST complete in under 10 seconds per test
-- **TR-005**: API endpoints MUST have integration tests verifying status codes, response formats, and error handling
-- **TR-006**: *Exception*: Standalone scripts/notebooks not used as inputs for the application MAY be exempted from testing requirements (see constitution Testing Standards section)
+- **TR-001**: Test-Driven Development (TDD) MUST be used: tests written before implementation for all application code (simulator and Flask app)
+- **TR-002**: Test coverage MUST achieve minimum 80% (95%+ for financial calculations and simulation logic) for application code (simulator and Flask app)
+- **TR-003**: All tests MUST use pytest framework with appropriate fixtures
+- **TR-004**: Unit tests MUST complete in under 1 second per test
+- **TR-005**: Integration tests MUST complete in under 10 seconds per test
+- **TR-006**: API endpoints MUST have integration tests verifying status codes, response formats, and error handling
+- **TR-007**: *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted from testing requirements (see constitution Testing Standards section)
 
 ### Performance Requirements *(constitution-aligned)*
 

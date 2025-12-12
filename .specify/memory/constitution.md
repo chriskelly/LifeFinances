@@ -1,23 +1,24 @@
 <!--
 Sync Impact Report:
-Version: 1.0.0 → 1.1.0
-Type: Testing Standards clarification (MINOR)
+Version: 1.1.0 → 1.2.0
+Type: New principles added + Testing Standards clarification (MINOR)
 Modified principles:
-  - Testing Standards: Added exception for standalone scripts/notebooks not used as application inputs
+  - Code Quality Standards: Added object models over dictionaries principle, added named arguments principle
+  - Testing Standards: Clarified exception for standalone scripts/notebooks, added TDD requirement
 Added sections: None
 Removed sections: None
 Templates requiring updates:
   - ✅ updated: .specify/templates/spec-template.md (Testing Requirements section includes exception note)
-  - ✅ updated: .specify/templates/plan-template.md (Testing Gates section includes exception note)
-  - ✅ updated: .specify/templates/tasks-template.md (Test tasks include exception note)
+  - ✅ updated: .specify/templates/plan-template.md (Testing Gates section includes exception note, Code Quality Gates updated)
+  - ✅ updated: .specify/templates/tasks-template.md (Test tasks include exception note and TDD guidance)
 Follow-up TODOs: None
 -->
 
 # LifeFInances Project Constitution
 
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Ratification Date:** 2025-12-10  
-**Last Amended:** 2025-12-10
+**Last Amended:** 2025-12-12
 
 ## Purpose
 
@@ -37,19 +38,27 @@ This constitution establishes the non-negotiable principles governing the LifeFI
 
 - **Code Organization**: Code MUST follow the established project structure (app/, tests/, requirements/). Related functionality MUST be grouped logically. Circular dependencies MUST be avoided. Import statements MUST be organized (stdlib, third-party, local) and unused imports MUST be removed.
 
+- **Object Models Over Dictionaries**: Code MUST favor creating object models (classes, dataclasses, TypedDict, Pydantic models) rather than plain dictionaries for type safety. Dictionaries SHOULD only be used when object models would add unnecessary complexity or when interfacing with external APIs that require dictionary formats. Rationale: Object models provide compile-time type checking, better IDE support, and clearer contracts.
+
+- **Named Function Arguments**: Function calls MUST use named arguments unless there is exactly one obvious argument where positional calling is unambiguous. Functions with multiple parameters MUST be called with named arguments to improve readability and reduce errors. Rationale: Named arguments make code self-documenting and prevent argument order mistakes.
+
 - **Error Handling**: All user-facing code paths MUST handle expected error conditions gracefully. Exceptions MUST include meaningful error messages. Critical errors MUST be logged appropriately. Broad exception catching (except Exception) MUST be justified with comments when used.
 
 ### Testing Standards
 
-**All functionality related to the application (simulator and Flask app) MUST be covered by automated tests that validate correctness, edge cases, and integration points.**
+**All functionality related to the application (simulator and Flask app) MUST be covered by automated tests that validate correctness, edge cases, and integration points. Testing requirements remain strict for application code, with exceptions only for standalone scripts/notebooks not used as application inputs.**
+
+- **Test-Driven Development**: Where tests are required (all application code), Test-Driven Development (TDD) MUST be used. Tests MUST be written before implementation code. The TDD cycle (Red-Green-Refactor) MUST be followed: write failing tests first, implement minimal code to pass, then refactor. Rationale: TDD ensures testability, drives better design, and prevents untested code from being merged.
 
 - **Test Coverage**: All new code in the application (simulator and Flask app) MUST include corresponding tests. Test coverage MUST maintain a minimum of 80% for all modules. Critical business logic (financial calculations, state transitions, simulation logic) MUST achieve 95%+ coverage.
 
 - **Exception for Standalone Scripts/Notebooks**: Scripts and notebooks that are standalone tools and NOT used as inputs for the application (simulator or Flask app) MAY be exempted from testing requirements. This exception applies only to:
-  - Standalone analysis scripts
-  - Jupyter notebooks used for exploration or one-off calculations
-  - Utility scripts that do not feed data or logic into the main application
-  - Scripts explicitly documented as experimental or exploratory
+  - Standalone analysis scripts that do not feed data or logic into the application
+  - Jupyter notebooks used for exploration or one-off calculations that are not imported or executed by the application
+  - Utility scripts that are explicitly documented as experimental or exploratory and are not dependencies of the simulator or Flask app
+  - Scripts that are not imported, executed, or referenced by any application code (simulator or Flask app)
+  
+  **Note**: If a script or notebook is used as input, imported, executed, or referenced by the application, it MUST follow all testing requirements including TDD.
 
 - **Test Structure**: Tests MUST use pytest as the testing framework. Test files MUST mirror the source code structure under `tests/`. Test functions MUST have descriptive names following `test_<functionality>` or `test_<scenario>` patterns. Test classes MUST follow `Test<ClassName>` naming.
 
@@ -106,6 +115,8 @@ Constitutional amendments require:
 - Violations MUST be addressed before merge approval unless explicitly exempted via constitutional amendment.
 
 ### Version History
+
+- **1.2.0** (2025-12-12): Added principles for object models over dictionaries, named function arguments, and test-driven development. Clarified testing exception applies only to scripts/notebooks not used as application inputs. Testing requirements remain strict for all application code (simulator and Flask app).
 
 - **1.1.0** (2025-12-10): Added exception to testing requirements for standalone scripts/notebooks not used as application inputs. Testing standards remain strict for simulator and Flask app functionality.
 

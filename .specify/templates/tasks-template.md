@@ -83,8 +83,8 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 1 (REQUIRED per constitution) ⚠️
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
-> **CONSTITUTION**: All new application code (simulator and Flask app) MUST include tests. Test coverage MUST meet minimum 80% (95%+ for financial calculations). *Exception*: Standalone scripts/notebooks not used as application inputs MAY be exempted.
+> **NOTE: TDD REQUIRED - Write these tests FIRST, ensure they FAIL before implementation**
+> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code (simulator and Flask app) MUST include tests. Test coverage MUST meet minimum 80% (95%+ for financial calculations). *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
 
 - [ ] T010 [P] [US1] Unit tests for [component] in tests/unit/test_[name].py
 - [ ] T011 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
@@ -93,10 +93,10 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Implementation for User Story 1
 
-- [ ] T014 [P] [US1] Create [Entity1] model in src/models/[entity1].py (with type hints and docstrings)
-- [ ] T015 [P] [US1] Create [Entity2] model in src/models/[entity2].py (with type hints and docstrings)
-- [ ] T016 [US1] Implement [Service] in src/services/[service].py (depends on T014, T015)
-- [ ] T017 [US1] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T014 [P] [US1] Create [Entity1] model in src/models/[entity1].py (use object model, not dict; with type hints and docstrings)
+- [ ] T015 [P] [US1] Create [Entity2] model in src/models/[entity2].py (use object model, not dict; with type hints and docstrings)
+- [ ] T016 [US1] Implement [Service] in src/services/[service].py (depends on T014, T015; use named arguments in function calls)
+- [ ] T017 [US1] Implement [endpoint/feature] in src/[location]/[file].py (use named arguments in function calls)
 - [ ] T018 [US1] Add validation and error handling (with clear, actionable error messages)
 - [ ] T019 [US1] Add logging for user story 1 operations
 - [ ] T020 [US1] Verify pylint score ≥ 8.0/10.0
@@ -115,7 +115,7 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 2 (REQUIRED per constitution) ⚠️
 
-> **CONSTITUTION**: All new application code MUST include tests. *Exception*: Standalone scripts/notebooks not used as application inputs MAY be exempted.
+> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code MUST include tests. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
 
 - [ ] T023 [P] [US2] Unit tests for [component] in tests/unit/test_[name].py
 - [ ] T024 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
@@ -124,9 +124,9 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Implementation for User Story 2
 
-- [ ] T027 [P] [US2] Create [Entity] model in src/models/[entity].py (with type hints and docstrings)
-- [ ] T028 [US2] Implement [Service] in src/services/[service].py
-- [ ] T029 [US2] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T027 [P] [US2] Create [Entity] model in src/models/[entity].py (use object model, not dict; with type hints and docstrings)
+- [ ] T028 [US2] Implement [Service] in src/services/[service].py (use named arguments in function calls)
+- [ ] T029 [US2] Implement [endpoint/feature] in src/[location]/[file].py (use named arguments in function calls)
 - [ ] T030 [US2] Integrate with User Story 1 components (if needed)
 - [ ] T031 [US2] Verify pylint score ≥ 8.0/10.0
 - [ ] T032 [US2] Verify type checking passes
@@ -144,7 +144,7 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 3 (REQUIRED per constitution) ⚠️
 
-> **CONSTITUTION**: All new application code MUST include tests. *Exception*: Standalone scripts/notebooks not used as application inputs MAY be exempted.
+> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code MUST include tests. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
 
 - [ ] T034 [P] [US3] Unit tests for [component] in tests/unit/test_[name].py
 - [ ] T035 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
@@ -153,9 +153,9 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Implementation for User Story 3
 
-- [ ] T038 [P] [US3] Create [Entity] model in src/models/[entity].py (with type hints and docstrings)
-- [ ] T039 [US3] Implement [Service] in src/services/[service].py
-- [ ] T040 [US3] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T038 [P] [US3] Create [Entity] model in src/models/[entity].py (use object model, not dict; with type hints and docstrings)
+- [ ] T039 [US3] Implement [Service] in src/services/[service].py (use named arguments in function calls)
+- [ ] T040 [US3] Implement [endpoint/feature] in src/[location]/[file].py (use named arguments in function calls)
 - [ ] T041 [US3] Verify pylint score ≥ 8.0/10.0
 - [ ] T042 [US3] Verify type checking passes
 - [ ] T043 [US3] Add module and function docstrings per constitution

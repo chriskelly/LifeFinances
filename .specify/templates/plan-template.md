@@ -37,13 +37,16 @@
 - [ ] All modules will include module-level docstrings
 - [ ] All public classes and functions will include docstrings
 - [ ] No circular dependencies will be introduced
+- [ ] Object models (classes, dataclasses, TypedDict, Pydantic) will be used instead of plain dictionaries for type safety
+- [ ] Function calls will use named arguments (except single obvious argument cases)
 
 **Testing Gates:**
+- [ ] Test-Driven Development (TDD) will be used: tests written before implementation for all application code
 - [ ] Test coverage plan achieves minimum 80% (95%+ for financial calculations) for application code (simulator and Flask app)
 - [ ] Tests will use pytest framework with proper fixtures
 - [ ] Integration tests planned for API endpoints
 - [ ] Test performance targets defined (<1s unit, <10s integration)
-- [ ] If feature includes standalone scripts/notebooks: Exception documented per constitution Testing Standards
+- [ ] If feature includes standalone scripts/notebooks: Exception documented per constitution Testing Standards (only for scripts/notebooks NOT used as inputs for the application)
 
 **User Experience Gates:**
 - [ ] API endpoints follow consistent naming conventions
