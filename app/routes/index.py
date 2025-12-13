@@ -1,6 +1,7 @@
 """
 This module contains the IndexPage class, which represents the index page of the LifeFinances app.
-It also contains functions for reading and writing configuration files, and generating simulation results.
+It also contains functions for reading and writing configuration files,
+and generating simulation results.
 """
 
 from flask import Request, render_template

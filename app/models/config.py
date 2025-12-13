@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Optional
 import yaml
 from pydantic import BaseModel, ValidationError, field_validator, model_validator
-from pydantic_core.core_schema import FieldValidationInfo
+from pydantic_core.core_schema import ValidationInfo
 from app.data.taxes import STATE_BRACKET_RATES
 from app.data import constants
 
@@ -37,7 +37,7 @@ class StrategyConfig(BaseModel):
 
     @field_validator("chosen")
     @classmethod
-    def chosen_forces_enabled(cls, chosen, info: FieldValidationInfo):
+    def chosen_forces_enabled(cls, chosen, info: ValidationInfo):
         """Forces enabled to true if chosen is true
 
         Note: In strategy class, enabled has to be defined before chosen in order to access it.
@@ -122,10 +122,10 @@ def _validate_allocation(allocation: dict[str, float]):
 class FlatAllocationStrategyConfig(StrategyConfig):
     """
     Attributes
-        allocation (dict[str, float]): Defaults to None
+        allocation (dict[str, float])
     """
 
-    allocation: Optional[dict[str, float]] = None
+    allocation: dict[str, float]
 
     @model_validator(mode="after")
     def validate_allocation(self):
@@ -231,12 +231,12 @@ class SocialSecurity(BaseModel):
         earnings_records (dict): Defaults to empty dict
     """
 
-    trust_factor: Optional[float] = 1
+    trust_factor: float = 1
     pension_eligible: bool = False
-    strategy: Optional[SocialSecurityOptions] = SocialSecurityOptions(
+    strategy: SocialSecurityOptions = SocialSecurityOptions(
         mid=StrategyConfig(chosen=True)
     )
-    earnings_records: Optional[dict] = {}
+    earnings_records: dict = {}
 
 
 class PensionOptions(SocialSecurityOptions):
@@ -273,7 +273,7 @@ class Pension(BaseModel):
     trust_factor: float = 1
     account_balance: float = 0
     balance_update: float = 2022.5
-    strategy: Optional[PensionOptions] = PensionOptions(mid=StrategyConfig(chosen=True))
+    strategy: PensionOptions = PensionOptions(mid=StrategyConfig(chosen=True))
 
 
 class SpendingOptions(StrategyOptions):
@@ -284,7 +284,7 @@ class SpendingOptions(StrategyOptions):
         ceil_floor (CeilFloorStrategy): Defaults to None
     """
 
-    inflation_only: Optional[StrategyConfig] = StrategyConfig(chosen=True)
+    inflation_only: StrategyConfig = StrategyConfig(chosen=True)
 
 
 class SpendingProfile(BaseModel):
@@ -302,10 +302,25 @@ class SpendingProfile(BaseModel):
 def _spending_profiles_validation(spending_profiles: list[SpendingProfile]):
     """Spending profiles must be in order and last profile should have no end date"""
     if spending_profiles:
-        if len(spending_profiles) > 2:
+        # Validate that all profiles except the last have end_date set
+        for i in range(len(spending_profiles) - 1):
+            if spending_profiles[i].end_date is None:
+                raise ValueError(
+                    "All spending profiles except the last must have an end_date"
+                )
+
+        # Validate ordering: compare end_date values for all profiles except the last
+        # Since we've already validated that all except the last have end_date,
+        # we can compare directly
+        if len(spending_profiles) > 1:
             for i in range(1, len(spending_profiles) - 1):
-                if spending_profiles[i].end_date < spending_profiles[i - 1].end_date:
-                    raise ValueError("Spending profiles must be in order")
+                end_date_i = spending_profiles[i].end_date
+                end_date_prev = spending_profiles[i - 1].end_date
+                if end_date_i is not None and end_date_prev is not None:
+                    if end_date_i < end_date_prev:
+                        raise ValueError("Spending profiles must be in order")
+
+        # Validate that the last profile has no end_date
         if spending_profiles[-1].end_date:
             raise ValueError("Last spending profile should have no end date")
 
@@ -374,7 +389,7 @@ class IncomeProfile(BaseModel):
         return self
 
 
-def _income_profiles_in_order(income_profiles: list[IncomeProfile]):
+def _income_profiles_in_order(income_profiles: Optional[list[IncomeProfile]]):
     """Income profiles must be in order"""
     if income_profiles:
         for i in range(1, len(income_profiles)):
@@ -393,7 +408,7 @@ class Partner(BaseModel):
     """
 
     age: Optional[int] = None
-    social_security_pension: Optional[SocialSecurity] = SocialSecurity()
+    social_security_pension: SocialSecurity = SocialSecurity()
     income_profiles: Optional[list[IncomeProfile]] = None
 
 
@@ -410,6 +425,7 @@ class TPAWPlanner(BaseModel):
     group_tol: float = 1.0
     inflation_rate: Optional[float] = None
 
+
 class DisabilityCoverage(BaseModel):
     """
     Attributes
@@ -419,6 +435,7 @@ class DisabilityCoverage(BaseModel):
 
     percentage: float = 0.0
     duration_years: int = 0
+
 
 class DisabilityInsuranceCalculator(BaseModel):
     """
@@ -472,16 +489,18 @@ class User(BaseModel):
 
     age: int
     trial_quantity: int = 500
-    calculate_til: float = None
+    calculate_til: float = (
+        None  # pyright: ignore[reportAssignmentType] # field_validator will set this to a float
+    )
     net_worth_target: Optional[float] = None
     portfolio: Portfolio
-    social_security_pension: Optional[SocialSecurity] = SocialSecurity()
+    social_security_pension: SocialSecurity = SocialSecurity()
     spending: Spending
     state: Optional[str] = None
     kids: Optional[Kids] = None
-    income_profiles: list[IncomeProfile] = None
+    income_profiles: Optional[list[IncomeProfile]] = None
     partner: Optional[Partner] = None
-    tpaw_planner: Optional[TPAWPlanner] = TPAWPlanner()
+    tpaw_planner: TPAWPlanner = TPAWPlanner()
     disability_insurance_calculator: Optional[DisabilityInsuranceCalculator] = None
     admin: Optional[Admin] = None
 
@@ -495,7 +514,7 @@ class User(BaseModel):
 
     @field_validator("calculate_til")
     @classmethod
-    def set_calculate_til(cls, calculate_til, info: FieldValidationInfo):
+    def set_calculate_til(cls, calculate_til, info: ValidationInfo):
         """Set calculate till to be current year minus age + 90 if not specified"""
         if calculate_til is None:
             return constants.TODAY_YR - info.data["age"] + 90
@@ -530,7 +549,10 @@ class User(BaseModel):
     def social_security_same_strategy(self):
         """User cannot enable/choose `same` strategy and
         partner cannot enable other strategies if `same` is chosen"""
-        if "same" in self.social_security_pension.strategy.enabled_strategies:
+        if (
+            self.social_security_pension.strategy.enabled_strategies
+            and "same" in self.social_security_pension.strategy.enabled_strategies
+        ):
             raise ValueError("`Same` strategy can only be enabled for partner")
         return self
 
