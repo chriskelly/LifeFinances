@@ -1,0 +1,14 @@
+# Qt GUI Requirements for LifeFinances
+# Install these in addition to common.txt or dev.txt
+
+# PyQt6 - Qt6 bindings for Python
+PyQt6==6.6.1
+
+# PyQt6 Charts - For visualization of simulation results
+PyQt6-Charts==6.6.0
+
+# Matplotlib - For advanced plotting and visualization
+matplotlib==3.8.2
+
+# PyYAML is already in common.txt, but needed for config editing
+# Pydantic is already in common.txt, but needed for validation

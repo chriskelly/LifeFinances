@@ -1,0 +1,1 @@
+"""Qt GUI widgets module."""

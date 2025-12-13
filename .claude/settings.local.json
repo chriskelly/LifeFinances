@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(python -m venv:*)",
+      "Bash(.venvScriptspython.exe -m pip install --upgrade pip)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(.venv/Scripts/pip.exe install:*)",
+      "Bash(\"C:\\Users\\Chris\\AppData\\Local\\Programs\\Python\\Python311\\python.exe\" --version)",
+      "Bash(\"C:\\Users\\Chris\\AppData\\Local\\Programs\\Python\\Python311\\python.exe\" -m venv .venv)",
+      "Bash(.venv/Scripts/pytest.exe tests/qt_gui/ -v)",
+      "Bash(.venv/Scripts/pytest.exe tests/qt_gui/test_results_viewer.py -v)",
+      "Bash(.venv/Scripts/pytest.exe tests/qt_gui/test_simulation_runner.py -v)",
+      "Bash(.venv/Scripts/pytest.exe:*)"
+    ]
+  }
+}

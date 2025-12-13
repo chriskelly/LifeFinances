@@ -1,0 +1,1 @@
+"""Qt GUI tests module."""
