@@ -206,7 +206,7 @@ class ResultsViewerWidget(QWidget):
 
         # Count successful vs failed trials
         num_trials = len(self._results.trials)
-        num_success = sum(1 for trial in self._results.trials if trial.is_successful)
+        num_success = sum(1 for trial in self._results.trials if trial.get_success())
         num_failure = num_trials - num_success
 
         self.num_trials_label.setText(str(num_trials))
@@ -230,13 +230,13 @@ class ResultsViewerWidget(QWidget):
             trial = self._results.trials[i]
 
             # Determine color based on success
-            color = 'green' if trial.is_successful else 'red'
+            color = 'green' if trial.get_success() else 'red'
 
             # Plot net worth over time
-            if 'date' in df.columns and 'net_worth' in df.columns:
+            if 'Date' in df.columns and 'Net Worth' in df.columns:
                 self.canvas.axes.plot(
-                    df['date'],
-                    df['net_worth'],
+                    df['Date'],
+                    df['Net Worth'],
                     color=color,
                     alpha=alpha,
                     linewidth=0.5
@@ -245,15 +245,15 @@ class ResultsViewerWidget(QWidget):
         # Add median projection (bold line)
         if len(self._dataframes) > 0:
             # Calculate median net worth at each time point
-            all_dates = self._dataframes[0]['date'].values
+            all_dates = self._dataframes[0]['Date'].values
             median_net_worths = []
 
             for date in all_dates:
                 net_worths_at_date = []
                 for df in self._dataframes:
-                    matching_rows = df[df['date'] == date]
+                    matching_rows = df[df['Date'] == date]
                     if not matching_rows.empty:
-                        net_worths_at_date.append(matching_rows['net_worth'].values[0])
+                        net_worths_at_date.append(matching_rows['Net Worth'].values[0])
 
                 if net_worths_at_date:
                     median_net_worths.append(pd.Series(net_worths_at_date).median())

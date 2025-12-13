@@ -11,7 +11,8 @@
       "Bash(.venv/Scripts/pytest.exe tests/qt_gui/ -v)",
       "Bash(.venv/Scripts/pytest.exe tests/qt_gui/test_results_viewer.py -v)",
       "Bash(.venv/Scripts/pytest.exe tests/qt_gui/test_simulation_runner.py -v)",
-      "Bash(.venv/Scripts/pytest.exe:*)"
+      "Bash(.venv/Scripts/pytest.exe:*)",
+      "Bash(cp:*)"
     ]
   }
 }
