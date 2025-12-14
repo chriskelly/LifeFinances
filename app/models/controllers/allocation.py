@@ -2,11 +2,13 @@
 
 Classes:
     Controller: Manages strategy and allocation generation
-        gen_allocation(self, state: State) -> np.ndarray: 
+        gen_allocation(self, state: State) -> np.ndarray:
         Returns allocation ratios for a given state
 """
+
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import cast
 import numpy as np
 from app.models.financial.state import State
 from app.models.config import User
@@ -31,7 +33,7 @@ class _Strategy(ABC):
         Returns:
             np.ndarray: Allocation ratios for each asset
         """
-        return NotImplementedError
+        raise NotImplementedError
 
 
 @dataclass
@@ -49,14 +51,14 @@ class _FlatAllocationStrategy(_Strategy):
 
     config: config.FlatAllocationStrategyConfig
     asset_lookup: dict[str, int]
-    allocation: np.ndarray = None
+    allocation: np.ndarray = field(init=False)
 
     def __post_init__(self):
         self.allocation = _allocation_dict_to_array(
             allocation_dict=self.config.allocation, asset_lookup=self.asset_lookup
         )
 
-    def gen_allocation(self, state: State):
+    def gen_allocation(self, state: State) -> np.ndarray:
         return self.allocation
 
 
@@ -64,8 +66,8 @@ class _FlatAllocationStrategy(_Strategy):
 class _NetWorthPivotStrategy(_Strategy):
     config: config.NetWorthPivotStrategyConfig
     asset_lookup: dict[str, int]
-    under_target_allocation: np.ndarray = None
-    over_target_allocation: np.ndarray = None
+    under_target_allocation: np.ndarray = field(init=False)
+    over_target_allocation: np.ndarray = field(init=False)
 
     def __post_init__(self):
         self.under_target_allocation = _allocation_dict_to_array(
@@ -123,11 +125,13 @@ class Controller:
         match strategy_str:
             case "flat":
                 self._strategy = _FlatAllocationStrategy(
-                    config=strategy_obj, asset_lookup=asset_lookup
+                    config=cast(config.FlatAllocationStrategyConfig, strategy_obj),
+                    asset_lookup=asset_lookup,
                 )
             case "net_worth_pivot":
                 self._strategy = _NetWorthPivotStrategy(
-                    config=strategy_obj, asset_lookup=asset_lookup
+                    config=cast(config.NetWorthPivotStrategyConfig, strategy_obj),
+                    asset_lookup=asset_lookup,
                 )
             case _:
                 raise ValueError(

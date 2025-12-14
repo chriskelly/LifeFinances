@@ -19,7 +19,9 @@ from abc import ABC, abstractmethod
 import csv
 from pathlib import Path
 from dataclasses import dataclass
+from typing import Optional
 import numpy as np
+from numpy.typing import NDArray
 from app.util import interval_stdev, interval_yield
 
 rng = np.random.default_rng()
@@ -51,7 +53,7 @@ class VariableMix:
     """
 
     variable_stats: list[_StatisticBehavior]
-    correlation_matrix: np.ndarray[float]
+    correlation_matrix: NDArray[np.floating]
     lookup_table: dict[str, int]
 
 
@@ -189,7 +191,7 @@ class EconomicStateData:
         asset_lookup (dict[str, int])
     """
 
-    asset_rates: np.ndarray[float]
+    asset_rates: NDArray[np.floating]
     inflation: float
     asset_lookup: dict[str, int]
 
@@ -212,8 +214,8 @@ class EconomicTrialData:
         get_state_data(interval_idx: int): Returns a single state's economic data
     """
 
-    asset_rates: np.ndarray[float]
-    inflation: np.ndarray[float]
+    asset_rates: NDArray[np.floating]
+    inflation: NDArray[np.floating]
     asset_lookup: dict[str, int]
 
     def __repr__(self) -> str:
@@ -250,8 +252,8 @@ class EconomicSimData:
         get_trial_data(trial: int): Returns a single trial's economic data
     """
 
-    asset_rates: np.ndarray[float]
-    inflation: np.ndarray[float]
+    asset_rates: NDArray[np.floating]
+    inflation: NDArray[np.floating]
     asset_lookup: dict[str, int]
 
     def __repr__(self) -> str:
@@ -289,9 +291,9 @@ class EconomicEngine:
         self._intervals_per_trial = intervals_per_trial
         self._trial_qty = trial_qty
         self._variable_mix = variable_mix_repo.get_variable_mix()
-        self._asset_data = None
-        self._inflation_data = None
-        self._lookup_table = None
+        self._asset_data: Optional[NDArray[np.floating]] = None
+        self._inflation_data: Optional[NDArray[np.floating]] = None
+        self._lookup_table: Optional[dict[str, int]] = None
         self.data = self._gen_data()
 
     def _gen_data(self) -> EconomicSimData:
@@ -301,6 +303,9 @@ class EconomicEngine:
             intervals_per_trial=self._intervals_per_trial,
         )
         self._split_inflation_from_assets(covariated_data)
+        assert self._asset_data is not None
+        assert self._inflation_data is not None
+        assert self._lookup_table is not None
         self._make_inflation_cumulative()
 
         return EconomicSimData(
@@ -309,7 +314,7 @@ class EconomicEngine:
             asset_lookup=self._lookup_table,
         )
 
-    def _split_inflation_from_assets(self, data: np.ndarray[float]):
+    def _split_inflation_from_assets(self, data: NDArray[np.floating]):
         inflation_idx = self._variable_mix.lookup_table["Inflation"]
         self._inflation_data = data[:, :, inflation_idx]
         self._asset_data = np.delete(data, inflation_idx, axis=2)
@@ -323,6 +328,7 @@ class EconomicEngine:
                 self._lookup_table[k] = idx - 1
 
     def _make_inflation_cumulative(self):
+        assert self._inflation_data is not None
         for i in range(self._trial_qty):
             for j in range(1, self._intervals_per_trial):
                 self._inflation_data[i][j] *= self._inflation_data[i][j - 1]
