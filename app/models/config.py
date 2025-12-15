@@ -414,7 +414,7 @@ class Partner(BaseModel):
         income_profiles (list[IncomeProfile]): Defaults to None
     """
 
-    age: Optional[int] = None
+    age: int
     social_security_pension: SocialSecurity = SocialSecurity()
     income_profiles: Optional[list[IncomeProfile]] = None
 

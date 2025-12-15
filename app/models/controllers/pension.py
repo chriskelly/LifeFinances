@@ -6,6 +6,7 @@ the specific rules of the admin's pension.
 
 from abc import ABC, abstractmethod
 import math
+from typing import Optional, cast
 from app.data import constants
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import IncomeProfile, NetWorthStrategyConfig, User
@@ -80,6 +81,8 @@ class _NetWorthStrategy(_Strategy):
     def calc_payment(self, state: State) -> float:
         if self._payment:
             return self._payment * state.inflation
+        if self._net_worth_target is None:
+            raise ValueError("Net worth target cannot be None")
         if (
             state.date >= EARLY_YEAR
             and state.net_worth < self._net_worth_target * state.inflation
@@ -97,6 +100,12 @@ class _CashOutStrategy(_Strategy):
     """
 
     def __init__(self, user: User):
+        if user.admin is None:
+            raise ValueError("Admin cannot be None")
+        if user.partner is None:
+            raise ValueError("Partner cannot be None")
+        if user.partner.income_profiles is None:
+            raise ValueError("Income profiles cannot be None")
         self._pension = user.admin.pension
         self._income_profile = user.partner.income_profiles[0]
         self._interval_raise = interval_yield(1 + self._income_profile.yearly_raise)
@@ -154,14 +163,15 @@ class Controller:
 
     def __init__(self, user: User):
         self._user = user
-        if user.admin:
+        if user.admin and user.partner:
+            self._pension = user.admin.pension
             base = Controller._calc_base(user.partner.income_profiles)
             self._strategy = self._gen_strategy(base)
         else:
             self._strategy = None
 
     @staticmethod
-    def _calc_base(income_profiles: list[IncomeProfile]) -> float:
+    def _calc_base(income_profiles: Optional[list[IncomeProfile]]) -> float:
         """Calculate the interval value to multiply against the benefit rates
 
         This is the `service credit x final compensation` portion of the pension formula
@@ -185,21 +195,22 @@ class Controller:
 
     @staticmethod
     def _years_left_to_work(
-        income_profiles: list[IncomeProfile], current_date: float
+        income_profiles: Optional[list[IncomeProfile]], current_date: float
     ) -> float:
         years_worked = 0
-        date = current_date
-        for profile in income_profiles:
-            if profile.starting_income != 0:
-                years_worked += profile.last_date - date
-            date = profile.last_date
+        if income_profiles is not None:
+            date = current_date
+            for profile in income_profiles:
+                if profile.starting_income != 0:
+                    years_worked += profile.last_date - date
+                date = profile.last_date
         return years_worked
 
     def _gen_strategy(self, base: float) -> _Strategy:
         (
             strategy_str,
             strategy_obj,
-        ) = self._user.admin.pension.strategy.chosen_strategy
+        ) = self._pension.strategy.chosen_strategy
         match strategy_str:
             case "early":
                 return _AgeStrategy(trigger_year=EARLY_YEAR, base=base)
@@ -208,9 +219,15 @@ class Controller:
             case "late":
                 return _AgeStrategy(trigger_year=LATE_YEAR, base=base)
             case "net_worth":
-                return _NetWorthStrategy(config=strategy_obj, base=base)
+                return _NetWorthStrategy(
+                    config=cast(NetWorthStrategyConfig, strategy_obj), base=base
+                )
             case "cash_out":
                 return _CashOutStrategy(self._user)
+            case _:
+                raise ValueError(
+                    f"Invalid strategy: {self._pension.strategy.chosen_strategy}"
+                )
 
     def calc_payment(self, state: State) -> float:
         """Calculate pension payment for interval adjusted by trust factor

@@ -6,6 +6,7 @@ Classes:
 
 import math
 from abc import ABC, abstractmethod
+from typing import cast
 from app.util import index_extrapolator, max_earnings_extrapolator
 from app.data import constants
 from app.models.financial.state import State
@@ -240,12 +241,12 @@ class _Strategy(ABC):
 
     @property
     @abstractmethod
-    def trigger_date(self):
+    def trigger_date(self) -> float:
         """Date when social security is started"""
 
     @property
     @abstractmethod
-    def benefit_rate(self):
+    def benefit_rate(self) -> float:
         """Rate at which PIA is multiplied to calculate payment"""
 
     @abstractmethod
@@ -284,6 +285,8 @@ class _NetWorthStrategy(_Strategy):
     def __init__(self, config: NetWorthStrategyConfig, pia: float, current_age: int):
         self._trigger_date = float("inf")
         self._benefit_rate = 0
+        if config.net_worth_target is None:
+            raise ValueError("Net worth target cannot be None")
         self._net_worth_target = config.net_worth_target
         self._pia = pia
         self._current_age = current_age
@@ -374,7 +377,9 @@ class _IndividualController:
                 )
             case "net_worth":
                 self.strategy = _NetWorthStrategy(
-                    config=strategy_obj, pia=self.pia, current_age=age
+                    config=cast(NetWorthStrategyConfig, strategy_obj),
+                    pia=self.pia,
+                    current_age=age
                 )
 
     def calc_payment(self, state: State):
