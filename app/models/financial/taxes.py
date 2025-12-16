@@ -5,7 +5,7 @@ This module contains the constants related to taxes across all supported states.
 """
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from app import util
 from app.models.config import User
 from app.util import max_earnings_extrapolator
@@ -35,7 +35,7 @@ class Taxes:
     medicare: float
     social_security: float
     portfolio: float
-    sum: float = None
+    sum: float = field(init=False)
 
     def __post_init__(self):
         self.sum = float(
@@ -134,7 +134,7 @@ class _TaxRules:
         residence_state = user.state
         if residence_state is None:
             self.state_bracket_rates = None
-            self.state_standard_deduction = None
+            self.state_standard_deduction = 0
         else:
             self.state_bracket_rates = STATE_BRACKET_RATES[residence_state][married]
             self.state_standard_deduction = STATE_STD_DEDUCTION[residence_state][

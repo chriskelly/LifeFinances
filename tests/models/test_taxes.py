@@ -167,7 +167,7 @@ class TestTaxRules:
         assert tax_rules.federal_standard_deduction == pytest.approx(
             self.federal_standard_deduction_mock[self.married_index]
         )
-        assert tax_rules.state_standard_deduction is None
+        assert tax_rules.state_standard_deduction == 0
 
     def test_when_residence_state_is_not_none(self, sample_user: User):
         """

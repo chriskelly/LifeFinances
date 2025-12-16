@@ -5,7 +5,7 @@ Classes:
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 from app.models.financial.taxes import Taxes, calc_taxes
 from app.data.constants import INTERVALS_PER_YEAR
@@ -47,7 +47,7 @@ class _Costs:
     spending: float
     kids: float
     taxes: Taxes
-    sum: float = None
+    sum: float = field(init=False)
 
     def __post_init__(self):
         self.sum = self.spending + self.kids + self.taxes.sum
@@ -59,7 +59,7 @@ class _NetTransactions:
     portfolio_return: float
     costs: _Costs
     annuity: float
-    sum: float = None
+    sum: float = field(init=False)
 
     def __post_init__(self):
         self.sum = (
