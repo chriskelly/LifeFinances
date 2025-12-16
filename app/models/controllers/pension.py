@@ -6,7 +6,7 @@ the specific rules of the admin's pension.
 
 from abc import ABC, abstractmethod
 import math
-from typing import Optional, cast
+from typing import Optional, Sequence, cast
 from app.data import constants
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import IncomeProfile, NetWorthStrategyConfig, User
@@ -189,7 +189,7 @@ class Controller:
         return final_compensation * years_worked / INTERVALS_PER_YEAR
 
     @staticmethod
-    def _calc_years_on_break(job_breaks: list[tuple[float, float]]) -> float:
+    def _calc_years_on_break(job_breaks: Sequence[tuple[float, float]]) -> float:
         """Calculate the years on break"""
         return sum(end - start for start, end in job_breaks)
 

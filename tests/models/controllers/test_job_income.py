@@ -1,6 +1,8 @@
 """Testing for models/financials/allocation.py"""
 
 # pylint:disable=protected-access,missing-class-docstring
+# pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
+# pyright: reportOptionalSubscript=false
 
 import pytest
 from app.data import constants

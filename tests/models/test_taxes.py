@@ -1,6 +1,8 @@
 """Testing for models/taxes.py
 """
 # pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
+# pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
+# pyright: reportOptionalSubscript=false
 
 import pytest
 from app.data.constants import INTERVALS_PER_YEAR
@@ -51,10 +53,8 @@ class TestCalcTaxes:
 
         sample_user.income_profiles = [
             IncomeProfile(
-                **{
-                    "starting_income": mock_income.job_income * INTERVALS_PER_YEAR,
-                    "last_date": 3000,
-                }
+                starting_income=mock_income.job_income * INTERVALS_PER_YEAR,
+                last_date=3000,
             ),
         ]
         sample_user.partner = None

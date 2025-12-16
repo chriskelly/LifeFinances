@@ -1,6 +1,8 @@
-"""Testing for models/financial/interval.py
-"""
+"""Testing for models/financial/interval.py"""
+
 # pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
+# pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
+# pyright: reportOptionalSubscript=false
 
 import pytest
 from pytest_mock.plugin import MockerFixture
@@ -28,11 +30,18 @@ def test_gen_next_interval(
     net_transactions_mock = 100
     interval.state_change_components.net_transactions = mocker.MagicMock()
     interval.state_change_components.net_transactions.sum = net_transactions_mock
-    economic_state_data_mock = mocker.MagicMock(spec=EconomicStateData)
+    economic_state_data_mock: EconomicStateData = mocker.MagicMock(
+        spec=EconomicStateData
+    )
     next_inflation = 2
     economic_state_data_mock.inflation = next_inflation
+
+    def get_economic_state_data_mock(state_interval_idx: int) -> EconomicStateData:
+        del state_interval_idx  # unused parameter
+        return economic_state_data_mock
+
     controllers_mock.economic_data.get_economic_state_data = (
-        lambda *_: economic_state_data_mock
+        get_economic_state_data_mock
     )
 
     next_interval = interval.gen_next_interval(controllers_mock)

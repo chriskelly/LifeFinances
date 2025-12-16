@@ -1,6 +1,8 @@
 """Testing for models/controllers/pension.py"""
 
 # pylint:disable=missing-class-docstring,protected-access
+# pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
+# pyright: reportOptionalSubscript=false
 
 import pytest
 from app.data.constants import INTERVALS_PER_YEAR
@@ -8,6 +10,7 @@ from app.models.config import (
     IncomeProfile,
     NetWorthStrategyConfig,
     PensionOptions,
+    StrategyConfig,
     User,
 )
 from app.models.controllers.pension import (
@@ -192,27 +195,29 @@ class TestController:
     def test_gen_strategy(self, sample_user: User):
         """Ensure Controller.strategy has been set correctly"""
         sample_user.admin.pension.strategy = PensionOptions(
-            **{"early": {"chosen": True}}
+            early=StrategyConfig(chosen=True)
         )
         strategy = Controller(sample_user)._strategy
         assert isinstance(strategy, _AgeStrategy)
         assert strategy._trigger_date == EARLY_YEAR
-        sample_user.admin.pension.strategy = PensionOptions(**{"mid": {"chosen": True}})
+        sample_user.admin.pension.strategy = PensionOptions(
+            mid=StrategyConfig(chosen=True)
+        )
         strategy = Controller(sample_user)._strategy
         assert isinstance(strategy, _AgeStrategy)
         assert strategy._trigger_date == MID_YEAR
         sample_user.admin.pension.strategy = PensionOptions(
-            **{"late": {"chosen": True}}
+            late=StrategyConfig(chosen=True)
         )
         strategy = Controller(sample_user)._strategy
         assert isinstance(strategy, _AgeStrategy)
         assert strategy._trigger_date == LATE_YEAR
         sample_user.admin.pension.strategy = PensionOptions(
-            **{"net_worth": {"chosen": True}}
+            net_worth=NetWorthStrategyConfig(chosen=True)
         )
         assert isinstance(Controller(sample_user)._strategy, _NetWorthStrategy)
         sample_user.admin.pension.strategy = PensionOptions(
-            **{"cash_out": {"chosen": True}}
+            cash_out=StrategyConfig(chosen=True)
         )
         assert isinstance(Controller(sample_user)._strategy, _CashOutStrategy)
         sample_user.admin = None
@@ -224,7 +229,8 @@ class TestController:
         controller = Controller(sample_user)
         first_state.date = LATE_YEAR
         assert controller.calc_payment(first_state) == pytest.approx(
-            controller._strategy.calc_payment(first_state) * sample_user.admin.pension.trust_factor
+            controller._strategy.calc_payment(first_state)
+            * sample_user.admin.pension.trust_factor
         )
         sample_user.admin = None
         assert Controller(sample_user).calc_payment(first_state) == 0

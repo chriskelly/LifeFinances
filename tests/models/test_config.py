@@ -3,6 +3,8 @@ run `python3 -m pytest` if VSCode Testing won't load
 """
 
 # pylint:disable=redefined-outer-name,missing-class-docstring,no-name-in-module
+# pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
+# pyright: reportOptionalSubscript=false
 
 from typing import Optional
 from dataclasses import dataclass
@@ -82,18 +84,16 @@ def test_chosen_forces_enabled():
 def strategy_options() -> StrategyOptions:
     """Sample StrategyOptions"""
 
-    data = {
-        "strategy1": {"enabled": True},
-        "strategy2": {"enabled": False},
-        "strategy3": {"enabled": True, "chosen": True},
-    }
-
     class MyOptions(StrategyOptions):
         strategy1: StrategyConfig
         strategy2: StrategyConfig
         strategy3: StrategyConfig
 
-    my_options = MyOptions(**data)
+    my_options = MyOptions(
+        strategy1=StrategyConfig(enabled=True),
+        strategy2=StrategyConfig(enabled=False),
+        strategy3=StrategyConfig(enabled=True, chosen=True),
+    )
     return my_options
 
 
@@ -101,6 +101,7 @@ def test_enabled_strategies(strategy_options: StrategyOptions):
     """All strategies with `enabled=True` in a StrategyOption instance
     should be included in the `enabled_strategies` property"""
     enabled_strategies = strategy_options.enabled_strategies
+    assert enabled_strategies is not None
     assert len(enabled_strategies) == 2
     assert "strategy1" in enabled_strategies
     assert "strategy3" in enabled_strategies
