@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Run Simulation - LifeFinances{% endblock %}
+
+{% block content %}
+<div class="col-12">
+    <div class="p-4 fade-in">
+        <!-- Page Header -->
+        <div class="mb-4">
+            <h1>Run Simulation</h1>
+            <p class="text-muted">Execute Monte Carlo retirement planning simulation</p>
+        </div>
+
+        <!-- Simulation Control Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-play-circle"></i> Simulation Control
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('index') }}">
+                    <input type="hidden" name="run_simulation" value="1">
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Current Configuration:</strong> Using <code>config.yml</code>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6>Simulation Parameters:</h6>
+                        <ul class="mb-3">
+                            <li><strong>Trials:</strong> 500 Monte Carlo simulations</li>
+                            <li><strong>Method:</strong> Probabilistic economic scenarios</li>
+                            <li><strong>Output:</strong> Success rates and detailed projections</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-play-circle-fill"></i> Run Simulation
+                        </button>
+                        <a href="{{ url_for('config') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-gear"></i> Edit Configuration
+                        </a>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Info Card -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-lightbulb"></i> About Monte Carlo Simulation
+            </div>
+            <div class="card-body">
+                <p>
+                    Monte Carlo simulation runs your financial plan through 500 different economic scenarios
+                    to assess the probability of success. Each trial uses randomized but historically-informed
+                    values for:
+                </p>
+                <ul>
+                    <li>Stock market returns</li>
+                    <li>Bond market returns</li>
+                    <li>Inflation rates</li>
+                    <li>Economic conditions</li>
+                </ul>
+                <p class="mb-0">
+                    The simulation typically takes a few seconds to complete. Results will show your
+                    success rate and detailed projections.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
