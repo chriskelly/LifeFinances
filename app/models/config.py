@@ -10,10 +10,10 @@ Useful Pydantic documentation
 import csv
 import math
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 import yaml
-from pydantic import BaseModel, ValidationError, field_validator, model_validator
-from pydantic_core.core_schema import FieldValidationInfo
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic_core.core_schema import ValidationInfo
 from app.data.taxes import STATE_BRACKET_RATES
 from app.data import constants
 
@@ -37,7 +37,7 @@ class StrategyConfig(BaseModel):
 
     @field_validator("chosen")
     @classmethod
-    def chosen_forces_enabled(cls, chosen, info: FieldValidationInfo):
+    def chosen_forces_enabled(cls, chosen, info: ValidationInfo):
         """Forces enabled to true if chosen is true
 
         Note: In strategy class, enabled has to be defined before chosen in order to access it.
@@ -52,11 +52,11 @@ class StrategyOptions(BaseModel):
     Attributes:
         enabled_strategies (dict[str, Strategy]): Defaults to None
 
-        chosen_strategy (tuple[str, Strategy]): Defaults to None
+        chosen_strategy (tuple[str, Strategy]): Set by validator, guaranteed to be non-None
     """
 
     enabled_strategies: Optional[dict[str, StrategyConfig]] = None
-    chosen_strategy: Optional[tuple[str, StrategyConfig]] = None
+    chosen_strategy: tuple[str, StrategyConfig] = None  # type: ignore[assignment]
 
     @model_validator(mode="after")
     def find_enabled_and_chosen_strategies(self):
@@ -76,7 +76,7 @@ class StrategyOptions(BaseModel):
             if strategy and strategy.enabled
         }
         # Find chosen strategy
-        self.chosen_strategy = next(
+        chosen_strategy = next(
             (
                 (prop, strategy)
                 for (prop, strategy) in self.enabled_strategies.items()
@@ -84,6 +84,13 @@ class StrategyOptions(BaseModel):
             ),
             None,
         )
+        if chosen_strategy is None:
+            raise ValueError(
+                f"chosen_strategy is None after validation. This should not happen if exactly one "
+                f"{type(self).__name__} strategy has 'chosen' set to True."
+            )
+        # Type assertion: chosen_strategy is guaranteed to be non-None after the check above
+        self.chosen_strategy = cast(tuple[str, StrategyConfig], chosen_strategy)
         return self
 
 
@@ -122,10 +129,10 @@ def _validate_allocation(allocation: dict[str, float]):
 class FlatAllocationStrategyConfig(StrategyConfig):
     """
     Attributes
-        allocation (dict[str, float]): Defaults to None
+        allocation (dict[str, float])
     """
 
-    allocation: Optional[dict[str, float]] = None
+    allocation: dict[str, float]
 
     @model_validator(mode="after")
     def validate_allocation(self):
@@ -183,10 +190,48 @@ class Portfolio(BaseModel):
         allocation_strategy (AllocationOptions)
     """
 
-    current_net_worth: float = 0
-    tax_rate: float = 0.1
-    annuity: Optional[AnnuityConfig] = None
-    allocation_strategy: AllocationOptions
+    current_net_worth: float = Field(
+        default=0,
+        json_schema_extra={
+            "ui": {
+                "label": "Current Net Worth",
+                "tooltip": "Your current total net worth in dollars",
+                "section": "Portfolio",
+                "min_value": 0,
+            }
+        }
+    )
+    tax_rate: float = Field(
+        default=0.1,
+        json_schema_extra={
+            "ui": {
+                "label": "Tax Rate",
+                "tooltip": "Portfolio tax rate (default: 0.1 = 10%)",
+                "section": "Portfolio",
+                "min_value": 0,
+                "max_value": 1,
+            }
+        }
+    )
+    annuity: Optional[AnnuityConfig] = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Annuity",
+                "tooltip": "Annuity purchase configuration",
+                "section": "Portfolio",
+            }
+        }
+    )
+    allocation_strategy: AllocationOptions = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Allocation Strategy",
+                "tooltip": "Asset allocation strategy (flat, net-worth pivot, etc.)",
+                "section": "Portfolio",
+            }
+        }
+    )
 
 
 class NetWorthStrategyConfig(StrategyConfig):
@@ -231,12 +276,49 @@ class SocialSecurity(BaseModel):
         earnings_records (dict): Defaults to empty dict
     """
 
-    trust_factor: Optional[float] = 1
-    pension_eligible: bool = False
-    strategy: Optional[SocialSecurityOptions] = SocialSecurityOptions(
-        mid=StrategyConfig(chosen=True)
+    trust_factor: float = Field(
+        default=1,
+        json_schema_extra={
+            "ui": {
+                "label": "Trust Factor",
+                "tooltip": "Factor to adjust Social Security benefits (1.0 = full benefits, 0.7 = 70% of benefits)",
+                "section": "Social Security",
+                "min_value": 0,
+                "max_value": 1,
+            }
+        }
     )
-    earnings_records: Optional[dict] = {}
+    pension_eligible: bool = Field(
+        default=False,
+        json_schema_extra={
+            "ui": {
+                "label": "Pension Eligible",
+                "tooltip": "Whether eligible for pension benefits",
+                "section": "Social Security",
+            }
+        }
+    )
+    strategy: SocialSecurityOptions = Field(
+        default_factory=lambda: SocialSecurityOptions(mid=StrategyConfig(chosen=True)),
+        json_schema_extra={
+            "ui": {
+                "label": "Claiming Strategy",
+                "tooltip": "Social Security claiming strategy (early, mid, late, net_worth_based)",
+                "section": "Social Security",
+            }
+        }
+    )
+    earnings_records: dict = Field(
+        default_factory=dict,
+        json_schema_extra={
+            "ui": {
+                "label": "Earnings Records",
+                "tooltip": "Historical earnings records for benefit calculation (year: amount)",
+                "section": "Social Security",
+                "widget_type": "dict",
+            }
+        }
+    )
 
 
 class PensionOptions(SocialSecurityOptions):
@@ -273,7 +355,7 @@ class Pension(BaseModel):
     trust_factor: float = 1
     account_balance: float = 0
     balance_update: float = 2022.5
-    strategy: Optional[PensionOptions] = PensionOptions(mid=StrategyConfig(chosen=True))
+    strategy: PensionOptions = PensionOptions(mid=StrategyConfig(chosen=True))
 
 
 class SpendingOptions(StrategyOptions):
@@ -284,7 +366,7 @@ class SpendingOptions(StrategyOptions):
         ceil_floor (CeilFloorStrategy): Defaults to None
     """
 
-    inflation_only: Optional[StrategyConfig] = StrategyConfig(chosen=True)
+    inflation_only: StrategyConfig = StrategyConfig(chosen=True)
 
 
 class SpendingProfile(BaseModel):
@@ -302,10 +384,25 @@ class SpendingProfile(BaseModel):
 def _spending_profiles_validation(spending_profiles: list[SpendingProfile]):
     """Spending profiles must be in order and last profile should have no end date"""
     if spending_profiles:
-        if len(spending_profiles) > 2:
+        # Validate that all profiles except the last have end_date set
+        for i in range(len(spending_profiles) - 1):
+            if spending_profiles[i].end_date is None:
+                raise ValueError(
+                    "All spending profiles except the last must have an end_date"
+                )
+
+        # Validate ordering: compare end_date values for all profiles except the last
+        # Since we've already validated that all except the last have end_date,
+        # we can compare directly
+        if len(spending_profiles) > 1:
             for i in range(1, len(spending_profiles) - 1):
-                if spending_profiles[i].end_date < spending_profiles[i - 1].end_date:
-                    raise ValueError("Spending profiles must be in order")
+                end_date_i = spending_profiles[i].end_date
+                end_date_prev = spending_profiles[i - 1].end_date
+                if end_date_i is not None and end_date_prev is not None:
+                    if end_date_i < end_date_prev:
+                        raise ValueError("Spending profiles must be in order")
+
+        # Validate that the last profile has no end_date
         if spending_profiles[-1].end_date:
             raise ValueError("Last spending profile should have no end date")
 
@@ -318,10 +415,25 @@ class Spending(BaseModel):
         profiles (list[SpendingProfile])
     """
 
-    spending_strategy: SpendingOptions = SpendingOptions(
-        inflation_only=StrategyConfig(chosen=True)
+    spending_strategy: SpendingOptions = Field(
+        default_factory=lambda: SpendingOptions(inflation_only=StrategyConfig(chosen=True)),
+        json_schema_extra={
+            "ui": {
+                "label": "Spending Strategy",
+                "tooltip": "Strategy for adjusting spending over time (inflation_only, etc.)",
+                "section": "Spending",
+            }
+        }
     )
-    profiles: list[SpendingProfile]
+    profiles: list[SpendingProfile] = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Spending Profiles",
+                "tooltip": "List of spending profiles over different time periods",
+                "section": "Spending",
+            }
+        }
+    )
 
     @model_validator(mode="after")
     def validate_profiles(self):
@@ -338,9 +450,38 @@ class Kids(BaseModel):
         birth_years (list[float])
     """
 
-    fraction_of_spending: float
-    years_of_support: int
-    birth_years: list[float]
+    fraction_of_spending: float = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Fraction of Spending",
+                "tooltip": "Fraction of total spending attributable to each child (e.g., 0.2 = 20%)",
+                "section": "Kids",
+                "min_value": 0,
+                "max_value": 1,
+            }
+        }
+    )
+    years_of_support: int = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Years of Support",
+                "tooltip": "Number of years to support each child",
+                "section": "Kids",
+                "min_value": 0,
+                "max_value": 30,
+            }
+        }
+    )
+    birth_years: list[float] = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Birth Years",
+                "tooltip": "List of birth years for each child",
+                "section": "Kids",
+                "widget_type": "list",
+            }
+        }
+    )
 
 
 class IncomeProfile(BaseModel):
@@ -374,7 +515,7 @@ class IncomeProfile(BaseModel):
         return self
 
 
-def _income_profiles_in_order(income_profiles: list[IncomeProfile]):
+def _income_profiles_in_order(income_profiles: Optional[list[IncomeProfile]]):
     """Income profiles must be in order"""
     if income_profiles:
         for i in range(1, len(income_profiles)):
@@ -392,9 +533,37 @@ class Partner(BaseModel):
         income_profiles (list[IncomeProfile]): Defaults to None
     """
 
-    age: Optional[int] = None
-    social_security_pension: Optional[SocialSecurity] = SocialSecurity()
-    income_profiles: Optional[list[IncomeProfile]] = None
+    age: int = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Partner Age",
+                "tooltip": "Current age of partner/spouse in years",
+                "section": "Partner",
+                "min_value": 18,
+                "max_value": 100,
+            }
+        }
+    )
+    social_security_pension: SocialSecurity = Field(
+        default_factory=SocialSecurity,
+        json_schema_extra={
+            "ui": {
+                "label": "Partner Social Security",
+                "tooltip": "Partner's Social Security benefit configuration and claiming strategy",
+                "section": "Partner",
+            }
+        }
+    )
+    income_profiles: Optional[list[IncomeProfile]] = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Partner Income Profiles",
+                "tooltip": "List of income profiles over time for partner",
+                "section": "Partner",
+            }
+        }
+    )
 
 
 class TPAWPlanner(BaseModel):
@@ -407,8 +576,31 @@ class TPAWPlanner(BaseModel):
             Defaults to None.
     """
 
-    group_tol: float = 1.0
-    inflation_rate: Optional[float] = None
+    group_tol: float = Field(
+        default=1.0,
+        json_schema_extra={
+            "ui": {
+                "label": "Group Tolerance",
+                "tooltip": "Grouping tolerance for TPAW calculations",
+                "section": "TPAW",
+                "min_value": 0,
+                "max_value": 10,
+            }
+        }
+    )
+    inflation_rate: Optional[float] = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Inflation Rate Override",
+                "tooltip": "Optional constant inflation rate override (e.g., 0.02 for 2% annual inflation)",
+                "section": "TPAW",
+                "min_value": 0,
+                "max_value": 0.2,
+            }
+        }
+    )
+
 
 class DisabilityCoverage(BaseModel):
     """
@@ -417,8 +609,31 @@ class DisabilityCoverage(BaseModel):
         duration_years (int): Defaults to 0
     """
 
-    percentage: float = 0.0
-    duration_years: int = 0
+    percentage: float = Field(
+        default=0.0,
+        json_schema_extra={
+            "ui": {
+                "label": "Coverage Percentage",
+                "tooltip": "Percentage of income covered by disability insurance (e.g., 0.6 = 60%)",
+                "section": "Insurance",
+                "min_value": 0,
+                "max_value": 1,
+            }
+        }
+    )
+    duration_years: int = Field(
+        default=0,
+        json_schema_extra={
+            "ui": {
+                "label": "Coverage Duration (years)",
+                "tooltip": "Number of years disability insurance coverage lasts",
+                "section": "Insurance",
+                "min_value": 0,
+                "max_value": 40,
+            }
+        }
+    )
+
 
 class DisabilityInsuranceCalculator(BaseModel):
     """
@@ -427,8 +642,26 @@ class DisabilityInsuranceCalculator(BaseModel):
         partner_disability_coverage (DisabilityCoverage): Defaults to DisabilityCoverage()
     """
 
-    user_disability_coverage: DisabilityCoverage = DisabilityCoverage()
-    partner_disability_coverage: DisabilityCoverage = DisabilityCoverage()
+    user_disability_coverage: DisabilityCoverage = Field(
+        default_factory=DisabilityCoverage,
+        json_schema_extra={
+            "ui": {
+                "label": "User Disability Coverage",
+                "tooltip": "Disability insurance coverage for primary user",
+                "section": "Insurance",
+            }
+        }
+    )
+    partner_disability_coverage: DisabilityCoverage = Field(
+        default_factory=DisabilityCoverage,
+        json_schema_extra={
+            "ui": {
+                "label": "Partner Disability Coverage",
+                "tooltip": "Disability insurance coverage for partner/spouse",
+                "section": "Insurance",
+            }
+        }
+    )
 
 
 class Admin(BaseModel):
@@ -470,20 +703,151 @@ class User(BaseModel):
         admin (Admin): Defaults to None
     """
 
-    age: int
-    trial_quantity: int = 500
-    calculate_til: float = None
-    net_worth_target: Optional[float] = None
-    portfolio: Portfolio
-    social_security_pension: Optional[SocialSecurity] = SocialSecurity()
-    spending: Spending
-    state: Optional[str] = None
-    kids: Optional[Kids] = None
-    income_profiles: list[IncomeProfile] = None
-    partner: Optional[Partner] = None
-    tpaw_planner: Optional[TPAWPlanner] = TPAWPlanner()
-    disability_insurance_calculator: Optional[DisabilityInsuranceCalculator] = None
-    admin: Optional[Admin] = None
+    age: int = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Age",
+                "tooltip": "Your current age in years",
+                "section": "Basic Settings",
+                "min_value": 18,
+                "max_value": 100,
+            }
+        }
+    )
+    trial_quantity: int = Field(
+        default=500,
+        json_schema_extra={
+            "ui": {
+                "label": "Number of Trials",
+                "tooltip": "Number of Monte Carlo simulation trials to run (default: 500)",
+                "section": "Basic Settings",
+                "min_value": 1,
+                "max_value": 10000,
+            }
+        }
+    )
+    calculate_til: float = Field(
+        default=None,  # pyright: ignore[reportAssignmentType] # field_validator will set this to a float
+        json_schema_extra={
+            "ui": {
+                "label": "Calculate Until Year",
+                "tooltip": "Year to calculate until (defaults to age 90)",
+                "section": "Basic Settings",
+                "min_value": 2020,
+                "max_value": 2100,
+            }
+        }
+    )
+    net_worth_target: Optional[float] = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Net Worth Target",
+                "tooltip": "Target net worth threshold for certain strategies",
+                "section": "Basic Settings",
+                "min_value": 0,
+            }
+        }
+    )
+    portfolio: Portfolio = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Portfolio",
+                "tooltip": "Portfolio configuration including net worth and allocation strategy",
+                "section": "Portfolio",
+            }
+        }
+    )
+    social_security_pension: SocialSecurity = Field(
+        default_factory=SocialSecurity,
+        json_schema_extra={
+            "ui": {
+                "label": "Social Security",
+                "tooltip": "Social Security benefit configuration and claiming strategy",
+                "section": "Social Security",
+            }
+        }
+    )
+    spending: Spending = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Spending",
+                "tooltip": "Spending profiles and strategy configuration",
+                "section": "Spending",
+            }
+        }
+    )
+    state: Optional[str] = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "State of Residence",
+                "tooltip": "State for tax calculations (California or New York)",
+                "section": "Basic Settings",
+                "choices": ["California", "New York"],
+            }
+        }
+    )
+    kids: Optional[Kids] = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Kids",
+                "tooltip": "Configuration for dependent children",
+                "section": "Kids",
+            }
+        }
+    )
+    income_profiles: Optional[list[IncomeProfile]] = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Income Profiles",
+                "tooltip": "List of income profiles over time",
+                "section": "Income",
+            }
+        }
+    )
+    partner: Optional[Partner] = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Partner",
+                "tooltip": "Partner/spouse configuration",
+                "section": "Partner",
+            }
+        }
+    )
+    tpaw_planner: TPAWPlanner = Field(
+        default_factory=TPAWPlanner,
+        json_schema_extra={
+            "ui": {
+                "label": "TPAW Planner",
+                "tooltip": "Time-Path Adjusted Withdrawal planner configuration",
+                "section": "TPAW",
+            }
+        }
+    )
+    disability_insurance_calculator: Optional[DisabilityInsuranceCalculator] = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Disability Insurance",
+                "tooltip": "Disability insurance coverage calculator",
+                "section": "Insurance",
+            }
+        }
+    )
+    admin: Optional[Admin] = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Admin",
+                "tooltip": "Administrative configuration including pension details",
+                "section": "Admin",
+            }
+        }
+    )
 
     @property
     def intervals_per_trial(self) -> int:
@@ -495,7 +859,7 @@ class User(BaseModel):
 
     @field_validator("calculate_til")
     @classmethod
-    def set_calculate_til(cls, calculate_til, info: FieldValidationInfo):
+    def set_calculate_til(cls, calculate_til, info: ValidationInfo):
         """Set calculate till to be current year minus age + 90 if not specified"""
         if calculate_til is None:
             return constants.TODAY_YR - info.data["age"] + 90
@@ -530,7 +894,10 @@ class User(BaseModel):
     def social_security_same_strategy(self):
         """User cannot enable/choose `same` strategy and
         partner cannot enable other strategies if `same` is chosen"""
-        if "same" in self.social_security_pension.strategy.enabled_strategies:
+        if (
+            self.social_security_pension.strategy.enabled_strategies
+            and "same" in self.social_security_pension.strategy.enabled_strategies
+        ):
             raise ValueError("`Same` strategy can only be enabled for partner")
         return self
 
