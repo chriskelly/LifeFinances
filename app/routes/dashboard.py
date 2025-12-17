@@ -44,6 +44,9 @@ class DashboardPage:
 
         if simulation_history:
             latest_success_rate = simulation_history[-1].get("success_percentage")
+            # Convert to float if it's a string (Flask-Session serialization)
+            if latest_success_rate is not None and isinstance(latest_success_rate, str):
+                latest_success_rate = float(latest_success_rate)
 
         return {
             "config_count": 1 if self._config else 0,
@@ -59,5 +62,15 @@ class DashboardPage:
             list: List of recent simulation results (up to 5 most recent).
         """
         simulation_history = session.get("simulation_history", [])
+
+        # Convert success_percentage to float if it's a string (Flask-Session serialization)
+        normalized_history = []
+        for sim in simulation_history:
+            sim_copy = sim.copy()
+            success_pct = sim_copy.get("success_percentage")
+            if success_pct is not None and isinstance(success_pct, str):
+                sim_copy["success_percentage"] = float(success_pct)
+            normalized_history.append(sim_copy)
+
         # Return up to 5 most recent simulations
-        return list(reversed(simulation_history[-5:]))
+        return list(reversed(normalized_history[-5:]))
