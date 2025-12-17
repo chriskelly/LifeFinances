@@ -195,13 +195,68 @@ class ResultsPage:
         # Generate HTML table with styling
         return df.to_html(classes="table table-striped", index=False)
 
+    def _get_chartable_columns(self) -> list:
+        """
+        Get list of columns that can be charted with metadata.
+
+        Returns:
+            list: List of dicts with column info (name, display_name, category)
+        """
+        if self._first_results_columns is None:
+            return []
+
+        # Define column categories for better organization
+        categories = {
+            "wealth": ["Net Worth", "Portfolio Return", "Net Transaction"],
+            "income": ["Job Income", "SS User", "SS Partner", "Pension", "Total Income", "Annuity"],
+            "expenses": ["Spending", "Kids", "Total Costs"],
+            "taxes": ["Income Taxes", "Medicare Taxes", "Social Security Taxes", "Portfolio Taxes", "Total Taxes"],
+            "allocation": [col for col in self._first_results_columns if "%" in col],
+            "rates": [col for col in self._first_results_columns if "rate" in col.lower()],
+            "other": ["Inflation"]
+        }
+
+        chartable = []
+        categorized = set()
+
+        # Add categorized columns
+        for category, cols in categories.items():
+            for col in cols:
+                if col in self._first_results_columns and col != "Date":
+                    chartable.append({
+                        "name": col,
+                        "display_name": col,
+                        "category": category.title()
+                    })
+                    categorized.add(col)
+
+        # Add any uncategorized numeric columns
+        for col in self._first_results_columns:
+            if col not in categorized and col != "Date":
+                chartable.append({
+                    "name": col,
+                    "display_name": col,
+                    "category": "Other"
+                })
+
+        return chartable
+
     @property
     def template(self):
         """Render the results page template"""
+        import json
+
+        # Prepare data for JavaScript
+        results_data_json = None
+        if self._first_results_data is not None:
+            results_data_json = json.dumps(self._first_results_data)
+
         return render_template(
             "results.html",
             first_results_table=self._first_results_table,
             success_percentage=self._success_percentage,
             gauge_chart_json=self._gauge_chart,
             net_worth_chart_json=self._net_worth_chart,
+            chartable_columns=self._get_chartable_columns(),
+            results_data_json=results_data_json,
         )

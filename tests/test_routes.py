@@ -148,12 +148,15 @@ def test_results_page_charts(client: FlaskClient):
 
     # Check for div elements for charts
     assert b"successGauge" in response.data
-    assert b"netWorthChart" in response.data
+    assert b"dynamicChart" in response.data  # New dynamic chart div
+
+    # Check for dynamic variable selector
+    assert b"variableSelect" in response.data
 
     # Check for visualization elements
     assert b"Success Rate" in response.data
     assert b"Key Metrics" in response.data
-    assert b"Net Worth Projection" in response.data
+    assert b"Variable Projection" in response.data
 
 
 def test_results_page_export_button(client: FlaskClient):

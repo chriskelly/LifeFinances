@@ -85,13 +85,67 @@
             </div>
         </div>
 
-        <!-- Results Chart -->
+        <!-- Dynamic Variable Chart -->
         <div class="card mb-4">
-            <div class="card-header">
-                <i class="bi bi-graph-up-arrow"></i> Net Worth Projection (First Trial)
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-graph-up-arrow"></i> Variable Projection (First Trial)</span>
+                <div class="d-flex gap-2 align-items-center">
+                    <label for="variableSelect" class="mb-0 small text-muted">Select Variable:</label>
+                    <select id="variableSelect" class="form-select form-select-sm" style="width: 250px;">
+                        <optgroup label="Wealth">
+                            {% for col in chartable_columns %}
+                            {% if col.category == "Wealth" %}
+                            <option value="{{ col.name }}" {% if col.name == "Net Worth" %}selected{% endif %}>{{ col.display_name }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="Income">
+                            {% for col in chartable_columns %}
+                            {% if col.category == "Income" %}
+                            <option value="{{ col.name }}">{{ col.display_name }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="Expenses">
+                            {% for col in chartable_columns %}
+                            {% if col.category == "Expenses" %}
+                            <option value="{{ col.name }}">{{ col.display_name }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="Taxes">
+                            {% for col in chartable_columns %}
+                            {% if col.category == "Taxes" %}
+                            <option value="{{ col.name }}">{{ col.display_name }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="Asset Allocation">
+                            {% for col in chartable_columns %}
+                            {% if col.category == "Allocation" %}
+                            <option value="{{ col.name }}">{{ col.display_name }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="Rates">
+                            {% for col in chartable_columns %}
+                            {% if col.category == "Rates" %}
+                            <option value="{{ col.name }}">{{ col.display_name }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="Other">
+                            {% for col in chartable_columns %}
+                            {% if col.category == "Other" %}
+                            <option value="{{ col.name }}">{{ col.display_name }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </optgroup>
+                    </select>
+                </div>
             </div>
             <div class="card-body">
-                <div id="netWorthChart"></div>
+                <div id="dynamicChart"></div>
             </div>
         </div>
 
@@ -140,11 +194,14 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if success_percentage is not none and gauge_chart_json and net_worth_chart_json %}
+{% if success_percentage is not none and gauge_chart_json %}
 <!-- Plotly.js -->
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 
 <script>
+// Store results data for dynamic charting
+const resultsData = {{ results_data_json | safe }};
+
 // Render Plotly charts
 document.addEventListener('DOMContentLoaded', function() {
     // Success Rate Gauge
@@ -154,12 +211,80 @@ document.addEventListener('DOMContentLoaded', function() {
         responsive: true
     });
 
-    // Net Worth Line Chart
-    const chartData = {{ net_worth_chart_json | safe }};
-    Plotly.newPlot('netWorthChart', chartData.data, chartData.layout, {
-        displayModeBar: true,
-        modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-        responsive: true
+    // Dynamic Variable Chart
+    function updateDynamicChart(variableName) {
+        if (!resultsData || resultsData.length === 0) return;
+
+        // Extract x and y data
+        const xData = resultsData.map(row => row['Date']);
+        const yData = resultsData.map(row => row[variableName]);
+
+        // Determine if this is a percentage variable
+        const isPercentage = variableName.includes('%');
+        const isRate = variableName.toLowerCase().includes('rate');
+
+        // Format for hover and axis
+        let yFormat = '$,.0f';
+        let ySuffix = 'K';
+        let hoverTemplate = `<b>%{x}</b><br>${variableName}: $%{y:,.0f}K<extra></extra>`;
+
+        if (isPercentage) {
+            yFormat = '.1%';
+            ySuffix = '';
+            hoverTemplate = `<b>%{x}</b><br>${variableName}: %{y:.1%}<extra></extra>`;
+        } else if (isRate) {
+            yFormat = '.2%';
+            ySuffix = '';
+            hoverTemplate = `<b>%{x}</b><br>${variableName}: %{y:.2%}<extra></extra>`;
+        }
+
+        const trace = {
+            x: xData,
+            y: yData,
+            mode: 'lines',
+            name: variableName,
+            line: { color: '#3B82F6', width: 2 },
+            fill: 'tozeroy',
+            fillcolor: 'rgba(59, 130, 246, 0.1)',
+            hovertemplate: hoverTemplate
+        };
+
+        const layout = {
+            paper_bgcolor: '#1E293B',
+            plot_bgcolor: '#1E293B',
+            font: { color: '#F1F5F9' },
+            height: 300,
+            margin: { l: 60, r: 20, t: 20, b: 40 },
+            xaxis: {
+                gridcolor: '#334155',
+                showgrid: true,
+                tickangle: 45,
+                tickfont: { color: '#94A3B8' }
+            },
+            yaxis: {
+                gridcolor: '#334155',
+                showgrid: true,
+                tickfont: { color: '#94A3B8' },
+                tickformat: yFormat,
+                ticksuffix: ySuffix
+            },
+            hovermode: 'x unified',
+            showlegend: false
+        };
+
+        Plotly.newPlot('dynamicChart', [trace], layout, {
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+            responsive: true
+        });
+    }
+
+    // Initial chart render with Net Worth
+    updateDynamicChart('Net Worth');
+
+    // Variable selector change handler
+    document.getElementById('variableSelect').addEventListener('change', function(e) {
+        updateDynamicChart(e.target.value);
     });
 });
 
