@@ -3,6 +3,7 @@
 Classes:
     Controllers: All controllers used by a simulation trial
 """
+
 from dataclasses import dataclass
 from . import (
     allocation as allocation_module,
@@ -26,9 +27,9 @@ class Controllers:
         job_income (job_income.Controller): Manages job income timelines
     """
 
-    allocation: allocation_module.Controller = None
-    economic_data: economic_data_module.Controller = None
-    job_income: job_income_module.Controller = None
-    social_security: social_security_module.Controller = None
-    pension: pension_module.Controller = None
-    annuity: annuity_module.Controller = None
+    allocation: allocation_module.Controller
+    economic_data: economic_data_module.Controller
+    job_income: job_income_module.Controller
+    social_security: social_security_module.Controller
+    pension: pension_module.Controller
+    annuity: annuity_module.Controller

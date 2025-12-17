@@ -10,7 +10,7 @@ Useful Pydantic documentation
 import csv
 import math
 from pathlib import Path
-from typing import Optional, cast
+from typing import Mapping, Optional, cast
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -50,12 +50,12 @@ class StrategyConfig(BaseModel):
 class StrategyOptions(BaseModel):
     """
     Attributes:
-        enabled_strategies (dict[str, Strategy]): Defaults to None
+        enabled_strategies (Mapping[str, Strategy]): Defaults to None
 
         chosen_strategy (tuple[str, Strategy]): Set by validator, guaranteed to be non-None
     """
 
-    enabled_strategies: Optional[dict[str, StrategyConfig]] = None
+    enabled_strategies: Optional[Mapping[str, StrategyConfig]] = None
     chosen_strategy: tuple[str, StrategyConfig] = None  # type: ignore[assignment]
 
     @model_validator(mode="after")

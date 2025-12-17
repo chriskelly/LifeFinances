@@ -1,5 +1,8 @@
 """Testing for models/simulator.py"""
+
 # pylint:disable=missing-class-docstring
+# pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
+# pyright: reportOptionalSubscript=false
 
 
 from pathlib import Path
@@ -93,44 +96,36 @@ class TestResults:
         values aren't being changed post-initilization.
         """
         net_transaction = self.results[ResultLabels.NET_TRANSACTION.value].astype(float)
-        sum_of_net_transaction_components = sum(
-            (
-                self.results[ResultLabels.TOTAL_INCOME.value],
-                self.results[ResultLabels.PORTFOLIO_RETURN.value],
-                self.results[ResultLabels.TOTAL_COSTS.value],
-                self.results[ResultLabels.ANNUITY.value],
-            )
+        sum_of_net_transaction_components = (
+            self.results[ResultLabels.TOTAL_INCOME.value]
+            + self.results[ResultLabels.PORTFOLIO_RETURN.value]
+            + self.results[ResultLabels.TOTAL_COSTS.value]
+            + self.results[ResultLabels.ANNUITY.value]
         ).astype(float)
         assert np.all(np.isclose(net_transaction, sum_of_net_transaction_components))
 
         total_income = self.results[ResultLabels.TOTAL_INCOME.value].astype(float)
-        sum_of_income_components = sum(
-            (
-                self.results[ResultLabels.JOB_INCOME.value],
-                self.results[ResultLabels.SS_USER.value],
-                self.results[ResultLabels.SS_PARTNER.value],
-                self.results[ResultLabels.PENSION.value],
-            )
+        sum_of_income_components = (
+            self.results[ResultLabels.JOB_INCOME.value]
+            + self.results[ResultLabels.SS_USER.value]
+            + self.results[ResultLabels.SS_PARTNER.value]
+            + self.results[ResultLabels.PENSION.value]
         ).astype(float)
         assert np.all(np.isclose(total_income, sum_of_income_components))
 
         total_costs = self.results[ResultLabels.TOTAL_COSTS.value].astype(float)
-        sum_of_cost_components = sum(
-            (
-                self.results[ResultLabels.SPENDING.value],
-                self.results[ResultLabels.KIDS.value],
-                self.results[ResultLabels.TOTAL_TAXES.value],
-            )
+        sum_of_cost_components = (
+            self.results[ResultLabels.SPENDING.value]
+            + self.results[ResultLabels.KIDS.value]
+            + self.results[ResultLabels.TOTAL_TAXES.value]
         ).astype(float)
         assert np.all(np.isclose(total_costs, sum_of_cost_components))
 
         total_taxes = self.results[ResultLabels.TOTAL_TAXES.value].astype(float)
-        sum_of_tax_components = sum(
-            (
-                self.results[ResultLabels.INCOME_TAXES.value],
-                self.results[ResultLabels.MEDICARE_TAXES.value],
-                self.results[ResultLabels.SOCIAL_SECURITY_TAXES.value],
-                self.results[ResultLabels.PORTFOLIO_TAXES.value],
-            )
+        sum_of_tax_components = (
+            self.results[ResultLabels.INCOME_TAXES.value]
+            + self.results[ResultLabels.MEDICARE_TAXES.value]
+            + self.results[ResultLabels.SOCIAL_SECURITY_TAXES.value]
+            + self.results[ResultLabels.PORTFOLIO_TAXES.value]
         ).astype(float)
         assert np.all(np.isclose(total_taxes, sum_of_tax_components))

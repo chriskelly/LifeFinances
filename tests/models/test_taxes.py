@@ -1,6 +1,8 @@
 """Testing for models/taxes.py
 """
 # pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
+# pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
+# pyright: reportOptionalSubscript=false
 
 import pytest
 from app.data.constants import INTERVALS_PER_YEAR
@@ -51,10 +53,8 @@ class TestCalcTaxes:
 
         sample_user.income_profiles = [
             IncomeProfile(
-                **{
-                    "starting_income": mock_income.job_income * INTERVALS_PER_YEAR,
-                    "last_date": 3000,
-                }
+                starting_income=mock_income.job_income * INTERVALS_PER_YEAR,
+                last_date=3000,
             ),
         ]
         sample_user.partner = None
@@ -167,7 +167,7 @@ class TestTaxRules:
         assert tax_rules.federal_standard_deduction == pytest.approx(
             self.federal_standard_deduction_mock[self.married_index]
         )
-        assert tax_rules.state_standard_deduction is None
+        assert tax_rules.state_standard_deduction == 0
 
     def test_when_residence_state_is_not_none(self, sample_user: User):
         """

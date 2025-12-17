@@ -7,17 +7,18 @@ Generation functions should be in the same module as the class they generate.
 
 Classes:
     SimulationTrial: A single simulation trial representing one modeled lifetime
-    
+
     ResultsLabels: Labels for the columns in the results DataFrame
-    
+
     Results: Results of a series of simulation trials
-    
+
     SimulationEngine: Simulation Controller
 
 Functions:
     gen_simulation_results(): Generates a Results object
 """
-from dataclasses import dataclass
+
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 import pandas as pd
@@ -118,10 +119,10 @@ class Results:
         trials (list[SimulationTrial])
     """
 
-    trials: list[SimulationTrial] = None
+    trials: list[SimulationTrial] = field(default_factory=list)
     _state_columns = [label.value for label in ResultLabels]
-    _allocation_columns: list[str] = None
-    _performance_columns: list[str] = None
+    _allocation_columns: list[str] = field(default_factory=list)
+    _performance_columns: list[str] = field(default_factory=list)
 
     def as_dataframes(self) -> list[pd.DataFrame]:
         """
@@ -138,14 +139,14 @@ class Results:
             dataframes.append(df)
         return dataframes
 
-    def _set_asset_columns(self) -> list[str]:
+    def _set_asset_columns(self):
         """Sets asset column names"""
         asset_lookup = (
             self.trials[0]
             .controllers.economic_data.get_economic_trial_data()
             .asset_lookup
         )
-        asset_columns = [None] * len(asset_lookup)
+        asset_columns: list[str | None] = [None] * len(asset_lookup)
         for asset, index in asset_lookup.items():
             asset_columns[index] = asset
         self._allocation_columns = [f"{asset}_%" for asset in asset_columns]
@@ -219,7 +220,7 @@ class SimulationEngine:
     """
 
     def __init__(
-        self, config_path: Path = constants.CONFIG_PATH, trial_qty: int = None
+        self, config_path: Path = constants.CONFIG_PATH, trial_qty: int | None = None
     ):
         self._user_config = get_config(config_path)
         self.results: Results = Results()
@@ -229,7 +230,6 @@ class SimulationEngine:
             trial_qty=self._trial_qty,
             variable_mix_repo=economic_data.CsvVariableMixRepo(
                 statistics_path=constants.STATISTICS_PATH,
-                correlation_path=constants.CORRELATION_PATH,
             ),
         ).data
 

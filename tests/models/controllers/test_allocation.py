@@ -1,6 +1,8 @@
-"""Testing for models/financials/allocation.py
-"""
+"""Testing for models/financials/allocation.py"""
+
 # pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
+# pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
+# pyright: reportOptionalSubscript=false
 
 import numpy as np
 import pytest
@@ -19,6 +21,7 @@ def test_flat_allocation_strategy(sample_user: User, first_state):
         "US_Bond": 1,
     }
     sample_config = sample_user.portfolio.allocation_strategy.flat
+    assert sample_config is not None
     strategy = _FlatAllocationStrategy(config=sample_config, asset_lookup=asset_lookup)
     allocation = strategy.gen_allocation(first_state)
     assert isinstance(allocation, np.ndarray)

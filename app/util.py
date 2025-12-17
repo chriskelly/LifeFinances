@@ -1,7 +1,7 @@
 """Utililty Functions"""
 
 import math
-
+from typing import Callable
 import numpy as np
 from app.data import constants
 
@@ -48,7 +48,7 @@ def interval_stdev(stdev: float) -> float:
     return stdev * math.sqrt(constants.YEARS_PER_INTERVAL)
 
 
-def exponential_extrapolator_factory(data_list: list[list]) -> callable:
+def exponential_extrapolator_factory(data_list: list[list]) -> Callable[[float], float]:
     """Factory for creating exponential extrapolators
 
     Args:

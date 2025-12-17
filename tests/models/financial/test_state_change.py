@@ -2,8 +2,12 @@
 """
 
 # pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
+# pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
+# pyright: reportOptionalSubscript=false
 
+from typing import Sequence
 import pytest
+import numpy as np
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import Kids, Spending, SpendingProfile
 from app.models.controllers import Controllers
@@ -35,7 +39,7 @@ def test_portfolio_return(
     """Test that portfolio return is calculated correctly"""
     net_worth = 100
     asset_rates = [0.2, -0.2]
-    allocation = [0.4, 0.6]
+    allocation = np.array([0.4, 0.6])
     dot_product = -0.04
     expected_return = net_worth * dot_product
 
@@ -118,11 +122,11 @@ class TestCalcCostOfKids:
         self.components_mock.state = first_state
         self.components_mock.state.date = self.current_date
 
-    def calc_cost_from_birth_years(self, birth_years: list[float]):
+    def calc_cost_from_birth_years(self, birth_years: Sequence[float]):
         """Helper function to calculate the cost of kids"""
         self.components_mock.state.user.kids = Kids(
             fraction_of_spending=self.cost_of_each_kid / self.spending,
-            birth_years=birth_years,
+            birth_years=list(birth_years),
             years_of_support=self.years_of_support,
         )
         return StateChangeComponents._calc_cost_of_kids(
