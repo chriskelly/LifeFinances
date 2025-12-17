@@ -1,0 +1,16 @@
+.git
+__pycache__/
+*.py[cod]
+*.pyc
+.venv/
+venv/
+env/
+build/
+dist/
+*.log
+.pytest_cache/
+htmlcov/
+*.prof
+\.DS_Store
+tests/profiling/results/
+
