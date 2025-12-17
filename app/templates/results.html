@@ -11,7 +11,7 @@
             <p class="text-muted">Analysis of your retirement planning scenarios</p>
         </div>
 
-        {% if success_percentage %}
+        {% if success_percentage is not none %}
         <!-- Success Rate Row -->
         <div class="row g-4 mb-4">
             <!-- Success Rate Gauge -->
@@ -140,7 +140,7 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if success_percentage and gauge_chart_json and net_worth_chart_json %}
+{% if success_percentage is not none and gauge_chart_json and net_worth_chart_json %}
 <!-- Plotly.js -->
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 

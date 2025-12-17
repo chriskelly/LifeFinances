@@ -36,16 +36,35 @@ class RunPage:
         """
         from datetime import datetime
         from flask import session
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.info("Starting simulation...")
 
         results = gen_simulation_results()
         first_results = results.as_dataframes()[0]
         success_percentage = results.calc_success_percentage()
 
+        logger.info(f"Simulation complete. Success rate: {success_percentage}%")
+        logger.info(f"DataFrame shape: {first_results.shape}")
+        logger.info(f"DataFrame columns: {first_results.columns.tolist()}")
+
         # Store only essential data in session (not full HTML table to avoid cookie size limits)
         # Convert DataFrame to dict for JSON serialization
-        session["first_results_data"] = first_results.to_dict(orient="records")
-        session["first_results_columns"] = first_results.columns.tolist()
+        results_data = first_results.to_dict(orient="records")
+        results_columns = first_results.columns.tolist()
+
+        logger.info(f"Storing {len(results_data)} rows in session")
+        logger.info(f"First row sample: {results_data[0] if results_data else 'empty'}")
+
+        session["first_results_data"] = results_data
+        session["first_results_columns"] = results_columns
         session["success_percentage"] = success_percentage
+
+        logger.info(f"Session data stored. Verifying...")
+        logger.info(f"Session has first_results_data: {session.get('first_results_data') is not None}")
+        logger.info(f"Session has first_results_columns: {session.get('first_results_columns') is not None}")
+        logger.info(f"Session has success_percentage: {session.get('success_percentage')}")
 
         # Add to simulation history
         if "simulation_history" not in session:

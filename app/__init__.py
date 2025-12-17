@@ -7,12 +7,19 @@ def create_app():
     # Import here to avoid circular deps
     from flask import Flask, request
     from flask_session import Session
+    import logging
     from app.routes.api import api as api_blueprint
     from app.routes.index import IndexPage
     from app.routes.dashboard import DashboardPage
     from app.routes.config import ConfigPage
     from app.routes.run import RunPage
     from app.routes.results import ResultsPage
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
 
     app = Flask(__name__)
     app.secret_key = "lifefinances-secret-key-change-in-production"  # TODO: Move to env var

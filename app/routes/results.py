@@ -18,21 +18,39 @@ class ResultsPage:
     """
 
     def __init__(self):
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.info("ResultsPage.__init__ called")
+
         # Retrieve results from session
         self._first_results_data = session.get("first_results_data")
         self._first_results_columns = session.get("first_results_columns")
+
+        logger.info(f"Retrieved from session:")
+        logger.info(f"  first_results_data: {self._first_results_data is not None} (length: {len(self._first_results_data) if self._first_results_data else 0})")
+        logger.info(f"  first_results_columns: {self._first_results_columns}")
+        logger.info(f"  success_percentage raw: {session.get('success_percentage')} (type: {type(session.get('success_percentage'))})")
 
         # Convert success_percentage to float if it's a string
         success_pct = session.get("success_percentage")
         if success_pct is not None and isinstance(success_pct, str):
             self._success_percentage = float(success_pct)
+            logger.info(f"  Converted success_percentage from string to float: {self._success_percentage}")
         else:
             self._success_percentage = success_pct
+            logger.info(f"  Using success_percentage as-is: {self._success_percentage}")
 
         # Generate visualizations if data available
+        logger.info("Generating visualizations...")
         self._gauge_chart = self._generate_gauge_chart()
+        logger.info(f"  Gauge chart generated: {self._gauge_chart is not None}")
+
         self._net_worth_chart = self._generate_net_worth_chart()
+        logger.info(f"  Net worth chart generated: {self._net_worth_chart is not None}")
+
         self._first_results_table = self._generate_results_table()
+        logger.info(f"  Results table generated: {self._first_results_table is not None}")
 
     def _generate_gauge_chart(self) -> str | None:
         """
