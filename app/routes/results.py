@@ -21,7 +21,13 @@ class ResultsPage:
         # Retrieve results from session
         self._first_results_data = session.get("first_results_data")
         self._first_results_columns = session.get("first_results_columns")
-        self._success_percentage = session.get("success_percentage")
+
+        # Convert success_percentage to float if it's a string
+        success_pct = session.get("success_percentage")
+        if success_pct is not None and isinstance(success_pct, str):
+            self._success_percentage = float(success_pct)
+        else:
+            self._success_percentage = success_pct
 
         # Generate visualizations if data available
         self._gauge_chart = self._generate_gauge_chart()
