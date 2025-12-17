@@ -142,6 +142,9 @@
                             {% endfor %}
                         </optgroup>
                     </select>
+                    <button class="btn btn-sm btn-outline-secondary" id="btnToggleLogScale" title="Toggle logarithmic scale">
+                        <i class="bi bi-bar-chart-steps"></i> Log
+                    </button>
                     <button class="btn btn-sm btn-outline-primary" id="btnMaximizeChart" title="Maximize chart">
                         <i class="bi bi-arrows-fullscreen"></i>
                     </button>
@@ -231,8 +234,9 @@ document.addEventListener('DOMContentLoaded', function() {
         responsive: true
     });
 
-    // Store current variable for fullscreen chart
+    // Store current variable and scale state for fullscreen chart
     let currentVariable = 'Net Worth';
+    let isLogScale = false;
 
     // Dynamic Variable Chart
     function updateDynamicChart(variableName, targetDiv = 'dynamicChart', customHeight = 300) {
@@ -275,6 +279,21 @@ document.addEventListener('DOMContentLoaded', function() {
             hovertemplate: hoverTemplate
         };
 
+        const yAxisConfig = {
+            gridcolor: '#334155',
+            showgrid: true,
+            tickfont: { color: '#94A3B8' },
+            tickformat: yFormat,
+            ticksuffix: ySuffix
+        };
+
+        // Apply log scale if enabled
+        if (isLogScale) {
+            yAxisConfig.type = 'log';
+            // Don't fill to zero on log scale (causes issues with negative/zero values)
+            trace.fill = 'none';
+        }
+
         const layout = {
             paper_bgcolor: '#1E293B',
             plot_bgcolor: '#1E293B',
@@ -287,13 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tickangle: 45,
                 tickfont: { color: '#94A3B8' }
             },
-            yaxis: {
-                gridcolor: '#334155',
-                showgrid: true,
-                tickfont: { color: '#94A3B8' },
-                tickformat: yFormat,
-                ticksuffix: ySuffix
-            },
+            yaxis: yAxisConfig,
             hovermode: 'x unified',
             showlegend: false
         };
@@ -303,6 +316,18 @@ document.addEventListener('DOMContentLoaded', function() {
             modeBarButtonsToRemove: ['lasso2d', 'select2d'],
             responsive: true
         });
+
+        // Update button style based on log scale state
+        const logButton = document.getElementById('btnToggleLogScale');
+        if (logButton) {
+            if (isLogScale) {
+                logButton.classList.remove('btn-outline-secondary');
+                logButton.classList.add('btn-secondary');
+            } else {
+                logButton.classList.remove('btn-secondary');
+                logButton.classList.add('btn-outline-secondary');
+            }
+        }
     }
 
     // Initial chart render with Net Worth
@@ -311,6 +336,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Variable selector change handler
     document.getElementById('variableSelect').addEventListener('change', function(e) {
         updateDynamicChart(e.target.value);
+    });
+
+    // Log scale toggle handler
+    document.getElementById('btnToggleLogScale').addEventListener('click', function() {
+        isLogScale = !isLogScale;
+        updateDynamicChart(currentVariable);
     });
 
     // Maximize chart button handler
