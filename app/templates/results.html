@@ -142,10 +142,30 @@
                             {% endfor %}
                         </optgroup>
                     </select>
+                    <button class="btn btn-sm btn-outline-primary" id="btnMaximizeChart" title="Maximize chart">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
                 </div>
             </div>
             <div class="card-body">
                 <div id="dynamicChart"></div>
+            </div>
+        </div>
+
+        <!-- Fullscreen Chart Modal -->
+        <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-fullscreen">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="chartModalLabel">
+                            <i class="bi bi-graph-up-arrow"></i> <span id="modalChartTitle">Net Worth</span> Projection
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="fullscreenChart" style="height: calc(100vh - 150px);"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -211,9 +231,15 @@ document.addEventListener('DOMContentLoaded', function() {
         responsive: true
     });
 
+    // Store current variable for fullscreen chart
+    let currentVariable = 'Net Worth';
+
     // Dynamic Variable Chart
-    function updateDynamicChart(variableName) {
+    function updateDynamicChart(variableName, targetDiv = 'dynamicChart', customHeight = 300) {
         if (!resultsData || resultsData.length === 0) return;
+
+        // Store current variable
+        currentVariable = variableName;
 
         // Extract x and y data
         const xData = resultsData.map(row => row['Date']);
@@ -253,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
             paper_bgcolor: '#1E293B',
             plot_bgcolor: '#1E293B',
             font: { color: '#F1F5F9' },
-            height: 300,
+            height: customHeight,
             margin: { l: 60, r: 20, t: 20, b: 40 },
             xaxis: {
                 gridcolor: '#334155',
@@ -272,7 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showlegend: false
         };
 
-        Plotly.newPlot('dynamicChart', [trace], layout, {
+        Plotly.newPlot(targetDiv, [trace], layout, {
             displayModeBar: true,
             modeBarButtonsToRemove: ['lasso2d', 'select2d'],
             responsive: true
@@ -285,6 +311,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Variable selector change handler
     document.getElementById('variableSelect').addEventListener('change', function(e) {
         updateDynamicChart(e.target.value);
+    });
+
+    // Maximize chart button handler
+    document.getElementById('btnMaximizeChart').addEventListener('click', function() {
+        // Update modal title
+        document.getElementById('modalChartTitle').textContent = currentVariable;
+
+        // Show modal
+        const chartModal = new bootstrap.Modal(document.getElementById('chartModal'));
+        chartModal.show();
+
+        // Wait for modal to be shown, then render fullscreen chart
+        document.getElementById('chartModal').addEventListener('shown.bs.modal', function() {
+            const fullscreenHeight = window.innerHeight - 150;
+            updateDynamicChart(currentVariable, 'fullscreenChart', fullscreenHeight);
+        }, { once: true });
+    });
+
+    // Re-render fullscreen chart on window resize
+    window.addEventListener('resize', function() {
+        const modal = document.getElementById('chartModal');
+        if (modal.classList.contains('show')) {
+            const fullscreenHeight = window.innerHeight - 150;
+            updateDynamicChart(currentVariable, 'fullscreenChart', fullscreenHeight);
+        }
     });
 });
 
