@@ -122,3 +122,67 @@ def test_index_redirects_to_dashboard(client: FlaskClient):
     response = client.get("/")
     # Index page should still work for backward compatibility
     assert response.status_code in {200, 302}
+
+
+def test_results_page_charts(client: FlaskClient):
+    """Test that results page includes Chart.js visualizations"""
+    with client.session_transaction() as sess:
+        sess["first_results_table"] = "<table><tr><td>Test Data</td></tr></table>"
+        sess["success_percentage"] = 85
+
+    response = client.get("/results")
+    assert response.status_code == 200
+
+    # Check for Chart.js CDN
+    assert b"chart.js" in response.data or b"Chart.js" in response.data
+
+    # Check for canvas elements for charts
+    assert b"successGauge" in response.data
+    assert b"netWorthChart" in response.data
+
+    # Check for visualization elements
+    assert b"Success Rate" in response.data
+    assert b"Key Metrics" in response.data
+    assert b"Net Worth Projection" in response.data
+
+
+def test_results_page_export_button(client: FlaskClient):
+    """Test that results page includes CSV export functionality"""
+    with client.session_transaction() as sess:
+        sess["first_results_table"] = "<table><tr><td>Test Data</td></tr></table>"
+        sess["success_percentage"] = 75
+
+    response = client.get("/results")
+    assert response.status_code == 200
+
+    # Check for export button
+    assert b"Export CSV" in response.data
+    assert b"btnExportCSV" in response.data
+
+
+def test_results_page_interpretation(client: FlaskClient):
+    """Test that results page provides interpretation of success rate"""
+    # Test excellent success rate
+    with client.session_transaction() as sess:
+        sess["first_results_table"] = "<table><tr><td>Data</td></tr></table>"
+        sess["success_percentage"] = 90
+
+    response = client.get("/results")
+    assert b"high probability" in response.data
+    assert b"Excellent" in response.data
+
+    # Test moderate success rate
+    with client.session_transaction() as sess:
+        sess["success_percentage"] = 65
+
+    response = client.get("/results")
+    assert b"moderate probability" in response.data
+    assert b"Moderate" in response.data
+
+    # Test low success rate
+    with client.session_transaction() as sess:
+        sess["success_percentage"] = 40
+
+    response = client.get("/results")
+    assert b"low probability" in response.data
+    assert b"Low" in response.data

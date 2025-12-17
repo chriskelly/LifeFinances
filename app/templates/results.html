@@ -2,6 +2,20 @@
 
 {% block title %}Results - LifeFinances{% endblock %}
 
+{% block extra_css %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 1rem;
+    }
+    .gauge-container {
+        position: relative;
+        height: 250px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="col-12">
     <div class="p-4 fade-in">
@@ -12,38 +26,108 @@
         </div>
 
         {% if success_percentage %}
-        <!-- Success Rate Card -->
+        <!-- Success Rate Row -->
+        <div class="row g-4 mb-4">
+            <!-- Success Rate Gauge -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-trophy"></i> Success Rate
+                    </div>
+                    <div class="card-body">
+                        <div class="gauge-container">
+                            <canvas id="successGauge"></canvas>
+                        </div>
+                        <div class="text-center mt-3">
+                            <h2 class="{% if success_percentage >= 80 %}text-success{% elif success_percentage >= 60 %}text-warning{% else %}text-danger{% endif %}">
+                                {{ success_percentage }}%
+                            </h2>
+                            <p class="lead mb-2">
+                                {% if success_percentage >= 80 %}
+                                    <span class="badge bg-success">Excellent</span>
+                                {% elif success_percentage >= 60 %}
+                                    <span class="badge bg-warning">Moderate</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Low</span>
+                                {% endif %}
+                            </p>
+                            <p class="text-muted small">
+                                Based on 500 Monte Carlo trials
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-graph-up"></i> Key Metrics
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="p-3 bg-success bg-opacity-10 rounded">
+                                    <div class="text-muted small">Successful Trials</div>
+                                    <h3 class="mb-0 text-success">{{ (success_percentage * 5)|int }}</h3>
+                                    <small class="text-muted">out of 500</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-3 bg-danger bg-opacity-10 rounded">
+                                    <div class="text-muted small">Failed Trials</div>
+                                    <h3 class="mb-0 text-danger">{{ (500 - success_percentage * 5)|int }}</h3>
+                                    <small class="text-muted">out of 500</small>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="p-3 bg-primary bg-opacity-10 rounded">
+                                    <div class="text-muted small mb-2">Interpretation</div>
+                                    <p class="mb-0 small">
+                                        {% if success_percentage >= 80 %}
+                                            Your financial plan has a <strong>high probability</strong> of meeting your retirement goals. Continue monitoring and adjusting as needed.
+                                        {% elif success_percentage >= 60 %}
+                                            Your plan has a <strong>moderate probability</strong> of success. Consider adjusting spending, savings, or retirement age for better outcomes.
+                                        {% else %}
+                                            Your plan has a <strong>low probability</strong> of success. Significant adjustments to spending, savings, or retirement timing are recommended.
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Chart -->
         <div class="card mb-4">
-            <div class="card-header">
-                <i class="bi bi-trophy"></i> Success Rate
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-graph-up-arrow"></i> Net Worth Projection (First Trial)</span>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary active" id="btnShowAll">
+                        All Data
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="btnShowRecent">
+                        Last 10 Years
+                    </button>
+                </div>
             </div>
             <div class="card-body">
-                <div class="text-center">
-                    <h1 class="display-1 mb-3">
-                        <span class="{% if success_percentage >= 80 %}text-success{% elif success_percentage >= 60 %}text-warning{% else %}text-danger{% endif %}">
-                            {{ success_percentage }}%
-                        </span>
-                    </h1>
-                    <p class="lead mb-3">
-                        {% if success_percentage >= 80 %}
-                            <span class="badge bg-success">Excellent</span> Your plan has a high probability of success
-                        {% elif success_percentage >= 60 %}
-                            <span class="badge bg-warning">Moderate</span> Consider adjusting your plan for better outcomes
-                        {% else %}
-                            <span class="badge bg-danger">Low</span> Significant plan adjustments recommended
-                        {% endif %}
-                    </p>
-                    <p class="text-muted">
-                        Based on 500 Monte Carlo simulation trials
-                    </p>
+                <div class="chart-container">
+                    <canvas id="netWorthChart"></canvas>
                 </div>
             </div>
         </div>
 
         <!-- Results Table Card -->
         <div class="card">
-            <div class="card-header">
-                <i class="bi bi-table"></i> First Trial Results
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-table"></i> Detailed Results (First Trial)</span>
+                <button class="btn btn-sm btn-outline-primary" id="btnExportCSV">
+                    <i class="bi bi-download"></i> Export CSV
+                </button>
             </div>
             <div class="card-body">
                 <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
@@ -79,4 +163,232 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if success_percentage %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// Extract data from the table
+function extractTableData() {
+    const table = document.querySelector('.table-responsive table');
+    if (!table) return null;
+
+    const rows = table.querySelectorAll('tbody tr');
+    const dates = [];
+    const netWorthValues = [];
+
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 2) {
+            // Assuming first column is date and second is net worth
+            const dateText = cells[1]?.textContent?.trim();
+            const netWorthText = cells[2]?.textContent?.trim();
+
+            if (dateText && netWorthText) {
+                dates.push(dateText);
+                // Remove currency symbols and commas, convert to number
+                const value = parseFloat(netWorthText.replace(/[$,]/g, ''));
+                if (!isNaN(value)) {
+                    netWorthValues.push(value);
+                }
+            }
+        }
+    });
+
+    return { dates, netWorthValues };
+}
+
+// Success Rate Gauge Chart
+const gaugeCtx = document.getElementById('successGauge');
+if (gaugeCtx) {
+    const successRate = {{ success_percentage }};
+    const failureRate = 100 - successRate;
+
+    // Determine color based on success rate
+    let color;
+    if (successRate >= 80) {
+        color = '#10B981'; // Green
+    } else if (successRate >= 60) {
+        color = '#F59E0B'; // Amber
+    } else {
+        color = '#EF4444'; // Red
+    }
+
+    new Chart(gaugeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Success Rate', 'Failure Rate'],
+            datasets: [{
+                data: [successRate, failureRate],
+                backgroundColor: [color, '#334155'],
+                borderColor: ['#1E293B', '#1E293B'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: '#1E293B',
+                    titleColor: '#F1F5F9',
+                    bodyColor: '#E2E8F0',
+                    borderColor: '#334155',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Net Worth Line Chart
+const chartCtx = document.getElementById('netWorthChart');
+if (chartCtx) {
+    const tableData = extractTableData();
+
+    if (tableData && tableData.dates.length > 0) {
+        let netWorthChart = new Chart(chartCtx, {
+            type: 'line',
+            data: {
+                labels: tableData.dates,
+                datasets: [{
+                    label: 'Net Worth ($K)',
+                    data: tableData.netWorthValues,
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: '#3B82F6',
+                    pointHoverBorderColor: '#F1F5F9',
+                    pointHoverBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#1E293B',
+                        titleColor: '#F1F5F9',
+                        bodyColor: '#E2E8F0',
+                        borderColor: '#334155',
+                        borderWidth: 1,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Net Worth: $' + context.parsed.y.toLocaleString() + 'K';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: '#334155',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#94A3B8',
+                            maxRotation: 45,
+                            minRotation: 45,
+                            autoSkip: true,
+                            maxTicksLimit: 20
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: '#334155',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#94A3B8',
+                            callback: function(value) {
+                                return '$' + value.toLocaleString() + 'K';
+                            }
+                        },
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+
+        // Chart view toggle buttons
+        document.getElementById('btnShowAll').addEventListener('click', function() {
+            netWorthChart.data.labels = tableData.dates;
+            netWorthChart.data.datasets[0].data = tableData.netWorthValues;
+            netWorthChart.update();
+
+            this.classList.add('active');
+            document.getElementById('btnShowRecent').classList.remove('active');
+        });
+
+        document.getElementById('btnShowRecent').addEventListener('click', function() {
+            const last40 = Math.min(40, tableData.dates.length); // 10 years = 40 quarters
+            netWorthChart.data.labels = tableData.dates.slice(-last40);
+            netWorthChart.data.datasets[0].data = tableData.netWorthValues.slice(-last40);
+            netWorthChart.update();
+
+            this.classList.add('active');
+            document.getElementById('btnShowAll').classList.remove('active');
+        });
+    }
+}
+
+// CSV Export functionality
+document.getElementById('btnExportCSV')?.addEventListener('click', function() {
+    const table = document.querySelector('.table-responsive table');
+    if (!table) return;
+
+    let csv = [];
+    const rows = table.querySelectorAll('tr');
+
+    rows.forEach(row => {
+        const cols = row.querySelectorAll('td, th');
+        const csvRow = [];
+        cols.forEach(col => {
+            // Escape quotes and wrap in quotes if contains comma
+            let text = col.textContent.trim();
+            if (text.includes(',') || text.includes('"')) {
+                text = '"' + text.replace(/"/g, '""') + '"';
+            }
+            csvRow.push(text);
+        });
+        csv.push(csvRow.join(','));
+    });
+
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'simulation_results.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+</script>
+{% endif %}
 {% endblock %}
