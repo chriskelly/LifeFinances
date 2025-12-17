@@ -47,13 +47,10 @@ class VariableMix:
     Attributes:
         variable_stats (list[_StatisticBehavior]): list of variable statistics
 
-        correlation_matrix (np.ndarray): matrix of variable correlations
-
         lookup_table (dict[str, int]): lookup table for variable names
     """
 
     variable_stats: list[_StatisticBehavior]
-    correlation_matrix: NDArray[np.floating]
     lookup_table: dict[str, int]
 
 
@@ -77,9 +74,8 @@ class CsvVariableMixRepo(VariableMixRepo):
         get_variable_mix(): Get a mix of economic variables.
     """
 
-    def __init__(self, statistics_path: Path, correlation_path: Path):
+    def __init__(self, statistics_path: Path):
         self._statistics_path = statistics_path
-        self._correlation_path = correlation_path
         self._lookup_table = {}
         self._variable_mix = self._gen_variable_mix()
 
@@ -88,10 +84,8 @@ class CsvVariableMixRepo(VariableMixRepo):
 
     def _gen_variable_mix(self) -> VariableMix:
         variable_stats = self._process_statistics_data()
-        correlation_matrix = self._process_correlation_data()
         return VariableMix(
             variable_stats=variable_stats,
-            correlation_matrix=correlation_matrix,
             lookup_table=self._lookup_table,
         )
 
@@ -113,70 +107,42 @@ class CsvVariableMixRepo(VariableMixRepo):
                 self._lookup_table[csv_row[label_idx]] = idx
             return data
 
-    def _process_correlation_data(self):
-        with open(self._correlation_path, "r", encoding="utf-8") as file:
-            csv_reader = csv.reader(file, skipinitialspace=True)
-            next(csv_reader)
-            variable_1_idx = 0
-            variable_2_idx = 1
-            correlation_idx = 2
-            correlation_matrix = np.ones(
-                (len(self._lookup_table), len(self._lookup_table))
-            )
-            for csv_row in csv_reader:
-                variable_1 = csv_row[variable_1_idx]
-                variable_2 = csv_row[variable_2_idx]
-                correlation_matrix[self._lookup_table[variable_1]][
-                    self._lookup_table[variable_2]
-                ] = csv_row[correlation_idx]
-                correlation_matrix[self._lookup_table[variable_2]][
-                    self._lookup_table[variable_1]
-                ] = csv_row[correlation_idx]
-            return correlation_matrix
-
-
-def _gen_covariance_matrix(variable_mix: VariableMix):
-    standard_deviations = np.array(
-        [asset.gen_interval_behavior().stdev for asset in variable_mix.variable_stats]
-    )
-    return (
-        np.outer(standard_deviations, standard_deviations)
-        * variable_mix.correlation_matrix
-    )
-
-
-def _gen_covariated_data(
+def _gen_variable_data(
     variable_mix: VariableMix,
     trial_qty: int,
     intervals_per_trial: int,
     seeded: bool = False,
 ) -> np.ndarray:
     """
-    Generates correlated rates for a given variable mix.
+    Generates independent rates for a given variable mix using univariate normal
+    distributions per variable.
 
     Args:
         variable_mix (VariableMix): The variables to generate rates for.
         trial_qty (int): The number of trials to run.
         intervals_per_trial (int): The number of intervals per trial.
-        seeded (bool, optional): Whether or not to seed the random number generator.
-        Defaults to False.
+        seeded (bool, optional): Whether or not to seed the random number
+            generator. Defaults to False.
 
     Returns:
-        np.ndarray: A 3D array of covariated data.
+        np.ndarray: A 3D array of independent yield data with shape
+            (trial_qty, intervals_per_trial, num_variables).
     """
-    if seeded:
-        np.random.seed(0)
-    covariance_matrix = _gen_covariance_matrix(variable_mix)
-    interval_yields = [
-        asset.gen_interval_behavior().mean_yield
-        for asset in variable_mix.variable_stats
+    local_rng = np.random.default_rng(0) if seeded else rng
+
+    interval_behaviors = [
+        stat.gen_interval_behavior() for stat in variable_mix.variable_stats
     ]
-    yield_matrix = np.random.multivariate_normal(
-        mean=interval_yields,
-        cov=covariance_matrix,
-        size=(trial_qty, intervals_per_trial),
-    )
-    return yield_matrix
+    num_variables = len(interval_behaviors)
+
+    yields = np.empty((trial_qty, intervals_per_trial, num_variables))
+    for idx, behavior in enumerate(interval_behaviors):
+        yields[:, :, idx] = local_rng.normal(
+            loc=behavior.mean_yield,
+            scale=behavior.stdev,
+            size=(trial_qty, intervals_per_trial),
+        )
+    return yields
 
 
 @dataclass
@@ -297,7 +263,7 @@ class EconomicEngine:
         self.data = self._gen_data()
 
     def _gen_data(self) -> EconomicSimData:
-        covariated_data = _gen_covariated_data(
+        covariated_data = _gen_variable_data(
             variable_mix=self._variable_mix,
             trial_qty=self._trial_qty,
             intervals_per_trial=self._intervals_per_trial,

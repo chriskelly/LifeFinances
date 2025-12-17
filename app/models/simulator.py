@@ -230,7 +230,6 @@ class SimulationEngine:
             trial_qty=self._trial_qty,
             variable_mix_repo=economic_data.CsvVariableMixRepo(
                 statistics_path=constants.STATISTICS_PATH,
-                correlation_path=constants.CORRELATION_PATH,
             ),
         ).data
 
