@@ -39,11 +39,12 @@ class RunPage:
 
         results = gen_simulation_results()
         first_results = results.as_dataframes()[0]
-        first_results_table = first_results.to_html(classes="table table-striped")
         success_percentage = results.calc_success_percentage()
 
-        # Store current results in session
-        session["first_results_table"] = first_results_table
+        # Store only essential data in session (not full HTML table to avoid cookie size limits)
+        # Convert DataFrame to dict for JSON serialization
+        session["first_results_data"] = first_results.to_dict(orient="records")
+        session["first_results_columns"] = first_results.columns.tolist()
         session["success_percentage"] = success_percentage
 
         # Add to simulation history
