@@ -19,8 +19,9 @@ def create_app():
 
     @app.route("/", methods=["GET", "POST"])
     def index():
-        index_page = IndexPage(request)
-        return index_page.template
+        # Redirect root to dashboard for modern UI
+        from flask import redirect, url_for
+        return redirect(url_for("dashboard"))
 
     @app.route("/dashboard", methods=["GET"])
     def dashboard():
