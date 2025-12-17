@@ -4,6 +4,9 @@ Results page route handler for LifeFinances app.
 
 from flask import render_template, session
 import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly
 
 
 class ResultsPage:
@@ -16,8 +19,141 @@ class ResultsPage:
 
     def __init__(self):
         # Retrieve results from session
-        self._first_results_table = self._generate_results_table()
+        self._first_results_data = session.get("first_results_data")
+        self._first_results_columns = session.get("first_results_columns")
         self._success_percentage = session.get("success_percentage")
+
+        # Generate visualizations if data available
+        self._gauge_chart = self._generate_gauge_chart()
+        self._net_worth_chart = self._generate_net_worth_chart()
+        self._first_results_table = self._generate_results_table()
+
+    def _generate_gauge_chart(self) -> str | None:
+        """
+        Generate Plotly gauge chart for success rate.
+
+        Returns:
+            str | None: Plotly chart JSON or None if no data available.
+        """
+        if self._success_percentage is None:
+            return None
+
+        # Determine color based on success rate
+        if self._success_percentage >= 80:
+            color = "#10B981"  # Green
+        elif self._success_percentage >= 60:
+            color = "#F59E0B"  # Amber
+        else:
+            color = "#EF4444"  # Red
+
+        fig = go.Figure(
+            go.Indicator(
+                mode="gauge+number",
+                value=self._success_percentage,
+                title={"text": "Success Rate", "font": {"color": "#F1F5F9"}},
+                number={"suffix": "%", "font": {"color": "#F1F5F9"}},
+                gauge={
+                    "axis": {"range": [None, 100], "tickcolor": "#94A3B8"},
+                    "bar": {"color": color},
+                    "bgcolor": "#1E293B",
+                    "borderwidth": 2,
+                    "bordercolor": "#334155",
+                    "steps": [
+                        {"range": [0, 60], "color": "#334155"},
+                        {"range": [60, 80], "color": "#475569"},
+                        {"range": [80, 100], "color": "#64748B"},
+                    ],
+                },
+            )
+        )
+
+        fig.update_layout(
+            paper_bgcolor="#1E293B",
+            plot_bgcolor="#1E293B",
+            font={"color": "#F1F5F9"},
+            height=250,
+            margin=dict(l=20, r=20, t=40, b=20),
+        )
+
+        return plotly.io.to_json(fig)
+
+    def _generate_net_worth_chart(self) -> str | None:
+        """
+        Generate Plotly line chart for net worth projection.
+
+        Returns:
+            str | None: Plotly chart JSON or None if no data available.
+        """
+        if self._first_results_data is None or self._first_results_columns is None:
+            return None
+
+        # Reconstruct DataFrame
+        df = pd.DataFrame(self._first_results_data, columns=self._first_results_columns)
+
+        # Need at least 2 columns for a meaningful chart
+        if len(df.columns) < 2:
+            return None
+
+        # Assuming columns are: index, date, net_worth, ... (adjust as needed)
+        # Try to find date and net worth columns
+        date_col = None
+        net_worth_col = None
+
+        for col in df.columns:
+            col_lower = col.lower()
+            if "date" in col_lower or "time" in col_lower:
+                date_col = col
+            if "net" in col_lower and "worth" in col_lower:
+                net_worth_col = col
+
+        if date_col is None or net_worth_col is None:
+            # Fallback: use second column for x and third for y (or first two if only 2 columns)
+            if len(df.columns) >= 3:
+                date_col = df.columns[1]
+                net_worth_col = df.columns[2]
+            else:
+                date_col = df.columns[0]
+                net_worth_col = df.columns[1]
+
+        fig = go.Figure()
+
+        fig.add_trace(
+            go.Scatter(
+                x=df[date_col],
+                y=df[net_worth_col],
+                mode="lines",
+                name="Net Worth",
+                line=dict(color="#3B82F6", width=2),
+                fill="tozeroy",
+                fillcolor="rgba(59, 130, 246, 0.1)",
+                hovertemplate="<b>%{x}</b><br>Net Worth: $%{y:,.0f}K<extra></extra>",
+            )
+        )
+
+        fig.update_layout(
+            paper_bgcolor="#1E293B",
+            plot_bgcolor="#1E293B",
+            font={"color": "#F1F5F9"},
+            height=300,
+            margin=dict(l=50, r=20, t=20, b=40),
+            xaxis=dict(
+                gridcolor="#334155",
+                showgrid=True,
+                tickangle=45,
+                tickfont={"color": "#94A3B8"},
+            ),
+            yaxis=dict(
+                gridcolor="#334155",
+                showgrid=True,
+                tickfont={"color": "#94A3B8"},
+                tickformat="$,.0f",
+                ticksuffix="K",
+            ),
+            hovermode="x unified",
+            showlegend=False,
+        )
+
+        return plotly.io.to_json(fig)
 
     def _generate_results_table(self) -> str | None:
         """
@@ -26,14 +162,11 @@ class ResultsPage:
         Returns:
             str | None: HTML table string or None if no data available.
         """
-        first_results_data = session.get("first_results_data")
-        first_results_columns = session.get("first_results_columns")
-
-        if first_results_data is None or first_results_columns is None:
+        if self._first_results_data is None or self._first_results_columns is None:
             return None
 
         # Reconstruct DataFrame from dict
-        df = pd.DataFrame(first_results_data, columns=first_results_columns)
+        df = pd.DataFrame(self._first_results_data, columns=self._first_results_columns)
 
         # Generate HTML table with styling
         return df.to_html(classes="table table-striped", index=False)
@@ -45,4 +178,6 @@ class ResultsPage:
             "results.html",
             first_results_table=self._first_results_table,
             success_percentage=self._success_percentage,
+            gauge_chart_json=self._gauge_chart,
+            net_worth_chart_json=self._net_worth_chart,
         )

@@ -2,20 +2,6 @@
 
 {% block title %}Results - LifeFinances{% endblock %}
 
-{% block extra_css %}
-<style>
-    .chart-container {
-        position: relative;
-        height: 300px;
-        margin-bottom: 1rem;
-    }
-    .gauge-container {
-        position: relative;
-        height: 250px;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="col-12">
     <div class="p-4 fade-in">
@@ -35,9 +21,7 @@
                         <i class="bi bi-trophy"></i> Success Rate
                     </div>
                     <div class="card-body">
-                        <div class="gauge-container">
-                            <canvas id="successGauge"></canvas>
-                        </div>
+                        <div id="successGauge"></div>
                         <div class="text-center mt-3">
                             <h2 class="{% if success_percentage >= 80 %}text-success{% elif success_percentage >= 60 %}text-warning{% else %}text-danger{% endif %}">
                                 {{ success_percentage }}%
@@ -103,21 +87,11 @@
 
         <!-- Results Chart -->
         <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-graph-up-arrow"></i> Net Worth Projection (First Trial)</span>
-                <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn btn-outline-secondary active" id="btnShowAll">
-                        All Data
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" id="btnShowRecent">
-                        Last 10 Years
-                    </button>
-                </div>
+            <div class="card-header">
+                <i class="bi bi-graph-up-arrow"></i> Net Worth Projection (First Trial)
             </div>
             <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="netWorthChart"></canvas>
-                </div>
+                <div id="netWorthChart"></div>
             </div>
         </div>
 
@@ -166,194 +140,28 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if success_percentage %}
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% if success_percentage and gauge_chart_json and net_worth_chart_json %}
+<!-- Plotly.js -->
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 
 <script>
-// Extract data from the table
-function extractTableData() {
-    const table = document.querySelector('.table-responsive table');
-    if (!table) return null;
-
-    const rows = table.querySelectorAll('tbody tr');
-    const dates = [];
-    const netWorthValues = [];
-
-    rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        if (cells.length >= 2) {
-            // Assuming first column is date and second is net worth
-            const dateText = cells[1]?.textContent?.trim();
-            const netWorthText = cells[2]?.textContent?.trim();
-
-            if (dateText && netWorthText) {
-                dates.push(dateText);
-                // Remove currency symbols and commas, convert to number
-                const value = parseFloat(netWorthText.replace(/[$,]/g, ''));
-                if (!isNaN(value)) {
-                    netWorthValues.push(value);
-                }
-            }
-        }
+// Render Plotly charts
+document.addEventListener('DOMContentLoaded', function() {
+    // Success Rate Gauge
+    const gaugeData = {{ gauge_chart_json | safe }};
+    Plotly.newPlot('successGauge', gaugeData.data, gaugeData.layout, {
+        displayModeBar: false,
+        responsive: true
     });
 
-    return { dates, netWorthValues };
-}
-
-// Success Rate Gauge Chart
-const gaugeCtx = document.getElementById('successGauge');
-if (gaugeCtx) {
-    const successRate = {{ success_percentage }};
-    const failureRate = 100 - successRate;
-
-    // Determine color based on success rate
-    let color;
-    if (successRate >= 80) {
-        color = '#10B981'; // Green
-    } else if (successRate >= 60) {
-        color = '#F59E0B'; // Amber
-    } else {
-        color = '#EF4444'; // Red
-    }
-
-    new Chart(gaugeCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Success Rate', 'Failure Rate'],
-            datasets: [{
-                data: [successRate, failureRate],
-                backgroundColor: [color, '#334155'],
-                borderColor: ['#1E293B', '#1E293B'],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '75%',
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: '#1E293B',
-                    titleColor: '#F1F5F9',
-                    bodyColor: '#E2E8F0',
-                    borderColor: '#334155',
-                    borderWidth: 1,
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ' + context.parsed + '%';
-                        }
-                    }
-                }
-            }
-        }
+    // Net Worth Line Chart
+    const chartData = {{ net_worth_chart_json | safe }};
+    Plotly.newPlot('netWorthChart', chartData.data, chartData.layout, {
+        displayModeBar: true,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+        responsive: true
     });
-}
-
-// Net Worth Line Chart
-const chartCtx = document.getElementById('netWorthChart');
-if (chartCtx) {
-    const tableData = extractTableData();
-
-    if (tableData && tableData.dates.length > 0) {
-        let netWorthChart = new Chart(chartCtx, {
-            type: 'line',
-            data: {
-                labels: tableData.dates,
-                datasets: [{
-                    label: 'Net Worth ($K)',
-                    data: tableData.netWorthValues,
-                    borderColor: '#3B82F6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    pointHoverBackgroundColor: '#3B82F6',
-                    pointHoverBorderColor: '#F1F5F9',
-                    pointHoverBorderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: '#1E293B',
-                        titleColor: '#F1F5F9',
-                        bodyColor: '#E2E8F0',
-                        borderColor: '#334155',
-                        borderWidth: 1,
-                        callbacks: {
-                            label: function(context) {
-                                return 'Net Worth: $' + context.parsed.y.toLocaleString() + 'K';
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            color: '#334155',
-                            drawBorder: false
-                        },
-                        ticks: {
-                            color: '#94A3B8',
-                            maxRotation: 45,
-                            minRotation: 45,
-                            autoSkip: true,
-                            maxTicksLimit: 20
-                        }
-                    },
-                    y: {
-                        grid: {
-                            color: '#334155',
-                            drawBorder: false
-                        },
-                        ticks: {
-                            color: '#94A3B8',
-                            callback: function(value) {
-                                return '$' + value.toLocaleString() + 'K';
-                            }
-                        },
-                        beginAtZero: false
-                    }
-                }
-            }
-        });
-
-        // Chart view toggle buttons
-        document.getElementById('btnShowAll').addEventListener('click', function() {
-            netWorthChart.data.labels = tableData.dates;
-            netWorthChart.data.datasets[0].data = tableData.netWorthValues;
-            netWorthChart.update();
-
-            this.classList.add('active');
-            document.getElementById('btnShowRecent').classList.remove('active');
-        });
-
-        document.getElementById('btnShowRecent').addEventListener('click', function() {
-            const last40 = Math.min(40, tableData.dates.length); // 10 years = 40 quarters
-            netWorthChart.data.labels = tableData.dates.slice(-last40);
-            netWorthChart.data.datasets[0].data = tableData.netWorthValues.slice(-last40);
-            netWorthChart.update();
-
-            this.classList.add('active');
-            document.getElementById('btnShowAll').classList.remove('active');
-        });
-    }
-}
+});
 
 // CSV Export functionality
 document.getElementById('btnExportCSV')?.addEventListener('click', function() {

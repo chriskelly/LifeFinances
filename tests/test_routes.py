@@ -97,13 +97,16 @@ def test_results_page_with_data(client: FlaskClient):
     """Test that results page displays simulation data when available"""
     with client.session_transaction() as sess:
         # Store data as dict (new format to avoid cookie size limits)
-        sess["first_results_data"] = [{"Column1": "Test Data"}]
-        sess["first_results_columns"] = ["Column1"]
+        sess["first_results_data"] = [
+            {"Date": "2024-01-01", "Net_Worth": 100},
+            {"Date": "2024-04-01", "Net_Worth": 105},
+        ]
+        sess["first_results_columns"] = ["Date", "Net_Worth"]
         sess["success_percentage"] = 85
 
     response = client.get("/results")
     assert response.status_code == 200
-    assert b"Test Data" in response.data
+    assert b"Net_Worth" in response.data or b"Net Worth" in response.data
     assert b"85" in response.data
 
 
@@ -127,20 +130,23 @@ def test_index_redirects_to_dashboard(client: FlaskClient):
 
 
 def test_results_page_charts(client: FlaskClient):
-    """Test that results page includes Chart.js visualizations"""
+    """Test that results page includes Plotly visualizations"""
     with client.session_transaction() as sess:
         # Store data as dict (new format to avoid cookie size limits)
-        sess["first_results_data"] = [{"Column1": "Test Data"}]
-        sess["first_results_columns"] = ["Column1"]
+        sess["first_results_data"] = [
+            {"Date": "2024-01-01", "Net_Worth": 100},
+            {"Date": "2024-04-01", "Net_Worth": 105},
+        ]
+        sess["first_results_columns"] = ["Date", "Net_Worth"]
         sess["success_percentage"] = 85
 
     response = client.get("/results")
     assert response.status_code == 200
 
-    # Check for Chart.js CDN
-    assert b"chart.js" in response.data or b"Chart.js" in response.data
+    # Check for Plotly.js CDN
+    assert b"plotly" in response.data or b"Plotly" in response.data
 
-    # Check for canvas elements for charts
+    # Check for div elements for charts
     assert b"successGauge" in response.data
     assert b"netWorthChart" in response.data
 
@@ -154,8 +160,11 @@ def test_results_page_export_button(client: FlaskClient):
     """Test that results page includes CSV export functionality"""
     with client.session_transaction() as sess:
         # Store data as dict (new format to avoid cookie size limits)
-        sess["first_results_data"] = [{"Column1": "Test Data"}]
-        sess["first_results_columns"] = ["Column1"]
+        sess["first_results_data"] = [
+            {"Date": "2024-01-01", "Net_Worth": 100},
+            {"Date": "2024-04-01", "Net_Worth": 105},
+        ]
+        sess["first_results_columns"] = ["Date", "Net_Worth"]
         sess["success_percentage"] = 75
 
     response = client.get("/results")
@@ -171,8 +180,11 @@ def test_results_page_interpretation(client: FlaskClient):
     # Test excellent success rate
     with client.session_transaction() as sess:
         # Store data as dict (new format to avoid cookie size limits)
-        sess["first_results_data"] = [{"Column1": "Data"}]
-        sess["first_results_columns"] = ["Column1"]
+        sess["first_results_data"] = [
+            {"Date": "2024-01-01", "Net_Worth": 100},
+            {"Date": "2024-04-01", "Net_Worth": 105},
+        ]
+        sess["first_results_columns"] = ["Date", "Net_Worth"]
         sess["success_percentage"] = 90
 
     response = client.get("/results")
@@ -181,8 +193,11 @@ def test_results_page_interpretation(client: FlaskClient):
 
     # Test moderate success rate
     with client.session_transaction() as sess:
-        sess["first_results_data"] = [{"Column1": "Data"}]
-        sess["first_results_columns"] = ["Column1"]
+        sess["first_results_data"] = [
+            {"Date": "2024-01-01", "Net_Worth": 100},
+            {"Date": "2024-04-01", "Net_Worth": 105},
+        ]
+        sess["first_results_columns"] = ["Date", "Net_Worth"]
         sess["success_percentage"] = 65
 
     response = client.get("/results")
@@ -191,8 +206,11 @@ def test_results_page_interpretation(client: FlaskClient):
 
     # Test low success rate
     with client.session_transaction() as sess:
-        sess["first_results_data"] = [{"Column1": "Data"}]
-        sess["first_results_columns"] = ["Column1"]
+        sess["first_results_data"] = [
+            {"Date": "2024-01-01", "Net_Worth": 100},
+            {"Date": "2024-04-01", "Net_Worth": 105},
+        ]
+        sess["first_results_columns"] = ["Date", "Net_Worth"]
         sess["success_percentage"] = 40
 
     response = client.get("/results")

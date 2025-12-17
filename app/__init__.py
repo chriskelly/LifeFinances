@@ -6,6 +6,7 @@ def create_app():
 
     # Import here to avoid circular deps
     from flask import Flask, request
+    from flask_session import Session
     from app.routes.api import api as api_blueprint
     from app.routes.index import IndexPage
     from app.routes.dashboard import DashboardPage
@@ -15,6 +16,15 @@ def create_app():
 
     app = Flask(__name__)
     app.secret_key = "lifefinances-secret-key-change-in-production"  # TODO: Move to env var
+
+    # Configure server-side sessions to avoid cookie size limits
+    app.config["SESSION_TYPE"] = "filesystem"
+    app.config["SESSION_PERMANENT"] = False
+    app.config["SESSION_USE_SIGNER"] = True
+    app.config["SESSION_KEY_PREFIX"] = "lifefinances:"
+    app.config["SESSION_FILE_THRESHOLD"] = 500  # Max number of session files
+    Session(app)
+
     app.register_blueprint(api_blueprint, url_prefix="/api")
 
     @app.route("/", methods=["GET", "POST"])
