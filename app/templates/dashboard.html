@@ -108,6 +108,60 @@
             </div>
         </div>
 
+        <!-- Recent Simulations -->
+        {% if recent_simulations %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-clock-history"></i> Recent Simulations</span>
+                        <span class="badge bg-primary">Last {{ recent_simulations|length }}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Success Rate</th>
+                                        <th>Trials</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for sim in recent_simulations %}
+                                    <tr>
+                                        <td>
+                                            <i class="bi bi-calendar3"></i>
+                                            {{ sim.timestamp[:10] }}
+                                            <small class="text-muted">{{ sim.timestamp[11:16] }}</small>
+                                        </td>
+                                        <td>
+                                            <strong class="{% if sim.success_percentage >= 80 %}text-success{% elif sim.success_percentage >= 60 %}text-warning{% else %}text-danger{% endif %}">
+                                                {{ sim.success_percentage }}%
+                                            </strong>
+                                        </td>
+                                        <td>{{ sim.trial_count }}</td>
+                                        <td>
+                                            {% if sim.success_percentage >= 80 %}
+                                                <span class="badge bg-success">Excellent</span>
+                                            {% elif sim.success_percentage >= 60 %}
+                                                <span class="badge bg-warning">Moderate</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Low</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Getting Started -->
         <div class="row">
             <div class="col-12">
@@ -116,6 +170,12 @@
                         <i class="bi bi-info-circle"></i> Getting Started
                     </div>
                     <div class="card-body">
+                        {% if not has_config %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>No configuration found!</strong> Please create a configuration file before running simulations.
+                        </div>
+                        {% endif %}
                         <ol class="mb-0">
                             <li class="mb-2">
                                 <strong>Configure:</strong> Edit your financial parameters in the Configuration page

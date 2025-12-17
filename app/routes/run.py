@@ -34,16 +34,34 @@ class RunPage:
         Handle form submission for running simulation.
         Runs the simulation and redirects to results page.
         """
+        from datetime import datetime
+        from flask import session
+
         results = gen_simulation_results()
         first_results = results.as_dataframes()[0]
         first_results_table = first_results.to_html(classes="table table-striped")
         success_percentage = results.calc_success_percentage()
 
-        # TODO: In Phase F5, store results in session or database
-        # For now, we'll need to pass via session or store temporarily
-        # Redirecting to results page
-        from flask import session
+        # Store current results in session
         session["first_results_table"] = first_results_table
         session["success_percentage"] = success_percentage
+
+        # Add to simulation history
+        if "simulation_history" not in session:
+            session["simulation_history"] = []
+
+        simulation_record = {
+            "timestamp": datetime.now().isoformat(),
+            "success_percentage": success_percentage,
+            "trial_count": 500,  # Default trial count
+        }
+
+        session["simulation_history"].append(simulation_record)
+
+        # Keep only last 10 simulations to avoid session bloat
+        if len(session["simulation_history"]) > 10:
+            session["simulation_history"] = session["simulation_history"][-10:]
+
+        session.modified = True
 
         self._redirect_to = "results"
