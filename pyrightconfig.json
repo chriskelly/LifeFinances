@@ -4,7 +4,7 @@
   "include": [
     "app",
     "tests",
-    "tpaw_planner.ipynb",
+    "standalone_tools",
     "run.py"
   ]
 }
