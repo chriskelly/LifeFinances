@@ -103,8 +103,27 @@ class AnnuityConfig(BaseModel):
         contributed to the annuity
     """
 
-    net_worth_target: float
-    contribution_rate: float
+    net_worth_target: float = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Net Worth Target",
+                "tooltip": "Net worth threshold below which annuity purchase is triggered",
+                "section": "Portfolio",
+                "min_value": 0,
+            }
+        }
+    )
+    contribution_rate: float = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Contribution Rate",
+                "tooltip": "Percentage of net income contributed to annuity (e.g., 0.1 = 10%)",
+                "section": "Portfolio",
+                "min_value": 0,
+                "max_value": 1,
+            }
+        }
+    )
 
 
 def _allocation_sums_to_1(allocation: dict[str, float]):
@@ -132,7 +151,15 @@ class FlatAllocationStrategyConfig(StrategyConfig):
         allocation (dict[str, float])
     """
 
-    allocation: dict[str, float]
+    allocation: dict[str, float] = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Asset Allocation",
+                "tooltip": "Fixed asset allocation percentages (must sum to 1.0)",
+                "section": "Portfolio",
+            }
+        }
+    )
 
     @model_validator(mode="after")
     def validate_allocation(self):
@@ -147,9 +174,34 @@ class NetWorthPivotStrategyConfig(StrategyConfig):
         net_worth_target (float): Also referred to as equity target
     """
 
-    net_worth_target: float
-    under_target_allocation: dict[str, float]
-    over_target_allocation: dict[str, float]
+    net_worth_target: float = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Net Worth Pivot Target",
+                "tooltip": "Net worth threshold for switching between allocation strategies",
+                "section": "Portfolio",
+                "min_value": 0,
+            }
+        }
+    )
+    under_target_allocation: dict[str, float] = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Under Target Allocation",
+                "tooltip": "Asset allocation when net worth is below target",
+                "section": "Portfolio",
+            }
+        }
+    )
+    over_target_allocation: dict[str, float] = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Over Target Allocation",
+                "tooltip": "Asset allocation when net worth is above target",
+                "section": "Portfolio",
+            }
+        }
+    )
 
     @model_validator(mode="after")
     def net_worth_target_greater_or_equal_to_0(self):
@@ -240,7 +292,17 @@ class NetWorthStrategyConfig(StrategyConfig):
         net_worth_target (float): Defaults to None
     """
 
-    net_worth_target: Optional[float] = None
+    net_worth_target: Optional[float] = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Net Worth Target",
+                "tooltip": "Net worth threshold for Social Security/Pension claiming strategy",
+                "section": "Social Security",
+                "min_value": 0,
+            }
+        }
+    )
 
 
 class SocialSecurityOptions(StrategyOptions):
