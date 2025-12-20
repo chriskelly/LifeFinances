@@ -941,8 +941,9 @@ class User(BaseModel):
     def validate_income_profiles(self):
         """Income profiles must be in order"""
         _income_profiles_in_order(self.income_profiles)
-        if self.partner and self.partner.income_profiles:
-            _income_profiles_in_order(self.partner.income_profiles)
+        partner = self.partner
+        if partner and partner.income_profiles:
+            _income_profiles_in_order(partner.income_profiles)
         return self
 
     @model_validator(mode="after")
@@ -956,20 +957,22 @@ class User(BaseModel):
     def social_security_same_strategy(self):
         """User cannot enable/choose `same` strategy and
         partner cannot enable other strategies if `same` is chosen"""
-        if (
-            self.social_security_pension.strategy.enabled_strategies
-            and "same" in self.social_security_pension.strategy.enabled_strategies
-        ):
+        social_security_pension = self.social_security_pension
+        strategy = social_security_pension.strategy
+        enabled_strategies = strategy.enabled_strategies
+        if enabled_strategies and "same" in enabled_strategies:
             raise ValueError("`Same` strategy can only be enabled for partner")
         return self
 
     @model_validator(mode="after")
     def either_income_or_net_worth(self):
         """User should provide at least one income profile or net worth"""
+        portfolio = self.portfolio
+        partner = self.partner
         if (
             not self.income_profiles
-            and not self.portfolio.current_net_worth
-            and not (self.partner and self.partner.income_profiles)
+            and not portfolio.current_net_worth
+            and not (partner and partner.income_profiles)
         ):
             raise ValueError(
                 "User must provide at least one income profile or net worth"
