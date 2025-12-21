@@ -258,7 +258,9 @@ class TestNetWorthStrategy:
         first_state.date = (
             constants.TODAY_YR + EARLY_AGE - self.strategy._current_age + 1
         )
-        first_state.net_worth = self.config.net_worth_target * first_state.inflation - 1
+        first_state.net_worth = (
+            self.strategy._net_worth_target * first_state.inflation - 1
+        )
         payment = self.strategy.calc_payment(state=first_state)
         assert payment > 0
 

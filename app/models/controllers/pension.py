@@ -74,6 +74,8 @@ class _AgeStrategy(_Strategy):
 
 class _NetWorthStrategy(_Strategy):
     def __init__(self, config: NetWorthStrategyConfig, base: float):
+        if config.net_worth_target is None:
+            raise ValueError("Net worth target cannot be None")
         self._net_worth_target = config.net_worth_target
         self._base = base
         self._payment = None
@@ -82,8 +84,6 @@ class _NetWorthStrategy(_Strategy):
     def calc_payment(self, state: State) -> float:
         if self._payment:
             return self._payment * state.inflation
-        if self._net_worth_target is None:
-            raise ValueError("Net worth target cannot be None")
         if (
             state.date >= EARLY_YEAR
             and state.net_worth < self._net_worth_target * state.inflation
