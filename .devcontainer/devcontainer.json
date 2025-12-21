@@ -55,13 +55,7 @@
             "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": [
-        "rm -rf .venv venv",
-        "python -m venv .venv",
-        ".venv/bin/pip install --upgrade pip",
-        ".venv/bin/pip install -r requirements/dev.txt",
-        "[ ! -f config.yml ] && cp tests/sample_configs/full_config.yml config.yml || true"
-    ],
+    "postCreateCommand": "rm -rf .venv venv && python -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -r requirements/dev.txt && [ ! -f config.yml ] && cp tests/sample_configs/full_config.yml config.yml || true",
     "remoteUser": "root",
     "workspaceFolder": "/workspace",
     "mounts": [
