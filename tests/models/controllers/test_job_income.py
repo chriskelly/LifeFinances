@@ -5,8 +5,9 @@
 # pyright: reportOptionalSubscript=false
 
 import pytest
+
 from app.data import constants
-from app.models.config import User, IncomeProfile
+from app.models.config import IncomeProfile, User
 from app.models.controllers.job_income import Controller
 
 

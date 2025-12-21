@@ -4,8 +4,9 @@ Classes:
     Controller: Generate and provide timelines of job income
 """
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
+
 from app.data import constants
 from app.data.constants import (
     INTERVALS_PER_YEAR,

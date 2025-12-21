@@ -9,15 +9,18 @@ Useful Pydantic documentation
 
 import csv
 import math
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping, Optional, cast
+from typing import cast
+
 import yaml
 from pydantic import BaseModel, ValidationError, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
-from app.data.taxes import STATE_BRACKET_RATES
-from app.data import constants
 
-with open(constants.STATISTICS_PATH, "r", encoding="utf-8") as file:
+from app.data import constants
+from app.data.taxes import STATE_BRACKET_RATES
+
+with open(constants.STATISTICS_PATH, encoding="utf-8") as file:
     reader = csv.reader(file)
     next(reader)  # Skip the first row
     ALLOWED_ASSETS = {row[0] for row in reader}
@@ -55,7 +58,7 @@ class StrategyOptions(BaseModel):
         chosen_strategy (tuple[str, Strategy]): Set by validator, guaranteed to be non-None
     """
 
-    enabled_strategies: Optional[Mapping[str, StrategyConfig]] = None
+    enabled_strategies: Mapping[str, StrategyConfig] | None = None
     chosen_strategy: tuple[str, StrategyConfig] = None  # type: ignore[assignment]
 
     @model_validator(mode="after")
@@ -174,8 +177,8 @@ class AllocationOptions(StrategyOptions):
         net_worth_pivot (LifeCycleStrategyConfig): Defaults to None
     """
 
-    flat: Optional[FlatAllocationStrategyConfig] = None
-    net_worth_pivot: Optional[NetWorthPivotStrategyConfig] = None
+    flat: FlatAllocationStrategyConfig | None = None
+    net_worth_pivot: NetWorthPivotStrategyConfig | None = None
 
 
 class Portfolio(BaseModel):
@@ -192,7 +195,7 @@ class Portfolio(BaseModel):
 
     current_net_worth: float = 0
     tax_rate: float = 0.1
-    annuity: Optional[AnnuityConfig] = None
+    annuity: AnnuityConfig | None = None
     allocation_strategy: AllocationOptions
 
 
@@ -219,11 +222,11 @@ class SocialSecurityOptions(StrategyOptions):
         same (Strategy): Defaults to None
     """
 
-    early: Optional[StrategyConfig] = None
-    mid: Optional[StrategyConfig] = None
-    late: Optional[StrategyConfig] = None
-    net_worth: Optional[NetWorthStrategyConfig] = None
-    same: Optional[StrategyConfig] = None
+    early: StrategyConfig | None = None
+    mid: StrategyConfig | None = None
+    late: StrategyConfig | None = None
+    net_worth: NetWorthStrategyConfig | None = None
+    same: StrategyConfig | None = None
 
 
 class SocialSecurity(BaseModel):
@@ -262,7 +265,7 @@ class PensionOptions(SocialSecurityOptions):
         cash_out (Strategy): Defaults to None
     """
 
-    cash_out: Optional[StrategyConfig] = None
+    cash_out: StrategyConfig | None = None
 
 
 class Pension(BaseModel):
@@ -303,7 +306,7 @@ class SpendingProfile(BaseModel):
     """
 
     yearly_amount: int
-    end_date: Optional[float] = None
+    end_date: float | None = None
 
 
 def _spending_profiles_validation(spending_profiles: list[SpendingProfile]):
@@ -396,7 +399,7 @@ class IncomeProfile(BaseModel):
         return self
 
 
-def _income_profiles_in_order(income_profiles: Optional[list[IncomeProfile]]):
+def _income_profiles_in_order(income_profiles: list[IncomeProfile] | None):
     """Income profiles must be in order"""
     if income_profiles:
         for i in range(1, len(income_profiles)):
@@ -416,7 +419,7 @@ class Partner(BaseModel):
 
     age: int
     social_security_pension: SocialSecurity = SocialSecurity()
-    income_profiles: Optional[list[IncomeProfile]] = None
+    income_profiles: list[IncomeProfile] | None = None
 
 
 class TPAWPlanner(BaseModel):
@@ -430,7 +433,7 @@ class TPAWPlanner(BaseModel):
     """
 
     group_tol: float = 1.0
-    inflation_rate: Optional[float] = None
+    inflation_rate: float | None = None
 
 
 class DisabilityCoverage(BaseModel):
@@ -496,20 +499,18 @@ class User(BaseModel):
 
     age: int
     trial_quantity: int = 500
-    calculate_til: float = (
-        None  # pyright: ignore[reportAssignmentType] # field_validator will set this to a float
-    )
-    net_worth_target: Optional[float] = None
+    calculate_til: float = None  # pyright: ignore[reportAssignmentType] # field_validator will set this to a float
+    net_worth_target: float | None = None
     portfolio: Portfolio
     social_security_pension: SocialSecurity = SocialSecurity()
     spending: Spending
-    state: Optional[str] = None
-    kids: Optional[Kids] = None
-    income_profiles: Optional[list[IncomeProfile]] = None
-    partner: Optional[Partner] = None
+    state: str | None = None
+    kids: Kids | None = None
+    income_profiles: list[IncomeProfile] | None = None
+    partner: Partner | None = None
     tpaw_planner: TPAWPlanner = TPAWPlanner()
-    disability_insurance_calculator: Optional[DisabilityInsuranceCalculator] = None
-    admin: Optional[Admin] = None
+    disability_insurance_calculator: DisabilityInsuranceCalculator | None = None
+    admin: Admin | None = None
 
     @property
     def intervals_per_trial(self) -> int:
@@ -606,9 +607,7 @@ def get_config(config_path: Path) -> User:
     Returns:
         User
     """
-    with open(
-        config_path, "r", encoding="utf-8"
-    ) as file:  # pylint:disable=redefined-outer-name
+    with open(config_path, encoding="utf-8") as file:  # pylint:disable=redefined-outer-name
         yaml_content = yaml.safe_load(file)
     try:
         config = User(**yaml_content)
@@ -625,7 +624,7 @@ def get_config(config_path: Path) -> User:
 
 def read_config_file(config_path: Path = constants.CONFIG_PATH) -> str:
     """Reads the config file and returns the text"""
-    with open(config_path, "r", encoding="utf-8") as config_file:
+    with open(config_path, encoding="utf-8") as config_file:
         config_text = config_file.read()
     return config_text
 

@@ -5,6 +5,7 @@ and generating simulation results.
 """
 
 from flask import Request, render_template
+
 from app.models.config import read_config_file, write_config_file
 from app.models.simulator import gen_simulation_results
 

@@ -2,9 +2,10 @@
 
 Route locations
     app/__init__.py
-    
+
     app/routes/api.py
 """
+
 from flask.testing import FlaskClient
 
 

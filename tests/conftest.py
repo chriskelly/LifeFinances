@@ -1,8 +1,9 @@
 """ConfTest Module"""
 # pylint:disable=redefined-outer-name
 
-import yaml
 import pytest
+import yaml
+
 from app import create_app
 from app.data import constants
 from app.models.config import User
@@ -19,7 +20,7 @@ def app():
 @pytest.fixture
 def sample_config_data():
     """Pull in current user's config"""
-    with open(constants.SAMPLE_FULL_CONFIG_PATH, "r", encoding="utf-8") as file:
+    with open(constants.SAMPLE_FULL_CONFIG_PATH, encoding="utf-8") as file:
         sample_data = yaml.safe_load(file)
     return sample_data
 

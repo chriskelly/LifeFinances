@@ -15,13 +15,14 @@ This module contains the following classes:
     * Controller: Manages trial economic data
 """
 
-from abc import ABC, abstractmethod
 import csv
-from pathlib import Path
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from pathlib import Path
+
 import numpy as np
 from numpy.typing import NDArray
+
 from app.util import interval_stdev, interval_yield
 
 rng = np.random.default_rng()
@@ -90,7 +91,7 @@ class CsvVariableMixRepo(VariableMixRepo):
         )
 
     def _process_statistics_data(self) -> list[_StatisticBehavior]:
-        with open(self._statistics_path, "r", encoding="utf-8") as file:
+        with open(self._statistics_path, encoding="utf-8") as file:
             csv_reader = csv.reader(file, skipinitialspace=True)
             next(csv_reader)
             label_idx = 0
@@ -106,6 +107,7 @@ class CsvVariableMixRepo(VariableMixRepo):
                 )
                 self._lookup_table[csv_row[label_idx]] = idx
             return data
+
 
 def _gen_variable_data(
     variable_mix: VariableMix,
@@ -257,9 +259,9 @@ class EconomicEngine:
         self._intervals_per_trial = intervals_per_trial
         self._trial_qty = trial_qty
         self._variable_mix = variable_mix_repo.get_variable_mix()
-        self._asset_data: Optional[NDArray[np.floating]] = None
-        self._inflation_data: Optional[NDArray[np.floating]] = None
-        self._lookup_table: Optional[dict[str, int]] = None
+        self._asset_data: NDArray[np.floating] | None = None
+        self._inflation_data: NDArray[np.floating] | None = None
+        self._lookup_table: dict[str, int] | None = None
         self.data = self._gen_data()
 
     def _gen_data(self) -> EconomicSimData:

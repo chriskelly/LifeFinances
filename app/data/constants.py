@@ -4,6 +4,7 @@ This module contains the constants used across multiple modules in
 the Life Finances package
 
 """
+
 import datetime as dt
 from pathlib import Path
 

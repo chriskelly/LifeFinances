@@ -4,16 +4,17 @@
 # pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
 # pyright: reportOptionalSubscript=false
 
-
 from pathlib import Path
-import pytest
+
 import numpy as np
+import pytest
 from pytest_mock import MockerFixture
+
 from app.data import constants
 from app.models.simulator import (
+    ResultLabels,
     Results,
     SimulationEngine,
-    ResultLabels,
     SimulationTrial,
 )
 

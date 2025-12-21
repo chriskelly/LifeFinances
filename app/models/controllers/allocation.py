@@ -9,10 +9,12 @@ Classes:
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import cast
+
 import numpy as np
-from app.models.financial.state import State
-from app.models.config import User
+
 from app.models import config
+from app.models.config import User
+from app.models.financial.state import State
 
 
 class _Strategy(ABC):

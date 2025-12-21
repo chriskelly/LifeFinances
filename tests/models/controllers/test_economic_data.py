@@ -5,8 +5,10 @@
 # pyright: reportOptionalSubscript=false
 
 from pathlib import Path
-import pytest
+
 import numpy as np
+import pytest
+
 from app.models.controllers.economic_data import (
     CsvVariableMixRepo,
     EconomicEngine,

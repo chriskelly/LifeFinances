@@ -5,29 +5,31 @@
 # pyright: reportOptionalSubscript=false
 
 import random
+
 import pytest
+
 from app.data import constants
 from app.models.config import NetWorthStrategyConfig, SocialSecurity, User
-from app.models.controllers.job_income import Income, Controller as IncomeController
+from app.models.controllers.job_income import Controller as IncomeController
+from app.models.controllers.job_income import Income
 from app.models.controllers.social_security import (
     EARLY_AGE,
     LATE_AGE,
     MID_AGE,
-    _AgeStrategy,
-    _IndividualController,
-    _NetWorthStrategy,
     Controller,
     _add_income_to_earnings_record,
-    _apply_pia_rates,
     _adjust_bend_points,
+    _AgeStrategy,
+    _apply_pia_rates,
     _calc_aime,
     _calc_spousal_benefit,
     _constrain_earnings,
     _fill_in_missing_intervals,
     _gen_pia,
+    _IndividualController,
+    _NetWorthStrategy,
 )
 from app.models.financial.state import State
-
 
 AGE = 40
 """Standard age for testing"""
@@ -187,9 +189,9 @@ class TestGenEarnings:
         earnings = _constrain_earnings(earnings_record)
 
         for earning in earnings:
-            assert (
-                earning <= self.max_earnings * self.index
-            ), "Earnings should be constrained to max"
+            assert earning <= self.max_earnings * self.index, (
+                "Earnings should be constrained to max"
+            )
 
     def test_add_income_to_earnings_record(self, timeline, earnings_record):
         """Should add income to earnings record"""

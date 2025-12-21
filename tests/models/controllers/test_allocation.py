@@ -6,11 +6,12 @@
 
 import numpy as np
 import pytest
+
+from app.models.config import NetWorthPivotStrategyConfig, User
 from app.models.controllers.allocation import (
     _FlatAllocationStrategy,
     _NetWorthPivotStrategy,
 )
-from app.models.config import NetWorthPivotStrategyConfig, User
 from app.models.financial.state import State
 
 

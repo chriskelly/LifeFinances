@@ -8,6 +8,7 @@ Methods:
 """
 
 from dataclasses import dataclass
+
 from app.data import constants
 from app.models.config import User
 

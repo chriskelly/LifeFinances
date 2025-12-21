@@ -5,6 +5,7 @@
 # pyright: reportOptionalSubscript=false
 
 import pytest
+
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import (
     IncomeProfile,
@@ -14,14 +15,14 @@ from app.models.config import (
     User,
 )
 from app.models.controllers.pension import (
-    LATE_YEAR,
-    _AgeStrategy,
     BENEFIT_RATES,
     EARLY_YEAR,
+    LATE_YEAR,
     MID_YEAR,
+    Controller,
+    _AgeStrategy,
     _CashOutStrategy,
     _NetWorthStrategy,
-    Controller,
 )
 from app.models.financial.state import State
 

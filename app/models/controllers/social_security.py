@@ -7,11 +7,13 @@ Classes:
 import math
 from abc import ABC, abstractmethod
 from typing import cast
-from app.util import index_extrapolator, max_earnings_extrapolator
+
 from app.data import constants
-from app.models.financial.state import State
 from app.models.config import NetWorthStrategyConfig, SocialSecurity, User
-from app.models.controllers.job_income import Income, Controller as IncomeController
+from app.models.controllers.job_income import Controller as IncomeController
+from app.models.controllers.job_income import Income
+from app.models.financial.state import State
+from app.util import index_extrapolator, max_earnings_extrapolator
 
 EARLY_AGE = 62
 MID_AGE = 66
@@ -379,7 +381,7 @@ class _IndividualController:
                 self.strategy = _NetWorthStrategy(
                     config=cast(NetWorthStrategyConfig, strategy_obj),
                     pia=self.pia,
-                    current_age=age
+                    current_age=age,
                 )
 
     def calc_payment(self, state: State):

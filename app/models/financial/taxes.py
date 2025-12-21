@@ -3,20 +3,23 @@
 This module contains the constants related to taxes across all supported states.
 
 """
+
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
 from app import util
+from app.data.constants import INTERVALS_PER_YEAR
+from app.data.taxes import *  # pylint: disable=wildcard-import
 from app.models.config import User
 from app.util import max_earnings_extrapolator
-from app.data.taxes import *  # pylint: disable=wildcard-import
-from app.data.constants import INTERVALS_PER_YEAR
 
 # pylint: disable=used-before-assignment
 if TYPE_CHECKING:
+    from app.models.controllers.job_income import Controller as JobIncomeController
     from app.models.financial.state import State
     from app.models.financial.state_change import Income
-    from app.models.controllers.job_income import Controller as JobIncomeController
 
 
 @dataclass
