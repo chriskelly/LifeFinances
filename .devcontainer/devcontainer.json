@@ -16,21 +16,32 @@
                 "github.vscode-github-actions"
             ],
             "settings": {
-                "python.defaultInterpreterPath": "/usr/local/bin/python",
-                "python.linting.enabled": true,
-                "python.linting.pylintEnabled": true,
-                "python.formatting.provider": "ruff",
-                "python.testing.pytestEnabled": true,
-                "python.testing.unittestEnabled": false,
-                "python.testing.pytestArgs": [
-                    "tests"
-                ],
                 "editor.formatOnSave": true,
-                "editor.defaultFormatter": "charliermarsh.ruff",
-                "python.analysis.typeCheckingMode": "standard",
                 "files.exclude": {
                     "**/__pycache__": true,
                     "**/*.pyc": true
+                },
+                "[python]": {
+                    "defaultInterpreterPath": "/usr/local/bin/python",
+                    "linting.enabled": true,
+                    "formatting.provider": "ruff",
+                    "testing.pytestEnabled": true,
+                    "testing.unittestEnabled": false,
+                    "testing.pytestArgs": [
+                        "tests"
+                    ],
+                    "analysis.typeCheckingMode": "standard",
+                    "editor.formatOnSave": true,
+                    "editor.defaultFormatter": "charliermarsh.ruff",
+                    "editor.codeActionsOnSave": {
+                        "source.fixAll": "explicit",
+                        "source.organizeImports": "explicit"
+                    }
+                },
+                "notebook.formatOnSave.enabled": true,
+                "notebook.codeActionsOnSave": {
+                    "notebook.source.fixAll": "explicit",
+                    "notebook.source.organizeImports": "explicit"
                 }
             }
         }

@@ -1,6 +1,5 @@
 """Testing for models/financial/interval.py"""
 
-# pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
 # pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
 # pyright: reportOptionalSubscript=false
 

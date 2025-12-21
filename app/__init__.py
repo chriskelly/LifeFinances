@@ -3,8 +3,6 @@
 
 def create_app():
     """Create the Flask app with index route"""
-    # pylint: disable=import-outside-toplevel
-
     # Import here to avoid circular deps
     from flask import Flask, request
 

@@ -1,6 +1,5 @@
 """Testing for models/controllers/economic_data.py"""
 
-# pylint:disable=redefined-outer-name,missing-class-docstring,protected-access
 # pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
 # pyright: reportOptionalSubscript=false
 

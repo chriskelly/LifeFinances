@@ -2,7 +2,6 @@
 run `python3 -m pytest` if VSCode Testing won't load
 """
 
-# pylint:disable=redefined-outer-name,missing-class-docstring,no-name-in-module
 # pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
 # pyright: reportOptionalSubscript=false
 

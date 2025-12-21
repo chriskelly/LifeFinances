@@ -23,7 +23,6 @@ from app.data.taxes import (
 from app.models.config import User
 from app.util import max_earnings_extrapolator
 
-# pylint: disable=used-before-assignment
 if TYPE_CHECKING:
     from app.models.controllers.job_income import Controller as JobIncomeController
     from app.models.financial.state import State

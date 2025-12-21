@@ -1,6 +1,5 @@
 """Testing for models/simulator.py"""
 
-# pylint:disable=missing-class-docstring
 # pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
 # pyright: reportOptionalSubscript=false
 
@@ -25,7 +24,7 @@ class TestSimulationEngine:
         engine = SimulationEngine(trial_qty=5, config_path=config_path)
         try:
             engine.gen_all_trials()
-        except Exception as exception:  # pylint:disable=broad-exception-caught # NA
+        except Exception as exception:
             pytest.fail(f"Function raised an exception: {exception}")
 
     def test_user_config(self):

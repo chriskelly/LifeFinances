@@ -1,5 +1,4 @@
 """ConfTest Module"""
-# pylint:disable=redefined-outer-name
 
 import pytest
 import yaml

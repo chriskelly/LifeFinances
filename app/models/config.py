@@ -1014,7 +1014,7 @@ def get_config(config_path: Path) -> User:
     Returns:
         User
     """
-    with open(config_path, encoding="utf-8") as file:  # pylint:disable=redefined-outer-name
+    with open(config_path, encoding="utf-8") as file:
         yaml_content = yaml.safe_load(file)
     try:
         config = User(**yaml_content)

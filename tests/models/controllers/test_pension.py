@@ -1,6 +1,5 @@
 """Testing for models/controllers/pension.py"""
 
-# pylint:disable=missing-class-docstring,protected-access
 # pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
 # pyright: reportOptionalSubscript=false
 

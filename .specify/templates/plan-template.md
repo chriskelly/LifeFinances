@@ -33,7 +33,9 @@
 
 **Code Quality Gates:**
 - [ ] All code will include type hints for public functions and classes
-- [ ] Code will pass pylint with minimum score of 8.0/10.0
+- [ ] Code will pass Ruff linting checks as configured in pyproject.toml
+- [ ] Code will pass Ruff formatting checks
+- [ ] Code will pass Pyright type checking as configured in pyrightconfig.json
 - [ ] All modules will include module-level docstrings
 - [ ] All public classes and functions will include docstrings
 - [ ] No circular dependencies will be introduced
