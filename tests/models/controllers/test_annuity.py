@@ -5,10 +5,11 @@
 # pyright: reportOptionalSubscript=false
 
 import pytest
+
 from app.data.constants import ANNUITY_INT_YIELD
+from app.models.config import User
 from app.models.controllers.annuity import Controller
 from app.models.financial.state import State
-from app.models.config import User
 from app.util import interval_yield
 
 

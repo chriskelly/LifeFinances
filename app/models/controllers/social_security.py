@@ -7,11 +7,13 @@ Classes:
 import math
 from abc import ABC, abstractmethod
 from typing import cast
-from app.util import index_extrapolator, max_earnings_extrapolator
+
 from app.data import constants
-from app.models.financial.state import State
 from app.models.config import NetWorthStrategyConfig, SocialSecurity, User
-from app.models.controllers.job_income import Income, Controller as IncomeController
+from app.models.controllers.job_income import Controller as IncomeController
+from app.models.controllers.job_income import Income
+from app.models.financial.state import State
+from app.util import index_extrapolator, max_earnings_extrapolator
 
 EARLY_AGE = 62
 MID_AGE = 66
@@ -219,7 +221,7 @@ def _apply_pia_rates(bend_points: list[float], ss_config: SocialSecurity) -> flo
     else:
         pia_rates = constants.PIA_RATES
     pia = 0
-    for (i, bend), rate in zip(enumerate(bend_points), pia_rates):
+    for (i, bend), rate in zip(enumerate(bend_points), pia_rates, strict=False):
         if i == 0:
             pia += bend * rate
         else:
@@ -379,7 +381,7 @@ class _IndividualController:
                 self.strategy = _NetWorthStrategy(
                     config=cast(NetWorthStrategyConfig, strategy_obj),
                     pia=self.pia,
-                    current_age=age
+                    current_age=age,
                 )
 
     def calc_payment(self, state: State):

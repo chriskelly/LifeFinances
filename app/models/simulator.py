@@ -21,17 +21,19 @@ Functions:
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+
 import pandas as pd
+
 from app.data import constants
 from app.models.config import User, get_config
 from app.models.controllers import (
     Controllers,
     allocation,
+    annuity,
     economic_data,
     job_income,
     pension,
     social_security,
-    annuity,
 )
 from app.models.financial.interval import gen_first_interval
 

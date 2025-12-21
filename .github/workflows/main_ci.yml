@@ -18,7 +18,7 @@ jobs:
         run: |
           for i in 1 2 3; do
             echo "Attempt $i of 3..."
-            if make; then
+            if make test; then
               echo "Tests passed!"
               exit 0
             else
@@ -31,3 +31,6 @@ jobs:
           done
           echo "All attempts failed"
           exit 1
+      
+      - name: Lint
+        run: make lint

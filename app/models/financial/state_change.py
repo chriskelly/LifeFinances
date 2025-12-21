@@ -1,16 +1,19 @@
 """Module for representing financial transformation from one state to another
 
-Classes:    
+Classes:
     StateChangeComponents: Collection of components needed to calculate transition to next state
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
+
 import numpy as np
-from app.models.financial.taxes import Taxes, calc_taxes
+
 from app.data.constants import INTERVALS_PER_YEAR
-from app.models.financial.state import State
 from app.models.controllers import Controllers
+from app.models.financial.state import State
+from app.models.financial.taxes import Taxes, calc_taxes
 
 
 class Income:

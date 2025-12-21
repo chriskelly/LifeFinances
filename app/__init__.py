@@ -1,11 +1,13 @@
 """Flask app definition"""
 
+
 def create_app():
     """Create the Flask app with index route"""
     # pylint: disable=import-outside-toplevel
 
     # Import here to avoid circular deps
     from flask import Flask, request
+
     from app.routes.api import api as api_blueprint
     from app.routes.index import IndexPage
 

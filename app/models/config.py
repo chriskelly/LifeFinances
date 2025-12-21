@@ -9,15 +9,18 @@ Useful Pydantic documentation
 
 import csv
 import math
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping, Optional, cast
+from typing import cast
+
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
-from app.data.taxes import STATE_BRACKET_RATES
-from app.data import constants
 
-with open(constants.STATISTICS_PATH, "r", encoding="utf-8") as file:
+from app.data import constants
+from app.data.taxes import STATE_BRACKET_RATES
+
+with open(constants.STATISTICS_PATH, encoding="utf-8") as file:
     reader = csv.reader(file)
     next(reader)  # Skip the first row
     ALLOWED_ASSETS = {row[0] for row in reader}
@@ -55,7 +58,7 @@ class StrategyOptions(BaseModel):
         chosen_strategy (tuple[str, Strategy]): Set by validator, guaranteed to be non-None
     """
 
-    enabled_strategies: Optional[Mapping[str, StrategyConfig]] = None
+    enabled_strategies: Mapping[str, StrategyConfig] | None = None
     chosen_strategy: tuple[str, StrategyConfig] = None  # type: ignore[assignment]
 
     @model_validator(mode="after")
@@ -226,8 +229,8 @@ class AllocationOptions(StrategyOptions):
         net_worth_pivot (LifeCycleStrategyConfig): Defaults to None
     """
 
-    flat: Optional[FlatAllocationStrategyConfig] = None
-    net_worth_pivot: Optional[NetWorthPivotStrategyConfig] = None
+    flat: FlatAllocationStrategyConfig | None = None
+    net_worth_pivot: NetWorthPivotStrategyConfig | None = None
 
 
 class Portfolio(BaseModel):
@@ -265,7 +268,7 @@ class Portfolio(BaseModel):
             }
         }
     )
-    annuity: Optional[AnnuityConfig] = Field(
+    annuity: AnnuityConfig | None = Field(
         default=None,
         json_schema_extra={
             "ui": {
@@ -292,7 +295,7 @@ class NetWorthStrategyConfig(StrategyConfig):
         net_worth_target (float): Defaults to None
     """
 
-    net_worth_target: Optional[float] = Field(
+    net_worth_target: float | None = Field(
         default=None,
         json_schema_extra={
             "ui": {
@@ -319,11 +322,11 @@ class SocialSecurityOptions(StrategyOptions):
         same (Strategy): Defaults to None
     """
 
-    early: Optional[StrategyConfig] = None
-    mid: Optional[StrategyConfig] = None
-    late: Optional[StrategyConfig] = None
-    net_worth: Optional[NetWorthStrategyConfig] = None
-    same: Optional[StrategyConfig] = None
+    early: StrategyConfig | None = None
+    mid: StrategyConfig | None = None
+    late: StrategyConfig | None = None
+    net_worth: NetWorthStrategyConfig | None = None
+    same: StrategyConfig | None = None
 
 
 class SocialSecurity(BaseModel):
@@ -399,7 +402,7 @@ class PensionOptions(SocialSecurityOptions):
         cash_out (Strategy): Defaults to None
     """
 
-    cash_out: Optional[StrategyConfig] = None
+    cash_out: StrategyConfig | None = None
 
 
 class Pension(BaseModel):
@@ -440,7 +443,7 @@ class SpendingProfile(BaseModel):
     """
 
     yearly_amount: int
-    end_date: Optional[float] = None
+    end_date: float | None = None
 
 
 def _spending_profiles_validation(spending_profiles: list[SpendingProfile]):
@@ -577,7 +580,7 @@ class IncomeProfile(BaseModel):
         return self
 
 
-def _income_profiles_in_order(income_profiles: Optional[list[IncomeProfile]]):
+def _income_profiles_in_order(income_profiles: list[IncomeProfile] | None):
     """Income profiles must be in order"""
     if income_profiles:
         for i in range(1, len(income_profiles)):
@@ -616,7 +619,7 @@ class Partner(BaseModel):
             }
         }
     )
-    income_profiles: Optional[list[IncomeProfile]] = Field(
+    income_profiles: list[IncomeProfile] | None = Field(
         default=None,
         json_schema_extra={
             "ui": {
@@ -650,7 +653,7 @@ class TPAWPlanner(BaseModel):
             }
         }
     )
-    inflation_rate: Optional[float] = Field(
+    inflation_rate: float | None = Field(
         default=None,
         json_schema_extra={
             "ui": {
@@ -800,7 +803,7 @@ class User(BaseModel):
             }
         }
     )
-    net_worth_target: Optional[float] = Field(
+    net_worth_target: float | None = Field(
         default=None,
         json_schema_extra={
             "ui": {
@@ -839,7 +842,7 @@ class User(BaseModel):
             }
         }
     )
-    state: Optional[str] = Field(
+    state: str | None = Field(
         default=None,
         json_schema_extra={
             "ui": {
@@ -850,7 +853,7 @@ class User(BaseModel):
             }
         }
     )
-    kids: Optional[Kids] = Field(
+    kids: Kids | None = Field(
         default=None,
         json_schema_extra={
             "ui": {
@@ -860,7 +863,7 @@ class User(BaseModel):
             }
         }
     )
-    income_profiles: Optional[list[IncomeProfile]] = Field(
+    income_profiles: list[IncomeProfile] | None = Field(
         default=None,
         json_schema_extra={
             "ui": {
@@ -870,7 +873,7 @@ class User(BaseModel):
             }
         }
     )
-    partner: Optional[Partner] = Field(
+    partner: Partner | None = Field(
         default=None,
         json_schema_extra={
             "ui": {
@@ -890,7 +893,7 @@ class User(BaseModel):
             }
         }
     )
-    disability_insurance_calculator: Optional[DisabilityInsuranceCalculator] = Field(
+    disability_insurance_calculator: DisabilityInsuranceCalculator | None = Field(
         default=None,
         json_schema_extra={
             "ui": {
@@ -900,7 +903,7 @@ class User(BaseModel):
             }
         }
     )
-    admin: Optional[Admin] = Field(
+    admin: Admin | None = Field(
         default=None,
         json_schema_extra={
             "ui": {
@@ -1009,9 +1012,7 @@ def get_config(config_path: Path) -> User:
     Returns:
         User
     """
-    with open(
-        config_path, "r", encoding="utf-8"
-    ) as file:  # pylint:disable=redefined-outer-name
+    with open(config_path, encoding="utf-8") as file:  # pylint:disable=redefined-outer-name
         yaml_content = yaml.safe_load(file)
     try:
         config = User(**yaml_content)
@@ -1028,7 +1029,7 @@ def get_config(config_path: Path) -> User:
 
 def read_config_file(config_path: Path = constants.CONFIG_PATH) -> str:
     """Reads the config file and returns the text"""
-    with open(config_path, "r", encoding="utf-8") as config_file:
+    with open(config_path, encoding="utf-8") as config_file:
         config_text = config_file.read()
     return config_text
 

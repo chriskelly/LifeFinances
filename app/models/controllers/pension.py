@@ -4,15 +4,16 @@ For now, this model is not intended for general use and applies
 the specific rules of the admin's pension.
 """
 
-from abc import ABC, abstractmethod
 import math
-from typing import Optional, Sequence, cast
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
+from typing import cast
+
 from app.data import constants
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import IncomeProfile, NetWorthStrategyConfig, User
 from app.models.financial.state import State
 from app.util import interval_yield
-
 
 BENEFIT_RATES = {
     2043: 0.0116,
@@ -171,7 +172,7 @@ class Controller:
             self._strategy = None
 
     @staticmethod
-    def _calc_base(income_profiles: Optional[list[IncomeProfile]]) -> float:
+    def _calc_base(income_profiles: list[IncomeProfile] | None) -> float:
         """Calculate the interval value to multiply against the benefit rates
 
         This is the `service credit x final compensation` portion of the pension formula
@@ -195,7 +196,7 @@ class Controller:
 
     @staticmethod
     def _years_left_to_work(
-        income_profiles: Optional[list[IncomeProfile]], current_date: float
+        income_profiles: list[IncomeProfile] | None, current_date: float
     ) -> float:
         years_worked = 0
         if income_profiles is not None:

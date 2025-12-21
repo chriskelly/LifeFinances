@@ -5,8 +5,9 @@
 # pyright: reportOptionalSubscript=false
 
 import pytest
+
 from app.data import constants
-from app.models.config import User, IncomeProfile
+from app.models.config import IncomeProfile, User
 from app.models.controllers.job_income import Controller
 
 
@@ -68,12 +69,16 @@ def test_job_income_controller(sample_user: User):
     expected_partner_income = [0.0, 0.0, 0.0, 0.0, 0.0, 37.5]
     expected_total_income = [
         user + partner
-        for user, partner in zip(expected_user_income, expected_partner_income)
+        for user, partner in zip(
+            expected_user_income, expected_partner_income, strict=True
+        )
     ]
     expected_tax_deferred = [2.5, 2.5, 2.75, 2.75, 2.75, 11.25]
     expected_taxable_income = [
         total - deferred
-        for total, deferred in zip(expected_total_income, expected_tax_deferred)
+        for total, deferred in zip(
+            expected_total_income, expected_tax_deferred, strict=True
+        )
     ]
 
     assert [controller.get_user_income(i) for i in range(6)] == pytest.approx(

@@ -7,8 +7,9 @@ Classes:
     Interval: A single period of time in a user's financial life
 
 Methods:
-    gen_first_interval(trial: SimulationTrial): 
+    gen_first_interval(trial: SimulationTrial):
 """
+
 from app.data import constants
 from app.models.config import User
 from app.models.controllers import Controllers

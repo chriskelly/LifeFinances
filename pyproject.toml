@@ -1,0 +1,37 @@
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+# Start with a strong but reasonable rule set
+lint.select = [
+  "E",    # pycodestyle errors
+  "F",    # pyflakes (unused, undefined)
+  "W",    # warnings
+  "I",    # import sorting
+  "B",    # bugbear (likely bugs)
+  "UP",   # pyupgrade
+  "C90",  # complexity
+]
+
+lint.ignore = [
+  "E501",  # line length (formatter handles this)
+]
+
+exclude = [
+  ".venv",
+  "__pycache__",
+  ".git",
+  "build",
+  "dist",
+  "*.egg-info",
+]   
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"] # Allow unused imports in __init__.py
+"tests/*" = ["E501"] # More lenient line length in tests
+"standalone_tools/*" = ["E402"] # standalone_tools require out-of-order imports
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"

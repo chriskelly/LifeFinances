@@ -1,24 +1,23 @@
-"""Testing for models/taxes.py
-"""
+"""Testing for models/taxes.py"""
 # pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
 # pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
 # pyright: reportOptionalSubscript=false
 
 import pytest
+
 from app.data.constants import INTERVALS_PER_YEAR
 from app.data.taxes import DISCOUNT_ON_PENSION_TAX, SOCIAL_SECURITY_TAX_RATE
 from app.models.config import IncomeProfile, User
+from app.models.controllers.job_income import Controller as JobIncomeController
 from app.models.financial.state import State
-
-from app.util import max_earnings_extrapolator
 from app.models.financial.taxes import (
-    _TaxRules,
     _bracket_math,
     _calc_income_taxes,
     _social_security_tax,
+    _TaxRules,
     calc_taxes,
 )
-from app.models.controllers.job_income import Controller as JobIncomeController
+from app.util import max_earnings_extrapolator
 
 
 class TestCalcTaxes:

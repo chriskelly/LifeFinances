@@ -5,13 +5,24 @@ Classes:
 """
 
 from dataclasses import dataclass
+
 from . import (
     allocation as allocation_module,
-    economic_data as economic_data_module,
-    job_income as job_income_module,
-    social_security as social_security_module,
-    pension as pension_module,
+)
+from . import (
     annuity as annuity_module,
+)
+from . import (
+    economic_data as economic_data_module,
+)
+from . import (
+    job_income as job_income_module,
+)
+from . import (
+    pension as pension_module,
+)
+from . import (
+    social_security as social_security_module,
 )
 
 

@@ -1,13 +1,14 @@
-"""Testing for models/financial/state_change.py
-"""
+"""Testing for models/financial/state_change.py"""
 
 # pylint:disable=missing-class-docstring,protected-access,redefined-outer-name
 # pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
 # pyright: reportOptionalSubscript=false
 
-from typing import Sequence
-import pytest
+from collections.abc import Sequence
+
 import numpy as np
+import pytest
+
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import Kids, Spending, SpendingProfile
 from app.models.controllers import Controllers
@@ -85,7 +86,7 @@ class TestCalcSpending:
         """Test that the spending is calculated correctly for multiple profiles"""
         components_mock.state.user.spending.profiles = [
             SpendingProfile(yearly_amount=yearly_amount, end_date=date)
-            for yearly_amount, date in zip(self.yearly_amounts, self.dates)
+            for yearly_amount, date in zip(self.yearly_amounts, self.dates, strict=True)
         ]
         for i, date in enumerate(self.dates):
             components_mock.state.date = date
