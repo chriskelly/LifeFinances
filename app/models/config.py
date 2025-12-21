@@ -254,7 +254,7 @@ class Portfolio(BaseModel):
                 "section": "Portfolio",
                 "min_value": 0,
             }
-        }
+        },
     )
     tax_rate: float = Field(
         default=0.1,
@@ -266,7 +266,7 @@ class Portfolio(BaseModel):
                 "min_value": 0,
                 "max_value": 1,
             }
-        }
+        },
     )
     annuity: AnnuityConfig | None = Field(
         default=None,
@@ -276,7 +276,7 @@ class Portfolio(BaseModel):
                 "tooltip": "Annuity purchase configuration",
                 "section": "Portfolio",
             }
-        }
+        },
     )
     allocation_strategy: AllocationOptions = Field(
         json_schema_extra={
@@ -304,7 +304,7 @@ class NetWorthStrategyConfig(StrategyConfig):
                 "section": "Social Security",
                 "min_value": 0,
             }
-        }
+        },
     )
 
 
@@ -351,7 +351,7 @@ class SocialSecurity(BaseModel):
                 "min_value": 0,
                 "max_value": 1,
             }
-        }
+        },
     )
     pension_eligible: bool = Field(
         default=False,
@@ -361,7 +361,7 @@ class SocialSecurity(BaseModel):
                 "tooltip": "Whether eligible for pension benefits",
                 "section": "Social Security",
             }
-        }
+        },
     )
     strategy: SocialSecurityOptions = Field(
         default_factory=lambda: SocialSecurityOptions(mid=StrategyConfig(chosen=True)),
@@ -371,7 +371,7 @@ class SocialSecurity(BaseModel):
                 "tooltip": "Social Security claiming strategy (early, mid, late, net_worth_based)",
                 "section": "Social Security",
             }
-        }
+        },
     )
     earnings_records: dict = Field(
         default_factory=dict,
@@ -382,7 +382,7 @@ class SocialSecurity(BaseModel):
                 "section": "Social Security",
                 "widget_type": "dict",
             }
-        }
+        },
     )
 
 
@@ -481,14 +481,16 @@ class Spending(BaseModel):
     """
 
     spending_strategy: SpendingOptions = Field(
-        default_factory=lambda: SpendingOptions(inflation_only=StrategyConfig(chosen=True)),
+        default_factory=lambda: SpendingOptions(
+            inflation_only=StrategyConfig(chosen=True)
+        ),
         json_schema_extra={
             "ui": {
                 "label": "Spending Strategy",
                 "tooltip": "Strategy for adjusting spending over time (inflation_only, etc.)",
                 "section": "Spending",
             }
-        }
+        },
     )
     profiles: list[SpendingProfile] = Field(
         json_schema_extra={
@@ -617,7 +619,7 @@ class Partner(BaseModel):
                 "tooltip": "Partner's Social Security benefit configuration and claiming strategy",
                 "section": "Partner",
             }
-        }
+        },
     )
     income_profiles: list[IncomeProfile] | None = Field(
         default=None,
@@ -627,7 +629,7 @@ class Partner(BaseModel):
                 "tooltip": "List of income profiles over time for partner",
                 "section": "Partner",
             }
-        }
+        },
     )
 
 
@@ -651,7 +653,7 @@ class TPAWPlanner(BaseModel):
                 "min_value": 0,
                 "max_value": 10,
             }
-        }
+        },
     )
     inflation_rate: float | None = Field(
         default=None,
@@ -663,7 +665,7 @@ class TPAWPlanner(BaseModel):
                 "min_value": 0,
                 "max_value": 0.2,
             }
-        }
+        },
     )
 
 
@@ -684,7 +686,7 @@ class DisabilityCoverage(BaseModel):
                 "min_value": 0,
                 "max_value": 1,
             }
-        }
+        },
     )
     duration_years: int = Field(
         default=0,
@@ -696,7 +698,7 @@ class DisabilityCoverage(BaseModel):
                 "min_value": 0,
                 "max_value": 40,
             }
-        }
+        },
     )
 
 
@@ -715,7 +717,7 @@ class DisabilityInsuranceCalculator(BaseModel):
                 "tooltip": "Disability insurance coverage for primary user",
                 "section": "Insurance",
             }
-        }
+        },
     )
     partner_disability_coverage: DisabilityCoverage = Field(
         default_factory=DisabilityCoverage,
@@ -725,7 +727,7 @@ class DisabilityInsuranceCalculator(BaseModel):
                 "tooltip": "Disability insurance coverage for partner/spouse",
                 "section": "Insurance",
             }
-        }
+        },
     )
 
 
@@ -789,7 +791,7 @@ class User(BaseModel):
                 "min_value": 1,
                 "max_value": 10000,
             }
-        }
+        },
     )
     calculate_til: float = Field(
         default=None,  # pyright: ignore[reportAssignmentType] # field_validator will set this to a float
@@ -801,7 +803,7 @@ class User(BaseModel):
                 "min_value": 2020,
                 "max_value": 2100,
             }
-        }
+        },
     )
     net_worth_target: float | None = Field(
         default=None,
@@ -812,7 +814,7 @@ class User(BaseModel):
                 "section": "Basic Settings",
                 "min_value": 0,
             }
-        }
+        },
     )
     portfolio: Portfolio = Field(
         json_schema_extra={
@@ -831,7 +833,7 @@ class User(BaseModel):
                 "tooltip": "Social Security benefit configuration and claiming strategy",
                 "section": "Social Security",
             }
-        }
+        },
     )
     spending: Spending = Field(
         json_schema_extra={
@@ -851,7 +853,7 @@ class User(BaseModel):
                 "section": "Basic Settings",
                 "choices": ["California", "New York"],
             }
-        }
+        },
     )
     kids: Kids | None = Field(
         default=None,
@@ -861,7 +863,7 @@ class User(BaseModel):
                 "tooltip": "Configuration for dependent children",
                 "section": "Kids",
             }
-        }
+        },
     )
     income_profiles: list[IncomeProfile] | None = Field(
         default=None,
@@ -871,7 +873,7 @@ class User(BaseModel):
                 "tooltip": "List of income profiles over time",
                 "section": "Income",
             }
-        }
+        },
     )
     partner: Partner | None = Field(
         default=None,
@@ -881,7 +883,7 @@ class User(BaseModel):
                 "tooltip": "Partner/spouse configuration",
                 "section": "Partner",
             }
-        }
+        },
     )
     tpaw_planner: TPAWPlanner = Field(
         default_factory=TPAWPlanner,
@@ -891,7 +893,7 @@ class User(BaseModel):
                 "tooltip": "Time-Path Adjusted Withdrawal planner configuration",
                 "section": "TPAW",
             }
-        }
+        },
     )
     disability_insurance_calculator: DisabilityInsuranceCalculator | None = Field(
         default=None,
@@ -901,7 +903,7 @@ class User(BaseModel):
                 "tooltip": "Disability insurance coverage calculator",
                 "section": "Insurance",
             }
-        }
+        },
     )
     admin: Admin | None = Field(
         default=None,
@@ -911,7 +913,7 @@ class User(BaseModel):
                 "tooltip": "Administrative configuration including pension details",
                 "section": "Admin",
             }
-        }
+        },
     )
 
     @property
