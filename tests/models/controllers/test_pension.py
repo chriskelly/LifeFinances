@@ -214,7 +214,7 @@ class TestController:
         assert isinstance(strategy, _AgeStrategy)
         assert strategy._trigger_date == LATE_YEAR
         sample_user.admin.pension.strategy = PensionOptions(
-            net_worth=NetWorthStrategyConfig(chosen=True)
+            net_worth=NetWorthStrategyConfig(chosen=True, net_worth_target=1000)
         )
         assert isinstance(Controller(sample_user)._strategy, _NetWorthStrategy)
         sample_user.admin.pension.strategy = PensionOptions(
