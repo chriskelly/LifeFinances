@@ -6,11 +6,12 @@
 
 import numpy as np
 import pytest
+
+from app.models.config import NetWorthPivotStrategyConfig, User
 from app.models.controllers.allocation import (
     _FlatAllocationStrategy,
     _NetWorthPivotStrategy,
 )
-from app.models.config import NetWorthPivotStrategyConfig, User
 from app.models.financial.state import State
 
 
@@ -44,11 +45,11 @@ def test_net_worth_pivot_strategy(first_state: State):
     }
     under_target_allocation = np.array([0.8, 0.2, 0, 0])
     under_target_allocation_config = dict(
-        zip(asset_lookup.keys(), under_target_allocation)
+        zip(asset_lookup.keys(), under_target_allocation, strict=True)
     )
     over_target_allocation = np.array([0.2, 0, 0.4, 0.4])
     over_target_allocation_config = dict(
-        zip(asset_lookup.keys(), over_target_allocation)
+        zip(asset_lookup.keys(), over_target_allocation, strict=True)
     )
     net_worth_target = 100
     strategy = _NetWorthPivotStrategy(

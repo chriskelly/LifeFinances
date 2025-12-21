@@ -1,8 +1,10 @@
 """Utililty Functions"""
 
 import math
-from typing import Callable
+from collections.abc import Callable
+
 import numpy as np
+
 from app.data import constants
 
 

@@ -2,6 +2,7 @@
 # pylint:disable=missing-class-docstring
 
 import pytest
+
 from app.util import constrain
 
 

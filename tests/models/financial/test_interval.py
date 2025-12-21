@@ -6,6 +6,7 @@
 
 import pytest
 from pytest_mock.plugin import MockerFixture
+
 from app.data.constants import YEARS_PER_INTERVAL
 from app.models.controllers import Controllers
 from app.models.controllers.economic_data import EconomicStateData

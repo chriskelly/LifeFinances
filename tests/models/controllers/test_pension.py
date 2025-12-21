@@ -5,6 +5,7 @@
 # pyright: reportOptionalSubscript=false
 
 import pytest
+
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import (
     IncomeProfile,
@@ -14,14 +15,14 @@ from app.models.config import (
     User,
 )
 from app.models.controllers.pension import (
-    LATE_YEAR,
-    _AgeStrategy,
     BENEFIT_RATES,
     EARLY_YEAR,
+    LATE_YEAR,
     MID_YEAR,
+    Controller,
+    _AgeStrategy,
     _CashOutStrategy,
     _NetWorthStrategy,
-    Controller,
 )
 from app.models.financial.state import State
 
@@ -213,7 +214,7 @@ class TestController:
         assert isinstance(strategy, _AgeStrategy)
         assert strategy._trigger_date == LATE_YEAR
         sample_user.admin.pension.strategy = PensionOptions(
-            net_worth=NetWorthStrategyConfig(chosen=True)
+            net_worth=NetWorthStrategyConfig(chosen=True, net_worth_target=1000)
         )
         assert isinstance(Controller(sample_user)._strategy, _NetWorthStrategy)
         sample_user.admin.pension.strategy = PensionOptions(

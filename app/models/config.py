@@ -9,15 +9,18 @@ Useful Pydantic documentation
 
 import csv
 import math
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping, Optional, cast
-import yaml
-from pydantic import BaseModel, ValidationError, field_validator, model_validator
-from pydantic_core.core_schema import ValidationInfo
-from app.data.taxes import STATE_BRACKET_RATES
-from app.data import constants
+from typing import cast
 
-with open(constants.STATISTICS_PATH, "r", encoding="utf-8") as file:
+import yaml
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic_core.core_schema import ValidationInfo
+
+from app.data import constants
+from app.data.taxes import STATE_BRACKET_RATES
+
+with open(constants.STATISTICS_PATH, encoding="utf-8") as file:
     reader = csv.reader(file)
     next(reader)  # Skip the first row
     ALLOWED_ASSETS = {row[0] for row in reader}
@@ -50,12 +53,12 @@ class StrategyConfig(BaseModel):
 class StrategyOptions(BaseModel):
     """
     Attributes:
-        enabled_strategies (dict[str, Strategy]): Defaults to None
+        enabled_strategies (Mapping[str, Strategy]): Defaults to None
 
         chosen_strategy (tuple[str, Strategy]): Set by validator, guaranteed to be non-None
     """
 
-    enabled_strategies: Optional[Mapping[str, StrategyConfig]] = None
+    enabled_strategies: Mapping[str, StrategyConfig] | None = None
     chosen_strategy: tuple[str, StrategyConfig] = None  # type: ignore[assignment]
 
     @model_validator(mode="after")
@@ -103,8 +106,27 @@ class AnnuityConfig(BaseModel):
         contributed to the annuity
     """
 
-    net_worth_target: float
-    contribution_rate: float
+    net_worth_target: float = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Net Worth Target",
+                "tooltip": "Net worth threshold below which annuity purchase is triggered",
+                "section": "Portfolio",
+                "min_value": 0,
+            }
+        }
+    )
+    contribution_rate: float = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Contribution Rate",
+                "tooltip": "Percentage of net income contributed to annuity (e.g., 0.1 = 10%)",
+                "section": "Portfolio",
+                "min_value": 0,
+                "max_value": 1,
+            }
+        }
+    )
 
 
 def _allocation_sums_to_1(allocation: dict[str, float]):
@@ -132,7 +154,15 @@ class FlatAllocationStrategyConfig(StrategyConfig):
         allocation (dict[str, float])
     """
 
-    allocation: dict[str, float]
+    allocation: dict[str, float] = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Asset Allocation",
+                "tooltip": "Fixed asset allocation percentages (must sum to 1.0)",
+                "section": "Portfolio",
+            }
+        }
+    )
 
     @model_validator(mode="after")
     def validate_allocation(self):
@@ -147,9 +177,34 @@ class NetWorthPivotStrategyConfig(StrategyConfig):
         net_worth_target (float): Also referred to as equity target
     """
 
-    net_worth_target: float
-    under_target_allocation: dict[str, float]
-    over_target_allocation: dict[str, float]
+    net_worth_target: float = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Net Worth Pivot Target",
+                "tooltip": "Net worth threshold for switching between allocation strategies",
+                "section": "Portfolio",
+                "min_value": 0,
+            }
+        }
+    )
+    under_target_allocation: dict[str, float] = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Under Target Allocation",
+                "tooltip": "Asset allocation when net worth is below target",
+                "section": "Portfolio",
+            }
+        }
+    )
+    over_target_allocation: dict[str, float] = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Over Target Allocation",
+                "tooltip": "Asset allocation when net worth is above target",
+                "section": "Portfolio",
+            }
+        }
+    )
 
     @model_validator(mode="after")
     def net_worth_target_greater_or_equal_to_0(self):
@@ -174,8 +229,8 @@ class AllocationOptions(StrategyOptions):
         net_worth_pivot (LifeCycleStrategyConfig): Defaults to None
     """
 
-    flat: Optional[FlatAllocationStrategyConfig] = None
-    net_worth_pivot: Optional[NetWorthPivotStrategyConfig] = None
+    flat: FlatAllocationStrategyConfig | None = None
+    net_worth_pivot: NetWorthPivotStrategyConfig | None = None
 
 
 class Portfolio(BaseModel):
@@ -190,10 +245,48 @@ class Portfolio(BaseModel):
         allocation_strategy (AllocationOptions)
     """
 
-    current_net_worth: float = 0
-    tax_rate: float = 0.1
-    annuity: Optional[AnnuityConfig] = None
-    allocation_strategy: AllocationOptions
+    current_net_worth: float = Field(
+        default=0,
+        json_schema_extra={
+            "ui": {
+                "label": "Current Net Worth",
+                "tooltip": "Your current total net worth in dollars",
+                "section": "Portfolio",
+                "min_value": 0,
+            }
+        },
+    )
+    tax_rate: float = Field(
+        default=0.1,
+        json_schema_extra={
+            "ui": {
+                "label": "Tax Rate",
+                "tooltip": "Portfolio tax rate (default: 0.1 = 10%)",
+                "section": "Portfolio",
+                "min_value": 0,
+                "max_value": 1,
+            }
+        },
+    )
+    annuity: AnnuityConfig | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Annuity",
+                "tooltip": "Annuity purchase configuration",
+                "section": "Portfolio",
+            }
+        },
+    )
+    allocation_strategy: AllocationOptions = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Allocation Strategy",
+                "tooltip": "Asset allocation strategy (flat, net-worth pivot, etc.)",
+                "section": "Portfolio",
+            }
+        }
+    )
 
 
 class NetWorthStrategyConfig(StrategyConfig):
@@ -202,7 +295,17 @@ class NetWorthStrategyConfig(StrategyConfig):
         net_worth_target (float): Defaults to None
     """
 
-    net_worth_target: float = 0
+    net_worth_target: float | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Net Worth Target",
+                "tooltip": "Net worth threshold for Social Security/Pension claiming strategy",
+                "section": "Social Security",
+                "min_value": 0,
+            }
+        },
+    )
 
 
 class SocialSecurityOptions(StrategyOptions):
@@ -219,11 +322,11 @@ class SocialSecurityOptions(StrategyOptions):
         same (Strategy): Defaults to None
     """
 
-    early: Optional[StrategyConfig] = None
-    mid: Optional[StrategyConfig] = None
-    late: Optional[StrategyConfig] = None
-    net_worth: Optional[NetWorthStrategyConfig] = None
-    same: Optional[StrategyConfig] = None
+    early: StrategyConfig | None = None
+    mid: StrategyConfig | None = None
+    late: StrategyConfig | None = None
+    net_worth: NetWorthStrategyConfig | None = None
+    same: StrategyConfig | None = None
 
 
 class SocialSecurity(BaseModel):
@@ -238,12 +341,49 @@ class SocialSecurity(BaseModel):
         earnings_records (dict): Defaults to empty dict
     """
 
-    trust_factor: float = 1
-    pension_eligible: bool = False
-    strategy: SocialSecurityOptions = SocialSecurityOptions(
-        mid=StrategyConfig(chosen=True)
+    trust_factor: float = Field(
+        default=1,
+        json_schema_extra={
+            "ui": {
+                "label": "Trust Factor",
+                "tooltip": "Factor to adjust Social Security benefits (1.0 = full benefits, 0.7 = 70% of benefits)",
+                "section": "Social Security",
+                "min_value": 0,
+                "max_value": 1,
+            }
+        },
     )
-    earnings_records: dict = {}
+    pension_eligible: bool = Field(
+        default=False,
+        json_schema_extra={
+            "ui": {
+                "label": "Pension Eligible",
+                "tooltip": "Whether eligible for pension benefits",
+                "section": "Social Security",
+            }
+        },
+    )
+    strategy: SocialSecurityOptions = Field(
+        default_factory=lambda: SocialSecurityOptions(mid=StrategyConfig(chosen=True)),
+        json_schema_extra={
+            "ui": {
+                "label": "Claiming Strategy",
+                "tooltip": "Social Security claiming strategy (early, mid, late, net_worth_based)",
+                "section": "Social Security",
+            }
+        },
+    )
+    earnings_records: dict = Field(
+        default_factory=dict,
+        json_schema_extra={
+            "ui": {
+                "label": "Earnings Records",
+                "tooltip": "Historical earnings records for benefit calculation (year: amount)",
+                "section": "Social Security",
+                "widget_type": "dict",
+            }
+        },
+    )
 
 
 class PensionOptions(SocialSecurityOptions):
@@ -262,7 +402,7 @@ class PensionOptions(SocialSecurityOptions):
         cash_out (Strategy): Defaults to None
     """
 
-    cash_out: Optional[StrategyConfig] = None
+    cash_out: StrategyConfig | None = None
 
 
 class Pension(BaseModel):
@@ -303,7 +443,7 @@ class SpendingProfile(BaseModel):
     """
 
     yearly_amount: int
-    end_date: Optional[float] = None
+    end_date: float | None = None
 
 
 def _spending_profiles_validation(spending_profiles: list[SpendingProfile]):
@@ -340,10 +480,27 @@ class Spending(BaseModel):
         profiles (list[SpendingProfile])
     """
 
-    spending_strategy: SpendingOptions = SpendingOptions(
-        inflation_only=StrategyConfig(chosen=True)
+    spending_strategy: SpendingOptions = Field(
+        default_factory=lambda: SpendingOptions(
+            inflation_only=StrategyConfig(chosen=True)
+        ),
+        json_schema_extra={
+            "ui": {
+                "label": "Spending Strategy",
+                "tooltip": "Strategy for adjusting spending over time (inflation_only, etc.)",
+                "section": "Spending",
+            }
+        },
     )
-    profiles: list[SpendingProfile]
+    profiles: list[SpendingProfile] = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Spending Profiles",
+                "tooltip": "List of spending profiles over different time periods",
+                "section": "Spending",
+            }
+        }
+    )
 
     @model_validator(mode="after")
     def validate_profiles(self):
@@ -360,9 +517,38 @@ class Kids(BaseModel):
         birth_years (list[float])
     """
 
-    fraction_of_spending: float
-    years_of_support: int
-    birth_years: list[float]
+    fraction_of_spending: float = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Fraction of Spending",
+                "tooltip": "Fraction of total spending attributable to each child (e.g., 0.2 = 20%)",
+                "section": "Kids",
+                "min_value": 0,
+                "max_value": 1,
+            }
+        }
+    )
+    years_of_support: int = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Years of Support",
+                "tooltip": "Number of years to support each child",
+                "section": "Kids",
+                "min_value": 0,
+                "max_value": 30,
+            }
+        }
+    )
+    birth_years: list[float] = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Birth Years",
+                "tooltip": "List of birth years for each child",
+                "section": "Kids",
+                "widget_type": "list",
+            }
+        }
+    )
 
 
 class IncomeProfile(BaseModel):
@@ -396,7 +582,7 @@ class IncomeProfile(BaseModel):
         return self
 
 
-def _income_profiles_in_order(income_profiles: Optional[list[IncomeProfile]]):
+def _income_profiles_in_order(income_profiles: list[IncomeProfile] | None):
     """Income profiles must be in order"""
     if income_profiles:
         for i in range(1, len(income_profiles)):
@@ -414,9 +600,37 @@ class Partner(BaseModel):
         income_profiles (list[IncomeProfile]): Defaults to None
     """
 
-    age: int
-    social_security_pension: SocialSecurity = SocialSecurity()
-    income_profiles: Optional[list[IncomeProfile]] = None
+    age: int = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Partner Age",
+                "tooltip": "Current age of partner/spouse in years",
+                "section": "Partner",
+                "min_value": 18,
+                "max_value": 100,
+            }
+        }
+    )
+    social_security_pension: SocialSecurity = Field(
+        default_factory=SocialSecurity,
+        json_schema_extra={
+            "ui": {
+                "label": "Partner Social Security",
+                "tooltip": "Partner's Social Security benefit configuration and claiming strategy",
+                "section": "Partner",
+            }
+        },
+    )
+    income_profiles: list[IncomeProfile] | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Partner Income Profiles",
+                "tooltip": "List of income profiles over time for partner",
+                "section": "Partner",
+            }
+        },
+    )
 
 
 class TPAWPlanner(BaseModel):
@@ -429,8 +643,30 @@ class TPAWPlanner(BaseModel):
             Defaults to None.
     """
 
-    group_tol: float = 1.0
-    inflation_rate: Optional[float] = None
+    group_tol: float = Field(
+        default=1.0,
+        json_schema_extra={
+            "ui": {
+                "label": "Group Tolerance",
+                "tooltip": "Grouping tolerance for TPAW calculations",
+                "section": "TPAW",
+                "min_value": 0,
+                "max_value": 10,
+            }
+        },
+    )
+    inflation_rate: float | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Inflation Rate Override",
+                "tooltip": "Optional constant inflation rate override (e.g., 0.02 for 2% annual inflation)",
+                "section": "TPAW",
+                "min_value": 0,
+                "max_value": 0.2,
+            }
+        },
+    )
 
 
 class DisabilityCoverage(BaseModel):
@@ -440,8 +676,30 @@ class DisabilityCoverage(BaseModel):
         duration_years (int): Defaults to 0
     """
 
-    percentage: float = 0.0
-    duration_years: int = 0
+    percentage: float = Field(
+        default=0.0,
+        json_schema_extra={
+            "ui": {
+                "label": "Coverage Percentage",
+                "tooltip": "Percentage of income covered by disability insurance (e.g., 0.6 = 60%)",
+                "section": "Insurance",
+                "min_value": 0,
+                "max_value": 1,
+            }
+        },
+    )
+    duration_years: int = Field(
+        default=0,
+        json_schema_extra={
+            "ui": {
+                "label": "Coverage Duration (years)",
+                "tooltip": "Number of years disability insurance coverage lasts",
+                "section": "Insurance",
+                "min_value": 0,
+                "max_value": 40,
+            }
+        },
+    )
 
 
 class DisabilityInsuranceCalculator(BaseModel):
@@ -451,8 +709,26 @@ class DisabilityInsuranceCalculator(BaseModel):
         partner_disability_coverage (DisabilityCoverage): Defaults to DisabilityCoverage()
     """
 
-    user_disability_coverage: DisabilityCoverage = DisabilityCoverage()
-    partner_disability_coverage: DisabilityCoverage = DisabilityCoverage()
+    user_disability_coverage: DisabilityCoverage = Field(
+        default_factory=DisabilityCoverage,
+        json_schema_extra={
+            "ui": {
+                "label": "User Disability Coverage",
+                "tooltip": "Disability insurance coverage for primary user",
+                "section": "Insurance",
+            }
+        },
+    )
+    partner_disability_coverage: DisabilityCoverage = Field(
+        default_factory=DisabilityCoverage,
+        json_schema_extra={
+            "ui": {
+                "label": "Partner Disability Coverage",
+                "tooltip": "Disability insurance coverage for partner/spouse",
+                "section": "Insurance",
+            }
+        },
+    )
 
 
 class Admin(BaseModel):
@@ -494,22 +770,151 @@ class User(BaseModel):
         admin (Admin): Defaults to None
     """
 
-    age: int
-    trial_quantity: int = 500
-    calculate_til: float = (
-        None  # pyright: ignore[reportAssignmentType] # field_validator will set this to a float
+    age: int = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Age",
+                "tooltip": "Your current age in years",
+                "section": "Basic Settings",
+                "min_value": 18,
+                "max_value": 100,
+            }
+        }
     )
-    net_worth_target: Optional[float] = None
-    portfolio: Portfolio
-    social_security_pension: SocialSecurity = SocialSecurity()
-    spending: Spending
-    state: Optional[str] = None
-    kids: Optional[Kids] = None
-    income_profiles: Optional[list[IncomeProfile]] = None
-    partner: Optional[Partner] = None
-    tpaw_planner: TPAWPlanner = TPAWPlanner()
-    disability_insurance_calculator: Optional[DisabilityInsuranceCalculator] = None
-    admin: Optional[Admin] = None
+    trial_quantity: int = Field(
+        default=500,
+        json_schema_extra={
+            "ui": {
+                "label": "Number of Trials",
+                "tooltip": "Number of Monte Carlo simulation trials to run (default: 500)",
+                "section": "Basic Settings",
+                "min_value": 1,
+                "max_value": 10000,
+            }
+        },
+    )
+    calculate_til: float = Field(
+        default=None,  # pyright: ignore[reportAssignmentType] # field_validator will set this to a float
+        json_schema_extra={
+            "ui": {
+                "label": "Calculate Until Year",
+                "tooltip": "Year to calculate until (defaults to age 90)",
+                "section": "Basic Settings",
+                "min_value": 2020,
+                "max_value": 2100,
+            }
+        },
+    )
+    net_worth_target: float | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Net Worth Target",
+                "tooltip": "Target net worth threshold for certain strategies",
+                "section": "Basic Settings",
+                "min_value": 0,
+            }
+        },
+    )
+    portfolio: Portfolio = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Portfolio",
+                "tooltip": "Portfolio configuration including net worth and allocation strategy",
+                "section": "Portfolio",
+            }
+        }
+    )
+    social_security_pension: SocialSecurity = Field(
+        default_factory=SocialSecurity,
+        json_schema_extra={
+            "ui": {
+                "label": "Social Security",
+                "tooltip": "Social Security benefit configuration and claiming strategy",
+                "section": "Social Security",
+            }
+        },
+    )
+    spending: Spending = Field(
+        json_schema_extra={
+            "ui": {
+                "label": "Spending",
+                "tooltip": "Spending profiles and strategy configuration",
+                "section": "Spending",
+            }
+        }
+    )
+    state: str | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "State of Residence",
+                "tooltip": "State for tax calculations (California or New York)",
+                "section": "Basic Settings",
+                "choices": ["California", "New York"],
+            }
+        },
+    )
+    kids: Kids | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Kids",
+                "tooltip": "Configuration for dependent children",
+                "section": "Kids",
+            }
+        },
+    )
+    income_profiles: list[IncomeProfile] | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Income Profiles",
+                "tooltip": "List of income profiles over time",
+                "section": "Income",
+            }
+        },
+    )
+    partner: Partner | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Partner",
+                "tooltip": "Partner/spouse configuration",
+                "section": "Partner",
+            }
+        },
+    )
+    tpaw_planner: TPAWPlanner = Field(
+        default_factory=TPAWPlanner,
+        json_schema_extra={
+            "ui": {
+                "label": "TPAW Planner",
+                "tooltip": "Time-Path Adjusted Withdrawal planner configuration",
+                "section": "TPAW",
+            }
+        },
+    )
+    disability_insurance_calculator: DisabilityInsuranceCalculator | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Disability Insurance",
+                "tooltip": "Disability insurance coverage calculator",
+                "section": "Insurance",
+            }
+        },
+    )
+    admin: Admin | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Admin",
+                "tooltip": "Administrative configuration including pension details",
+                "section": "Admin",
+            }
+        },
+    )
 
     @property
     def intervals_per_trial(self) -> int:
@@ -541,8 +946,9 @@ class User(BaseModel):
     def validate_income_profiles(self):
         """Income profiles must be in order"""
         _income_profiles_in_order(self.income_profiles)
-        if self.partner and self.partner.income_profiles:
-            _income_profiles_in_order(self.partner.income_profiles)
+        partner = self.partner
+        if partner and partner.income_profiles:
+            _income_profiles_in_order(partner.income_profiles)
         return self
 
     @model_validator(mode="after")
@@ -556,20 +962,22 @@ class User(BaseModel):
     def social_security_same_strategy(self):
         """User cannot enable/choose `same` strategy and
         partner cannot enable other strategies if `same` is chosen"""
-        if (
-            self.social_security_pension.strategy.enabled_strategies
-            and "same" in self.social_security_pension.strategy.enabled_strategies
-        ):
+        social_security_pension = self.social_security_pension
+        strategy = social_security_pension.strategy
+        enabled_strategies = strategy.enabled_strategies
+        if enabled_strategies and "same" in enabled_strategies:
             raise ValueError("`Same` strategy can only be enabled for partner")
         return self
 
     @model_validator(mode="after")
     def either_income_or_net_worth(self):
         """User should provide at least one income profile or net worth"""
+        portfolio = self.portfolio
+        partner = self.partner
         if (
             not self.income_profiles
-            and not self.portfolio.current_net_worth
-            and not (self.partner and self.partner.income_profiles)
+            and not portfolio.current_net_worth
+            and not (partner and partner.income_profiles)
         ):
             raise ValueError(
                 "User must provide at least one income profile or net worth"
@@ -606,9 +1014,7 @@ def get_config(config_path: Path) -> User:
     Returns:
         User
     """
-    with open(
-        config_path, "r", encoding="utf-8"
-    ) as file:  # pylint:disable=redefined-outer-name
+    with open(config_path, encoding="utf-8") as file:  # pylint:disable=redefined-outer-name
         yaml_content = yaml.safe_load(file)
     try:
         config = User(**yaml_content)
@@ -625,7 +1031,7 @@ def get_config(config_path: Path) -> User:
 
 def read_config_file(config_path: Path = constants.CONFIG_PATH) -> str:
     """Reads the config file and returns the text"""
-    with open(config_path, "r", encoding="utf-8") as config_file:
+    with open(config_path, encoding="utf-8") as config_file:
         config_text = config_file.read()
     return config_text
 

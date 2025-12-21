@@ -4,8 +4,9 @@ Classes:
     Controller: Generate and provide timelines of job income
 """
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
+
 from app.data import constants
 from app.data.constants import (
     INTERVALS_PER_YEAR,
@@ -84,13 +85,13 @@ class Controller:
         self._tax_deferred = [
             user_income.tax_deferred + partner_income.tax_deferred
             for user_income, partner_income in zip(
-                self._user_timeline, self._partner_timeline
+                self._user_timeline, self._partner_timeline, strict=True
             )
         ]
         total_income = [
             user_income.amount + partner_income.amount
             for user_income, partner_income in zip(
-                self._user_timeline, self._partner_timeline
+                self._user_timeline, self._partner_timeline, strict=True
             )
         ]
         # retirement interval should be the first interval where total income is 0
@@ -138,6 +139,8 @@ class Controller:
                     social_security_eligible=profiles[idx].social_security_eligible,
                 )
             )
+            if len(timeline) >= self._size:
+                break
             date += YEARS_PER_INTERVAL
             if date > profiles[idx].last_date:  # end of profile
                 idx += 1

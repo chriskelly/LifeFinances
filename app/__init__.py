@@ -1,13 +1,16 @@
 """Flask app definition"""
 
+
 def create_app():
     """Create the Flask app with all routes"""
     # pylint: disable=import-outside-toplevel
 
     # Import here to avoid circular deps
+    import logging
+
     from flask import Flask, request
     from flask_session import Session
-    import logging
+
     from app.routes.api import api as api_blueprint
     from app.routes.index import IndexPage
     from app.routes.dashboard import DashboardPage

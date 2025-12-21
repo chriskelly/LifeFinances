@@ -6,22 +6,23 @@ run `python3 -m pytest` if VSCode Testing won't load
 # pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
 # pyright: reportOptionalSubscript=false
 
-from typing import Optional
 from dataclasses import dataclass
-from pytest_mock import MockerFixture
-import yaml
+
 import pytest
+import yaml
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
+
 from app.data import constants
 from app.models.config import (
     IncomeProfile,
     SpendingProfile,
-    User,
     StrategyConfig,
     StrategyOptions,
-    attribute_filler,
+    User,
     _income_profiles_in_order,
     _spending_profiles_validation,
+    attribute_filler,
     write_config_file,
 )
 
@@ -50,7 +51,7 @@ def test_sample_config_data(sample_config_data):
 
 def test_user_data():
     """Ensure user's data is valid"""
-    with open(constants.CONFIG_PATH, "r", encoding="utf-8") as file:
+    with open(constants.CONFIG_PATH, encoding="utf-8") as file:
         user_data = yaml.safe_load(file)
     assert user_data
     try:
@@ -65,7 +66,7 @@ def test_sample_min_data():
         constants.SAMPLE_MIN_CONFIG_INCOME_PATH,
         constants.SAMPLE_MIN_CONFIG_NET_WORTH_PATH,
     ]:
-        with open(path, "r", encoding="utf-8") as file:
+        with open(path, encoding="utf-8") as file:
             user_data = yaml.safe_load(file)
         assert user_data
         try:
@@ -129,18 +130,18 @@ def test_attribute_filler():
 
     @dataclass
     class ThirdLevelObj:
-        str1: Optional[str] = None
-        str2: Optional[str] = None
+        str1: str | None = None
+        str2: str | None = None
 
     @dataclass
     class SecondLevelObj:
         third_lvl: ThirdLevelObj
-        str1: Optional[str] = None
+        str1: str | None = None
 
     @dataclass
     class FirstLevelObj:
         second_lvl: SecondLevelObj
-        str1: Optional[str] = None
+        str1: str | None = None
 
     # Test that it won't fill set values
     obj = FirstLevelObj(
@@ -218,9 +219,7 @@ def test_either_income_or_net_worth():
 
 def test_write_config_file(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
     """Ensure write_config_file works as expected and fails when necessary"""
-    with open(
-        constants.SAMPLE_MIN_CONFIG_NET_WORTH_PATH, "r", encoding="utf-8"
-    ) as file:
+    with open(constants.SAMPLE_MIN_CONFIG_NET_WORTH_PATH, encoding="utf-8") as file:
         min_config = file.read()
 
     mock_open = mocker.MagicMock()
