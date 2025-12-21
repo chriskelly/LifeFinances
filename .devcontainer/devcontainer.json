@@ -9,21 +9,25 @@
             "extensions": [
                 "ms-python.python",
                 "ms-python.vscode-pylance",
-                "ms-python.pylint",
                 "ms-python.debugpy",
                 "ms-toolsai.jupyter",
-                "ms-python.black-formatter"
+                "charliermarsh.ruff",
+                "ms-pyright.pyright",
+                "github.vscode-github-actions"
             ],
             "settings": {
                 "python.defaultInterpreterPath": "/usr/local/bin/python",
                 "python.linting.enabled": true,
                 "python.linting.pylintEnabled": true,
-                "python.formatting.provider": "black",
+                "python.formatting.provider": "ruff",
                 "python.testing.pytestEnabled": true,
                 "python.testing.unittestEnabled": false,
                 "python.testing.pytestArgs": [
                     "tests"
                 ],
+                "editor.formatOnSave": true,
+                "editor.defaultFormatter": "charliermarsh.ruff",
+                "python.analysis.typeCheckingMode": "standard",
                 "files.exclude": {
                     "**/__pycache__": true,
                     "**/*.pyc": true
@@ -40,7 +44,13 @@
             "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": "rm -rf .venv venv && python -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -r requirements/dev.txt && [ ! -f config.yml ] && cp tests/sample_configs/full_config.yml config.yml || true",
+    "postCreateCommand": [
+        "rm -rf .venv venv",
+        "python -m venv .venv",
+        ".venv/bin/pip install --upgrade pip",
+        ".venv/bin/pip install -r requirements/dev.txt",
+        "[ ! -f config.yml ] && cp tests/sample_configs/full_config.yml config.yml || true"
+    ],
     "remoteUser": "root",
     "workspaceFolder": "/workspace",
     "mounts": [
