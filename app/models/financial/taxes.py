@@ -11,7 +11,15 @@ from typing import TYPE_CHECKING
 
 from app import util
 from app.data.constants import INTERVALS_PER_YEAR
-from app.data.taxes import *  # pylint: disable=wildcard-import
+from app.data.taxes import (
+    DISCOUNT_ON_PENSION_TAX,
+    FED_BRACKET_RATES,
+    FED_STD_DEDUCTION,
+    MEDICARE_TAX_RATE,
+    SOCIAL_SECURITY_TAX_RATE,
+    STATE_BRACKET_RATES,
+    STATE_STD_DEDUCTION,
+)
 from app.models.config import User
 from app.util import max_earnings_extrapolator
 

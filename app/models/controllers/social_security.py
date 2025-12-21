@@ -221,7 +221,7 @@ def _apply_pia_rates(bend_points: list[float], ss_config: SocialSecurity) -> flo
     else:
         pia_rates = constants.PIA_RATES
     pia = 0
-    for (i, bend), rate in zip(enumerate(bend_points), pia_rates):
+    for (i, bend), rate in zip(enumerate(bend_points), pia_rates, strict=True):
         if i == 0:
             pia += bend * rate
         else:

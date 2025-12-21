@@ -85,13 +85,13 @@ class Controller:
         self._tax_deferred = [
             user_income.tax_deferred + partner_income.tax_deferred
             for user_income, partner_income in zip(
-                self._user_timeline, self._partner_timeline
+                self._user_timeline, self._partner_timeline, strict=True
             )
         ]
         total_income = [
             user_income.amount + partner_income.amount
             for user_income, partner_income in zip(
-                self._user_timeline, self._partner_timeline
+                self._user_timeline, self._partner_timeline, strict=True
             )
         ]
         # retirement interval should be the first interval where total income is 0

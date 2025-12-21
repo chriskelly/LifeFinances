@@ -86,7 +86,7 @@ class TestCalcSpending:
         """Test that the spending is calculated correctly for multiple profiles"""
         components_mock.state.user.spending.profiles = [
             SpendingProfile(yearly_amount=yearly_amount, end_date=date)
-            for yearly_amount, date in zip(self.yearly_amounts, self.dates)
+            for yearly_amount, date in zip(self.yearly_amounts, self.dates, strict=True)
         ]
         for i, date in enumerate(self.dates):
             components_mock.state.date = date
