@@ -11,7 +11,7 @@ import csv
 import math
 from collections.abc import Mapping
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
@@ -1015,7 +1015,7 @@ def get_config(config_path: Path) -> User:
         User
     """
     with open(config_path, encoding="utf-8") as file:
-        yaml_content = yaml.safe_load(file)
+        yaml_content = cast(dict[str, Any], yaml.safe_load(file))
     try:
         config = User(**yaml_content)
     except ValidationError as error:
@@ -1039,7 +1039,7 @@ def read_config_file(config_path: Path = constants.CONFIG_PATH) -> str:
 def write_config_file(config_text: str, config_path: Path = constants.CONFIG_PATH):
     """Writes the config file after validation"""
     try:
-        data_as_yaml = yaml.safe_load(config_text)
+        data_as_yaml = cast(dict[str, Any], yaml.safe_load(config_text))
         User(**data_as_yaml)
     except (yaml.YAMLError, TypeError) as error:
         print(f"Invalid YAML format: {error}")
