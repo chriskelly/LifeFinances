@@ -40,7 +40,7 @@ endif
 
 test: up
 ifeq ($(USE_DIRECT),true)
-	.venv/bin/pytest tests
+	pytest tests
 else
 	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances /tests
 endif
