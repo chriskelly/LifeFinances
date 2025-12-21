@@ -16,6 +16,17 @@ down:
 test: up
 	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances /tests
 
+ruff-check: build
+	docker compose run --rm --no-deps -v $(PWD):/workspace -w /workspace --entrypoint=ruff life_finances check .
+
+ruff-format-check: build
+	docker compose run --rm --no-deps -v $(PWD):/workspace -w /workspace --entrypoint=ruff life_finances format --check .
+
+pyright: build
+	docker compose run --rm --no-deps -v $(PWD):/workspace -w /workspace --entrypoint=pyright life_finances
+
+lint: ruff-check ruff-format-check pyright
+
 profile:
 	python -m cProfile -o tests/profiling/results/gen_trials.prof tests/profiling/gen_trials.py
 	snakeviz tests/profiling/results/gen_trials.prof

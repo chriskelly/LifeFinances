@@ -15,16 +15,7 @@ jobs:
         run: cp tests/sample_configs/full_config.yml config.yml
 
       - name: Run Tests
-        run: make
+        run: make test
       
-      - name: Ruff lint
-        run: |
-          ruff check .
-
-      - name: Ruff format check
-        run: |
-          ruff format --check .
-
-      - name: Pyright
-        run: |
-          pyright
+      - name: Lint
+        run: make lint
