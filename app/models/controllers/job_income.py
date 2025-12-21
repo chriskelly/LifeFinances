@@ -139,6 +139,8 @@ class Controller:
                     social_security_eligible=profiles[idx].social_security_eligible,
                 )
             )
+            if len(timeline) >= self._size:
+                break
             date += YEARS_PER_INTERVAL
             if date > profiles[idx].last_date:  # end of profile
                 idx += 1
