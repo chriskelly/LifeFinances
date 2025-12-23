@@ -84,7 +84,7 @@ Examples of foundational tasks (adjust based on your project):
 ### Tests for User Story 1 (REQUIRED per constitution) ⚠️
 
 > **NOTE: TDD REQUIRED - Write these tests FIRST, ensure they FAIL before implementation**
-> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code (simulator and Flask app) MUST include tests. Test coverage MUST meet minimum 80% (95%+ for financial calculations). *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
+> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code (simulator and Flask app) MUST include tests. Test coverage MUST meet minimum 80% (95%+ for financial calculations). Where behavior is complex, tests SHOULD use reusable fixtures, factories, and domain-aligned helper dataclasses instead of ad-hoc inline setup, and SHOULD derive expectations from shared data (fixtures, canonical CSVs, or domain objects) rather than hard-coded magic numbers. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
 
 - [ ] T010 [P] [US1] Unit tests for [component] in tests/unit/test_[name].py
 - [ ] T011 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
