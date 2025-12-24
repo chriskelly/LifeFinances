@@ -243,9 +243,30 @@ This will raise a `ValueError` because net-worth-based benefit strategies create
 3. Run simulations to see how allocation changes over time
 4. Adjust parameters as needed to match your financial goals
 
+## Development Commands
+
+Feature-specific commands are available from this directory:
+
+```bash
+cd specs/002-total-portfolio-allocation
+
+# Run feature-specific tests
+make test
+
+# Profile allocation performance
+make profile
+
+# Run tests with coverage
+make coverage
+
+# Show all available commands
+make help
+```
+
 ## See Also
 
 - [Specification](./spec.md) - Full feature specification
 - [Data Model](./data-model.md) - Detailed data structures
 - [Implementation Plan](./plan.md) - Technical implementation details
+- [Profiling Results](./profiling_results.md) - Performance analysis
 
