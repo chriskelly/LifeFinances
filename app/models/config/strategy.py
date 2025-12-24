@@ -44,9 +44,20 @@ class StrategyOptions(BaseModel):
     @model_validator(mode="after")
     def find_enabled_and_chosen_strategies(self):
         """Find enabled and chosen strategies"""
+        # Only iterate over model fields, not all attributes
+        # Use model_fields to get the actual strategy fields
+        from app.models.config.strategy import StrategyConfig
+
+        # Get strategy fields (only those that are StrategyConfig instances)
+        strategy_fields = {
+            name: getattr(self, name)
+            for name in self.model_fields.keys()
+            if isinstance(getattr(self, name, None), StrategyConfig)
+        }
+
         # Restrict only one strategy to be chosen
         chosen_cnt = sum(
-            1 for _, strategy in vars(self).items() if strategy and strategy.chosen
+            1 for strategy in strategy_fields.values() if strategy and strategy.chosen
         )
         if chosen_cnt != 1:
             raise ValueError(
@@ -55,7 +66,7 @@ class StrategyOptions(BaseModel):
         # Find enabled strategies
         self.enabled_strategies = {
             prop: strategy
-            for (prop, strategy) in vars(self).items()
+            for (prop, strategy) in strategy_fields.items()
             if strategy and strategy.enabled
         }
         # Find chosen strategy

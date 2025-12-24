@@ -15,28 +15,42 @@ from app.models.controllers.economic_data import (
     VariableMixRepo,
     _gen_variable_data,
 )
+from tests.conftest import AssetStats
 
 
 @pytest.fixture
-def csv_variable_mix_repo():
+def csv_variable_mix_repo(test_statistics_csv_path: Path):
     """Returns a VariableMixRepo"""
-    statistics_path = Path(
-        "tests/models/controllers/test_csv_variable_mix_repo_statistics.csv"
-    )
-    return CsvVariableMixRepo(statistics_path=statistics_path)
+    return CsvVariableMixRepo(statistics_path=test_statistics_csv_path)
 
 
-def test_csv_variable_mix_repo(csv_variable_mix_repo: CsvVariableMixRepo):
+def test_csv_variable_mix_repo(
+    csv_variable_mix_repo: CsvVariableMixRepo, assets: AssetStats
+):
     """Should read from csv and return a VariableMix"""
     variable_mix = csv_variable_mix_repo.get_variable_mix()
     assert isinstance(variable_mix, VariableMix)
-    assert len(variable_mix.variable_stats) == 3
-    assert variable_mix.variable_stats[0].mean_yield == pytest.approx(1.08)
-    assert variable_mix.variable_stats[0].stdev == pytest.approx(0.15)
-    assert variable_mix.variable_stats[1].mean_yield == pytest.approx(1.1)
-    assert variable_mix.variable_stats[1].stdev == pytest.approx(0.2)
-    assert variable_mix.variable_stats[2].mean_yield == pytest.approx(1.12)
-    assert variable_mix.variable_stats[2].stdev == pytest.approx(0.18)
+    assert len(variable_mix.variable_stats) == 5
+    assert variable_mix.variable_stats[0].mean_yield == pytest.approx(
+        assets.us_stock.expected_yield
+    )
+    assert variable_mix.variable_stats[0].stdev == pytest.approx(assets.us_stock.stdev)
+    assert variable_mix.variable_stats[1].mean_yield == pytest.approx(
+        assets.us_bond.expected_yield
+    )
+    assert variable_mix.variable_stats[1].stdev == pytest.approx(assets.us_bond.stdev)
+    assert variable_mix.variable_stats[2].mean_yield == pytest.approx(
+        assets.tips.expected_yield
+    )
+    assert variable_mix.variable_stats[2].stdev == pytest.approx(assets.tips.stdev)
+    assert variable_mix.variable_stats[3].mean_yield == pytest.approx(
+        assets.intl_ex_us_stock.expected_yield
+    )
+    assert variable_mix.variable_stats[3].stdev == pytest.approx(
+        assets.intl_ex_us_stock.stdev
+    )
+    assert variable_mix.variable_stats[4].mean_yield == pytest.approx(1.03)  # Inflation
+    assert variable_mix.variable_stats[4].stdev == pytest.approx(0.02)
 
 
 class TestGenerateRates:
@@ -93,7 +107,7 @@ class TestEconomicEngine:
             variable_mix_repo=csv_variable_mix_repo,
         )
 
-    def test_split_inflation_from_assets(self):
+    def test_split_inflation_from_assets(self, assets: AssetStats):
         """Inflation and asset data should be split correctly"""
         assert self.economic_engine._inflation_data.shape == (
             self.trial_qty,
@@ -104,7 +118,12 @@ class TestEconomicEngine:
             self.intervals_per_trial,
             len(self.economic_engine._variable_mix.variable_stats) - 1,
         )
-        assert self.economic_engine._lookup_table == {"US_Stock": 0, "US_Bond": 1}
+        assert self.economic_engine._lookup_table == {
+            assets.us_stock.label: 0,
+            assets.us_bond.label: 1,
+            assets.tips.label: 2,
+            assets.intl_ex_us_stock.label: 3,
+        }
 
     def test_make_inflation_cumulative(self):
         """Inflation data should be a cumulative buildup. Each next value should be

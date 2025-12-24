@@ -26,6 +26,15 @@ portfolio:
         US_Bond: 0.2
       over_target_allocation:
         US_Bond: 1
+    total_portfolio:
+      enabled: true
+      low_risk_allocation:
+        TIPS: 0.8
+        US_Bond: 0.2
+      high_risk_allocation:
+        US_Stock: 0.7
+        Intl_ex_US_Stock: 0.3
+      RRA: 2.5
 
 social_security_pension:
   trust_factor: 0.8

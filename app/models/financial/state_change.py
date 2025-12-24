@@ -84,7 +84,9 @@ class StateChangeComponents:
     def __init__(self, state: State, controllers: Controllers):
         self.state = state
         self.controllers = controllers
-        self.allocation = controllers.allocation.gen_allocation(state)
+        self.allocation = controllers.allocation.gen_allocation(
+            state=state, controllers=controllers
+        )
         self.economic_data = controllers.economic_data.get_economic_state_data(
             state.interval_idx
         )

@@ -27,6 +27,7 @@ from app.models.config.portfolio import (
     FlatAllocationStrategyConfig,
     NetWorthPivotStrategyConfig,
     Portfolio,
+    TotalPortfolioStrategyConfig,
 )
 
 # Spending
@@ -70,6 +71,7 @@ __all__ = [
     "FlatAllocationStrategyConfig",
     "NetWorthPivotStrategyConfig",
     "Portfolio",
+    "TotalPortfolioStrategyConfig",
     # Benefits
     "NetWorthStrategyConfig",
     "SocialSecurity",
