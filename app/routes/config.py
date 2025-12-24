@@ -38,3 +38,6 @@ class ConfigPage:
         if "run_simulation" in form:
             # Redirect to run page after saving if run_simulation was clicked
             self._redirect_to = "run"
+        else:
+            # Redirect back to config page after saving
+            self._redirect_to = "config"

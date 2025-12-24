@@ -268,16 +268,23 @@ document.addEventListener('DOMContentLoaded', function() {
             hoverTemplate = `<b>%{x}</b><br>${variableName}: %{y:.2%}<extra></extra>`;
         }
 
+        // Check if data contains negative values
+        const hasNegativeValues = yData.some(val => val < 0);
+
         const trace = {
             x: xData,
             y: yData,
             mode: 'lines',
             name: variableName,
             line: { color: '#3B82F6', width: 2 },
-            fill: 'tozeroy',
-            fillcolor: 'rgba(59, 130, 246, 0.1)',
             hovertemplate: hoverTemplate
         };
+
+        // Only fill to zero if data is non-negative and not log scale
+        if (!hasNegativeValues && !isLogScale) {
+            trace.fill = 'tozeroy';
+            trace.fillcolor = 'rgba(59, 130, 246, 0.1)';
+        }
 
         const yAxisConfig = {
             gridcolor: '#334155',
@@ -287,11 +294,9 @@ document.addEventListener('DOMContentLoaded', function() {
             ticksuffix: ySuffix
         };
 
-        // Apply log scale if enabled
+        // Apply log scale if enabled (only for positive data)
         if (isLogScale) {
             yAxisConfig.type = 'log';
-            // Don't fill to zero on log scale (causes issues with negative/zero values)
-            trace.fill = 'none';
         }
 
         const layout = {
