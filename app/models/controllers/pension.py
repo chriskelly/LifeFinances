@@ -141,9 +141,7 @@ class _CashOutStrategy(_Strategy):
         """Calculate the qty of intervals between dates. Input order doesn't matter"""
         if another_date >= one_date:
             return round((another_date - one_date) * INTERVALS_PER_YEAR)
-        return self._intervals_between(  # pylint: disable=arguments-out-of-order
-            another_date, one_date
-        )
+        return self._intervals_between(another_date, one_date)
 
     def calc_payment(self, state: State) -> float:
         if math.isclose(state.date, self._cash_out_date):

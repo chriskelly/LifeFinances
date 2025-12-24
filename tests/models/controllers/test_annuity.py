@@ -1,6 +1,5 @@
 """Testing for models/controllers/annuity.py"""
 
-# pylint:disable=missing-class-docstring, redefined-outer-name, protected-access
 # pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
 # pyright: reportOptionalSubscript=false
 

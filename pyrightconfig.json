@@ -1,11 +1,17 @@
 {
-  "venvPath": ".",
-  "venv": "venv",
   "include": [
     "app",
     "tests",
     "standalone_tools",
     "run.py"
+  ],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        "/usr/local/lib/python3.10/site-packages"
+      ]
+    }
   ]
 }
 

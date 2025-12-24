@@ -1,24 +1,22 @@
 <!--
 Sync Impact Report:
-Version: 1.1.0 → 1.2.0
-Type: New principles added + Testing Standards clarification (MINOR)
+Version: 1.2.0 → 1.2.1
+Type: Tooling update - linting/formatting tools changed (PATCH)
 Modified principles:
-  - Code Quality Standards: Added object models over dictionaries principle, added named arguments principle
-  - Testing Standards: Clarified exception for standalone scripts/notebooks, added TDD requirement
+  - Code Quality Standards: Updated static analysis tooling from Pylint+Black to Ruff (linting and formatting)
 Added sections: None
 Removed sections: None
 Templates requiring updates:
-  - ✅ updated: .specify/templates/spec-template.md (Testing Requirements section includes exception note)
-  - ✅ updated: .specify/templates/plan-template.md (Testing Gates section includes exception note, Code Quality Gates updated)
-  - ✅ updated: .specify/templates/tasks-template.md (Test tasks include exception note and TDD guidance)
+  - ✅ updated: .specify/templates/plan-template.md (Code Quality Gates updated to Ruff)
+  - ✅ updated: .specify/templates/tasks-template.md (Linting/formatting tasks updated to Ruff)
 Follow-up TODOs: None
 -->
 
 # LifeFInances Project Constitution
 
-**Version:** 1.2.0  
+**Version:** 1.2.1  
 **Ratification Date:** 2025-12-10  
-**Last Amended:** 2025-12-12
+**Last Amended:** 2025-12-13
 
 ## Purpose
 
@@ -30,9 +28,9 @@ This constitution establishes the non-negotiable principles governing the LifeFI
 
 **All code MUST maintain high quality standards through static analysis, type safety, and documentation.**
 
-- **Static Analysis Compliance**: All Python code MUST pass pylint with a minimum score of 8.0/10.0. Code MUST be formatted consistently using project-standard tools (isort, black if adopted, or equivalent).
+- **Static Analysis Compliance**: All Python code MUST pass Ruff linting checks as configured in `pyproject.toml`. Code MUST be formatted consistently using Ruff formatter. Type checking MUST pass via Pyright as configured in `pyrightconfig.json`.
 
-- **Type Safety**: All public functions, class methods, and module-level functions MUST include type hints. Internal helper functions SHOULD include type hints unless doing so would significantly reduce readability. Type checking MUST pass via pyright or mypy as configured in `pyrightconfig.json`.
+- **Type Safety**: All public functions, class methods, and module-level functions MUST include type hints. Internal helper functions SHOULD include type hints unless doing so would significantly reduce readability.
 
 - **Documentation Requirements**: All modules MUST include module-level docstrings. All public classes and functions MUST include docstrings following Google or NumPy style conventions. Complex algorithms or business logic MUST include inline comments explaining non-obvious decisions.
 
@@ -115,6 +113,8 @@ Constitutional amendments require:
 - Violations MUST be addressed before merge approval unless explicitly exempted via constitutional amendment.
 
 ### Version History
+
+- **1.2.1** (2025-12-21): Updated static analysis tooling from Pylint+Black to Ruff for linting and formatting. Type checking remains Pyright.
 
 - **1.2.0** (2025-12-12): Added principles for object models over dictionaries, named function arguments, and test-driven development. Clarified testing exception applies only to scripts/notebooks not used as application inputs. Testing requirements remain strict for all application code (simulator and Flask app).
 

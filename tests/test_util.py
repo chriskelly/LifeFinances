@@ -1,5 +1,4 @@
 """Testing for util.py"""
-# pylint:disable=missing-class-docstring
 
 import pytest
 

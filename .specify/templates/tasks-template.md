@@ -50,8 +50,8 @@ description: "Task list template for feature implementation"
 
 - [ ] T001 Create project structure per implementation plan
 - [ ] T002 Initialize [language] project with [framework] dependencies
-- [ ] T003 [P] Configure linting and formatting tools (pylint, isort)
-- [ ] T004 [P] Configure type checking (pyright/mypy)
+- [ ] T003 [P] Configure linting and formatting tools (Ruff)
+- [ ] T004 [P] Configure type checking (Pyright)
 - [ ] T005 [P] Setup pytest configuration and test structure
 
 ---
@@ -99,9 +99,10 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T017 [US1] Implement [endpoint/feature] in src/[location]/[file].py (use named arguments in function calls)
 - [ ] T018 [US1] Add validation and error handling (with clear, actionable error messages)
 - [ ] T019 [US1] Add logging for user story 1 operations
-- [ ] T020 [US1] Verify pylint score ≥ 8.0/10.0
-- [ ] T021 [US1] Verify type checking passes (pyright/mypy)
-- [ ] T022 [US1] Add module and function docstrings per constitution
+- [ ] T020 [US1] Verify Ruff linting passes
+- [ ] T021 [US1] Verify Ruff formatting passes
+- [ ] T022 [US1] Verify Pyright type checking passes
+- [ ] T023 [US1] Add module and function docstrings per constitution
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -128,9 +129,10 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T028 [US2] Implement [Service] in src/services/[service].py (use named arguments in function calls)
 - [ ] T029 [US2] Implement [endpoint/feature] in src/[location]/[file].py (use named arguments in function calls)
 - [ ] T030 [US2] Integrate with User Story 1 components (if needed)
-- [ ] T031 [US2] Verify pylint score ≥ 8.0/10.0
-- [ ] T032 [US2] Verify type checking passes
-- [ ] T033 [US2] Add module and function docstrings per constitution
+- [ ] T031 [US2] Verify Ruff linting passes
+- [ ] T032 [US2] Verify Ruff formatting passes
+- [ ] T033 [US2] Verify Pyright type checking passes
+- [ ] T034 [US2] Add module and function docstrings per constitution
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -156,9 +158,10 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T038 [P] [US3] Create [Entity] model in src/models/[entity].py (use object model, not dict; with type hints and docstrings)
 - [ ] T039 [US3] Implement [Service] in src/services/[service].py (use named arguments in function calls)
 - [ ] T040 [US3] Implement [endpoint/feature] in src/[location]/[file].py (use named arguments in function calls)
-- [ ] T041 [US3] Verify pylint score ≥ 8.0/10.0
-- [ ] T042 [US3] Verify type checking passes
-- [ ] T043 [US3] Add module and function docstrings per constitution
+- [ ] T041 [US3] Verify Ruff linting passes
+- [ ] T042 [US3] Verify Ruff formatting passes
+- [ ] T043 [US3] Verify Pyright type checking passes
+- [ ] T044 [US3] Add module and function docstrings per constitution
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -178,8 +181,9 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Verify overall test coverage meets 80% minimum (95%+ for financial logic) for application code
 - [ ] TXXX [P] Profile performance-critical paths using cProfile
 - [ ] TXXX [P] Verify all tests complete within performance targets (<1s unit, <10s integration)
-- [ ] TXXX [P] Run pylint on entire codebase, ensure all modules ≥ 8.0/10.0
-- [ ] TXXX [P] Verify type checking passes across all new code
+- [ ] TXXX [P] Run Ruff linting on entire codebase
+- [ ] TXXX [P] Run Ruff formatting check on entire codebase
+- [ ] TXXX [P] Verify Pyright type checking passes across all new code
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
 - [ ] TXXX Verify API response times meet <2s target for interactive endpoints

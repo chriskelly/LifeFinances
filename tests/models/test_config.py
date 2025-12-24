@@ -2,16 +2,16 @@
 run `python3 -m pytest` if VSCode Testing won't load
 """
 
-# pylint:disable=redefined-outer-name,missing-class-docstring,no-name-in-module
 # pyright: reportOptionalMemberAccess=false, reportOptionalIterable=false
 # pyright: reportOptionalSubscript=false
 
 from dataclasses import dataclass
+from typing import Any, cast
 
 import pytest
 import yaml
 from pydantic import ValidationError
-from pytest_mock import MockerFixture
+from pytest_mock.plugin import MockerFixture
 
 from app.data import constants
 from app.models.config import (
@@ -32,27 +32,26 @@ def test_sample_config_data(sample_config_data):
     assert sample_config_data
     try:
         user = User(**sample_config_data)
+        # If the config model is changed, but the sample_config isn't updated
+        # correctly, this test should help capture undeclared objects
+        exceptions = {"same", "net_worth_target"}
+
+        def check_for_none(obj, parent_path=""):
+            for key, value in obj.items():
+                if value is None and key not in exceptions:
+                    pytest.fail(f"Value at path '{parent_path}.{key}' is None")
+                elif isinstance(value, dict):
+                    check_for_none(value, parent_path=f"{parent_path}.{key}")
+
+        check_for_none(user.model_dump())
     except ValidationError as error:
         pytest.fail(f"Failed to validate sample user data: {error}")
-
-    # If the config model is changed, but the sample_config isn't updated
-    # correctly, this test should help capture undeclared objects
-    exceptions = {"same", "net_worth_target"}
-
-    def check_for_none(obj, parent_path=""):
-        for key, value in obj.items():
-            if value is None and key not in exceptions:
-                pytest.fail(f"Value at path '{parent_path}.{key}' is None")
-            elif isinstance(value, dict):
-                check_for_none(value, parent_path=f"{parent_path}.{key}")
-
-    check_for_none(user.model_dump())
 
 
 def test_user_data():
     """Ensure user's data is valid"""
     with open(constants.CONFIG_PATH, encoding="utf-8") as file:
-        user_data = yaml.safe_load(file)
+        user_data = cast(dict[str, Any], yaml.safe_load(file))
     assert user_data
     try:
         User(**user_data)
@@ -67,7 +66,7 @@ def test_sample_min_data():
         constants.SAMPLE_MIN_CONFIG_NET_WORTH_PATH,
     ]:
         with open(path, encoding="utf-8") as file:
-            user_data = yaml.safe_load(file)
+            user_data = cast(dict[str, Any], yaml.safe_load(file))
         assert user_data
         try:
             User(**user_data)
