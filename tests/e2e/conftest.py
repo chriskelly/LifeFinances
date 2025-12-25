@@ -2,16 +2,33 @@
 Pytest configuration and fixtures for E2E tests.
 
 This module provides shared fixtures and configuration for all E2E tests.
+
+NOTE: This conftest.py is only loaded when running E2E tests. If selenium
+is not installed, the fixtures will not be available but pytest collection
+will not fail.
 """
 import os
 from typing import Generator
 
 import pytest
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.remote.webdriver import WebDriver
-from webdriver_manager.chrome import ChromeDriverManager
+
+# Import selenium conditionally - skip E2E tests if not available
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.remote.webdriver import WebDriver
+    from webdriver_manager.chrome import ChromeDriverManager
+
+    SELENIUM_AVAILABLE = True
+except ImportError:
+    SELENIUM_AVAILABLE = False
+    # Define dummy types for type hints when selenium not available
+    webdriver = None
+    Options = None
+    Service = None
+    WebDriver = None
+    ChromeDriverManager = None
 
 from app import create_app
 
@@ -48,13 +65,16 @@ def base_url(flask_app) -> str:
 
 
 @pytest.fixture(scope="function")
-def chrome_options() -> Options:
+def chrome_options():
     """
     Create Chrome options for WebDriver.
 
     Returns:
         Chrome options configured for testing
     """
+    if not SELENIUM_AVAILABLE:
+        pytest.skip("Selenium not installed - E2E tests require: pip install -r requirements-e2e.txt")
+
     options = Options()
 
     # Run in headless mode for CI
@@ -74,7 +94,7 @@ def chrome_options() -> Options:
 
 
 @pytest.fixture(scope="function")
-def driver(chrome_options: Options) -> Generator[WebDriver, None, None]:
+def driver(chrome_options):
     """
     Create Chrome WebDriver instance.
 
@@ -87,6 +107,9 @@ def driver(chrome_options: Options) -> Generator[WebDriver, None, None]:
     Cleanup:
         Quits the driver after test completes
     """
+    if not SELENIUM_AVAILABLE:
+        pytest.skip("Selenium not installed - E2E tests require: pip install -r requirements-e2e.txt")
+
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
     driver.implicitly_wait(10)  # Default implicit wait
@@ -214,3 +237,21 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "session: Session persistence tests")
     config.addinivalue_line("markers", "error: Error handling tests")
     config.addinivalue_line("markers", "smoke: Smoke tests for quick validation")
+
+
+def pytest_collection_modifyitems(config, items):
+    """
+    Automatically skip E2E tests if selenium is not available.
+
+    Args:
+        config: Pytest configuration object
+        items: List of collected test items
+    """
+    if not SELENIUM_AVAILABLE:
+        skip_e2e = pytest.mark.skip(
+            reason="Selenium not installed - E2E tests require: pip install -r requirements-e2e.txt"
+        )
+        for item in items:
+            # Skip all tests in the e2e directory
+            if "e2e" in str(item.fspath):
+                item.add_marker(skip_e2e)
