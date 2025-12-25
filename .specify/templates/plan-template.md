@@ -45,7 +45,8 @@
 **Testing Gates:**
 - [ ] Test-Driven Development (TDD) will be used: tests written before implementation for all application code
 - [ ] Test coverage plan achieves minimum 80% (95%+ for financial calculations) for application code (simulator and Flask app)
-- [ ] Tests will use pytest framework with proper fixtures
+- [ ] Tests will use pytest framework with proper, reusable fixtures (including shared domain fixtures and factories where appropriate)
+- [ ] Tests will be designed to be data-driven where feasible (avoiding duplicated “magic numbers” by deriving expectations from shared fixtures, canonical data files, or domain objects)
 - [ ] Integration tests planned for API endpoints
 - [ ] Test performance targets defined (<1s unit, <10s integration)
 - [ ] If feature includes standalone scripts/notebooks: Exception documented per constitution Testing Standards (only for scripts/notebooks NOT used as inputs for the application)

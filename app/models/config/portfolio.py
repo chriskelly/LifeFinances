@@ -139,16 +139,76 @@ class NetWorthPivotStrategyConfig(StrategyConfig):
         return self
 
 
+class TotalPortfolioStrategyConfig(StrategyConfig):
+    """
+    Configuration for total portfolio allocation strategy.
+
+    Attributes:
+        low_risk_allocation (dict[str, float]): Low-risk/risk-free portion of portfolio allocation
+        high_risk_allocation (dict[str, float]): High-risk portion of portfolio allocation
+        RRA (float): Relative Risk Aversion parameter (must be positive)
+    """
+
+    low_risk_allocation: dict[str, float] = Field(
+        default_factory=lambda: {"TIPS": 1.0},
+        json_schema_extra={
+            "ui": {
+                "label": "Low Risk Allocation",
+                "tooltip": "Low-risk/risk-free portion of portfolio allocation (must sum to 1.0)",
+                "section": "Portfolio",
+            }
+        },
+    )
+    high_risk_allocation: dict[str, float] = Field(
+        default_factory=lambda: {"US_Stock": 1.0},
+        json_schema_extra={
+            "ui": {
+                "label": "High Risk Allocation",
+                "tooltip": "High-risk portion of portfolio allocation (must sum to 1.0)",
+                "section": "Portfolio",
+            }
+        },
+    )
+    RRA: float = Field(
+        default=2.0,
+        json_schema_extra={
+            "ui": {
+                "label": "Relative Risk Aversion",
+                "tooltip": "Relative Risk Aversion parameter (must be positive)",
+                "section": "Portfolio",
+                "min_value": 0.0001,
+            }
+        },
+    )
+
+    @model_validator(mode="after")
+    def validate_rra(self):
+        """Validate that RRA is positive"""
+        if self.RRA <= 0:
+            raise ValueError("RRA must be greater than 0")
+        return self
+
+    @model_validator(mode="after")
+    def validate_allocations(self):
+        """Validate both allocations"""
+        _validate_allocation(self.low_risk_allocation)
+        _validate_allocation(self.high_risk_allocation)
+        return self
+
+
 class AllocationOptions(StrategyOptions):
     """
     Attributes
         flat (FlatAllocationStrategyConfig): Defaults to None
 
-        net_worth_pivot (LifeCycleStrategyConfig): Defaults to None
+        net_worth_pivot (NetWorthPivotStrategyConfig): Defaults to None
+
+        total_portfolio (TotalPortfolioStrategyConfig): Defaults to None
     """
 
     flat: FlatAllocationStrategyConfig | None = None
     net_worth_pivot: NetWorthPivotStrategyConfig | None = None
+    total_portfolio: TotalPortfolioStrategyConfig | None = None
 
 
 class Portfolio(BaseModel):

@@ -68,6 +68,13 @@ endif
 
 lint: ruff-check ruff-format-check pyright
 
+coverage:
+ifeq ($(USE_DIRECT),true)
+	pytest tests --cov=app --cov-report=term-missing --cov-report=html
+else
+	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances /tests --cov=app --cov-report=term-missing --cov-report=html
+endif
+
 profile:
 	python -m cProfile -o tests/profiling/results/gen_trials.prof tests/profiling/gen_trials.py
 	snakeviz tests/profiling/results/gen_trials.prof

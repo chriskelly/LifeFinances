@@ -303,3 +303,37 @@ class User(BaseModel):
                 "User must provide at least one income profile or net worth"
             )
         return self
+
+    @model_validator(mode="after")
+    def total_portfolio_strategy_compatibility(self):
+        """Total portfolio strategy requires age-based benefit strategies to avoid circular dependencies"""
+        portfolio = self.portfolio
+        allocation_strategy = portfolio.allocation_strategy
+
+        # Check if total_portfolio strategy is chosen
+        chosen_strategy_name, _ = allocation_strategy.chosen_strategy
+        if chosen_strategy_name != "total_portfolio":
+            return self
+
+        # Validate social security strategy
+        ss_strategy = self.social_security_pension.strategy
+        ss_chosen_strategy_name, _ = ss_strategy.chosen_strategy
+        if ss_chosen_strategy_name not in ("early", "mid", "late"):
+            raise ValueError(
+                "When using total_portfolio allocation strategy, social security must use "
+                "an age-based strategy (early, mid, or late), not net_worth-based. "
+                f"Current strategy: {ss_chosen_strategy_name}"
+            )
+
+        # Validate pension strategy if admin/pension is configured
+        if self.admin and self.admin.pension:
+            pension_strategy = self.admin.pension.strategy
+            pension_chosen_strategy_name, _ = pension_strategy.chosen_strategy
+            if pension_chosen_strategy_name not in ("early", "mid", "late", "cash_out"):
+                raise ValueError(
+                    "When using total_portfolio allocation strategy, pension must use "
+                    "an age-based strategy (early, mid, late) or cash_out, not net_worth-based. "
+                    f"Current strategy: {pension_chosen_strategy_name}"
+                )
+
+        return self
