@@ -36,7 +36,6 @@ With DevContainer (VS Code):
   - Run `flask run` to start the application (port 3500 will be automatically forwarded)
   - Run tests using `pytest` (configured to run from the `tests` directory)
   - Use the integrated Python debugger and linting tools
-- Review the options for allocation at [`app/data/README.md`](https://github.com/chriskelly/LifeFinances/blob/main/app/data/README.md)
 
 
 ## Code Structure

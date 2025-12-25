@@ -1,22 +1,23 @@
 <!--
 Sync Impact Report:
-Version: 1.2.0 → 1.2.1
-Type: Tooling update - linting/formatting tools changed (PATCH)
+Version: 1.2.1 → 1.3.0
+Type: MINOR - Expanded testing principles and test-design guidance
 Modified principles:
-  - Code Quality Standards: Updated static analysis tooling from Pylint+Black to Ruff (linting and formatting)
+  - Testing Standards: Added guidance on data-driven tests, shared fixtures, domain-aligned models, and explicit controller wiring
 Added sections: None
 Removed sections: None
 Templates requiring updates:
-  - ✅ updated: .specify/templates/plan-template.md (Code Quality Gates updated to Ruff)
-  - ✅ updated: .specify/templates/tasks-template.md (Linting/formatting tasks updated to Ruff)
+  - ✅ updated: .specify/templates/plan-template.md (Testing Gates extended for test design & reuse)
+  - ✅ updated: .specify/templates/spec-template.md (no changes required)
+  - ✅ updated: .specify/templates/tasks-template.md (Sample tasks reference reusable, scenario-based tests)
 Follow-up TODOs: None
 -->
 
 # LifeFInances Project Constitution
 
-**Version:** 1.2.1  
+**Version:** 1.3.0  
 **Ratification Date:** 2025-12-10  
-**Last Amended:** 2025-12-13
+**Last Amended:** 2025-12-23
 
 ## Purpose
 
@@ -61,6 +62,10 @@ This constitution establishes the non-negotiable principles governing the LifeFI
 - **Test Structure**: Tests MUST use pytest as the testing framework. Test files MUST mirror the source code structure under `tests/`. Test functions MUST have descriptive names following `test_<functionality>` or `test_<scenario>` patterns. Test classes MUST follow `Test<ClassName>` naming.
 
 - **Test Quality**: Tests MUST be independent and executable in any order. Tests MUST use fixtures from `conftest.py` for shared setup. Tests MUST clean up after themselves (no persistent side effects). Tests MUST validate both success and failure cases.
+
+- **Test Design & Reuse**: Tests for complex behavior (e.g., financial logic, simulations, controller wiring) SHOULD be structured around reusable, scenario‑focused fixtures and helpers rather than ad‑hoc inline setup. Shared domain concepts (e.g., assets, users, controllers, strategies) SHOULD be modeled as typed fixtures or small dataclasses that mirror production models. Tests SHOULD avoid duplicated “magic numbers” and instead derive expectations from shared data sources (e.g., fixtures, canonical CSVs, or domain objects) so that changes in underlying data do not require manual test rewrites.
+
+- **Explicit Wiring in Tests**: When testing components that depend on other services or controllers, tests MUST construct or obtain those collaborators explicitly (for example, via factories/fixtures that take a `User` or configuration object), rather than relying on hidden globals or implicit default state. This ensures each test clearly documents its assumptions and makes it easy to vary scenarios (for example, different users, configurations, or economic conditions) without copy‑pasting setup code.
 
 - **Integration Testing**: API endpoints MUST have integration tests verifying HTTP status codes, response formats, and error handling. Simulation engine MUST be tested with multiple configuration scenarios. Data loading and transformation MUST be tested with sample data files.
 
@@ -113,6 +118,8 @@ Constitutional amendments require:
 - Violations MUST be addressed before merge approval unless explicitly exempted via constitutional amendment.
 
 ### Version History
+
+- **1.3.0** (2025-12-23): Expanded Testing Standards with guidance on data‑driven, fixture‑based test design, domain‑aligned test models, and explicit controller wiring. Updated plan and task templates to reflect test‑design expectations.
 
 - **1.2.1** (2025-12-21): Updated static analysis tooling from Pylint+Black to Ruff for linting and formatting. Type checking remains Pyright.
 
