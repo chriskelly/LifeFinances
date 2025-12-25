@@ -1,0 +1,20 @@
+# E2E Testing Dependencies for LifeFinances GUI
+#
+# Install with: pip install -r requirements-e2e.txt
+#
+# These dependencies are required to run end-to-end tests for the Flask GUI
+
+# Selenium for browser automation
+selenium>=4.15.0
+
+# Pytest plugin for Selenium integration
+pytest-selenium>=4.0.0
+
+# Automatic WebDriver management (ChromeDriver)
+webdriver-manager>=4.0.0
+
+# Additional testing utilities
+pytest>=7.4.0  # Core testing framework
+pytest-xdist>=3.5.0  # Parallel test execution (optional, but useful)
+pytest-html>=4.1.0  # HTML test reports (optional)
+pytest-timeout>=2.2.0  # Test timeout management
