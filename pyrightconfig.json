@@ -5,6 +5,12 @@
     "standalone_tools",
     "run.py"
   ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    ".venv",
+    "tests/e2e"
+  ],
   "executionEnvironments": [
     {
       "root": ".",
