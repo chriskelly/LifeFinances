@@ -3,6 +3,7 @@ Dashboard page route handler for LifeFinances app.
 """
 
 from flask import render_template, session
+
 from app.models.config import read_config_file
 
 

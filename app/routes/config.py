@@ -2,7 +2,8 @@
 Configuration page route handler for LifeFinances app.
 """
 
-from flask import Request, render_template, redirect, url_for
+from flask import Request, redirect, render_template, url_for
+
 from app.models.config import read_config_file, write_config_file
 
 

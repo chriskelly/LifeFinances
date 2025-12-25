@@ -2,7 +2,8 @@
 Run simulation page route handler for LifeFinances app.
 """
 
-from flask import Request, render_template, redirect, url_for
+from flask import Request, redirect, render_template, url_for
+
 from app.models.config import read_config_file
 from app.models.simulator import gen_simulation_results
 
@@ -34,9 +35,10 @@ class RunPage:
         Handle form submission for running simulation.
         Runs the simulation and redirects to results page.
         """
-        from datetime import datetime
-        from flask import session
         import logging
+        from datetime import datetime
+
+        from flask import session
 
         logger = logging.getLogger(__name__)
         logger.info("Starting simulation...")
@@ -61,7 +63,7 @@ class RunPage:
         session["first_results_columns"] = results_columns
         session["success_percentage"] = success_percentage
 
-        logger.info(f"Session data stored. Verifying...")
+        logger.info("Session data stored. Verifying...")
         logger.info(f"Session has first_results_data: {session.get('first_results_data') is not None}")
         logger.info(f"Session has first_results_columns: {session.get('first_results_columns') is not None}")
         logger.info(f"Session has success_percentage: {session.get('success_percentage')}")

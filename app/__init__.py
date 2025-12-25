@@ -7,14 +7,14 @@ def create_app():
     import logging
 
     from flask import Flask, request
-    from flask_session import Session
 
     from app.routes.api import api as api_blueprint
-    from app.routes.index import IndexPage
-    from app.routes.dashboard import DashboardPage
     from app.routes.config import ConfigPage
-    from app.routes.run import RunPage
+    from app.routes.dashboard import DashboardPage
+    from app.routes.index import IndexPage
     from app.routes.results import ResultsPage
+    from app.routes.run import RunPage
+    from flask_session import Session
 
     # Configure logging
     logging.basicConfig(

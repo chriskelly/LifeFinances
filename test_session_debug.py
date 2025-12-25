@@ -1,8 +1,8 @@
 """
 Debug script to test session storage and retrieval
 """
-import sys
 from app import create_app
+
 
 def test_session_flow():
     """Test the full session flow from simulation to results"""

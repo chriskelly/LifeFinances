@@ -2,11 +2,10 @@
 Results page route handler for LifeFinances app.
 """
 
-from flask import render_template, session
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import plotly
+import plotly.graph_objects as go
+from flask import render_template, session
 
 
 class ResultsPage:
@@ -27,7 +26,7 @@ class ResultsPage:
         self._first_results_data = session.get("first_results_data")
         self._first_results_columns = session.get("first_results_columns")
 
-        logger.info(f"Retrieved from session:")
+        logger.info("Retrieved from session:")
         logger.info(f"  first_results_data: {self._first_results_data is not None} (length: {len(self._first_results_data) if self._first_results_data else 0})")
         logger.info(f"  first_results_columns: {self._first_results_columns}")
         logger.info(f"  success_percentage raw: {session.get('success_percentage')} (type: {type(session.get('success_percentage'))})")
