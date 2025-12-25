@@ -11,6 +11,54 @@
             <p class="text-muted">Edit your financial planning parameters</p>
         </div>
 
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Validation Error Details -->
+        {% if error %}
+        <div class="alert alert-danger" role="alert">
+            <h5 class="alert-heading">
+                <i class="bi bi-x-circle-fill"></i> {{ error.type }}
+            </h5>
+            <p class="mb-2"><strong>{{ error.message }}</strong></p>
+
+            {% if error.details %}
+                <hr>
+                <p class="mb-2 text-muted small">{{ error.details }}</p>
+            {% endif %}
+
+            {% if error.errors %}
+                <hr>
+                <p class="mb-2"><strong>Field Errors:</strong></p>
+                <ul class="mb-2">
+                    {% for field_error in error.errors %}
+                        <li>
+                            <code>{{ field_error.field }}</code>: {{ field_error.message }}
+                            {% if field_error.original != field_error.message %}
+                                <br><span class="text-muted small">Technical: {{ field_error.original }}</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            {% if error.suggestion %}
+                <hr>
+                <p class="mb-0"><i class="bi bi-lightbulb"></i> <strong>Suggestion:</strong> {{ error.suggestion }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
         <!-- Config Editor Card -->
         <div class="card">
             <div class="card-header">
@@ -26,7 +74,7 @@
                         <textarea
                             name="edited_config"
                             id="edited_config"
-                            class="form-control font-monospace"
+                            class="form-control font-monospace {% if error %}border-danger{% endif %}"
                             rows="25"
                             style="font-size: 0.9rem;"
                         >{{ config }}</textarea>

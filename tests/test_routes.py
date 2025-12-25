@@ -220,3 +220,75 @@ def test_results_page_interpretation(client: FlaskClient):
     response = client.get("/results")
     assert b"low probability" in response.data
     assert b"Low" in response.data
+
+
+def test_config_page_validation_error(client: FlaskClient):
+    """Test that config page displays validation errors for invalid config"""
+    # Invalid config: allocation doesn't sum to 1
+    invalid_config = """age: 30
+
+spending:
+  profiles:
+    - yearly_amount: 60
+
+portfolio:
+  current_net_worth: 250
+  allocation_strategy:
+    flat:
+      chosen: true
+      allocation:
+        US_Bond: 0.4
+        US_Stock: 0.3
+"""
+    response = client.post(
+        "/config", data={"edited_config": invalid_config, "save": "Save"}
+    )
+    # Should return 200 (not redirect) to show error
+    assert response.status_code == 200
+    # Check for error message in response
+    assert b"Validation Error" in response.data or b"validation failed" in response.data
+    # Check for user-friendly error message about allocation
+    assert b"sum to 1" in response.data or b"100%" in response.data
+
+
+def test_config_page_yaml_error(client: FlaskClient):
+    """Test that config page displays YAML syntax errors"""
+    # Invalid YAML syntax
+    invalid_yaml = """age: 30
+spending:
+  profiles:
+    - yearly_amount: 60
+  invalid indentation here
+"""
+    response = client.post(
+        "/config", data={"edited_config": invalid_yaml, "save": "Save"}
+    )
+    # Should return 200 (not redirect) to show error
+    assert response.status_code == 200
+    # Check for YAML error message
+    assert b"YAML" in response.data or b"syntax" in response.data
+
+
+def test_config_page_success_flash(client: FlaskClient):
+    """Test that config page shows success message on valid save"""
+    valid_config = """age: 30
+
+spending:
+  profiles:
+    - yearly_amount: 60
+
+portfolio:
+  current_net_worth: 250
+  allocation_strategy:
+    flat:
+      chosen: true
+      allocation:
+        US_Bond: 0.4
+        US_Stock: 0.6
+"""
+    response = client.post(
+        "/config", data={"edited_config": valid_config, "save": "Save"}, follow_redirects=True
+    )
+    assert response.status_code == 200
+    # Flask flash messages are shown in the redirected response
+    assert b"success" in response.data or b"saved" in response.data.lower()
