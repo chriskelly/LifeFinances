@@ -1,4 +1,5 @@
 """Results Page Object Model for E2E tests."""
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.select import Select

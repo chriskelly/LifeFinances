@@ -64,9 +64,15 @@ class RunPage:
         session["success_percentage"] = success_percentage
 
         logger.info("Session data stored. Verifying...")
-        logger.info(f"Session has first_results_data: {session.get('first_results_data') is not None}")
-        logger.info(f"Session has first_results_columns: {session.get('first_results_columns') is not None}")
-        logger.info(f"Session has success_percentage: {session.get('success_percentage')}")
+        logger.info(
+            f"Session has first_results_data: {session.get('first_results_data') is not None}"
+        )
+        logger.info(
+            f"Session has first_results_columns: {session.get('first_results_columns') is not None}"
+        )
+        logger.info(
+            f"Session has success_percentage: {session.get('success_percentage')}"
+        )
 
         # Add to simulation history
         if "simulation_history" not in session:

@@ -3,6 +3,7 @@ Dashboard Functionality E2E tests for LifeFinances GUI.
 
 Tests dashboard stats, recent simulations, and quick actions.
 """
+
 import pytest
 
 
@@ -64,7 +65,9 @@ def test_stats_update_after_simulation(
 
 @pytest.mark.e2e
 @pytest.mark.dashboard
-def test_recent_simulations_display(dashboard_page, config_page, run_page, sample_config):
+def test_recent_simulations_display(
+    dashboard_page, config_page, run_page, sample_config
+):
     """Test that recent simulations are displayed."""
     # Run a simulation
     config_page.navigate()

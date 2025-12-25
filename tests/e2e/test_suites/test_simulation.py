@@ -3,6 +3,7 @@ Simulation Execution E2E tests for LifeFinances GUI.
 
 Tests simulation running, progress tracking, and completion.
 """
+
 import pytest
 
 
@@ -105,6 +106,5 @@ def test_simulation_without_config_error(run_page):
         run_page.click_run_simulation()
         # Check for error message or staying on same page
         assert (
-            "/run" in run_page.get_current_url()
-            or run_page.is_error_message_visible()
+            "/run" in run_page.get_current_url() or run_page.is_error_message_visible()
         )

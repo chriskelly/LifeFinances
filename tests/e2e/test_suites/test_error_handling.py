@@ -3,6 +3,7 @@ Error Handling E2E tests for LifeFinances GUI.
 
 Tests error scenarios, validation, and error recovery.
 """
+
 import pytest
 
 
@@ -167,7 +168,10 @@ def test_concurrent_form_submissions(config_page, sample_config):
 
     # Should handle gracefully without errors
     # Page should be in valid state
-    assert "/config" in config_page.get_current_url() or "/run" in config_page.get_current_url()
+    assert (
+        "/config" in config_page.get_current_url()
+        or "/run" in config_page.get_current_url()
+    )
 
 
 @pytest.mark.e2e
@@ -222,7 +226,10 @@ Spending:
     config_page.click_save()
 
     # Should handle large config (may take time but shouldn't crash)
-    assert "/config" in config_page.get_current_url() or "/run" in config_page.get_current_url()
+    assert (
+        "/config" in config_page.get_current_url()
+        or "/run" in config_page.get_current_url()
+    )
 
 
 @pytest.mark.e2e
@@ -254,4 +261,7 @@ Spending:
     config_page.click_save()
 
     # Should handle or validate appropriately
-    assert "/config" in config_page.get_current_url() or "/run" in config_page.get_current_url()
+    assert (
+        "/config" in config_page.get_current_url()
+        or "/run" in config_page.get_current_url()
+    )

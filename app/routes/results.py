@@ -27,15 +27,21 @@ class ResultsPage:
         self._first_results_columns = session.get("first_results_columns")
 
         logger.info("Retrieved from session:")
-        logger.info(f"  first_results_data: {self._first_results_data is not None} (length: {len(self._first_results_data) if self._first_results_data else 0})")
+        logger.info(
+            f"  first_results_data: {self._first_results_data is not None} (length: {len(self._first_results_data) if self._first_results_data else 0})"
+        )
         logger.info(f"  first_results_columns: {self._first_results_columns}")
-        logger.info(f"  success_percentage raw: {session.get('success_percentage')} (type: {type(session.get('success_percentage'))})")
+        logger.info(
+            f"  success_percentage raw: {session.get('success_percentage')} (type: {type(session.get('success_percentage'))})"
+        )
 
         # Convert success_percentage to float if it's a string
         success_pct = session.get("success_percentage")
         if success_pct is not None and isinstance(success_pct, str):
             self._success_percentage = float(success_pct)
-            logger.info(f"  Converted success_percentage from string to float: {self._success_percentage}")
+            logger.info(
+                f"  Converted success_percentage from string to float: {self._success_percentage}"
+            )
         else:
             self._success_percentage = success_pct
             logger.info(f"  Using success_percentage as-is: {self._success_percentage}")
@@ -49,7 +55,9 @@ class ResultsPage:
         logger.info(f"  Net worth chart generated: {self._net_worth_chart is not None}")
 
         self._first_results_table = self._generate_results_table()
-        logger.info(f"  Results table generated: {self._first_results_table is not None}")
+        logger.info(
+            f"  Results table generated: {self._first_results_table is not None}"
+        )
 
     def _generate_gauge_chart(self) -> str | None:
         """
@@ -207,12 +215,27 @@ class ResultsPage:
         # Define column categories for better organization
         categories = {
             "wealth": ["Net Worth", "Portfolio Return", "Net Transaction"],
-            "income": ["Job Income", "SS User", "SS Partner", "Pension", "Total Income", "Annuity"],
+            "income": [
+                "Job Income",
+                "SS User",
+                "SS Partner",
+                "Pension",
+                "Total Income",
+                "Annuity",
+            ],
             "expenses": ["Spending", "Kids", "Total Costs"],
-            "taxes": ["Income Taxes", "Medicare Taxes", "Social Security Taxes", "Portfolio Taxes", "Total Taxes"],
+            "taxes": [
+                "Income Taxes",
+                "Medicare Taxes",
+                "Social Security Taxes",
+                "Portfolio Taxes",
+                "Total Taxes",
+            ],
             "allocation": [col for col in self._first_results_columns if "%" in col],
-            "rates": [col for col in self._first_results_columns if "rate" in col.lower()],
-            "other": ["Inflation"]
+            "rates": [
+                col for col in self._first_results_columns if "rate" in col.lower()
+            ],
+            "other": ["Inflation"],
         }
 
         chartable = []
@@ -222,21 +245,17 @@ class ResultsPage:
         for category, cols in categories.items():
             for col in cols:
                 if col in self._first_results_columns and col != "Date":
-                    chartable.append({
-                        "name": col,
-                        "display_name": col,
-                        "category": category.title()
-                    })
+                    chartable.append(
+                        {"name": col, "display_name": col, "category": category.title()}
+                    )
                     categorized.add(col)
 
         # Add any uncategorized numeric columns
         for col in self._first_results_columns:
             if col not in categorized and col != "Date":
-                chartable.append({
-                    "name": col,
-                    "display_name": col,
-                    "category": "Other"
-                })
+                chartable.append(
+                    {"name": col, "display_name": col, "category": "Other"}
+                )
 
         return chartable
 

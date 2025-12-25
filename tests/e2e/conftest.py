@@ -7,8 +7,8 @@ NOTE: This conftest.py is only loaded when running E2E tests. If selenium
 is not installed, the fixtures will not be available but pytest collection
 will not fail.
 """
+
 import os
-from typing import Generator
 
 import pytest
 
@@ -73,7 +73,9 @@ def chrome_options():
         Chrome options configured for testing
     """
     if not SELENIUM_AVAILABLE:
-        pytest.skip("Selenium not installed - E2E tests require: pip install -r requirements-e2e.txt")
+        pytest.skip(
+            "Selenium not installed - E2E tests require: pip install -r requirements-e2e.txt"
+        )
 
     options = Options()
 
@@ -108,7 +110,9 @@ def driver(chrome_options):
         Quits the driver after test completes
     """
     if not SELENIUM_AVAILABLE:
-        pytest.skip("Selenium not installed - E2E tests require: pip install -r requirements-e2e.txt")
+        pytest.skip(
+            "Selenium not installed - E2E tests require: pip install -r requirements-e2e.txt"
+        )
 
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)

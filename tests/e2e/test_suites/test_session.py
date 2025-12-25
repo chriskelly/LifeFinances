@@ -3,6 +3,7 @@ Session Persistence E2E tests for LifeFinances GUI.
 
 Tests session data persistence across page navigation and reloads.
 """
+
 import pytest
 
 

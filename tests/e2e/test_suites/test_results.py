@@ -3,6 +3,7 @@ Results Visualization E2E tests for LifeFinances GUI.
 
 Tests results display, charts, table, and export functionality.
 """
+
 import pytest
 
 
@@ -30,7 +31,9 @@ def test_no_results_message_when_empty(results_page):
 
 @pytest.mark.e2e
 @pytest.mark.results
-def test_results_display_after_simulation(config_page, run_page, results_page, sample_config):
+def test_results_display_after_simulation(
+    config_page, run_page, results_page, sample_config
+):
     """Test that results are displayed after running simulation."""
     # Run a simulation first
     config_page.navigate()
@@ -176,7 +179,9 @@ def test_interpretation_section(config_page, run_page, results_page, sample_conf
 def test_chart_with_negative_values(config_page, run_page, results_page, sample_config):
     """Test that charts display correctly with negative values."""
     # Modify config to potentially create negative values (high spending)
-    modified_config = sample_config.replace("annual_spending: 60000", "annual_spending: 150000")
+    modified_config = sample_config.replace(
+        "annual_spending: 60000", "annual_spending: 150000"
+    )
 
     config_page.navigate()
     config_page.set_config_content(modified_config)

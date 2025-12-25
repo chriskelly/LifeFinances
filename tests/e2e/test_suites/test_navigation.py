@@ -3,6 +3,7 @@ Navigation E2E tests for LifeFinances GUI.
 
 Tests basic navigation between pages and URL verification.
 """
+
 import pytest
 
 
@@ -77,7 +78,9 @@ def test_root_redirects_to_dashboard(driver, base_url):
 
 @pytest.mark.e2e
 @pytest.mark.navigation
-def test_navigation_breadcrumb_trail(dashboard_page, config_page, run_page, results_page):
+def test_navigation_breadcrumb_trail(
+    dashboard_page, config_page, run_page, results_page
+):
     """Test full navigation flow through all pages."""
     # Start at dashboard
     dashboard_page.navigate()

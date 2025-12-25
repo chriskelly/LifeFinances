@@ -3,6 +3,7 @@ Configuration Management E2E tests for LifeFinances GUI.
 
 Tests configuration viewing, editing, saving, and validation.
 """
+
 import pytest
 
 

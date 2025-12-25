@@ -19,11 +19,13 @@ def create_app():
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     app = Flask(__name__)
-    app.secret_key = "lifefinances-secret-key-change-in-production"  # TODO: Move to env var
+    app.secret_key = (
+        "lifefinances-secret-key-change-in-production"  # TODO: Move to env var
+    )
 
     # Configure server-side sessions to avoid cookie size limits
     app.config["SESSION_TYPE"] = "filesystem"
@@ -39,6 +41,7 @@ def create_app():
     def index():
         # Redirect root to dashboard for modern UI
         from flask import redirect, url_for
+
         return redirect(url_for("dashboard"))
 
     @app.route("/dashboard", methods=["GET"])

@@ -3,6 +3,7 @@ Base Page Object Model class for E2E tests.
 
 This module provides the foundation for all page objects used in E2E testing.
 """
+
 from typing import Any
 
 from selenium.common.exceptions import TimeoutException
