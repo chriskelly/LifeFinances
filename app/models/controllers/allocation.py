@@ -330,8 +330,12 @@ class _TotalPortfolioStrategy(_Strategy):
         if income_array.size == 0:
             future_income_pv = 0.0
         else:
+            # NOTE: numpy_financial.npv treats values[0] as occurring at time 0 (undiscounted).
+            # Our income_array starts at the *next* interval (t=1), so prepend a 0 at t=0
+            # to ensure the first future payment is discounted correctly.
+            npv_values = np.concatenate(([0.0], income_array.astype(float)))
             future_income_pv = float(
-                npf.npv(rate=discount_rate_interval, values=income_array.astype(float))
+                npf.npv(rate=discount_rate_interval, values=npv_values)
             )
 
         # Step 2: Calculate total portfolio and handle edge cases
