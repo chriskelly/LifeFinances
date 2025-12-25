@@ -2,6 +2,18 @@
 
 This directory contains end-to-end tests for the LifeFinances Flask GUI using Selenium WebDriver.
 
+## Important: E2E Tests are Excluded from Default Test Runs
+
+**E2E tests are NOT run by default** when executing `pytest tests/` or `make test`. This is intentional because:
+- E2E tests require additional dependencies (selenium, ChromeDriver)
+- E2E tests need a running Flask application
+- CI/CD environments may not have browser automation capabilities
+
+To run E2E tests, you must **explicitly** specify the e2e directory:
+```bash
+pytest tests/e2e/
+```
+
 ## Overview
 
 The E2E test suite validates the complete user workflows through the web interface, including:
