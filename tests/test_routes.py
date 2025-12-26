@@ -287,7 +287,9 @@ portfolio:
         US_Stock: 0.6
 """
     response = client.post(
-        "/config", data={"edited_config": valid_config, "save": "Save"}, follow_redirects=True
+        "/config",
+        data={"edited_config": valid_config, "save": "Save"},
+        follow_redirects=True,
     )
     assert response.status_code == 200
     # Flask flash messages are shown in the redirected response

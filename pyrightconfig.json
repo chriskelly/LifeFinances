@@ -11,12 +11,11 @@
     ".venv",
     "tests/e2e"
   ],
+  "venvPath": ".",
+  "venv": ".venv",
   "executionEnvironments": [
     {
-      "root": ".",
-      "extraPaths": [
-        "/usr/local/lib/python3.10/site-packages"
-      ]
+      "root": "."
     }
   ]
 }
