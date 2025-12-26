@@ -23,9 +23,8 @@ def create_app():
     )
 
     app = Flask(__name__)
-    app.secret_key = (
-        "lifefinances-secret-key-change-in-production"  # TODO: Move to env var
-    )
+    # Secret key for session signing and flash messages (local dev tool)
+    app.secret_key = "lifefinances-local-dev-secret"
 
     # Configure server-side sessions to avoid cookie size limits
     app.config["SESSION_TYPE"] = "filesystem"

@@ -48,13 +48,15 @@ tests/e2e/
 
 ## Installation
 
-### 1. Install E2E Testing Dependencies
+### 1. Install Development Dependencies
+
+E2E testing dependencies are included in the development requirements:
 
 ```bash
-pip install -r requirements-e2e.txt
+pip install -r requirements/dev.txt
 ```
 
-This installs:
+This installs all development dependencies including:
 - `selenium` - Browser automation
 - `pytest-selenium` - Pytest integration for Selenium
 - `webdriver-manager` - Automatic ChromeDriver management
