@@ -7,3 +7,4 @@ snakeviz==2.2.0
 ruff==0.14.10
 pyright==1.1.407
 ipykernel==7.1.0
+pre-commit>=3.5.0

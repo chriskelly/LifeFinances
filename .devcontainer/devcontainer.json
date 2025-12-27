@@ -55,7 +55,7 @@
             "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": "[ ! -f config.yml ] && cp tests/sample_configs/full_config.yml config.yml || true",
+    "postCreateCommand": "([ ! -f config.yml ] && cp tests/sample_configs/full_config.yml config.yml || true) && pre-commit install",
     "remoteUser": "root",
     "workspaceFolder": "/workspace",
     "mounts": [

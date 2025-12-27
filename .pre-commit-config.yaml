@@ -1,0 +1,11 @@
+repos:
+  - repo: local
+    hooks:
+      - id: make-all
+        name: Run make (build, test, lint)
+        entry: make
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
