@@ -6,7 +6,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models.config import TotalPortfolioStrategyConfig
+from app.models.config import TotalPortfolioStrategyConfig, User
 
 
 def test_total_portfolio_strategy_config_defaults():
@@ -93,3 +93,122 @@ def test_total_portfolio_strategy_config_chosen_forces_enabled():
     config = TotalPortfolioStrategyConfig(chosen=True)
     assert config.enabled is True
     assert config.chosen is True
+
+
+def test_total_portfolio_strategy_config_loading(sample_config_data):
+    """Test that total_portfolio strategy can be loaded from YAML config"""
+    # Modify sample config to choose total_portfolio instead of flat
+    sample_config_data["portfolio"]["allocation_strategy"]["flat"]["chosen"] = False
+    sample_config_data["portfolio"]["allocation_strategy"]["total_portfolio"][
+        "chosen"
+    ] = True
+
+    user = User(**sample_config_data)
+    assert user.portfolio.allocation_strategy.total_portfolio is not None
+    assert isinstance(
+        user.portfolio.allocation_strategy.total_portfolio, TotalPortfolioStrategyConfig
+    )
+    assert user.portfolio.allocation_strategy.total_portfolio.enabled is True
+    assert user.portfolio.allocation_strategy.total_portfolio.chosen is True
+    assert user.portfolio.allocation_strategy.total_portfolio.low_risk_allocation == {
+        "TIPS": 0.8,
+        "US_Bond": 0.2,
+    }
+    assert user.portfolio.allocation_strategy.total_portfolio.high_risk_allocation == {
+        "US_Stock": 0.7,
+        "Intl_ex_US_Stock": 0.3,
+    }
+    assert user.portfolio.allocation_strategy.total_portfolio.RRA == 2.5
+
+    # Verify chosen_strategy recognizes total_portfolio
+    strategy_name, strategy_obj = user.portfolio.allocation_strategy.chosen_strategy
+    assert strategy_name == "total_portfolio"
+    assert isinstance(strategy_obj, TotalPortfolioStrategyConfig)
+
+
+def test_total_portfolio_strategy_requires_age_based_social_security(
+    sample_config_data,
+):
+    """Total portfolio strategy requires age-based social security strategy"""
+    # Modify sample config to use total_portfolio and net_worth-based social security
+    config = sample_config_data.copy()
+    config["portfolio"]["allocation_strategy"]["total_portfolio"]["chosen"] = True
+    config["portfolio"]["allocation_strategy"]["flat"]["chosen"] = False
+    config["social_security_pension"]["strategy"]["net_worth"]["chosen"] = True
+    config["social_security_pension"]["strategy"]["mid"]["chosen"] = False
+
+    with pytest.raises(ValidationError) as exc_info:
+        User(**config)
+
+    assert "total_portfolio allocation strategy" in str(exc_info.value).lower()
+    assert "social security" in str(exc_info.value).lower()
+    assert "age-based" in str(exc_info.value).lower()
+
+
+def test_total_portfolio_strategy_requires_age_based_or_cashout_pension(
+    sample_config_data,
+):
+    """Total portfolio strategy requires age-based or cashout pension strategy"""
+    # Modify sample config to use total_portfolio and add admin with net_worth-based pension
+    config = sample_config_data.copy()
+    config["portfolio"]["allocation_strategy"]["total_portfolio"]["chosen"] = True
+    config["portfolio"]["allocation_strategy"]["flat"]["chosen"] = False
+    config["admin"] = {
+        "pension": {
+            "trust_factor": 1.0,
+            "account_balance": 100,
+            "balance_update": 2022.5,
+            "strategy": {
+                "mid": {"enabled": False, "chosen": False},
+                "net_worth": {
+                    "enabled": True,
+                    "chosen": True,
+                    "net_worth_target": 1000,
+                },
+            },
+        }
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        User(**config)
+
+    assert "total_portfolio allocation strategy" in str(exc_info.value).lower()
+    assert "pension" in str(exc_info.value).lower()
+
+
+def test_total_portfolio_strategy_allows_age_based_strategies(sample_config_data):
+    """Total portfolio strategy works with age-based benefit strategies"""
+    # Modify sample config to use total_portfolio with age-based strategies
+    config = sample_config_data.copy()
+    config["portfolio"]["allocation_strategy"]["total_portfolio"]["chosen"] = True
+    config["portfolio"]["allocation_strategy"]["flat"]["chosen"] = False
+    # Social security already uses 'mid' (age-based) in sample config
+
+    # Should not raise
+    user = User(**config)
+    assert user.portfolio.allocation_strategy.chosen_strategy[0] == "total_portfolio"
+    assert user.social_security_pension.strategy.chosen_strategy[0] == "mid"
+
+
+def test_total_portfolio_strategy_allows_cashout_pension(sample_config_data):
+    """Total portfolio strategy works with cashout pension strategy"""
+    # Modify sample config to use total_portfolio and add admin with cashout pension
+    config = sample_config_data.copy()
+    config["portfolio"]["allocation_strategy"]["total_portfolio"]["chosen"] = True
+    config["portfolio"]["allocation_strategy"]["flat"]["chosen"] = False
+    config["admin"] = {
+        "pension": {
+            "trust_factor": 1.0,
+            "account_balance": 100,
+            "balance_update": 2022.5,
+            "strategy": {
+                "mid": {"enabled": False, "chosen": False},
+                "cash_out": {"enabled": True, "chosen": True},
+            },
+        }
+    }
+
+    # Should not raise
+    user = User(**config)
+    assert user.portfolio.allocation_strategy.chosen_strategy[0] == "total_portfolio"
+    assert user.admin.pension.strategy.chosen_strategy[0] == "cash_out"
