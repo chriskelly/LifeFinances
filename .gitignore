@@ -174,4 +174,4 @@ cython_debug/
 .idea/
 
 .claude/settings.local.json
-flask_session/*
+flask_session/

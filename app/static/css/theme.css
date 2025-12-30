@@ -1,0 +1,31 @@
+/* LifeFinances Dark Blue Theme */
+
+:root {
+    /* Dark blue color scheme */
+    --primary-dark: #1a2332;
+    --primary-darker: #0f1419;
+    --accent-blue: #4a90e2;
+    --accent-light: #5ba3f5;
+    --text-light: #e8eef3;
+    --text-muted: #8b9aa8;
+}
+
+/* Navbar dark theme */
+.navbar-dark {
+    background-color: var(--primary-dark) !important;
+}
+
+/* Body background */
+body {
+    background-color: var(--primary-darker);
+    color: var(--text-light);
+}
+
+/* Links */
+a {
+    color: var(--accent-light);
+}
+
+a:hover {
+    color: var(--accent-blue);
+}

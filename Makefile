@@ -42,7 +42,7 @@ test: up
 ifeq ($(USE_DIRECT),true)
 	pytest tests
 else
-	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances /tests
+	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances /tests --ignore=/tests/e2e
 endif
 
 ruff-check: build
@@ -72,7 +72,7 @@ coverage:
 ifeq ($(USE_DIRECT),true)
 	pytest tests --cov=app --cov-report=term-missing --cov-report=html
 else
-	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances /tests --cov=app --cov-report=term-missing --cov-report=html
+	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances /tests --ignore=/tests/e2e --cov=app --cov-report=term-missing --cov-report=html
 endif
 
 profile:

@@ -5,12 +5,17 @@
     "standalone_tools",
     "run.py"
   ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    ".venv",
+    "tests/e2e"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
   "executionEnvironments": [
     {
-      "root": ".",
-      "extraPaths": [
-        "/usr/local/lib/python3.10/site-packages"
-      ]
+      "root": "."
     }
   ]
 }
