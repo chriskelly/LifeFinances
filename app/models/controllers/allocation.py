@@ -11,14 +11,13 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
-import numpy_financial as npf
 
 from app.data import constants
 from app.models import config
 from app.models.config import User
 from app.models.controllers.economic_data import CsvVariableMixRepo
 from app.models.financial.state import State
-from app.util import constrain, interval_yield
+from app.util import constrain
 
 if TYPE_CHECKING:
     from app.models.controllers import Controllers
@@ -109,32 +108,13 @@ class _NetWorthPivotStrategy(_Strategy):
         )
 
 
-class _FakeState:
-    """Lightweight stand-in for State used when precomputing future income.
-
-    Accessing `net_worth` on this fake state is prohibited to ensure that
-    benefit timing does not depend on future net worth during precomputation.
-    """
-
-    def __init__(self, *, user: User, date: float, interval_idx: int, inflation: float):
-        self.user = user
-        self.date = date
-        self.interval_idx = interval_idx
-        self.inflation = inflation
-
-    @property  # pragma: no cover - defensive safety
-    def net_worth(self) -> float:
-        raise RuntimeError(
-            "net_worth access is not allowed on fake states used for income precomputation"
-        )
-
-
 @dataclass
 class _TotalPortfolioStrategy(_Strategy):
     """Implementation of total portfolio allocation strategy.
 
     This strategy calculates allocation based on total portfolio value
     (current savings + present value of future income) and relative risk aversion.
+    Future income calculation is delegated to the FutureIncomeController.
 
     Attributes:
         config (config.TotalPortfolioStrategyConfig): Strategy configuration
@@ -156,11 +136,6 @@ class _TotalPortfolioStrategy(_Strategy):
     expected_high_risk_stdev: float = field(init=False)
     expected_low_risk_return: float = field(init=False)
     merton_share: float = field(init=False)
-
-    # Precomputed income arrays (per interval)
-    job_income_by_interval: np.ndarray | None = field(init=False, default=None)
-    benefit_income_by_interval: np.ndarray | None = field(init=False, default=None)
-    future_income_by_interval: np.ndarray | None = field(init=False, default=None)
 
     # Internal flag to detect division-by-zero in Merton Share denominator
     _merton_division_by_zero: bool = field(init=False, default=False)
@@ -239,57 +214,6 @@ class _TotalPortfolioStrategy(_Strategy):
             # Cap Merton Share to [0, 1] as per spec
             self.merton_share = constrain(raw_merton_share, 0.0, 1.0)
 
-    # ---- Internal helpers -------------------------------------------------
-
-    def _ensure_income_arrays(
-        self, *, state: State, controllers: "Controllers"
-    ) -> None:
-        """Precompute job, benefit, and total future income per interval.
-
-        This is called lazily on first allocation calculation, once Controllers
-        is available, and then reused for all subsequent intervals.
-        """
-        if self.future_income_by_interval is not None:
-            return
-
-        intervals_per_trial = state.user.intervals_per_trial
-        # Initialize arrays
-        job_income = np.zeros(intervals_per_trial, dtype=float)
-        benefit_income = np.zeros(intervals_per_trial, dtype=float)
-
-        ss_controller = controllers.social_security
-        pension_controller = controllers.pension
-
-        for interval_idx in range(intervals_per_trial):
-            job_income[interval_idx] = controllers.job_income.get_total_income(
-                interval_idx
-            )
-
-            # Get actual cumulative inflation for this interval
-            economic_data = controllers.economic_data.get_economic_state_data(
-                interval_idx
-            )
-
-            # Fake state for benefits – forbid net_worth access
-            fake_state = _FakeState(
-                user=state.user,
-                date=constants.TODAY_YR_QT
-                + interval_idx * constants.YEARS_PER_INTERVAL,
-                interval_idx=interval_idx,
-                inflation=economic_data.inflation,
-            )
-
-            # Calculate benefit payments (controllers may return zero if not configured)
-            # Type ignore: _FakeState is compatible with State for controller methods
-            ss_user, ss_partner = ss_controller.calc_payment(fake_state)  # type: ignore[arg-type]
-            pension_payment = pension_controller.calc_payment(fake_state)  # type: ignore[arg-type]
-
-            benefit_income[interval_idx] = ss_user + ss_partner + pension_payment
-
-        self.job_income_by_interval = job_income
-        self.benefit_income_by_interval = benefit_income
-        self.future_income_by_interval = job_income + benefit_income
-
     # ---- Public API -------------------------------------------------------
 
     def gen_allocation(
@@ -312,35 +236,12 @@ class _TotalPortfolioStrategy(_Strategy):
                 "controllers parameter is required for total_portfolio strategy"
             )
 
-        # Lazily precompute income arrays when Controllers is first available
-        self._ensure_income_arrays(state=state, controllers=controllers)
-
-        # Step 1: Calculate present value of future income using discount rate
+        # Calculate present value of future income using FutureIncomeController
         discount_rate_annual = self.expected_low_risk_return
-        discount_rate_interval = interval_yield(1.0 + discount_rate_annual) - 1.0
-
-        # Slice future income from the next interval onward
-        assert self.future_income_by_interval is not None  # For type checkers
-        start_idx = state.interval_idx + 1
-        if start_idx >= len(self.future_income_by_interval):
-            income_array = np.array([], dtype=float)
-        else:
-            income_array = self.future_income_by_interval[start_idx:]
-
-        if income_array.size == 0:
-            future_income_pv = 0.0
-        else:
-            # NOTE: numpy_financial.npv treats values[0] as occurring at time 0 (undiscounted).
-            # Our income_array starts at the *next* interval (t=1), so prepend a 0 at t=0
-            # to ensure the first future payment is discounted correctly.
-            npv_values = np.concatenate(([0.0], income_array.astype(float)))
-            future_income_pv = float(
-                npf.npv(rate=discount_rate_interval, values=npv_values)
-            )
-
-        # Step 2: Calculate total portfolio and handle edge cases
+        total_portfolio = controllers.future_income.get_total_portfolio(
+            state=state, discount_rate_annual=discount_rate_annual
+        )
         savings = state.net_worth
-        total_portfolio = future_income_pv + savings
 
         if total_portfolio <= 0:
             # Zero or negative total portfolio – return low-risk allocation
@@ -350,13 +251,13 @@ class _TotalPortfolioStrategy(_Strategy):
             # If Merton Share denominator was invalid, fall back to low-risk allocation
             return self.low_risk_allocation
 
-        # Step 3: Apply Merton Share
+        # Apply Merton Share
         # Merton Share already capped in __post_init__, but guard again defensively
         merton_share = constrain(self.merton_share, 0.0, 1.0)
 
         total_high_risk_amount = merton_share * total_portfolio
 
-        # Step 4: Compute savings high/low risk ratios
+        # Compute savings high/low risk ratios
         if savings <= 0:
             savings_high_risk_ratio = 0.0
         else:
@@ -364,7 +265,7 @@ class _TotalPortfolioStrategy(_Strategy):
 
         savings_low_risk_ratio = 1.0 - savings_high_risk_ratio
 
-        # Step 5: Blend high and low risk allocations
+        # Blend high and low risk allocations
         allocation = (
             self.high_risk_allocation * savings_high_risk_ratio
             + self.low_risk_allocation * savings_low_risk_ratio

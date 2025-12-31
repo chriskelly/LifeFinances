@@ -31,6 +31,7 @@ from app.models.controllers import (
     allocation,
     annuity,
     economic_data,
+    future_income,
     job_income,
     pension,
     social_security,
@@ -68,16 +69,34 @@ class SimulationTrial:
         job_income_controller: job_income.Controller,
     ):
         self._user_config = user_config
+
+        # Initialize individual controllers first
+        social_security_controller = social_security.Controller(
+            user_config=user_config, income_controller=job_income_controller
+        )
+        pension_controller = pension.Controller(user_config)
+        annuity_controller = annuity.Controller(user_config)
+
+        # Initialize future_income controller with its dependencies
+        future_income_controller = future_income.Controller(
+            user=user_config,
+            job_income_controller=job_income_controller,
+            social_security_controller=social_security_controller,
+            pension_controller=pension_controller,
+            economic_data_controller=economic_data_controller,
+        )
+
+        # Create Controllers with all initialized controllers
         self.controllers = Controllers(
             allocation=allocation_controller,
             economic_data=economic_data_controller,
             job_income=job_income_controller,
-            social_security=social_security.Controller(
-                user_config=user_config, income_controller=job_income_controller
-            ),
-            pension=pension.Controller(user_config),
-            annuity=annuity.Controller(user_config),
+            social_security=social_security_controller,
+            pension=pension_controller,
+            annuity=annuity_controller,
+            future_income=future_income_controller,
         )
+
         self.intervals = [gen_first_interval(user_config, self.controllers)]
         for _ in range(self._user_config.intervals_per_trial - 1):
             self.intervals.append(

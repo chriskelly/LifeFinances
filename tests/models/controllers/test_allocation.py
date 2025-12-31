@@ -234,6 +234,9 @@ class TestTotalPortfolioStrategy:
         """Factory that creates Controllers wired to the provided user."""
         from app.models.controllers import Controllers
         from app.models.controllers.economic_data import EconomicStateData
+        from app.models.controllers.future_income import (
+            Controller as FutureIncomeController,
+        )
         from app.models.controllers.job_income import Controller as JobIncomeController
 
         def _create_controllers(
@@ -272,11 +275,21 @@ class TestTotalPortfolioStrategy:
                 side_effect=_get_economic_state_data
             )
 
+            # Create real FutureIncomeController for realistic test scenarios
+            future_income_controller = FutureIncomeController(
+                user=user,
+                job_income_controller=job_income_controller,
+                social_security_controller=social_security,
+                pension_controller=pension,
+                economic_data_controller=mock_economic_data,
+            )
+
             controllers = mocker.MagicMock(spec=Controllers)
             controllers.job_income = job_income_controller
             controllers.social_security = social_security
             controllers.pension = pension
             controllers.economic_data = mock_economic_data
+            controllers.future_income = future_income_controller
             return controllers
 
         return _create_controllers
@@ -550,7 +563,7 @@ class TestTotalPortfolioStrategy:
         allocation = basic_strategy.gen_allocation(state=state, controllers=controllers)
 
         # With very high savings and no future income, allocation should be
-        # based on Merton Share directly
+        # based on Merton Share directly (real FutureIncomeController returns zero for no income)
         expected_merton_share = (
             basic_strategy.expected_high_risk_return
             - basic_strategy.expected_low_risk_return
@@ -602,150 +615,6 @@ class TestTotalPortfolioStrategy:
         finally:
             monkeypatch.setattr(constants, "STATISTICS_PATH", original_path)
 
-    # ---- Tests for precomputation logic (T020) ----
-
-    def test_precomputation_job_income(
-        self,
-        basic_strategy: _TotalPortfolioStrategy,
-        controller_factory,
-        basic_user: User,
-    ):
-        """Test that interval incomes are precomputed correctly"""
-        state = State(
-            user=basic_user,
-            date=constants.TODAY_YR_QT,
-            interval_idx=0,
-            net_worth=basic_user.portfolio.current_net_worth,
-            inflation=1.0,
-        )
-
-        # Initially, arrays should be None
-        assert basic_strategy.job_income_by_interval is None
-        assert basic_strategy.benefit_income_by_interval is None
-        assert basic_strategy.future_income_by_interval is None
-
-        # Call gen_allocation to trigger precomputation
-        controllers = controller_factory(basic_user)
-        allocation = basic_strategy.gen_allocation(state=state, controllers=controllers)
-
-        # Arrays should now be populated
-        assert basic_strategy.job_income_by_interval is not None
-        assert basic_strategy.benefit_income_by_interval is not None
-        assert basic_strategy.future_income_by_interval is not None
-
-        # Verify job income array matches job_income_controller
-        intervals_per_trial = basic_user.intervals_per_trial
-        assert len(basic_strategy.job_income_by_interval) == intervals_per_trial
-
-        # Verify each interval matches controller
-        for i in range(intervals_per_trial):
-            expected_income = controllers.job_income.get_total_income(i)
-            assert basic_strategy.job_income_by_interval[i] == pytest.approx(
-                expected_income
-            )
-
-        # Verify future income is sum of job and benefit income
-        expected_future = (
-            basic_strategy.job_income_by_interval
-            + basic_strategy.benefit_income_by_interval
-        )
-        assert basic_strategy.future_income_by_interval == pytest.approx(
-            expected_future
-        )
-
-        # Verify allocation still works (should use precomputed arrays)
-        allocation2 = basic_strategy.gen_allocation(
-            state=state, controllers=controllers
-        )
-        assert allocation2 == pytest.approx(allocation)  # Should be same
-
-    def test_precomputation_benefit_income(
-        self,
-        basic_strategy: _TotalPortfolioStrategy,
-        mocker: MockerFixture,
-        basic_user: User,
-        controller_factory,
-    ):
-        """Test that benefit_income_by_interval is precomputed correctly with mocked benefits"""
-        # Mock social security controller
-        ss_user, ss_partner = 1000.0, 500.0
-        mock_ss = mocker.MagicMock()
-        mock_ss.calc_payment = mocker.Mock(
-            side_effect=lambda state: (ss_user, ss_partner)  # (user, partner)
-        )
-
-        # Mock pension controller
-        pension_payment = 2000.0
-        mock_pension = mocker.MagicMock()
-        mock_pension.calc_payment = mocker.Mock(return_value=pension_payment)
-
-        controllers = controller_factory(
-            basic_user,
-            social_security=mock_ss,
-            pension=mock_pension,
-        )
-
-        state = State(
-            user=basic_user,
-            date=constants.TODAY_YR_QT,
-            interval_idx=0,
-            net_worth=basic_user.portfolio.current_net_worth,
-            inflation=1.0,
-        )
-
-        # Trigger precomputation
-        basic_strategy.gen_allocation(state=state, controllers=controllers)
-
-        # Verify benefit income includes SS and pension
-        assert basic_strategy.benefit_income_by_interval is not None
-        intervals_per_trial = basic_user.intervals_per_trial
-
-        # Each interval should have: SS user + SS partner + pension
-        for i in range(intervals_per_trial):
-            assert basic_strategy.benefit_income_by_interval[i] == pytest.approx(
-                ss_user + ss_partner + pension_payment
-            )
-
-        # Verify mock was called with fake states (not real states with net_worth)
-        assert mock_ss.calc_payment.call_count == intervals_per_trial
-        assert mock_pension.calc_payment.call_count == intervals_per_trial
-
-        # Verify fake states don't allow net_worth access
-        for call in mock_ss.calc_payment.call_args_list:
-            fake_state = call[0][0]  # First positional argument
-            with pytest.raises(RuntimeError, match="net_worth access is not allowed"):
-                _ = fake_state.net_worth
-
-    def test_precomputation_no_benefits(
-        self,
-        basic_strategy: _TotalPortfolioStrategy,
-        controller_factory,
-        basic_user: User,
-    ):
-        """Test that benefit_income_by_interval is zero when no benefits are configured"""
-        state = State(
-            user=basic_user,
-            date=constants.TODAY_YR_QT,
-            interval_idx=0,
-            net_worth=basic_user.portfolio.current_net_worth,
-            inflation=1.0,
-        )
-
-        # controller_factory creates zero-returning mocks for social_security and pension
-        controllers = controller_factory(basic_user)
-        basic_strategy.gen_allocation(state=state, controllers=controllers)
-
-        # Benefit income should be all zeros
-        assert basic_strategy.benefit_income_by_interval is not None
-        assert np.all(basic_strategy.benefit_income_by_interval == 0.0), (
-            "Benefit income should be zero when no benefits configured"
-        )
-
-        # Future income should equal job income
-        assert basic_strategy.future_income_by_interval == pytest.approx(
-            basic_strategy.job_income_by_interval
-        )
-
     # ---- Integration test (T021) ----
 
     def test_integration_controller(
@@ -775,6 +644,10 @@ class TestTotalPortfolioStrategy:
             Controller as AllocationController,
         )
         from app.models.controllers.annuity import Controller as AnnuityController
+        from app.models.controllers.economic_data import EconomicStateData
+        from app.models.controllers.future_income import (
+            Controller as FutureIncomeController,
+        )
         from app.models.controllers.job_income import (
             Controller as JobIncomeController,
         )
@@ -794,8 +667,6 @@ class TestTotalPortfolioStrategy:
         annuity_controller = AnnuityController(user)
 
         # Mock economic_data controller with inflation values
-        from app.models.controllers.economic_data import EconomicStateData
-
         mock_economic_data = mocker.MagicMock()
         # Default: no inflation (1.0 for all intervals)
         inflation_values = [1.0] * user.intervals_per_trial
@@ -811,6 +682,15 @@ class TestTotalPortfolioStrategy:
             side_effect=_get_economic_state_data
         )
 
+        # Create real future_income controller
+        future_income_controller = FutureIncomeController(
+            user=user,
+            job_income_controller=job_income_controller,
+            social_security_controller=social_security_controller,
+            pension_controller=pension_controller,
+            economic_data_controller=mock_economic_data,
+        )
+
         controllers = Controllers(
             allocation=allocation_controller,
             economic_data=mock_economic_data,
@@ -818,6 +698,7 @@ class TestTotalPortfolioStrategy:
             social_security=social_security_controller,
             pension=pension_controller,
             annuity=annuity_controller,
+            future_income=future_income_controller,
         )
 
         # Create state

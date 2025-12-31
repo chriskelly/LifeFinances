@@ -16,6 +16,9 @@ from . import (
     economic_data as economic_data_module,
 )
 from . import (
+    future_income as future_income_module,
+)
+from . import (
     job_income as job_income_module,
 )
 from . import (
@@ -36,6 +39,14 @@ class Controllers:
         economic_data (economic_data.Controller): Manages trial economic data
 
         job_income (job_income.Controller): Manages job income timelines
+
+        social_security (social_security.Controller): Manages social security benefits
+
+        pension (pension.Controller): Manages pension benefits
+
+        annuity (annuity.Controller): Manages annuity transactions
+
+        future_income (future_income.Controller): Manages future income calculation and PV
     """
 
     allocation: allocation_module.Controller
@@ -44,3 +55,4 @@ class Controllers:
     social_security: social_security_module.Controller
     pension: pension_module.Controller
     annuity: annuity_module.Controller
+    future_income: future_income_module.Controller
