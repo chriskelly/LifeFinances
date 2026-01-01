@@ -48,12 +48,11 @@ class Income:
 @dataclass
 class _Costs:
     spending: float
-    kids: float
     taxes: Taxes
     sum: float = field(init=False)
 
     def __post_init__(self):
-        self.sum = self.spending + self.kids + self.taxes.sum
+        self.sum = self.spending + self.taxes.sum
 
 
 @dataclass
@@ -129,10 +128,6 @@ class StateChangeComponents:
         spending = StateChangeComponents._calc_spending(components)
         return _Costs(
             spending=spending,
-            kids=StateChangeComponents._calc_cost_of_kids(
-                components=components,
-                spending=spending,
-            ),
             taxes=calc_taxes(
                 total_income=income,
                 job_income_controller=components.controllers.job_income,
@@ -159,22 +154,3 @@ class StateChangeComponents:
             if not profile.end_date or profile.end_date >= components.state.date:
                 return -profile.yearly_amount / INTERVALS_PER_YEAR * inflation
         raise ValueError("No spending profile found for the current date")
-
-    @staticmethod
-    def _calc_cost_of_kids(components: StateChangeComponents, spending: float) -> float:
-        """Calculate the cost of children
-
-        Returns:
-            float: cost of children for this interval
-        """
-        current_date = components.state.date
-        config = components.state.user.kids
-
-        if config is None:
-            return 0
-        current_kids = [
-            year
-            for year in config.birth_years
-            if current_date - config.years_of_support < year <= current_date
-        ]
-        return len(current_kids) * spending * config.fraction_of_spending

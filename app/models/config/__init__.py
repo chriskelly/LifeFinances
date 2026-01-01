@@ -16,9 +16,6 @@ from app.models.config.benefits import (
 # Income
 from app.models.config.income import IncomeProfile, _income_profiles_in_order
 
-# Kids
-from app.models.config.kids import Kids
-
 # Portfolio
 from app.models.config.portfolio import (
     ALLOWED_ASSETS,
@@ -84,8 +81,6 @@ __all__ = [
     # Income
     "IncomeProfile",
     "_income_profiles_in_order",
-    # Kids
-    "Kids",
     # Standalone tools
     "DisabilityCoverage",
     "DisabilityInsuranceCalculator",

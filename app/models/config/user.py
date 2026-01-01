@@ -8,7 +8,6 @@ from app.data.taxes import STATE_BRACKET_RATES
 from app.models.config.admin import Admin
 from app.models.config.benefits import SocialSecurity
 from app.models.config.income import IncomeProfile, _income_profiles_in_order
-from app.models.config.kids import Kids
 from app.models.config.portfolio import Portfolio
 from app.models.config.spending import Spending
 from app.models.config.standalone_tools import (
@@ -78,8 +77,6 @@ class User(BaseModel):
         spending (Spending)
 
         state (str): Defaults to None
-
-        kids (Kids): Defaults to None
 
         income_profiles (list[IncomeProfile]): Defaults to None
 
@@ -172,16 +169,6 @@ class User(BaseModel):
                 "tooltip": "State for tax calculations (California or New York)",
                 "section": "Basic Settings",
                 "choices": ["California", "New York"],
-            }
-        },
-    )
-    kids: Kids | None = Field(
-        default=None,
-        json_schema_extra={
-            "ui": {
-                "label": "Kids",
-                "tooltip": "Configuration for dependent children",
-                "section": "Kids",
             }
         },
     )

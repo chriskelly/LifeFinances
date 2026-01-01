@@ -66,13 +66,6 @@ spending:
 
 state: California
 
-kids:
-  fraction_of_spending: 0.12
-  years_of_support: 18
-  birth_years:
-    - 2021
-    - 2026
-
 income_profiles:
   - starting_income: 80
     tax_deferred_income: 10

@@ -66,7 +66,6 @@ class TestResults:
     def test_costs(self):
         """These costs should be negative or 0"""
         assert (self.results[ResultLabels.SPENDING.value] <= 0).all()
-        assert (self.results[ResultLabels.KIDS.value] <= 0).all()
         assert (self.results[ResultLabels.INCOME_TAXES.value] <= 0).all()
         assert (self.results[ResultLabels.MEDICARE_TAXES.value] <= 0).all()
         assert (self.results[ResultLabels.SOCIAL_SECURITY_TAXES.value] <= 0).all()
@@ -116,7 +115,6 @@ class TestResults:
         total_costs = self.results[ResultLabels.TOTAL_COSTS.value].astype(float)
         sum_of_cost_components = (
             self.results[ResultLabels.SPENDING.value]
-            + self.results[ResultLabels.KIDS.value]
             + self.results[ResultLabels.TOTAL_TAXES.value]
         ).astype(float)
         assert np.all(np.isclose(total_costs, sum_of_cost_components))

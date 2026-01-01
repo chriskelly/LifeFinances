@@ -120,7 +120,6 @@ class ResultLabels(Enum):
     PENSION = "Pension"
     TOTAL_INCOME = "Total Income"
     SPENDING = "Spending"
-    KIDS = "Kids"
     INCOME_TAXES = "Income Taxes"
     MEDICARE_TAXES = "Medicare Taxes"
     SOCIAL_SECURITY_TAXES = "Social Security Taxes"
@@ -185,7 +184,6 @@ class Results:
                 interval.state_change_components.net_transactions.income.pension,
                 interval.state_change_components.net_transactions.income.sum,
                 interval.state_change_components.net_transactions.costs.spending,
-                interval.state_change_components.net_transactions.costs.kids,
                 interval.state_change_components.net_transactions.costs.taxes.income,
                 interval.state_change_components.net_transactions.costs.taxes.medicare,
                 interval.state_change_components.net_transactions.costs.taxes.social_security,
