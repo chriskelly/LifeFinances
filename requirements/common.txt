@@ -1,5 +1,4 @@
 flask==3.0.0
-Flask-Session==0.8.0
 numpy==1.26.1
 numpy-financial==1.0.0
 pandas==2.1.2

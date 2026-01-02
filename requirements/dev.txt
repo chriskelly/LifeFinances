@@ -6,15 +6,6 @@ pytest-cov==7.0.0
 pytest-flask==1.3.0
 pytest-mock==3.12.0
 
-# E2E testing dependencies (for tests/e2e/)
-# E2E tests are excluded from CI but developers should be able to run them
-selenium>=4.15.0
-pytest-selenium>=4.0.0
-webdriver-manager>=4.0.0
-pytest-xdist>=3.5.0
-pytest-html>=4.1.0
-pytest-timeout>=2.2.0
-
 # Development tools
 snakeviz==2.2.0
 ruff==0.14.10

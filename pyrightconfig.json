@@ -7,16 +7,7 @@
   ],
   "exclude": [
     "**/__pycache__",
-    "**/.pytest_cache",
-    ".venv",
-    "tests/e2e"
-  ],
-  "venvPath": ".",
-  "venv": ".venv",
-  "executionEnvironments": [
-    {
-      "root": "."
-    }
+    "**/.pytest_cache"
   ]
 }
 
