@@ -5,13 +5,9 @@
     "standalone_tools",
     "run.py"
   ],
-  "executionEnvironments": [
-    {
-      "root": ".",
-      "extraPaths": [
-        "/usr/local/lib/python3.10/site-packages"
-      ]
-    }
+  "exclude": [
+    "**/__pycache__",
+    "**/.pytest_cache"
   ]
 }
 

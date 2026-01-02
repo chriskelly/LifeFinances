@@ -10,6 +10,7 @@ def create_app():
     from app.routes.index import IndexPage
 
     app = Flask(__name__)
+
     app.register_blueprint(api_blueprint, url_prefix="/api")
 
     @app.route("/", methods=["GET", "POST"])
