@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SpendingStrategyConfig",
+  "description": "Configuration schema for spending strategies (generated from Pydantic models)",
+  "type": "object",
+  "properties": {
+    "spending_strategy": {
+      "type": "object",
+      "properties": {
+        "inflation_following": {
+          "$ref": "#/definitions/InflationFollowingConfig"
+        }
+      },
+      "required": ["inflation_following"]
+    }
+  },
+  "required": ["spending_strategy"],
+  "definitions": {
+    "InflationFollowingConfig": {
+      "type": "object",
+      "properties": {
+        "chosen": {
+          "type": "boolean",
+          "description": "Whether this strategy is selected"
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SpendingProfile"
+          },
+          "minItems": 1,
+          "description": "Ordered list of spending profiles over different time periods"
+        }
+      },
+      "required": ["chosen", "profiles"]
+    },
+    "SpendingProfile": {
+      "type": "object",
+      "properties": {
+        "yearly_amount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Base yearly spending amount (in thousands)"
+        },
+        "end_date": {
+          "oneOf": [
+            {"type": "number"},
+            {"type": "null"}
+          ],
+          "description": "Date when this profile ends (null for final profile that continues indefinitely)"
+        }
+      },
+      "required": ["yearly_amount"]
+    }
+  },
+  "examples": [
+    {
+      "spending_strategy": {
+        "inflation_following": {
+          "chosen": true,
+          "profiles": [
+            {
+              "yearly_amount": 60,
+              "end_date": 2035.25
+            },
+            {
+              "yearly_amount": 70,
+              "end_date": 2040.25
+            },
+            {
+              "yearly_amount": 55,
+              "end_date": null
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+

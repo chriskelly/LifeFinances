@@ -8,6 +8,8 @@ Auto-generated from all feature plans. Last updated: 2025-12-10
 - Python 3.10+ (002-total-portfolio-allocation)
 - N/A (configuration stored in user config files, no database changes) (002-total-portfolio-allocation)
 - N/A (in-memory calculations, reads from `variable_statistics.csv` for asset statistics) (002-total-portfolio-allocation)
+- Python 3.10+ + pydantic (for config models), numpy (for calculations), dataclasses (for strategy classes) (001-spending-controller)
+- N/A (configuration-driven, no persistence layer) (001-spending-controller)
 
 - Python 3.10 (001-disability-insurance-calculator)
 
@@ -27,9 +29,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.10: Follow standard conventions
 
 ## Recent Changes
+- 001-spending-controller: Added Python 3.10+ + pydantic (for config models), numpy (for calculations), dataclasses (for strategy classes)
 - 002-total-portfolio-allocation: Added Python 3.10
 - 002-total-portfolio-allocation: Added Python 3.10+
-- 001-remove-correlations: Added Python 3.10.19 + numpy (1.26.1), Flask (3.0.0), pandas (2.1.2), pydantic (2.4.2), PyYAML (6.0.1)
 
 
 <!-- MANUAL ADDITIONS START -->
