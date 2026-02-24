@@ -5,23 +5,12 @@ from pydantic import BaseModel, Field, model_validator
 from app.models.config.strategy import StrategyConfig, StrategyOptions
 
 
-class SpendingOptions(StrategyOptions):
-    """
-    Attributes
-        inflation_only (Strategy): Defaults to None
-
-        ceil_floor (CeilFloorStrategy): Defaults to None
-    """
-
-    inflation_only: StrategyConfig = StrategyConfig(chosen=True)
-
-
 class SpendingProfile(BaseModel):
-    """
-    Attributes
-        yearly_amount (float)
+    """Represents a time period with specific yearly spending amount
 
-        end_date (float)
+    Attributes:
+        yearly_amount (int): Base yearly spending in thousands
+        end_date (float | None): Date when this profile ends (None for final profile)
     """
 
     yearly_amount: int
@@ -29,7 +18,17 @@ class SpendingProfile(BaseModel):
 
 
 def _spending_profiles_validation(spending_profiles: list[SpendingProfile]):
-    """Spending profiles must be in order and last profile should have no end date"""
+    """Validate spending profiles ordering and end_date requirements
+
+    Args:
+        spending_profiles: List of spending profiles to validate
+
+    Raises:
+        ValueError: If profiles are invalid (empty, out of order, missing/extra end_dates)
+    """
+    if not spending_profiles:
+        raise ValueError("At least one spending profile is required")
+
     if spending_profiles:
         # Validate that all profiles except the last have end_date set
         for i in range(len(spending_profiles) - 1):
@@ -54,26 +53,17 @@ def _spending_profiles_validation(spending_profiles: list[SpendingProfile]):
             raise ValueError("Last spending profile should have no end date")
 
 
-class Spending(BaseModel):
-    """
-    Attributes
-        spending_strategy (SpendingOptions): Defaults to `inflation_only` strategy
+class InflationFollowingConfig(StrategyConfig):
+    """Configuration for inflation-following spending strategy
 
-        profiles (list[SpendingProfile])
+    This strategy selects spending profiles based on date and applies
+    inflation adjustment to the base yearly amount.
+
+    Attributes:
+        chosen (bool): Inherited from StrategyConfig - whether this strategy is selected
+        profiles (list[SpendingProfile]): Ordered list of spending profiles over time periods
     """
 
-    spending_strategy: SpendingOptions = Field(
-        default_factory=lambda: SpendingOptions(
-            inflation_only=StrategyConfig(chosen=True)
-        ),
-        json_schema_extra={
-            "ui": {
-                "label": "Spending Strategy",
-                "tooltip": "Strategy for adjusting spending over time (inflation_only, etc.)",
-                "section": "Spending",
-            }
-        },
-    )
     profiles: list[SpendingProfile] = Field(
         json_schema_extra={
             "ui": {
@@ -86,6 +76,25 @@ class Spending(BaseModel):
 
     @model_validator(mode="after")
     def validate_profiles(self):
-        """Spending profiles must be in order and last profile should have no end date"""
+        """Validate spending profiles using existing validation logic"""
         _spending_profiles_validation(self.profiles)
         return self
+
+
+class SpendingStrategyOptions(StrategyOptions):
+    """Container for all spending strategy options
+
+    Attributes:
+        inflation_following (InflationFollowingConfig): The inflation-following strategy config
+    """
+
+    inflation_following: InflationFollowingConfig = Field(
+        default_factory=lambda: InflationFollowingConfig(chosen=True, profiles=[]),
+        json_schema_extra={
+            "ui": {
+                "label": "Inflation Following Strategy",
+                "tooltip": "Adjust spending based on inflation and spending profiles",
+                "section": "Spending",
+            }
+        },
+    )

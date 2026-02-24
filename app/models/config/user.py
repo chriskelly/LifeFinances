@@ -9,7 +9,7 @@ from app.models.config.admin import Admin
 from app.models.config.benefits import SocialSecurity
 from app.models.config.income import IncomeProfile, _income_profiles_in_order
 from app.models.config.portfolio import Portfolio
-from app.models.config.spending import Spending
+from app.models.config.spending import SpendingStrategyOptions
 from app.models.config.standalone_tools import (
     DisabilityInsuranceCalculator,
     TPAWPlanner,
@@ -74,7 +74,7 @@ class User(BaseModel):
 
         social_security_pension (SocialSecurity): Defaults to default `SocialSecurity`
 
-        spending (Spending)
+        spending_strategy (SpendingStrategyOptions): Root-level spending strategy configuration
 
         state (str): Defaults to None
 
@@ -152,11 +152,11 @@ class User(BaseModel):
             }
         },
     )
-    spending: Spending = Field(
+    spending_strategy: SpendingStrategyOptions = Field(
         json_schema_extra={
             "ui": {
-                "label": "Spending",
-                "tooltip": "Spending profiles and strategy configuration",
+                "label": "Spending Strategy",
+                "tooltip": "Spending strategy and profiles configuration",
                 "section": "Spending",
             }
         }

@@ -24,11 +24,11 @@
 
 **Purpose**: Verify existing project structure supports the spending controller refactoring
 
-- [ ] T001 Verify Python 3.10+ environment and dependencies (pydantic, numpy, dataclasses, pytest)
-- [ ] T002 [P] Verify Ruff linting configuration in pyproject.toml
-- [ ] T003 [P] Verify Pyright type checking configuration in pyrightconfig.json
-- [ ] T004 [P] Review existing allocation controller pattern in app/models/controllers/allocation.py for reference
-- [ ] T005 Review existing config strategy pattern in app/models/config/strategy.py for reference
+- [x] T001 Verify Python 3.10+ environment and dependencies (pydantic, numpy, dataclasses, pytest)
+- [x] T002 [P] Verify Ruff linting configuration in pyproject.toml
+- [x] T003 [P] Verify Pyright type checking configuration in pyrightconfig.json
+- [x] T004 [P] Review existing allocation controller pattern in app/models/controllers/allocation.py for reference
+- [x] T005 Review existing config strategy pattern in app/models/config/strategy.py for reference
 
 ---
 
@@ -38,11 +38,11 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 [P] Create reusable test fixtures for spending profiles in tests/conftest.py (sample profiles, users with spending configs)
-- [ ] T007 [P] Create test fixture for State objects with various dates and inflation values in tests/conftest.py
-- [ ] T008 Refactor app/models/config/spending.py to implement new config structure (InflationFollowingConfig, SpendingStrategyOptions)
-- [ ] T009 Update app/models/config/user.py to change from spending: Spending to spending_strategy: SpendingStrategyOptions
-- [ ] T010 Update tests/sample_configs/full_config.yml to use new spending_strategy format
+- [x] T006 [P] Create reusable test fixtures for spending profiles in tests/conftest.py (sample profiles, users with spending configs)
+- [x] T007 [P] Create test fixture for State objects with various dates and inflation values in tests/conftest.py
+- [x] T008 Refactor app/models/config/spending.py to implement new config structure (InflationFollowingConfig, SpendingStrategyOptions)
+- [x] T009 Update app/models/config/user.py to change from spending: Spending to spending_strategy: SpendingStrategyOptions
+- [x] T010 Update tests/sample_configs/full_config.yml to use new spending_strategy format
 
 **Checkpoint**: Configuration layer refactored - controller implementation can now begin
 
@@ -59,32 +59,32 @@
 > **NOTE: TDD REQUIRED - Write these tests FIRST, ensure they FAIL before implementation**
 > **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. Test coverage MUST achieve 95%+ for financial calculations. Tests SHOULD use reusable fixtures and derive expectations from shared data.
 
-- [ ] T011 [P] [US1] Unit tests for SpendingProfile validation in tests/models/config/test_spending.py (empty list, out-of-order, last profile with end_date, chronological ordering)
-- [ ] T012 [P] [US1] Unit tests for InflationFollowingConfig validation in tests/models/config/test_spending.py (profile validation delegation, error messages)
-- [ ] T013 [P] [US1] Unit tests for SpendingStrategyOptions in tests/models/config/test_spending.py (chosen_strategy property, default inflation_following)
-- [ ] T014 [P] [US1] Unit tests for _InflationFollowingStrategy.calc_spending in tests/models/controllers/test_spending.py (profile selection, inflation application, negative return, boundary conditions)
-- [ ] T015 [P] [US1] Unit tests for Controller initialization in tests/models/controllers/test_spending.py (strategy selection, invalid strategy name)
-- [ ] T016 [P] [US1] Unit tests for Controller.calc_spending delegation in tests/models/controllers/test_spending.py
-- [ ] T017 [US1] Integration tests for StateChangeComponents using spending controller in tests/models/financial/test_state_change.py (replace old _calc_spending tests)
-- [ ] T018 [US1] Verify test coverage meets 95%+ for spending calculation logic
+- [x] T011 [P] [US1] Unit tests for SpendingProfile validation in tests/models/config/test_spending.py (empty list, out-of-order, last profile with end_date, chronological ordering)
+- [x] T012 [P] [US1] Unit tests for InflationFollowingConfig validation in tests/models/config/test_spending.py (profile validation delegation, error messages)
+- [x] T013 [P] [US1] Unit tests for SpendingStrategyOptions in tests/models/config/test_spending.py (chosen_strategy property, default inflation_following)
+- [x] T014 [P] [US1] Unit tests for _InflationFollowingStrategy.calc_spending in tests/models/controllers/test_spending.py (profile selection, inflation application, negative return, boundary conditions)
+- [x] T015 [P] [US1] Unit tests for Controller initialization in tests/models/controllers/test_spending.py (strategy selection, invalid strategy name)
+- [x] T016 [P] [US1] Unit tests for Controller.calc_spending delegation in tests/models/controllers/test_spending.py
+- [x] T017 [US1] Integration tests for StateChangeComponents using spending controller in tests/models/financial/test_state_change.py (replace old _calc_spending tests)
+- [x] T018 [US1] Verify test coverage meets 95%+ for spending calculation logic
 
 ### Implementation for User Story 1
 
-- [ ] T019 [P] [US1] Implement _Strategy ABC in app/models/controllers/spending.py (abstract base class with calc_spending method)
-- [ ] T020 [P] [US1] Implement _InflationFollowingStrategy in app/models/controllers/spending.py (dataclass, calc_spending with profile selection logic per FR-007, FR-008, FR-009)
-- [ ] T021 [US1] Implement Controller class in app/models/controllers/spending.py (__init__ with strategy selection, calc_spending delegation per FR-001)
-- [ ] T022 [US1] Add spending controller to Controllers dataclass in app/models/controllers/__init__.py per FR-010
-- [ ] T023 [US1] Update StateChangeComponents._calc_spending to use controllers.spending.calc_spending in app/models/financial/state_change.py per FR-011
-- [ ] T024 [US1] Remove old _calc_spending static method from app/models/financial/state_change.py
-- [ ] T025 [US1] Add module-level docstring to app/models/controllers/spending.py per constitution
-- [ ] T026 [US1] Add comprehensive docstrings to all classes and methods in app/models/controllers/spending.py per constitution
-- [ ] T027 [US1] Verify all type hints are present in app/models/controllers/spending.py per constitution
-- [ ] T028 [US1] Verify named arguments used in function calls in app/models/controllers/spending.py per constitution
-- [ ] T029 [US1] Run Ruff linting on modified files (app/models/config/spending.py, app/models/controllers/spending.py, app/models/financial/state_change.py)
-- [ ] T030 [US1] Run Ruff formatting on modified files
-- [ ] T031 [US1] Run Pyright type checking on modified files
-- [ ] T032 [US1] Verify all tests pass with new implementation
-- [ ] T033 [US1] Profile spending calculation performance (target: <1ms per call) per PR-002
+- [x] T019 [P] [US1] Implement _Strategy ABC in app/models/controllers/spending.py (abstract base class with calc_spending method)
+- [x] T020 [P] [US1] Implement _InflationFollowingStrategy in app/models/controllers/spending.py (dataclass, calc_spending with profile selection logic per FR-007, FR-008, FR-009)
+- [x] T021 [US1] Implement Controller class in app/models/controllers/spending.py (__init__ with strategy selection, calc_spending delegation per FR-001)
+- [x] T022 [US1] Add spending controller to Controllers dataclass in app/models/controllers/__init__.py per FR-010
+- [x] T023 [US1] Update StateChangeComponents._calc_spending to use controllers.spending.calc_spending in app/models/financial/state_change.py per FR-011
+- [x] T024 [US1] Remove old _calc_spending static method from app/models/financial/state_change.py
+- [x] T025 [US1] Add module-level docstring to app/models/controllers/spending.py per constitution
+- [x] T026 [US1] Add comprehensive docstrings to all classes and methods in app/models/controllers/spending.py per constitution
+- [x] T027 [US1] Verify all type hints are present in app/models/controllers/spending.py per constitution
+- [x] T028 [US1] Verify named arguments used in function calls in app/models/controllers/spending.py per constitution
+- [x] T029 [US1] Run Ruff linting on modified files (app/models/config/spending.py, app/models/controllers/spending.py, app/models/financial/state_change.py)
+- [x] T030 [US1] Run Ruff formatting on modified files
+- [x] T031 [US1] Run Pyright type checking on modified files
+- [x] T032 [US1] Verify all tests pass with new implementation
+- [x] T033 [US1] Profile spending calculation performance (target: <1ms per call) per PR-002
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - spending controller calculates spending correctly, all tests pass, maintains calculation accuracy per SC-001
 
@@ -94,21 +94,21 @@
 
 **Purpose**: Final validation and improvements across the feature
 
-- [ ] T034 [P] Run full test suite and verify 95%+ coverage for spending calculation logic per TR-002
-- [ ] T035 [P] Verify all unit tests complete in <1s per test per TR-004
-- [ ] T036 [P] Verify integration tests complete in <10s per test per TR-005
-- [ ] T037 [P] Run Ruff linting on entire modified codebase
-- [ ] T038 [P] Run Ruff formatting check on entire modified codebase
-- [ ] T039 [P] Run Pyright type checking on entire modified codebase
-- [ ] T040 [P] Verify no circular dependencies introduced per constitution
-- [ ] T041 [P] Validate configuration schema matches contracts/spending_config_schema.json
-- [ ] T042 [P] Review data-model.md accuracy against implementation
-- [ ] T043 [P] Review quickstart.md examples work correctly
-- [ ] T044 Compare spending calculation results before/after refactoring to verify SC-001 (identical calculations)
-- [ ] T045 Verify spending calculation performance remains <1ms per interval per SC-002
-- [ ] T046 Verify configuration validation catches all invalid scenarios per SC-003 (run validation test suite)
-- [ ] T047 Verify spending Controller follows allocation Controller pattern per SC-004 (architectural consistency review)
-- [ ] T048 Update any additional sample configs or documentation as needed
+- [x] T034 [P] Run full test suite and verify 95%+ coverage for spending calculation logic per TR-002
+- [x] T035 [P] Verify all unit tests complete in <1s per test per TR-004
+- [x] T036 [P] Verify integration tests complete in <10s per test per TR-005
+- [x] T037 [P] Run Ruff linting on entire modified codebase
+- [x] T038 [P] Run Ruff formatting check on entire modified codebase
+- [x] T039 [P] Run Pyright type checking on entire modified codebase
+- [x] T040 [P] Verify no circular dependencies introduced per constitution
+- [x] T041 [P] Validate configuration schema matches contracts/spending_config_schema.json
+- [x] T042 [P] Review data-model.md accuracy against implementation
+- [x] T043 [P] Review quickstart.md examples work correctly
+- [x] T044 Compare spending calculation results before/after refactoring to verify SC-001 (identical calculations)
+- [x] T045 Verify spending calculation performance remains <1ms per interval per SC-002
+- [x] T046 Verify configuration validation catches all invalid scenarios per SC-003 (run validation test suite)
+- [x] T047 Verify spending Controller follows allocation Controller pattern per SC-004 (architectural consistency review)
+- [x] T048 Update any additional sample configs or documentation as needed
 
 ---
 

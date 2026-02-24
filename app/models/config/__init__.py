@@ -29,9 +29,9 @@ from app.models.config.portfolio import (
 
 # Spending
 from app.models.config.spending import (
-    Spending,
-    SpendingOptions,
+    InflationFollowingConfig,
     SpendingProfile,
+    SpendingStrategyOptions,
     _spending_profiles_validation,
 )
 
@@ -74,9 +74,9 @@ __all__ = [
     "SocialSecurity",
     "SocialSecurityOptions",
     # Spending
-    "Spending",
-    "SpendingOptions",
+    "InflationFollowingConfig",
     "SpendingProfile",
+    "SpendingStrategyOptions",
     "_spending_profiles_validation",
     # Income
     "IncomeProfile",

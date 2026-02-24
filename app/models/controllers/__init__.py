@@ -27,6 +27,9 @@ from . import (
 from . import (
     social_security as social_security_module,
 )
+from . import (
+    spending as spending_module,
+)
 
 
 @dataclass
@@ -47,6 +50,8 @@ class Controllers:
         annuity (annuity.Controller): Manages annuity transactions
 
         future_income (future_income.Controller): Manages future income calculation and PV
+
+        spending (spending.Controller): Manages spending strategy and calculation
     """
 
     allocation: allocation_module.Controller
@@ -56,3 +61,4 @@ class Controllers:
     pension: pension_module.Controller
     annuity: annuity_module.Controller
     future_income: future_income_module.Controller
+    spending: spending_module.Controller

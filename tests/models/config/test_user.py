@@ -72,8 +72,11 @@ def test_either_income_or_net_worth():
     """User should provide at least one income profile or net worth"""
     data = {
         "age": 30,
-        "spending": {
-            "profiles": [{"yearly_amount": 10000}],
+        "spending_strategy": {
+            "inflation_following": {
+                "chosen": True,
+                "profiles": [{"yearly_amount": 10000}],
+            }
         },
     }
     with pytest.raises(ValidationError, match="1 validation error"):

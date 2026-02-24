@@ -15,10 +15,11 @@ from app.data import constants
 from app.models.config import (
     AllocationOptions,
     IncomeProfile,
+    InflationFollowingConfig,
     NetWorthPivotStrategyConfig,
     Portfolio,
-    Spending,
     SpendingProfile,
+    SpendingStrategyOptions,
     TotalPortfolioStrategyConfig,
     User,
 )
@@ -203,7 +204,12 @@ class TestTotalPortfolioStrategy:
         """Create a minimal user config for total portfolio strategy testing"""
         return User(
             age=30,
-            spending=Spending(profiles=[SpendingProfile(yearly_amount=80)]),
+            spending_strategy=SpendingStrategyOptions(
+                inflation_following=InflationFollowingConfig(
+                    chosen=True,
+                    profiles=[SpendingProfile(yearly_amount=80)],
+                )
+            ),
             income_profiles=[
                 IncomeProfile(starting_income=100, last_date=constants.TODAY_YR_QT + 20)
             ],
@@ -238,6 +244,7 @@ class TestTotalPortfolioStrategy:
             Controller as FutureIncomeController,
         )
         from app.models.controllers.job_income import Controller as JobIncomeController
+        from app.models.controllers.spending import Controller as SpendingController
 
         def _create_controllers(
             user: User,
@@ -247,6 +254,7 @@ class TestTotalPortfolioStrategy:
             inflation_values: list[float] | None = None,
         ):
             job_income_controller = JobIncomeController(user)
+            spending_controller = SpendingController(user=user)
 
             # Create zero-returning mocks if not provided (matches production where
             # controllers always exist but may return zero income)
@@ -290,6 +298,7 @@ class TestTotalPortfolioStrategy:
             controllers.pension = pension
             controllers.economic_data = mock_economic_data
             controllers.future_income = future_income_controller
+            controllers.spending = spending_controller
             return controllers
 
         return _create_controllers
@@ -655,6 +664,7 @@ class TestTotalPortfolioStrategy:
         from app.models.controllers.social_security import (
             Controller as SocialSecurityController,
         )
+        from app.models.controllers.spending import Controller as SpendingController
 
         allocation_controller = AllocationController(
             user=user, asset_lookup=asset_lookup
@@ -665,6 +675,7 @@ class TestTotalPortfolioStrategy:
         )
         pension_controller = PensionController(user)
         annuity_controller = AnnuityController(user)
+        spending_controller = SpendingController(user=user)
 
         # Mock economic_data controller with inflation values
         mock_economic_data = mocker.MagicMock()
@@ -699,6 +710,7 @@ class TestTotalPortfolioStrategy:
             pension=pension_controller,
             annuity=annuity_controller,
             future_income=future_income_controller,
+            spending=spending_controller,
         )
 
         # Create state

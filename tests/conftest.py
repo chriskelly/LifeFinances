@@ -90,3 +90,24 @@ def assets(test_statistics_csv_path: Path) -> AssetStats:
         us_bond=get_stat(label="US_Bond"),
         intl_ex_us_stock=get_stat(label="Intl_ex_US_Stock"),
     )
+
+
+# Spending-related fixtures for spending controller feature
+
+
+@pytest.fixture
+def sample_spending_profiles():
+    """Returns a list of sample SpendingProfile objects for testing
+
+    Provides three profiles:
+    - 60K/year until 2035.25
+    - 70K/year until 2040.25
+    - 55K/year indefinitely (no end_date)
+    """
+    from app.models.config.spending import SpendingProfile
+
+    return [
+        SpendingProfile(yearly_amount=60, end_date=2035.25),
+        SpendingProfile(yearly_amount=70, end_date=2040.25),
+        SpendingProfile(yearly_amount=55, end_date=None),
+    ]

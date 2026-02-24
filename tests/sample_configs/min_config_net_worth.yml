@@ -1,8 +1,10 @@
 age: 30
 
-spending:
-  profiles:
-    - yearly_amount: 60
+spending_strategy:
+  inflation_following:
+    chosen: true
+    profiles:
+      - yearly_amount: 60
 
 portfolio:
   current_net_worth: 250

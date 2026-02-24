@@ -53,16 +53,15 @@ social_security_pension:
     2010: 75
     2011: 78
 
-spending:
-  spending_strategy:
-    inflation_only:
-      chosen: true
-  profiles:
-    - yearly_amount: 60
-      end_date: 2035.25
-    - yearly_amount: 70
-      end_date: 2040.25
-    - yearly_amount: 55
+spending_strategy:
+  inflation_following:
+    chosen: true
+    profiles:
+      - yearly_amount: 60
+        end_date: 2035.25
+      - yearly_amount: 70
+        end_date: 2040.25
+      - yearly_amount: 55
 
 state: California
 

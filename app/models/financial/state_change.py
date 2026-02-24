@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from app.data.constants import INTERVALS_PER_YEAR
 from app.models.controllers import Controllers
 from app.models.financial.state import State
 from app.models.financial.taxes import Taxes, calc_taxes
@@ -125,7 +124,7 @@ class StateChangeComponents:
     def _gen_costs(
         components: StateChangeComponents, income: Income, portfolio_return: float
     ) -> _Costs:
-        spending = StateChangeComponents._calc_spending(components)
+        spending = components.controllers.spending.calc_spending(state=components.state)
         return _Costs(
             spending=spending,
             taxes=calc_taxes(
@@ -135,22 +134,3 @@ class StateChangeComponents:
                 portfolio_return=portfolio_return,
             ),
         )
-
-    @staticmethod
-    def _calc_spending(components: StateChangeComponents) -> float:
-        """
-        Calculate the spending amount based on the user's config and the current state.
-
-        Args:
-            components (StateChangeComponents): The components required for the calculation.
-
-        Returns:
-            float: The calculated spending amount for that state.
-        """
-        config = components.state.user.spending
-        inflation = components.state.inflation
-
-        for profile in config.profiles:
-            if not profile.end_date or profile.end_date >= components.state.date:
-                return -profile.yearly_amount / INTERVALS_PER_YEAR * inflation
-        raise ValueError("No spending profile found for the current date")

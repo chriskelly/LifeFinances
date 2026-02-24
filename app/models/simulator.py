@@ -35,6 +35,7 @@ from app.models.controllers import (
     job_income,
     pension,
     social_security,
+    spending,
 )
 from app.models.financial.interval import gen_first_interval
 
@@ -76,6 +77,7 @@ class SimulationTrial:
         )
         pension_controller = pension.Controller(user_config)
         annuity_controller = annuity.Controller(user_config)
+        spending_controller = spending.Controller(user=user_config)
 
         # Initialize future_income controller with its dependencies
         future_income_controller = future_income.Controller(
@@ -95,6 +97,7 @@ class SimulationTrial:
             pension=pension_controller,
             annuity=annuity_controller,
             future_income=future_income_controller,
+            spending=spending_controller,
         )
 
         self.intervals = [gen_first_interval(user_config, self.controllers)]
