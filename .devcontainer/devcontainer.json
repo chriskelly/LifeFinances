@@ -22,7 +22,7 @@
                     "**/*.pyc": true
                 },
                 "[python]": {
-                    "defaultInterpreterPath": "/usr/local/bin/python",
+                    "defaultInterpreterPath": "/workspace/.venv/bin/python",
                     "linting.enabled": true,
                     "formatting.provider": "ruff",
                     "testing.pytestEnabled": true,

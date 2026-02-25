@@ -11,4 +11,4 @@ services:
       - "3500:3500"
     entrypoint:
       - python
-      - /run.py
+      - run.py

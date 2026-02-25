@@ -42,28 +42,28 @@ test: up
 ifeq ($(USE_DIRECT),true)
 	pytest tests
 else
-	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances /tests
+	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances tests
 endif
 
 ruff-check: build
 ifeq ($(USE_DIRECT),true)
 	python -m ruff check .
 else
-	docker compose run --rm --no-deps -v $(PWD):/workspace -w /workspace --entrypoint=ruff life_finances check .
+	docker compose run --rm --no-deps -v $(PWD):/app -w /app --entrypoint=ruff life_finances check .
 endif
 
 ruff-format-check: build
 ifeq ($(USE_DIRECT),true)
 	python -m ruff format --check .
 else
-	docker compose run --rm --no-deps -v $(PWD):/workspace -w /workspace --entrypoint=ruff life_finances format --check .
+	docker compose run --rm --no-deps -v $(PWD):/app -w /app --entrypoint=ruff life_finances format --check .
 endif
 
 pyright: build
 ifeq ($(USE_DIRECT),true)
 	python -m pyright
 else
-	docker compose run --rm --no-deps -v $(PWD):/workspace -w /workspace --entrypoint=pyright life_finances
+	docker compose run --rm --no-deps -v $(PWD):/app -w /app --entrypoint=pyright life_finances
 endif
 
 lint: ruff-check ruff-format-check pyright
@@ -72,7 +72,7 @@ coverage:
 ifeq ($(USE_DIRECT),true)
 	pytest tests --cov=app --cov-report=term-missing --cov-report=html
 else
-	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances /tests --cov=app --cov-report=term-missing --cov-report=html
+	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances tests --cov=app --cov-report=term-missing --cov-report=html
 endif
 
 profile:
