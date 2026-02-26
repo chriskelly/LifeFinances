@@ -11,3 +11,4 @@ RUN uv sync --locked
 COPY run.py app/ tests/ ./
 
 ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH="/app"
