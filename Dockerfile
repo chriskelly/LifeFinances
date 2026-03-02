@@ -8,6 +8,8 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked
 
-COPY run.py app/ tests/ ./
+COPY run.py ./
+COPY app ./app
+COPY tests ./tests
 
 ENV PATH="/app/.venv/bin:$PATH"

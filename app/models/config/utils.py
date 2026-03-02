@@ -39,6 +39,8 @@ def get_config(config_path: Path) -> User:
     Returns:
         User
     """
+    if not config_path.is_file() and config_path == constants.CONFIG_PATH:
+        config_path = constants.SAMPLE_FULL_CONFIG_PATH
     with open(config_path, encoding="utf-8") as file:  # pylint:disable=redefined-outer-name
         yaml_content = cast(dict[str, Any], yaml.safe_load(file))
     try:
@@ -56,6 +58,8 @@ def get_config(config_path: Path) -> User:
 
 def read_config_file(config_path: Path = constants.CONFIG_PATH) -> str:
     """Reads the config file and returns the text"""
+    if not config_path.is_file() and config_path == constants.CONFIG_PATH:
+        config_path = constants.SAMPLE_FULL_CONFIG_PATH
     with open(config_path, encoding="utf-8") as config_file:
         config_text = config_file.read()
     return config_text
