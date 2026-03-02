@@ -49,21 +49,21 @@ ruff-check: build
 ifeq ($(USE_DIRECT),true)
 	python -m ruff check .
 else
-	docker compose run --rm --no-deps -v $(PWD):/app -w /app --entrypoint=ruff life_finances check .
+	docker compose run --rm --no-deps --entrypoint=ruff life_finances check .
 endif
 
 ruff-format-check: build
 ifeq ($(USE_DIRECT),true)
 	python -m ruff format --check .
 else
-	docker compose run --rm --no-deps -v $(PWD):/app -w /app --entrypoint=ruff life_finances format --check .
+	docker compose run --rm --no-deps --entrypoint=ruff life_finances format --check .
 endif
 
 pyright: build
 ifeq ($(USE_DIRECT),true)
 	python -m pyright
 else
-	docker compose run --rm --no-deps -v $(PWD):/app -w /app --entrypoint=pyright life_finances
+	docker compose run --rm --no-deps --entrypoint=pyright life_finances
 endif
 
 lint: ruff-check ruff-format-check pyright
