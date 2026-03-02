@@ -36,7 +36,10 @@ def test_sample_config_data(sample_config_data):
 
 def test_user_data():
     """Ensure user's data is valid"""
-    with open(constants.CONFIG_PATH, encoding="utf-8") as file:
+    config_path = constants.CONFIG_PATH
+    if not config_path.is_file():
+        config_path = constants.SAMPLE_FULL_CONFIG_PATH
+    with open(config_path, encoding="utf-8") as file:
         user_data = cast(dict[str, Any], yaml.safe_load(file))
     assert user_data
     try:

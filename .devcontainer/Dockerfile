@@ -1,23 +1,20 @@
 FROM python:3.10
 
-# Install system dependencies if needed
+COPY --from=ghcr.io/astral-sh/uv:0.10.6 /uv /uvx /bin/
+
 RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /workspace
 
-# Copy requirements first for better caching
-COPY requirements/ /requirements/
+# Install dependencies first for caching
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked
 
-# Install development dependencies
-RUN pip install --no-cache-dir -r /requirements/dev.txt
+COPY . /workspace
 
-# Copy application code
-COPY . /workspace/
-
-# Set environment variables
+ENV PATH="/workspace/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 

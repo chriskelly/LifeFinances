@@ -6,9 +6,9 @@ services:
     volumes:
       - ./src:/src:ro
       - ./tests:/tests:ro
-      - ./config.yml:/config.yml
+      - ./config.yml:/app/config.yml:ro
     ports:
       - "3500:3500"
     entrypoint:
       - python
-      - /run.py
+      - run.py

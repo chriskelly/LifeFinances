@@ -35,7 +35,7 @@ This constitution establishes the non-negotiable principles governing the LifeFI
 
 - **Documentation Requirements**: All modules MUST include module-level docstrings. All public classes and functions MUST include docstrings following Google or NumPy style conventions. Complex algorithms or business logic MUST include inline comments explaining non-obvious decisions.
 
-- **Code Organization**: Code MUST follow the established project structure (app/, tests/, requirements/). Related functionality MUST be grouped logically. Circular dependencies MUST be avoided. Import statements MUST be organized (stdlib, third-party, local) and unused imports MUST be removed.
+- **Code Organization**: Code MUST follow the established project structure (app/, tests/, pyproject.toml). Related functionality MUST be grouped logically. Circular dependencies MUST be avoided. Import statements MUST be organized (stdlib, third-party, local) and unused imports MUST be removed.
 
 - **Object Models Over Dictionaries**: Code MUST favor creating object models (classes, dataclasses, TypedDict, Pydantic models) rather than plain dictionaries for type safety. Dictionaries SHOULD only be used when object models would add unnecessary complexity or when interfacing with external APIs that require dictionary formats. Rationale: Object models provide compile-time type checking, better IDE support, and clearer contracts.
 
