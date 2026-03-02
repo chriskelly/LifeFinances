@@ -13,7 +13,7 @@ permissions:
 jobs:
   attempt-fix:
     if: >-
-      ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.name != 'Fix CI Failures' }}
+      ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -38,7 +38,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH_PREFIX: ci-fix
         run: |
-          agent -p "You are operating in a GitHub Actions runner.
+          agent -p 'You are operating in a GitHub Actions runner.
 
           The GitHub CLI is available as `gh` and authenticated via `GH_TOKEN`. Git is available. You have write access to repository contents and can comment on pull requests, but you must not create or edit PRs directly.
 
@@ -66,4 +66,4 @@ jobs:
           # Deliverables when updates occur:
           - Pushed commits to the persistent fix branch for this PR head.
           - A single natural-language PR comment on the original PR that includes the inline compare link above.
-          " --force --model "$MODEL" --output-format=text
+          ' --force --model "$MODEL" --output-format=text
