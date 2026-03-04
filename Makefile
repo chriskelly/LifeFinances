@@ -40,28 +40,28 @@ endif
 
 test: up
 ifeq ($(USE_DIRECT),true)
-	pytest tests
+	uv run --project backend pytest backend/tests
 else
 	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances tests
 endif
 
 ruff-check: build
 ifeq ($(USE_DIRECT),true)
-	python -m ruff check .
+	uv run --project backend ruff check backend
 else
 	docker compose run --rm --no-deps --entrypoint=ruff life_finances check .
 endif
 
 ruff-format-check: build
 ifeq ($(USE_DIRECT),true)
-	python -m ruff format --check .
+	uv run --project backend ruff format --check backend
 else
 	docker compose run --rm --no-deps --entrypoint=ruff life_finances format --check .
 endif
 
 pyright: build
 ifeq ($(USE_DIRECT),true)
-	python -m pyright
+	uv run --project backend pyright -p backend/pyrightconfig.json
 else
 	docker compose run --rm --no-deps --entrypoint=pyright life_finances
 endif
@@ -70,11 +70,11 @@ lint: ruff-check ruff-format-check pyright
 
 coverage:
 ifeq ($(USE_DIRECT),true)
-	pytest tests --cov=app --cov-report=term-missing --cov-report=html
+	uv run --project backend pytest backend/tests --cov=backend/app --cov-report=term-missing --cov-report=html
 else
 	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances tests --cov=app --cov-report=term-missing --cov-report=html
 endif
 
 profile:
-	python -m cProfile -o tests/profiling/results/gen_trials.prof tests/profiling/gen_trials.py
-	snakeviz tests/profiling/results/gen_trials.prof
+	uv run --project backend python -m cProfile -o backend/tests/profiling/results/gen_trials.prof backend/tests/profiling/gen_trials.py
+	uv run --project backend snakeviz backend/tests/profiling/results/gen_trials.prof

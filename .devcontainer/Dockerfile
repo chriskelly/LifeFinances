@@ -9,12 +9,12 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /workspace
 
 # Install dependencies first for caching
-COPY pyproject.toml uv.lock ./
-RUN uv sync --locked
+COPY backend/pyproject.toml backend/uv.lock /workspace/backend/
+RUN uv sync --locked --project /workspace/backend
 
 COPY . /workspace
 
-ENV PATH="/workspace/.venv/bin:$PATH"
+ENV PATH="/workspace/backend/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 

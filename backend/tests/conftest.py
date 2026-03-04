@@ -64,7 +64,10 @@ def first_state(sample_user: User):
 @pytest.fixture
 def test_statistics_csv_path():
     """Returns path to the test CSV file with variable statistics"""
-    return Path("tests/models/controllers/test_csv_variable_mix_repo_statistics.csv")
+    return (
+        Path(__file__).resolve().parent
+        / "models/controllers/test_csv_variable_mix_repo_statistics.csv"
+    )
 
 
 @pytest.fixture
