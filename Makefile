@@ -5,6 +5,7 @@ export DOCKER_BUILDKIT=1
 # Detect if we're in a devcontainer or docker isn't available
 DOCKER_COMPOSE := $(shell command -v docker-compose 2> /dev/null || command -v docker 2> /dev/null | xargs -I {} sh -c '{} compose version > /dev/null 2>&1 && echo "docker compose" || echo ""')
 IN_DEVCONTAINER := $(shell [ -f /.dockerenv ] && [ -d .devcontainer ] && echo "true" || echo "")
+COMPOSE_SERVICE ?= backend
 
 # Use direct commands if docker compose is not available or we're in devcontainer
 ifeq ($(DOCKER_COMPOSE),)
@@ -42,28 +43,28 @@ test: up
 ifeq ($(USE_DIRECT),true)
 	uv run --project backend pytest backend/tests
 else
-	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances tests
+	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest $(COMPOSE_SERVICE) tests
 endif
 
 ruff-check: build
 ifeq ($(USE_DIRECT),true)
 	uv run --project backend ruff check backend
 else
-	docker compose run --rm --no-deps --entrypoint=ruff life_finances check .
+	docker compose run --rm --no-deps --entrypoint=ruff $(COMPOSE_SERVICE) check .
 endif
 
 ruff-format-check: build
 ifeq ($(USE_DIRECT),true)
 	uv run --project backend ruff format --check backend
 else
-	docker compose run --rm --no-deps --entrypoint=ruff life_finances format --check .
+	docker compose run --rm --no-deps --entrypoint=ruff $(COMPOSE_SERVICE) format --check .
 endif
 
 pyright: build
 ifeq ($(USE_DIRECT),true)
 	uv run --project backend pyright -p backend/pyrightconfig.json
 else
-	docker compose run --rm --no-deps --entrypoint=pyright life_finances
+	docker compose run --rm --no-deps --entrypoint=pyright $(COMPOSE_SERVICE)
 endif
 
 lint: ruff-check ruff-format-check pyright
@@ -72,7 +73,7 @@ coverage:
 ifeq ($(USE_DIRECT),true)
 	uv run --project backend pytest backend/tests --cov=backend/app --cov-report=term-missing --cov-report=html
 else
-	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest life_finances tests --cov=app --cov-report=term-missing --cov-report=html
+	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest $(COMPOSE_SERVICE) tests --cov=app --cov-report=term-missing --cov-report=html
 endif
 
 profile:
