@@ -8,11 +8,16 @@ the Life Finances package
 import datetime as dt
 from pathlib import Path
 
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = Path("config.yml")
-SAMPLE_FULL_CONFIG_PATH = Path("tests/sample_configs/full_config.yml")
-SAMPLE_MIN_CONFIG_INCOME_PATH = Path("tests/sample_configs/min_config_income.yml")
-SAMPLE_MIN_CONFIG_NET_WORTH_PATH = Path("tests/sample_configs/min_config_net_worth.yml")
-STATISTICS_PATH = Path("app/data/variable_statistics.csv")
+SAMPLE_FULL_CONFIG_PATH = BACKEND_ROOT / "tests/sample_configs/full_config.yml"
+SAMPLE_MIN_CONFIG_INCOME_PATH = (
+    BACKEND_ROOT / "tests/sample_configs/min_config_income.yml"
+)
+SAMPLE_MIN_CONFIG_NET_WORTH_PATH = (
+    BACKEND_ROOT / "tests/sample_configs/min_config_net_worth.yml"
+)
+STATISTICS_PATH = BACKEND_ROOT / "app/data/variable_statistics.csv"
 PARAMS_SUCCESS_LOC = Path("data/param_success.json")
 QUIT_LOC = Path("cancel.quit")
 SAVE_DIR = Path("diagnostics/saved")

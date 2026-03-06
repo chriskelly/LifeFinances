@@ -1,11 +1,12 @@
 services:
-  life_finances:
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./src:/src:ro
-      - ./tests:/tests:ro
+      - ./backend/app:/app/app:ro
+      - ./backend/tests:/app/tests:ro
+      - ./backend/run.py:/app/run.py:ro
       - ./config.yml:/app/config.yml:ro
     ports:
       - "3500:3500"
