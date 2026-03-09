@@ -55,7 +55,7 @@
             "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": "([ ! -f config.yml ] && cp backend/tests/sample_configs/full_config.yml config.yml || true) && uv sync --locked --project backend && pre-commit install",
+    "postCreateCommand": "bash .devcontainer/post-create.sh",
     "remoteUser": "root",
     "workspaceFolder": "/workspace",
     "mounts": [
