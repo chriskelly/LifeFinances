@@ -14,7 +14,7 @@ To run the application without any development setup (Docker required):
    ```bash
    docker compose up --build
    ```
-4. Open http://localhost:3500 in your browser
+4. Open http://localhost:5173 in your browser (frontend), or http://localhost:3500 for the backend API directly
 
 ---
 
@@ -29,14 +29,15 @@ The recommended way to develop. Requires [Docker](https://docs.docker.com/get-do
 2. Click **Reopen in Container** when prompted, or run **Dev Containers: Reopen in Container** from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
 3. Wait for the container to build (first time may take a few minutes)
 
-The container provides Python 3.10, all dependencies, pre-commit hooks, and a default `config.yml` if none exists. Port 3500 is forwarded for the Flask app.
+The container provides Python 3.10, Node.js, all dependencies, pre-commit hooks, and a default `config.yml` if none exists. Port 3500 is forwarded for the Python backend and port 5173 for the React frontend.
 
 **Pre-commit hooks:** Installed automatically. They run before each commit (tests, linting). To run manually: `pre-commit run --all-files` or `make`.
 
 **Common commands (inside the container):**
 | Action | Command |
 |--------|---------|
-| Start the Flask app | `python backend/run.py` or `flask --app backend/run.py run` |
+| Start the backend | `python backend/run.py` |
+| Start the frontend | `cd frontend && npm run dev` |
 | Run tests | `make test` |
 | Lint and format | `make lint` |
 
@@ -62,7 +63,8 @@ Hooks run before each commit (tests, linting). To run manually: `pre-commit run 
 **Common commands:**
 | Action | Command |
 |--------|---------|
-| Start the Flask app | `uv run --project backend flask --app backend/run.py run` |
+| Start the backend | `uv run --project backend python backend/run.py` |
+| Start the frontend | `cd frontend && npm run dev` |
 | Run tests | `make test` |
 | Lint and format | `make lint` |
 
