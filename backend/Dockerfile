@@ -8,6 +8,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked
 
+COPY pyrightconfig.json ./
 COPY run.py ./
 COPY app ./app
 COPY tests ./tests

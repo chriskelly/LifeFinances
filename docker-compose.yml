@@ -1,14 +1,27 @@
 services:
-  life_finances:
+  backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     volumes:
-      - ./src:/src:ro
-      - ./tests:/tests:ro
+      - ./backend/app:/app/app:ro
+      - ./backend/tests:/app/tests:ro
+      - ./backend/run.py:/app/run.py:ro
       - ./config.yml:/app/config.yml:ro
     ports:
       - "3500:3500"
     entrypoint:
       - python
       - run.py
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend

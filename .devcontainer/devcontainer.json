@@ -17,18 +17,18 @@
             ],
             "settings": {
                 "editor.formatOnSave": true,
+                "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/bin/python",
                 "files.exclude": {
                     "**/__pycache__": true,
                     "**/*.pyc": true
                 },
                 "[python]": {
-                    "defaultInterpreterPath": "/workspace/.venv/bin/python",
                     "linting.enabled": true,
                     "formatting.provider": "ruff",
                     "testing.pytestEnabled": true,
                     "testing.unittestEnabled": false,
                     "testing.pytestArgs": [
-                        "tests"
+                        "backend/tests"
                     ],
                     "analysis.typeCheckingMode": "standard",
                     "editor.formatOnSave": true,
@@ -55,7 +55,7 @@
             "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": "([ ! -f config.yml ] && cp tests/sample_configs/full_config.yml config.yml || true) && pre-commit install",
+    "postCreateCommand": "bash .devcontainer/post-create.sh",
     "remoteUser": "root",
     "workspaceFolder": "/workspace",
     "mounts": [

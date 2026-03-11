@@ -8,7 +8,9 @@ description: "Task list template for feature implementation"
 **Input**: Design documents from `/specs/[###-feature-name]/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+**Tests**: The examples below include test tasks. Tests are expected for
+application code per the constitution; omit them only when the specification
+documents a constitution-allowed exception.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -21,7 +23,7 @@ description: "Task list template for feature implementation"
 ## Path Conventions
 
 - **Single project**: `src/`, `tests/` at repository root
-- **Web app**: `backend/src/`, `frontend/src/`
+- **Web app**: `backend/app/`, `backend/tests/`, `frontend/src/`, `frontend/tests/`
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
 - Paths shown below assume single project - adjust based on plan.md structure
 
@@ -84,25 +86,25 @@ Examples of foundational tasks (adjust based on your project):
 ### Tests for User Story 1 (REQUIRED per constitution) ⚠️
 
 > **NOTE: TDD REQUIRED - Write these tests FIRST, ensure they FAIL before implementation**
-> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code (simulator and Flask app) MUST include tests. Test coverage MUST meet minimum 80% (95%+ for financial calculations). Where behavior is complex, tests SHOULD use reusable fixtures, factories, and domain-aligned helper dataclasses instead of ad-hoc inline setup, and SHOULD derive expectations from shared data (fixtures, canonical CSVs, or domain objects) rather than hard-coded magic numbers. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
+> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code (backend and frontend) MUST include tests. Test coverage MUST meet minimum 80% (95%+ for financial calculations and high-impact financial journeys). Where behavior is complex, tests SHOULD use reusable fixtures, factories, and domain-aligned helper dataclasses instead of ad-hoc inline setup, and SHOULD derive expectations from shared data (fixtures, canonical CSVs, or domain objects) rather than hard-coded magic numbers. Frontend tests MUST cover loading, success, empty, and error states where data fetching is involved. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
 
-- [ ] T010 [P] [US1] Unit tests for [component] in tests/unit/test_[name].py
-- [ ] T011 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T012 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T010 [P] [US1] Backend unit tests for [component] in backend/tests/unit/test_[name].py or frontend component tests in frontend/tests/[name].test.tsx
+- [ ] T011 [P] [US1] Contract test for [endpoint] in backend/tests/contract/test_[name].py
+- [ ] T012 [P] [US1] Integration/interaction test for [user journey] in backend/tests/integration/test_[name].py or frontend/tests/[name].test.tsx
 - [ ] T013 [US1] Verify test coverage meets constitution requirements (80% minimum, 95%+ for financial logic)
 
 ### Implementation for User Story 1
 
-- [ ] T014 [P] [US1] Create [Entity1] model in src/models/[entity1].py (use object model, not dict; with type hints and docstrings)
-- [ ] T015 [P] [US1] Create [Entity2] model in src/models/[entity2].py (use object model, not dict; with type hints and docstrings)
-- [ ] T016 [US1] Implement [Service] in src/services/[service].py (depends on T014, T015; use named arguments in function calls)
-- [ ] T017 [US1] Implement [endpoint/feature] in src/[location]/[file].py (use named arguments in function calls)
+- [ ] T014 [P] [US1] Create backend domain model in backend/app/models/[entity1].py or frontend typed model in frontend/src/features/[feature]/types.ts
+- [ ] T015 [P] [US1] Create reusable component/hook in frontend/src/features/[feature]/[name].tsx or backend collaborator in backend/app/models/[entity2].py
+- [ ] T016 [US1] Implement typed service or hook in backend/app/[location]/[file].py or frontend/src/services/[service].ts
+- [ ] T017 [US1] Implement endpoint/feature in backend/app/routes/[file].py or frontend/src/features/[feature]/[file].tsx
 - [ ] T018 [US1] Add validation and error handling (with clear, actionable error messages)
 - [ ] T019 [US1] Add logging for user story 1 operations
 - [ ] T020 [US1] Verify Ruff linting passes
 - [ ] T021 [US1] Verify Ruff formatting passes
 - [ ] T022 [US1] Verify Pyright type checking passes
-- [ ] T023 [US1] Add module and function docstrings per constitution
+- [ ] T023 [US1] Verify frontend linting/type checks and add required documentation/comments per constitution
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -116,23 +118,23 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 2 (REQUIRED per constitution) ⚠️
 
-> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code MUST include tests. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
+> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code MUST include tests. Frontend work MUST include accessibility-conscious interaction coverage where applicable. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
 
-- [ ] T023 [P] [US2] Unit tests for [component] in tests/unit/test_[name].py
-- [ ] T024 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T023 [P] [US2] Backend or frontend unit/component tests in backend/tests/... or frontend/tests/[name].test.tsx
+- [ ] T024 [P] [US2] Contract test for [endpoint] in backend/tests/contract/test_[name].py
+- [ ] T025 [P] [US2] Integration/interaction test for [user journey] in backend/tests/integration/test_[name].py or frontend/tests/[name].test.tsx
 - [ ] T026 [US2] Verify test coverage meets constitution requirements (80% minimum, 95%+ for financial logic)
 
 ### Implementation for User Story 2
 
-- [ ] T027 [P] [US2] Create [Entity] model in src/models/[entity].py (use object model, not dict; with type hints and docstrings)
-- [ ] T028 [US2] Implement [Service] in src/services/[service].py (use named arguments in function calls)
-- [ ] T029 [US2] Implement [endpoint/feature] in src/[location]/[file].py (use named arguments in function calls)
+- [ ] T027 [P] [US2] Create backend model in backend/app/models/[entity].py or frontend typed contract in frontend/src/features/[feature]/types.ts
+- [ ] T028 [US2] Implement typed service/hook in backend/app/[location]/[service].py or frontend/src/services/[service].ts
+- [ ] T029 [US2] Implement endpoint/feature in backend/app/routes/[file].py or frontend/src/features/[feature]/[file].tsx
 - [ ] T030 [US2] Integrate with User Story 1 components (if needed)
 - [ ] T031 [US2] Verify Ruff linting passes
 - [ ] T032 [US2] Verify Ruff formatting passes
 - [ ] T033 [US2] Verify Pyright type checking passes
-- [ ] T034 [US2] Add module and function docstrings per constitution
+- [ ] T034 [US2] Verify frontend lint/type checks and add required documentation/comments per constitution
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -146,22 +148,22 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 3 (REQUIRED per constitution) ⚠️
 
-> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code MUST include tests. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
+> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code MUST include tests. Frontend work MUST include accessibility-conscious interaction coverage where applicable. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
 
-- [ ] T034 [P] [US3] Unit tests for [component] in tests/unit/test_[name].py
-- [ ] T035 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T036 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T034 [P] [US3] Backend or frontend unit/component tests in backend/tests/... or frontend/tests/[name].test.tsx
+- [ ] T035 [P] [US3] Contract test for [endpoint] in backend/tests/contract/test_[name].py
+- [ ] T036 [P] [US3] Integration/interaction test for [user journey] in backend/tests/integration/test_[name].py or frontend/tests/[name].test.tsx
 - [ ] T037 [US3] Verify test coverage meets constitution requirements (80% minimum, 95%+ for financial logic)
 
 ### Implementation for User Story 3
 
-- [ ] T038 [P] [US3] Create [Entity] model in src/models/[entity].py (use object model, not dict; with type hints and docstrings)
-- [ ] T039 [US3] Implement [Service] in src/services/[service].py (use named arguments in function calls)
-- [ ] T040 [US3] Implement [endpoint/feature] in src/[location]/[file].py (use named arguments in function calls)
+- [ ] T038 [P] [US3] Create backend model in backend/app/models/[entity].py or frontend typed contract in frontend/src/features/[feature]/types.ts
+- [ ] T039 [US3] Implement typed service/hook in backend/app/[location]/[service].py or frontend/src/services/[service].ts
+- [ ] T040 [US3] Implement endpoint/feature in backend/app/routes/[file].py or frontend/src/features/[feature]/[file].tsx
 - [ ] T041 [US3] Verify Ruff linting passes
 - [ ] T042 [US3] Verify Ruff formatting passes
 - [ ] T043 [US3] Verify Pyright type checking passes
-- [ ] T044 [US3] Add module and function docstrings per constitution
+- [ ] T044 [US3] Verify frontend lint/type checks and add required documentation/comments per constitution
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -230,12 +232,12 @@ Examples of foundational tasks (adjust based on your project):
 
 ```bash
 # Launch all tests for User Story 1 together (if tests requested):
-Task: "Contract test for [endpoint] in tests/contract/test_[name].py"
-Task: "Integration test for [user journey] in tests/integration/test_[name].py"
+Task: "Contract test for [endpoint] in backend/tests/contract/test_[name].py"
+Task: "Interaction test for [user journey] in frontend/tests/[name].test.tsx"
 
 # Launch all models for User Story 1 together:
-Task: "Create [Entity1] model in src/models/[entity1].py"
-Task: "Create [Entity2] model in src/models/[entity2].py"
+Task: "Create backend model in backend/app/models/[entity1].py"
+Task: "Create frontend typed contract in frontend/src/features/[feature]/types.ts"
 ```
 
 ---

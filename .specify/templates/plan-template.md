@@ -33,21 +33,26 @@
 
 **Code Quality Gates:**
 - [ ] All code will include type hints for public functions and classes
-- [ ] Code will pass Ruff linting checks as configured in pyproject.toml
+- [ ] All frontend application code will use React + TypeScript (no new plain JavaScript app code)
+- [ ] Backend code will pass Ruff linting checks as configured in `backend/pyproject.toml`
 - [ ] Code will pass Ruff formatting checks
-- [ ] Code will pass Pyright type checking as configured in pyrightconfig.json
+- [ ] Backend code will pass Pyright type checking as configured in `backend/pyrightconfig.json`
+- [ ] Frontend code will pass configured linting and TypeScript checks
 - [ ] All modules will include module-level docstrings
 - [ ] All public classes and functions will include docstrings
 - [ ] No circular dependencies will be introduced
 - [ ] Object models (classes, dataclasses, TypedDict, Pydantic) will be used instead of plain dictionaries for type safety
 - [ ] Function calls will use named arguments (except single obvious argument cases)
+- [ ] Frontend API requests will be encapsulated in typed services/hooks instead of scattered across components
 
 **Testing Gates:**
 - [ ] Test-Driven Development (TDD) will be used: tests written before implementation for all application code
-- [ ] Test coverage plan achieves minimum 80% (95%+ for financial calculations) for application code (simulator and Flask app)
+- [ ] Test coverage plan achieves minimum 80% (95%+ for financial calculations and high-impact financial journeys) for application code
 - [ ] Tests will use pytest framework with proper, reusable fixtures (including shared domain fixtures and factories where appropriate)
+- [ ] Frontend work includes component/interaction test coverage for primary user flows
 - [ ] Tests will be designed to be data-driven where feasible (avoiding duplicated “magic numbers” by deriving expectations from shared fixtures, canonical data files, or domain objects)
 - [ ] Integration tests planned for API endpoints
+- [ ] Frontend plans include loading, success, empty, and error state tests where data fetching is involved
 - [ ] Test performance targets defined (<1s unit, <10s integration)
 - [ ] If feature includes standalone scripts/notebooks: Exception documented per constitution Testing Standards (only for scripts/notebooks NOT used as inputs for the application)
 
@@ -56,6 +61,8 @@
 - [ ] Error messages will be clear and actionable
 - [ ] Response time targets defined (<2s for interactive endpoints)
 - [ ] Configuration validation planned
+- [ ] Frontend interactions are accessible by keyboard and use semantic labels
+- [ ] Shared UI patterns/components are reused instead of reimplemented ad hoc
 
 **Performance Gates:**
 - [ ] Performance benchmarks defined for simulation operations
@@ -86,39 +93,21 @@ specs/[###-feature]/
 -->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
-
-tests/
-├── contract/
-├── integration/
-└── unit/
-
 # [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
 backend/
-├── src/
+├── app/
 │   ├── models/
-│   ├── services/
-│   └── api/
+│   ├── routes/
+│   └── data/
 └── tests/
 
 frontend/
 ├── src/
 │   ├── components/
-│   ├── pages/
+│   ├── features/
+│   ├── hooks/
 │   └── services/
 └── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
 **Structure Decision**: [Document the selected structure and reference the real
