@@ -10,9 +10,12 @@ RUN apt-get update && apt-get install -y \
     && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash \
     && \. "$NVM_DIR/nvm.sh" \
     && nvm install 24 \
+    && nvm alias default 24 \
+    && NODE_VERSION=$(node --version) \
+    && ln -s "$NVM_DIR/versions/node/${NODE_VERSION}/bin/node" /usr/local/bin/node \
+    && ln -s "$NVM_DIR/versions/node/${NODE_VERSION}/bin/npm" /usr/local/bin/npm \
+    && ln -s "$NVM_DIR/versions/node/${NODE_VERSION}/bin/npx" /usr/local/bin/npx \
     && rm -rf /var/lib/apt/lists/*
-
-ENV PATH="$NVM_DIR/versions/node/v24/bin:$PATH"
 
 WORKDIR /workspace
 
