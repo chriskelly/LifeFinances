@@ -5,7 +5,9 @@
 
 import pytest
 
+from app.data import constants
 from app.data.constants import INTERVALS_PER_YEAR
+from app.util import interval_yield
 from app.models.config import (
     IncomeProfile,
     NetWorthStrategyConfig,
@@ -107,8 +109,20 @@ class TestCashOutStrategy:
 
     def test_calc_est_prev_interval_income(self, cash_out_strategy: _CashOutStrategy):
         """Ensure the _calc_est_prev_interval_income method provides the correct value"""
+        # This value depends on `constants.TODAY_YR_QT`, so compute it dynamically.
+        age_of_data = cash_out_strategy._intervals_between(
+            cash_out_strategy._pension.balance_update, constants.TODAY_YR_QT
+        )
+        interval_raise = interval_yield(
+            1 + cash_out_strategy._income_profile.yearly_raise
+        )
+        expected = (
+            cash_out_strategy._income_profile.starting_income
+            / INTERVALS_PER_YEAR
+            / (interval_raise**age_of_data)
+        )
         assert cash_out_strategy._calc_est_prev_interval_income() == pytest.approx(
-            24.04, 0.1
+            expected, rel=1e-9
         )
 
     def test_calc_pension_balance(self, cash_out_strategy: _CashOutStrategy):
