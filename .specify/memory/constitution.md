@@ -1,27 +1,25 @@
 <!--
 Sync Impact Report:
-Version: 1.3.0 → 1.4.0
-Type: MINOR - Added React + TypeScript frontend governance and expanded full-stack quality/testing/UX guidance
+Version: 1.4.0 → 1.5.0
+Type: MINOR - Material expansion of Testing Standards with modern React test-driven development practices
 Modified principles:
-  - Code Quality Standards: Expanded from backend-only guidance to monorepo-aware backend + frontend quality standards
-  - Testing Standards: Expanded from simulator/Flask testing to full application testing including React frontend behavior
-  - User Experience Consistency: Expanded to include frontend accessibility, loading/error states, and design consistency
+  - Testing Standards: Added React Frontend Test-Driven Development subsection (RTL, user-event, network mocking, hooks, async, anti-patterns)
 Added sections:
-  - Frontend Architecture Standards
+  - (within Testing Standards) React Frontend Test-Driven Development
 Removed sections: None
 Templates requiring updates:
-  - ✅ updated: .specify/templates/plan-template.md (Constitution Check and example structure updated for backend/app + frontend React/TS)
-  - ✅ updated: .specify/templates/spec-template.md (Testing requirements expanded for React frontend coverage and accessibility)
-  - ✅ updated: .specify/templates/tasks-template.md (Path conventions and sample tasks aligned with backend/app + frontend React/TS workflows)
-  - ✅ updated: README.md (monorepo structure clarified to name React + TypeScript frontend)
+  - ✅ updated: .specify/templates/plan-template.md (Testing Gates aligned with React TDD)
+  - ✅ updated: .specify/templates/spec-template.md (Testing Requirements TR-003 expanded; new TR-010–TR-012)
+  - ✅ updated: .specify/templates/tasks-template.md (TDD notes and examples for React)
+  - ✅ updated: README.md (frontend testing expectation line under monorepo)
 Follow-up TODOs: None
 -->
 
 # LifeFInances Project Constitution
 
-**Version:** 1.4.0  
+**Version:** 1.5.0  
 **Ratification Date:** 2025-12-10  
-**Last Amended:** 2026-03-09
+**Last Amended:** 2026-04-05
 
 ## Purpose
 
@@ -124,6 +122,49 @@ used as application inputs.**
   write failing tests first, implement minimal code to pass, then refactor.
   Rationale: TDD ensures testability, drives better design, and prevents
   untested code from being merged.
+
+- **React Frontend Test-Driven Development**: For React application code, TDD
+  MUST express user-observable behavior and contracts, not implementation
+  details.
+
+  - **Testing Library first**: Component and integration-style tests MUST use
+    React Testing Library (or a successor endorsed by the same accessibility-
+    first querying model). Queries MUST prefer roles, accessible names, and
+    visible text over CSS selectors or DOM structure. `data-testid` MUST only be
+    used when no user-equivalent query is practical, and MUST be justified.
+
+  - **Realistic interaction**: User gestures MUST be simulated with
+    `@testing-library/user-event` (or the project's configured equivalent) rather
+    than `fireEvent`, except where user-event cannot model the case.
+
+  - **Runner and environment**: The frontend test runner MUST be Vitest or Jest
+    (or a project-adopted equivalent documented in the repo). UI tests MUST run
+    in a DOM environment (e.g. jsdom) unless a feature explicitly requires
+    browser-based E2E tooling.
+
+  - **Network and API boundaries**: HTTP and backend responses MUST be mocked at
+    the network boundary (e.g. Mock Service Worker) or via test servers that
+    mirror real contracts—not by spying on or replacing internal `fetch`
+    implementations inside components under test. Rationale: stable tests and
+    alignment with typed API clients.
+
+  - **Hooks and providers**: Custom hooks MUST be tested with `renderHook` (or
+    equivalent) and explicit provider wrappers that match production composition.
+    Tests MUST NOT depend on React implementation details (e.g. state
+    internals, private component methods).
+
+  - **Async and stability**: Asynchronous UI MUST be asserted with `findBy*`,
+    `waitFor`, or async user-event APIs. Arbitrary `setTimeout`-based waits in
+    tests MUST NOT be used except when testing time-dependent behavior with fake
+    timers.
+
+  - **Snapshots**: Snapshot tests MAY be used only for small, stable
+    presentational output. They MUST NOT substitute for behavior-focused tests
+    on interactive or data-heavy views.
+
+  - **Co-location**: Frontend test files MUST follow a single repo convention
+    (e.g. `*.test.tsx` beside sources or colocated `__tests__` directories) and
+    MUST remain discoverable next to the modules they protect.
 
 - **Test Coverage**: All new application code MUST include corresponding tests.
   Coverage MUST maintain a minimum of 80% for new backend and frontend modules.
@@ -241,6 +282,11 @@ Constitutional amendments require:
 - Violations MUST be addressed before merge approval unless explicitly exempted via constitutional amendment.
 
 ### Version History
+
+- **1.5.0** (2026-04-05): Expanded Testing Standards with modern React
+  test-driven development: React Testing Library and accessibility-first queries,
+  user-event, Vitest/Jest + jsdom, MSW-style network mocking, hook testing
+  discipline, async patterns, snapshot limits, and test co-location.
 
 - **1.4.0** (2026-03-09): Added governance for a React + TypeScript frontend,
   including frontend architecture, accessibility, typed API boundaries, and

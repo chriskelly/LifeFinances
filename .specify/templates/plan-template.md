@@ -49,7 +49,10 @@
 - [ ] Test-Driven Development (TDD) will be used: tests written before implementation for all application code
 - [ ] Test coverage plan achieves minimum 80% (95%+ for financial calculations and high-impact financial journeys) for application code
 - [ ] Tests will use pytest framework with proper, reusable fixtures (including shared domain fixtures and factories where appropriate)
-- [ ] Frontend work includes component/interaction test coverage for primary user flows
+- [ ] Frontend work includes component/interaction test coverage for primary user flows using React Testing Library (or equivalent) with accessibility-first queries (role, name, text); `data-testid` only when necessary
+- [ ] Frontend interaction tests will use `@testing-library/user-event` (or project equivalent), not `fireEvent`, except where justified
+- [ ] Frontend HTTP/API mocking will sit at the network boundary (e.g. MSW) or test servers, not by replacing `fetch` inside components under test
+- [ ] Custom hooks will be tested with `renderHook` (or equivalent) and explicit provider wrappers
 - [ ] Tests will be designed to be data-driven where feasible (avoiding duplicated “magic numbers” by deriving expectations from shared fixtures, canonical data files, or domain objects)
 - [ ] Integration tests planned for API endpoints
 - [ ] Frontend plans include loading, success, empty, and error state tests where data fetching is involved

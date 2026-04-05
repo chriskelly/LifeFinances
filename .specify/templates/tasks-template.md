@@ -23,7 +23,7 @@ documents a constitution-allowed exception.
 ## Path Conventions
 
 - **Single project**: `src/`, `tests/` at repository root
-- **Web app**: `backend/app/`, `backend/tests/`, `frontend/src/`, `frontend/tests/`
+- **Web app**: `backend/app/`, `backend/tests/`, `frontend/src/` (colocated `*.test.tsx` or `__tests__/` per convention), optional `frontend/tests/` for cross-cutting UI tests
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
 - Paths shown below assume single project - adjust based on plan.md structure
 
@@ -86,11 +86,11 @@ Examples of foundational tasks (adjust based on your project):
 ### Tests for User Story 1 (REQUIRED per constitution) ⚠️
 
 > **NOTE: TDD REQUIRED - Write these tests FIRST, ensure they FAIL before implementation**
-> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code (backend and frontend) MUST include tests. Test coverage MUST meet minimum 80% (95%+ for financial calculations and high-impact financial journeys). Where behavior is complex, tests SHOULD use reusable fixtures, factories, and domain-aligned helper dataclasses instead of ad-hoc inline setup, and SHOULD derive expectations from shared data (fixtures, canonical CSVs, or domain objects) rather than hard-coded magic numbers. Frontend tests MUST cover loading, success, empty, and error states where data fetching is involved. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
+> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code (backend and frontend) MUST include tests. Test coverage MUST meet minimum 80% (95%+ for financial calculations and high-impact financial journeys). Where behavior is complex, tests SHOULD use reusable fixtures, factories, and domain-aligned helper dataclasses instead of ad-hoc inline setup, and SHOULD derive expectations from shared data (fixtures, canonical CSVs, or domain objects) rather than hard-coded magic numbers. React frontend tests MUST follow Testing Library practices (accessibility-first queries, user-event, network-boundary mocking such as MSW, `renderHook` for hooks, no implementation-detail assertions). Frontend tests MUST cover loading, success, empty, and error states where data fetching is involved. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
 
-- [ ] T010 [P] [US1] Backend unit tests for [component] in backend/tests/unit/test_[name].py or frontend component tests in frontend/tests/[name].test.tsx
+- [ ] T010 [P] [US1] Backend unit tests for [component] in backend/tests/unit/test_[name].py or frontend component tests in frontend/src/.../[name].test.tsx (or colocated `__tests__/` per repo convention)
 - [ ] T011 [P] [US1] Contract test for [endpoint] in backend/tests/contract/test_[name].py
-- [ ] T012 [P] [US1] Integration/interaction test for [user journey] in backend/tests/integration/test_[name].py or frontend/tests/[name].test.tsx
+- [ ] T012 [P] [US1] Integration/interaction test for [user journey] in backend/tests/integration/test_[name].py or frontend/src/.../[name].test.tsx
 - [ ] T013 [US1] Verify test coverage meets constitution requirements (80% minimum, 95%+ for financial logic)
 
 ### Implementation for User Story 1
@@ -118,11 +118,11 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 2 (REQUIRED per constitution) ⚠️
 
-> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code MUST include tests. Frontend work MUST include accessibility-conscious interaction coverage where applicable. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
+> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code MUST include tests. Frontend work MUST include accessibility-conscious interaction coverage (RTL-style queries, user-event) where applicable. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
 
-- [ ] T023 [P] [US2] Backend or frontend unit/component tests in backend/tests/... or frontend/tests/[name].test.tsx
+- [ ] T023 [P] [US2] Backend or frontend unit/component tests in backend/tests/... or frontend/src/.../[name].test.tsx
 - [ ] T024 [P] [US2] Contract test for [endpoint] in backend/tests/contract/test_[name].py
-- [ ] T025 [P] [US2] Integration/interaction test for [user journey] in backend/tests/integration/test_[name].py or frontend/tests/[name].test.tsx
+- [ ] T025 [P] [US2] Integration/interaction test for [user journey] in backend/tests/integration/test_[name].py or frontend/src/.../[name].test.tsx
 - [ ] T026 [US2] Verify test coverage meets constitution requirements (80% minimum, 95%+ for financial logic)
 
 ### Implementation for User Story 2
@@ -148,11 +148,11 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 3 (REQUIRED per constitution) ⚠️
 
-> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code MUST include tests. Frontend work MUST include accessibility-conscious interaction coverage where applicable. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
+> **CONSTITUTION**: Test-Driven Development (TDD) MUST be used. All new application code MUST include tests. Frontend work MUST include accessibility-conscious interaction coverage (RTL-style queries, user-event) where applicable. *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted.
 
-- [ ] T034 [P] [US3] Backend or frontend unit/component tests in backend/tests/... or frontend/tests/[name].test.tsx
+- [ ] T034 [P] [US3] Backend or frontend unit/component tests in backend/tests/... or frontend/src/.../[name].test.tsx
 - [ ] T035 [P] [US3] Contract test for [endpoint] in backend/tests/contract/test_[name].py
-- [ ] T036 [P] [US3] Integration/interaction test for [user journey] in backend/tests/integration/test_[name].py or frontend/tests/[name].test.tsx
+- [ ] T036 [P] [US3] Integration/interaction test for [user journey] in backend/tests/integration/test_[name].py or frontend/src/.../[name].test.tsx
 - [ ] T037 [US3] Verify test coverage meets constitution requirements (80% minimum, 95%+ for financial logic)
 
 ### Implementation for User Story 3
@@ -233,7 +233,7 @@ Examples of foundational tasks (adjust based on your project):
 ```bash
 # Launch all tests for User Story 1 together (if tests requested):
 Task: "Contract test for [endpoint] in backend/tests/contract/test_[name].py"
-Task: "Interaction test for [user journey] in frontend/tests/[name].test.tsx"
+Task: "Interaction test for [user journey] in frontend/src/.../[name].test.tsx"
 
 # Launch all models for User Story 1 together:
 Task: "Create backend model in backend/app/models/[entity1].py"
