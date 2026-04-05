@@ -5,6 +5,7 @@
 
 import pytest
 
+from app.data import constants
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import (
     IncomeProfile,
@@ -100,6 +101,14 @@ class TestNetWorthStrategy:
 
 
 class TestCashOutStrategy:
+    @pytest.fixture(autouse=True)
+    def fixed_today_yr_qt_for_cash_out(self):
+        """Pin TODAY_YR_QT so cash-out estimates do not drift with the calendar."""
+        original = constants.TODAY_YR_QT
+        constants.TODAY_YR_QT = 2025.25
+        yield
+        constants.TODAY_YR_QT = original
+
     @pytest.fixture
     def cash_out_strategy(self, sample_user: User):
         """Sample _CashOutStrategy based on `sample_configs/full_config.yml`"""
@@ -108,12 +117,12 @@ class TestCashOutStrategy:
     def test_calc_est_prev_interval_income(self, cash_out_strategy: _CashOutStrategy):
         """Ensure the _calc_est_prev_interval_income method provides the correct value"""
         assert cash_out_strategy._calc_est_prev_interval_income() == pytest.approx(
-            24.04, 0.1
+            22.44, 0.1
         )
 
     def test_calc_pension_balance(self, cash_out_strategy: _CashOutStrategy):
         """Ensure the _calc_pension_balance method provides the correct value"""
-        assert cash_out_strategy._calc_pension_balance() == pytest.approx(172.84, 0.1)
+        assert cash_out_strategy._calc_pension_balance() == pytest.approx(162.23, 0.1)
 
     def test_intervals_between(self, cash_out_strategy: _CashOutStrategy):
         """_intervals_between should return the correct number of intervals between
@@ -129,7 +138,7 @@ class TestCashOutStrategy:
         """Integration test to ensure return value is consistent. Should return 0 if
         date is before or after the last date in the income profile."""
         first_state.date = sample_user.partner.income_profiles[0].last_date
-        assert cash_out_strategy.calc_payment(first_state) == pytest.approx(172.84, 0.1)
+        assert cash_out_strategy.calc_payment(first_state) == pytest.approx(162.23, 0.1)
         first_state.date += 1
         assert cash_out_strategy.calc_payment(first_state) == 0
         first_state.date -= 2
