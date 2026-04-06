@@ -10,6 +10,8 @@ Auto-generated from all feature plans. Last updated: 2025-12-10
 - N/A (in-memory calculations, reads from `variable_statistics.csv` for asset statistics) (002-total-portfolio-allocation)
 - Python 3.10+ + pydantic (for config models), numpy (for calculations), dataclasses (for strategy classes) (001-spending-controller)
 - N/A (configuration-driven, no persistence layer) (001-spending-controller)
+- Python 3.10+ (backend), TypeScript 5.x + React 19 (frontend) + Flask 3.x, Pydantic, PyYAML, pandas; Vite 7, React 19 (001-react-flask-migration)
+- File-based `config.yml` at repo root (same as `app.data.constants.CONFIG_PATH`); no new database (001-react-flask-migration)
 
 - Python 3.10 (001-disability-insurance-calculator)
 
@@ -29,9 +31,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.10: Follow standard conventions
 
 ## Recent Changes
+- 001-react-flask-migration: Added Python 3.10+ (backend), TypeScript 5.x + React 19 (frontend) + Flask 3.x, Pydantic, PyYAML, pandas; Vite 7, React 19
+- 001-react-flask-migration: Added Python 3.10+ (backend), TypeScript 5.x + React 19 (frontend) + Flask 3.x, Pydantic, PyYAML, pandas; Vite 7, React 19
 - 001-spending-controller: Added Python 3.10+ + pydantic (for config models), numpy (for calculations), dataclasses (for strategy classes)
-- 002-total-portfolio-allocation: Added Python 3.10
-- 002-total-portfolio-allocation: Added Python 3.10+
 
 
 <!-- MANUAL ADDITIONS START -->

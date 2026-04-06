@@ -7,6 +7,9 @@ temporary*
 *.prof
 .vscode/
 .devcontainer/history/.zsh_history
+docs/ideas/
+docs/backlog/
+docs/active/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
