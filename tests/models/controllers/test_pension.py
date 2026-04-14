@@ -5,6 +5,7 @@
 
 import pytest
 
+from app.data import constants
 from app.data.constants import INTERVALS_PER_YEAR
 from app.models.config import (
     IncomeProfile,
@@ -101,8 +102,11 @@ class TestNetWorthStrategy:
 
 class TestCashOutStrategy:
     @pytest.fixture
-    def cash_out_strategy(self, sample_user: User):
+    def cash_out_strategy(self, sample_user: User, monkeypatch: pytest.MonkeyPatch):
         """Sample _CashOutStrategy based on `sample_configs/full_config.yml`"""
+        # These tests expect values based on a fixed "today" date; without this,
+        # they become time-dependent and will fail as the real date advances.
+        monkeypatch.setattr(constants, "TODAY_YR_QT", 2023.5)
         return _CashOutStrategy(user=sample_user)
 
     def test_calc_est_prev_interval_income(self, cash_out_strategy: _CashOutStrategy):
