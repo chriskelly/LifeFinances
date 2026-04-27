@@ -71,7 +71,7 @@ Hooks run before each commit (tests, linting). To run manually: `pre-commit run 
 ## Monorepo Structure
 
 - `backend/`: Python application code, tests, and Python tooling configuration
-- `frontend/`: React + TypeScript frontend workspace (currently scaffold only); new UI work MUST follow the project constitution, including test-driven development with React Testing Library–style, accessibility-first tests when a suite is introduced
+- `frontend/`: React + TypeScript frontend workspace (currently scaffold only); see [`frontend/README.md`](frontend/README.md) for dev server, `/api` proxy behavior, and Docker Compose caveats. New UI work MUST follow the project constitution, including test-driven development with React Testing Library–style, accessibility-first tests when a suite is introduced
 - Root: orchestration and containerization (`Makefile`, `Dockerfile`, `docker-compose.yml`, CI/workspace config)
 
 ### Command Contract
