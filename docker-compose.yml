@@ -18,6 +18,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    environment:
+      # Vite runs inside this container; localhost would not reach the backend service.
+      VITE_API_PROXY_TARGET: http://backend:3500
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
