@@ -47,11 +47,16 @@
         }
     },
     "forwardPorts": [
-        3500
+        3500,
+        5173
     ],
     "portsAttributes": {
         "3500": {
             "label": "Flask App",
+            "onAutoForward": "notify"
+        },
+        "5173": {
+            "label": "Vite (React)",
             "onAutoForward": "notify"
         }
     },
