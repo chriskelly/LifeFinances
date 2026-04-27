@@ -1,73 +1,65 @@
-# React + TypeScript + Vite
+# LifeFinances frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite workspace for the LifeFinances UI. It lives beside `backend/` in the monorepo; run backend and frontend separately during development (see the root [README](../README.md)).
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js (the Dev Container and `frontend/Dockerfile` use a current Node LTS; match that or use `nvm`/`fnm` locally)
+- A running backend on port **3500** when you need API calls (see below)
 
-## React Compiler
+## Install
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+From the repository root:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci --prefix frontend
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Or from `frontend/`:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
 ```
+
+## Development server
+
+1. Start the API (from repo root), for example:
+   - With uv: `uv run --project backend python backend/run.py`
+   - In the Dev Container: `python backend/run.py`
+2. Start Vite:
+
+```bash
+cd frontend && npm run dev
+```
+
+Open the URL Vite prints (usually `http://localhost:5173`).
+
+### Backend API and the Vite proxy
+
+Flask registers the HTTP API under the `/api` prefix (`backend/app/__init__.py`). The dev server proxies browser requests for `/api/*` to the backend using `vite.config.ts`:
+
+- **Target:** `http://localhost:3500`
+- **Who resolves it:** the Node process running Vite, not the browser. The backend must be reachable at that host and port **from wherever Vite runs** (typically your laptop or the Dev Container with port 3500 forwarded).
+
+Call the backend from the browser via relative URLs, e.g. `fetch('/api/...')`, so traffic stays on the Vite origin and goes through the proxy.
+
+### Docker Compose
+
+`docker compose` builds a separate image for `frontend` and runs `npm run dev` inside that service. If you use the default proxy target above from **inside** the frontend container, `localhost:3500` refers to that container, not the `backend` service. For full-stack in Compose you either need a proxy target the frontend container can use to reach the API (for example the Compose service hostname on the Compose network) or run Vite on the host with only the backend in Compose. Verify API calls against your actual layout before relying on it.
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `npm run dev` | Vite dev server with HMR |
+| `npm run build` | Typecheck (`tsc -b`) and production build |
+| `npm run preview` | Local preview of the production build |
+| `npm run lint` | ESLint |
+
+## Quality bar
+
+New UI work should follow the project constitution (see `.specify/memory/constitution.md`), including test-driven development and accessibility-minded tests when a suite is added.
+
+## Boilerplate reference
+
+This project was bootstrapped with Vite’s React + TypeScript template. Upstream template notes (React Compiler, ESLint type-aware presets, etc.) are still valid if you extend tooling; see [Vite](https://vite.dev/) and [React](https://react.dev/) docs for generic Vite/React topics.
