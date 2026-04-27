@@ -1,4 +1,4 @@
-# LifeFInances
+# LifeFinances
 
 ## Run with Docker
 
@@ -14,7 +14,7 @@ To run the application without any development setup (Docker required):
    ```bash
    docker compose up --build
    ```
-4. Open http://localhost:5173 in your browser (frontend), or http://localhost:3500 for the backend API directly
+4. Open http://localhost:5173 in your browser (frontend), or http://localhost:3500 for the backend API directly. The frontend container uses `VITE_API_PROXY_TARGET` so browser calls to `/api/*` reach the `backend` service (see `frontend/README.md`).
 
 ---
 

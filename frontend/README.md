@@ -38,14 +38,15 @@ Open the URL Vite prints (usually `http://localhost:5173`).
 
 Flask registers the HTTP API under the `/api` prefix (`backend/app/__init__.py`). The dev server proxies browser requests for `/api/*` to the backend using `vite.config.ts`:
 
-- **Target:** `http://localhost:3500`
-- **Who resolves it:** the Node process running Vite, not the browser. The backend must be reachable at that host and port **from wherever Vite runs** (typically your laptop or the Dev Container with port 3500 forwarded).
+- **Default target:** `http://localhost:3500`
+- **Override:** set `VITE_API_PROXY_TARGET` before starting Vite (for example `http://backend:3500` when Vite runs in Docker Compose next to a service named `backend`). The repo’s `docker-compose.yml` sets this for the `frontend` service.
+- **Who resolves it:** the Node process running Vite, not the browser. The backend must be reachable at that host and port **from wherever Vite runs** (your machine, the Dev Container with port 3500 forwarded, or the frontend container on the Compose network).
 
 Call the backend from the browser via relative URLs, e.g. `fetch('/api/...')`, so traffic stays on the Vite origin and goes through the proxy.
 
 ### Docker Compose
 
-`docker compose` builds a separate image for `frontend` and runs `npm run dev` inside that service. If you use the default proxy target above from **inside** the frontend container, `localhost:3500` refers to that container, not the `backend` service. For full-stack in Compose you either need a proxy target the frontend container can use to reach the API (for example the Compose service hostname on the Compose network) or run Vite on the host with only the backend in Compose. Verify API calls against your actual layout before relying on it.
+`docker compose` builds a separate image for `frontend` and runs `npm run dev` inside that service. The default `localhost:3500` proxy target would point at the frontend container itself, not the `backend` service; the Compose file sets `VITE_API_PROXY_TARGET=http://backend:3500` so `/api` from the browser is proxied correctly. If you customize service names or ports, update that variable (or your override file) to match.
 
 ## Scripts
 
