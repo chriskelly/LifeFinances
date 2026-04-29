@@ -96,8 +96,8 @@ backend/
 │   ├── __init__.py
 │   ├── routes/
 │   │   ├── api.py               # GET/PUT config, POST simulation/run
-│   │   └── index.py             # Remove after cutover; keep redirect in app __init__
-│   └── templates/
+│   │   └── api_json.py          # JSON envelope helpers
+│   └── templates/               # (empty; legacy index removed)
 frontend/
 ├── src/
 │   ├── App.tsx                  # Two buttons: Save; Save & run (PUT then POST)

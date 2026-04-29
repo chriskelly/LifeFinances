@@ -241,10 +241,9 @@ class SimulationEngine:
         gen_all_trials()
     """
 
-    def __init__(
-        self, config_path: Path = constants.CONFIG_PATH, trial_qty: int | None = None
-    ):
-        self._user_config = get_config(config_path)
+    def __init__(self, config_path: Path | None = None, trial_qty: int | None = None):
+        cfg_path = constants.CONFIG_PATH if config_path is None else config_path
+        self._user_config = get_config(cfg_path)
         self.results: Results = Results()
         self._trial_qty = trial_qty or self._user_config.trial_quantity
         self._economic_sim_data = economic_data.EconomicEngine(

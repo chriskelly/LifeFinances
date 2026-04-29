@@ -13,7 +13,9 @@
                 "ms-toolsai.jupyter",
                 "charliermarsh.ruff",
                 "ms-pyright.pyright",
-                "github.vscode-github-actions"
+                "github.vscode-github-actions",
+                "jonathan-yeung.mark-sharp",
+                "vitest.explorer"
             ],
             "settings": {
                 "editor.formatOnSave": true,
@@ -47,11 +49,11 @@
         }
     },
     "forwardPorts": [
-        3500,
+        3501,
         5173
     ],
     "portsAttributes": {
-        "3500": {
+        "3501": {
             "label": "Flask App",
             "onAutoForward": "notify"
         },

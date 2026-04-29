@@ -1,5 +1,6 @@
 """ConfTest Module"""
 
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -39,6 +40,15 @@ def app():
     """Flask App"""
     app = create_app()
     return app
+
+
+@pytest.fixture
+def temp_config_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Creates a unique, isolated config file for each test to ensure test safety and patches CONFIG_PATH to use it."""
+    config_path = tmp_path / "config.yml"
+    shutil.copy(constants.SAMPLE_FULL_CONFIG_PATH, config_path)
+    monkeypatch.setattr(constants, "CONFIG_PATH", config_path)
+    return config_path
 
 
 @pytest.fixture

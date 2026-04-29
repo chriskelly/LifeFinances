@@ -8,17 +8,17 @@
 
 **Question**: How should the React app call Flask without CORS pain in dev and in Docker Compose?
 
-**Decision**: Keep **same-origin API calls** to `/api` from the browser. **Vite dev server** proxies `/api` to the Flask host. Proxy **target must be configurable**: default `http://127.0.0.1:3500` for local laptop dev; in Docker Compose set an environment variable (e.g. `API_PROXY_TARGET=http://backend:3500`) read only in `vite.config.ts` so the frontend container reaches the backend service by name.
+**Decision**: Keep **same-origin API calls** to `/api` from the browser. **Vite dev server** proxies `/api` to the Flask host. Proxy **target must be configurable**: default `http://127.0.0.1:3501` for local laptop dev; in Docker Compose set an environment variable (e.g. `API_PROXY_TARGET=http://backend:3500`) read only in `vite.config.ts` so the frontend container reaches the backend service by name.
 
 **Rationale**:
 
 - Browser only talks to the Vite origin (`:5173`), so no CORS preflight for `/api` during development.
-- `frontend/vite.config.ts` currently hardcodes `localhost:3500`, which **fails inside the frontend container** because the backend is a different container.
+- `frontend/vite.config.ts` currently hardcodes `localhost:3501`, which **fails inside the frontend container** because the backend is a different container.
 
 **Alternatives considered**:
 
-- **flask-cors** for cross-origin browser → `:3500`: Works but duplicates origins and complicates cookie/session story; unnecessary if proxy is correct.
-- **Always call absolute `http://localhost:3500` from the client**: Breaks Docker and mixes origins.
+- **flask-cors** for cross-origin browser → `:3501`: Works but duplicates origins and complicates cookie/session story; unnecessary if proxy is correct.
+- **Always call absolute `http://localhost:3501` from the client**: Breaks Docker and mixes origins.
 
 **Implementation notes**: Update `docker-compose.yml` `frontend` service with `environment: API_PROXY_TARGET: http://backend:3500` (or equivalent). Document in `quickstart.md`.
 
@@ -96,3 +96,22 @@
 **Alternatives considered**:
 
 - **Plain text body**: Harder for the React client to unify.
+
+---
+
+## 7. Implementation validation (2026-04-06)
+
+### Coverage
+
+- **Backend** (`pytest --cov=app`): overall package **96%** line coverage on full `backend/app/`; new modules `backend/app/routes/api_json.py` at **100%**; `backend/app/routes/api.py` at **75%** (error paths and simulation exception branches under-exercised in tests). Core simulation stack (`app/models/simulator.py` and financial controllers) remains **≥94–100%** in this report, satisfying TR-002 for simulation-heavy code paths in aggregate.
+- **Frontend** (`npx vitest run --coverage`): **~98%** line coverage on measured application files (`App.tsx`, `src/services/api.ts`). Pure type modules under `src/types/` are excluded from coverage (no executable lines).
+
+### Latency and profiling
+
+- Interactive `GET/PUT /api/config` through the Flask test client completes in **well under 2s** on the devcontainer (SC-002).
+- **POST `/api/simulation/run`** duration is dominated by Monte Carlo work; wall time scales with `trial_quantity` and hardware. It is **not** bounded by a trivial per-trial HTTP budget—PR-002 remains an engine-level target, not a full HTTP SLA for large trial counts.
+- A one-off **cProfile** of the HTTP path with **`trial_quantity: 3`** showed top cumulative time in **Werkzeug/Flask dispatch** (`werkzeug/test.py:post`, `flask/app.py:full_dispatch_request`, `app/routes/api.py:run_simulation_route`) because the run finishes in ~50ms. For engine-heavy profiling use `backend/tests/profiling/gen_trials.py` via `make profile`.
+
+### Resource note
+
+- Peak RSS for a representative simulation was not captured in this automated pass; use `/usr/bin/time -v` or container stats around `POST /api/simulation/run` with your production-like `config.yml` when you need an absolute figure.

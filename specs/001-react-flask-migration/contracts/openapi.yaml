@@ -7,7 +7,7 @@ info:
     against the persisted config.yml. Base path /api is mounted by the Flask app.
 
 servers:
-  - url: http://localhost:3500/api
+  - url: http://localhost:3501/api
     description: Local backend (direct)
   - url: http://localhost:5173/api
     description: Via Vite dev proxy
@@ -94,13 +94,13 @@ components:
       type: object
       required:
         - columns
-        - rows
+        - data
       properties:
         columns:
           type: array
           items:
             type: string
-        rows:
+        data:
           type: array
           items:
             type: array

@@ -41,9 +41,9 @@ endif
 
 test: up
 ifeq ($(USE_DIRECT),true)
-	uv run --project backend pytest backend/tests
+	uv run --project backend pytest backend/tests && cd frontend && npm run test:run
 else
-	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest $(COMPOSE_SERVICE) tests
+	docker compose run --rm --no-deps -e GITHUB_JOB=$(GITHUB_JOB) --entrypoint=pytest $(COMPOSE_SERVICE) tests && docker compose run --rm --no-deps frontend npm run test:run
 endif
 
 ruff-check: build

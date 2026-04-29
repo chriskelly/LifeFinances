@@ -56,17 +56,19 @@ def get_config(config_path: Path) -> User:
     return config
 
 
-def read_config_file(config_path: Path = constants.CONFIG_PATH) -> str:
+def read_config_file(config_path: Path | None = None) -> str:
     """Reads the config file and returns the text"""
-    if not config_path.is_file() and config_path == constants.CONFIG_PATH:
-        config_path = constants.SAMPLE_FULL_CONFIG_PATH
-    with open(config_path, encoding="utf-8") as config_file:
+    resolved = constants.CONFIG_PATH if config_path is None else config_path
+    if not resolved.is_file() and resolved == constants.CONFIG_PATH:
+        resolved = constants.SAMPLE_MIN_CONFIG_INCOME_PATH
+    with open(resolved, encoding="utf-8") as config_file:
         config_text = config_file.read()
     return config_text
 
 
-def write_config_file(config_text: str, config_path: Path = constants.CONFIG_PATH):
+def write_config_file(config_text: str, config_path: Path | None = None):
     """Writes the config file after validation"""
+    target = constants.CONFIG_PATH if config_path is None else config_path
     try:
         data_as_yaml = cast(dict[str, Any], yaml.safe_load(config_text))
         User(**data_as_yaml)
@@ -76,5 +78,5 @@ def write_config_file(config_text: str, config_path: Path = constants.CONFIG_PAT
     except ValidationError as error:
         print(f"Invalid config: {error}")
         raise error
-    with open(config_path, "w", encoding="utf-8") as config_file:
+    with open(target, "w", encoding="utf-8") as config_file:
         config_file.write(config_text)

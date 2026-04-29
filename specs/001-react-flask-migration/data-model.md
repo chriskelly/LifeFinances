@@ -40,14 +40,14 @@ Represents the **latest** simulation response for the UI (no history).
 | Field | Type | Rules |
 |-------|------|--------|
 | `success_percentage` | `string` | Display value matching current template (`IndexPage` uses string from `calc_success_percentage()`). |
-| `first_result` | `FirstResultTable` | First trial dataframe as structured columns/rows. |
+| `first_result` | `FirstResultTable` | First trial dataframe in pandas split format (`columns` + `data`). |
 
 ### Embedded type: FirstResultTable
 
 | Field | Type | Rules |
 |-------|------|--------|
 | `columns` | `string[]` | Column names from `DataFrame.columns`. |
-| `rows` | `array[]` | Each row is an array of cell values aligned to `columns`; cells are JSON-serializable (number, string, boolean, or null). |
+| `data` | `array[]` | Row values aligned to `columns`; serialized from `DataFrame.to_json(orient="split")` and decoded to JSON-native values (number, string, boolean, or null). |
 
 **Source**: `gen_simulation_results()` → `as_dataframes()[0]` converted to column/row form (implementation detail: `DataFrame.to_dict(orient="split")` or explicit iteration).
 

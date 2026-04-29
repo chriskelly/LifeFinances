@@ -52,6 +52,15 @@
 - [ ] Frontend work includes component/interaction test coverage for primary user flows using React Testing Library (or equivalent) with accessibility-first queries (role, name, text); `data-testid` only when necessary
 - [ ] Frontend interaction tests will use `@testing-library/user-event` (or project equivalent), not `fireEvent`, except where justified
 - [ ] Frontend HTTP/API mocking will sit at the network boundary (e.g. MSW) or test servers, not by replacing `fetch` inside components under test
+- [ ] Network-mock handlers will remain pure response-shapers; assertions on request payloads will run in the test body against captured request data (no `expect` inside MSW handlers)
+- [ ] Negative presence will be asserted with `queryBy*(...).not.toBeInTheDocument()` keyed on role + name, not by counting `getAllByRole(...)` matches
+- [ ] Repeated handlers, sample payloads, and endpoint URLs will be hoisted to shared `beforeEach`/helpers/constants instead of duplicated per test
+- [ ] At least one test per editable view will simulate real user input (type/clear) and assert the resulting request body or derived state reflects the edit
+- [ ] Status/live-region assertions will be scoped to the specific region (`within`, id, or specific accessible name) when multiple `role="status"` regions exist
+- [ ] Data-bearing views will be asserted on representative data values (cells, list items, summary numbers), not only structural roles or counts
+- [ ] In-flight UI states (disabled controls, spinners) will use deferred promises or fake timers, not `setTimeout`-based artificial delays
+- [ ] Each test will describe a single user-observable behavior; multi-behavior titles will be split
+- [ ] Test files will contain no `screen.debug`, `console.log`, `it.only`, `describe.only`, or `debugger` at merge time
 - [ ] Custom hooks will be tested with `renderHook` (or equivalent) and explicit provider wrappers
 - [ ] Tests will be designed to be data-driven where feasible (avoiding duplicated “magic numbers” by deriving expectations from shared fixtures, canonical data files, or domain objects)
 - [ ] Integration tests planned for API endpoints
