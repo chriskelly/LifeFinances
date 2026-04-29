@@ -18,6 +18,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    environment:
+      # Vite in this container must reach the API on the Compose network, not loopback
+      - API_PROXY_TARGET=http://backend:3500
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public

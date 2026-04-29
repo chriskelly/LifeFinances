@@ -36,16 +36,19 @@ Open the URL Vite prints (usually `http://localhost:5173`).
 
 ### Backend API and the Vite proxy
 
-Flask registers the HTTP API under the `/api` prefix (`backend/app/__init__.py`). The dev server proxies browser requests for `/api/*` to the backend using `vite.config.ts`:
+Flask registers the API blueprint under the `/api` prefix (`backend/app/__init__.py`). The blueprint is the place to add JSON routes for the React app (`backend/app/routes/api.py` is currently empty).
 
-- **Target:** `http://localhost:3500`
-- **Who resolves it:** the Node process running Vite, not the browser. The backend must be reachable at that host and port **from wherever Vite runs** (typically your laptop or the Dev Container with port 3500 forwarded).
+The dev server proxies browser requests for `/api/*` to the backend (`vite.config.ts`):
+
+- **Default target:** `http://localhost:3500` (Vite and Flask on the same machine).
+- **Override:** set `API_PROXY_TARGET` when the Node process must reach a different host (for example in Docker: `http://backend:3500` on the Compose network).
+- **Who resolves the target:** the Node process running Vite, not the browser. The API must be reachable at that URL from wherever Vite runs.
 
 Call the backend from the browser via relative URLs, e.g. `fetch('/api/...')`, so traffic stays on the Vite origin and goes through the proxy.
 
 ### Docker Compose
 
-`docker compose` builds a separate image for `frontend` and runs `npm run dev` inside that service. If you use the default proxy target above from **inside** the frontend container, `localhost:3500` refers to that container, not the `backend` service. For full-stack in Compose you either need a proxy target the frontend container can use to reach the API (for example the Compose service hostname on the Compose network) or run Vite on the host with only the backend in Compose. Verify API calls against your actual layout before relying on it.
+The top-level `docker compose` file sets `API_PROXY_TARGET=http://backend:3500` for the `frontend` service so the Vite dev server inside the container proxies `/api` to the `backend` service. If you run a custom stack, set that variable (or the equivalent) so the proxy does not point at the frontend container’s `localhost` by mistake. You can also run Vite on the host with `localhost:3500` and only the backend in Compose.
 
 ## Scripts
 
