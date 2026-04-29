@@ -93,3 +93,17 @@ Hooks run before each commit (tests, linting). To run manually: `pre-commit run 
 
 - Application entry point: `backend/run.py`
 - [Figma board](https://www.figma.com/file/UddWSekF9Sl6REDWII9dtr/LifeFinances-Functional-Tree?type=whiteboard&node-id=0%3A1&t=p6KDxEXCU2BdB7MZ-1) for intended structure (may not stay current)
+
+### Flask HTTP API (`/api`)
+
+The UI talks to Flask over JSON under the `/api` prefix (see `backend/app/__init__.py`). Contract and examples: [`specs/001-react-flask-migration/contracts/openapi.yaml`](specs/001-react-flask-migration/contracts/openapi.yaml).
+
+| Method | Path | Role |
+|--------|------|------|
+| `GET` | `/api/config` | Returns `{ "content": "<yaml string>" }` for the active file. |
+| `PUT` | `/api/config` | Body `{ "content": "<yaml string>" }` — validates against the `User` schema, then writes **`config.yml` in the process working directory** (typically the repo root). |
+| `POST` | `/api/simulation/run` | Runs the simulator from the on-disk config; returns `success_percentage` and `first_result` (`columns` / `data` in pandas “split” form). |
+
+**Working directory:** Start the backend from the repo root (`python backend/run.py` or `uv run --project backend python backend/run.py`) so `config.yml` resolves next to the checkout. If that file is missing, `GET /api/config` still returns YAML (fallback to `backend/tests/sample_configs/min_config_income.yml` for read-only display); `PUT` always targets `./config.yml` when no custom path is passed.
+
+**Root URL `/`:** Returns **302** to the SPA. Override the target with **`FRONTEND_REDIRECT_URL`** (Compose sets it to match the published Vite URL, e.g. `http://localhost:5174/`).

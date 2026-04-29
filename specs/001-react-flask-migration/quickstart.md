@@ -94,4 +94,4 @@ PYTHONPATH=backend uv run --project backend pytest backend/tests/test_api_config
 | Environment | Checklist (connectivity) | Date | Outcome |
 |-------------|--------------------------|------|---------|
 | Local dev container | quickstart “Connectivity checklist” via browser at `http://localhost:5173` | 2026-04-06 | Pass (automated: `make test`, `npm run test:run`, API checks) |
-| Full Docker Compose stack (host) | `docker compose up --build`, browser at `http://localhost:5173`, checklist § “Connectivity checklist” | 2026-04-06 | Pass (host connectivity verified after debug; see `docs/cursor-agent-docker-frontend-debug.md` if issues recur) |
+| Full Docker Compose stack (host) | `docker compose up --build`, browser at `http://localhost:5174`, checklist “Connectivity checklist” | 2026-04-06 | Pass (host connectivity verified after debug; see this quickstart’s **Docker Compose** / **Docker debug steps** if issues recur) |

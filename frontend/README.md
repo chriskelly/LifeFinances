@@ -47,7 +47,9 @@ Call the backend from the browser via relative URLs, e.g. `fetch('/api/...')`, s
 
 ### Docker Compose
 
-`docker compose` builds a separate image for `frontend` and runs `npm run dev` inside that service. If you use the default proxy target above from **inside** the frontend container, `localhost:3501` refers to that container, not the `backend` service. For full-stack in Compose you either need a proxy target the frontend container can use to reach the API (for example the Compose service hostname on the Compose network) or run Vite on the host with only the backend in Compose. Verify API calls against your actual layout before relying on it.
+The repo’s `docker-compose.yml` sets **`API_PROXY_TARGET=http://backend:3500`** on the `frontend` service so Vite proxies `/api` to the backend by Docker service name (backend listens on **3500** inside its container; the host maps **3501→3500** for direct API access from the host).
+
+If you run a custom Compose layout without that variable, `localhost` inside the frontend container is **not** the backend — set `API_PROXY_TARGET` to a URL reachable from the frontend container (same idea as the feature [quickstart](../../specs/001-react-flask-migration/quickstart.md#docker-compose)).
 
 ## Scripts
 
