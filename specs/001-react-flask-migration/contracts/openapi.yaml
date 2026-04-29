@@ -1,0 +1,157 @@
+openapi: 3.0.3
+info:
+  title: Life Finances Config & Simulation API
+  version: 0.1.0
+  description: >
+    JSON API for the React client. Serves configuration text and triggers simulation
+    against the persisted config.yml. Base path /api is mounted by the Flask app.
+
+servers:
+  - url: http://localhost:3501/api
+    description: Local backend (direct)
+  - url: http://localhost:5173/api
+    description: Via Vite dev proxy
+
+paths:
+  /config:
+    get:
+      operationId: getConfig
+      summary: Get active configuration text
+      responses:
+        "200":
+          description: Current YAML text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigDocument"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      operationId: putConfig
+      summary: Save configuration text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfigDocument"
+      responses:
+        "200":
+          description: Saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigSaveResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /simulation/run:
+    post:
+      operationId: runSimulation
+      summary: Run simulation using persisted config file
+      description: >
+        Uses the on-disk config.yml as source of truth after the latest successful
+        PUT /config. Product UI exposes only Save (PUT only) and Save & run (PUT
+        then POST); do not call POST without PUT in the same Save & run user action.
+      responses:
+        "200":
+          description: Latest simulation summary and first result table
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationResult"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    ConfigDocument:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: Full YAML configuration file body
+
+    ConfigSaveResponse:
+      type: object
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Configuration saved
+
+    FirstResultTable:
+      type: object
+      required:
+        - columns
+        - data
+      properties:
+        columns:
+          type: array
+          items:
+            type: string
+        data:
+          type: array
+          items:
+            type: array
+            items:
+              nullable: true
+              oneOf:
+                - type: string
+                - type: number
+                - type: boolean
+
+    SimulationResult:
+      type: object
+      required:
+        - success_percentage
+        - first_result
+      properties:
+        success_percentage:
+          type: string
+          description: Human-readable percentage for display
+        first_result:
+          $ref: "#/components/schemas/FirstResultTable"
+
+    ErrorBody:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - message
+          properties:
+            code:
+              type: string
+              example: validation_error
+            message:
+              type: string
+            details:
+              type: string
+              description: Optional technical detail for debugging
+
+  responses:
+    ValidationError:
+      description: Invalid YAML or config schema
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"

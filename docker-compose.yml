@@ -1,14 +1,45 @@
 services:
-  life_finances:
+  backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
+    environment:
+      # Host port for SPA (see frontend ports); must match published Vite URL from the Mac.
+      FRONTEND_REDIRECT_URL: http://localhost:5174/
     volumes:
-      - ./src:/src:ro
-      - ./tests:/tests:ro
+      - ./backend/app:/app/app:ro
+      - ./backend/tests:/app/tests:ro
+      - ./backend/run.py:/app/run.py:ro
       - ./config.yml:/app/config.yml:ro
     ports:
-      - "3500:3500"
+      - "3501:3500" # Host 3501 avoids collision with local/IDE
     entrypoint:
       - python
       - run.py
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      API_PROXY_TARGET: http://backend:3500
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    # Host 5174 avoids collision with local/IDE Vite on 127.0.0.1:5173 (empty reply from wrong process).
+    ports:
+      - "5174:5173"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5173/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      - backend

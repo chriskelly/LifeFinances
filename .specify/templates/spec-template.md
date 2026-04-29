@@ -116,13 +116,22 @@
 
 ### Testing Requirements *(constitution-aligned)*
 
-- **TR-001**: Test-Driven Development (TDD) MUST be used: tests written before implementation for all application code (simulator and Flask app)
-- **TR-002**: Test coverage MUST achieve minimum 80% (95%+ for financial calculations and simulation logic) for application code (simulator and Flask app)
-- **TR-003**: All tests MUST use pytest framework with appropriate fixtures
+- **TR-001**: Test-Driven Development (TDD) MUST be used: tests written before implementation for all application code (backend and frontend)
+- **TR-002**: Test coverage MUST achieve minimum 80% for new application modules; critical financial calculations, simulation logic, and high-impact financial user journeys MUST achieve 95%+ coverage or equivalent confidence
+- **TR-003**: Backend tests MUST use pytest with appropriate fixtures; frontend tests MUST use React Testing Library (or equivalent accessibility-first model), Vitest or Jest (or repo-documented equivalent), and a DOM environment (e.g. jsdom)
 - **TR-004**: Unit tests MUST complete in under 1 second per test
 - **TR-005**: Integration tests MUST complete in under 10 seconds per test
 - **TR-006**: API endpoints MUST have integration tests verifying status codes, response formats, and error handling
-- **TR-007**: *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted from testing requirements (see constitution Testing Standards section)
+- **TR-007**: Frontend features that fetch or derive data MUST test loading, success, empty, and error states
+- **TR-008**: Frontend user flows MUST include accessibility checks for labels, keyboard interaction, and visible focus behavior where applicable
+- **TR-009**: *Exception*: Standalone scripts/notebooks NOT used as inputs, imports, or dependencies for the application MAY be exempted from testing requirements (see constitution Testing Standards section)
+- **TR-010**: Frontend tests MUST query the UI as users perceive it (roles, accessible names, visible text); `data-testid` MUST be a last resort and justified
+- **TR-011**: Frontend user interactions MUST be driven with `@testing-library/user-event` (or project equivalent); HTTP MUST be mocked at the network boundary (e.g. MSW), not by spying on internal fetch in components
+- **TR-012**: Custom hooks MUST be tested with `renderHook` (or equivalent) and production-like provider wiring; tests MUST NOT assert React implementation details
+- **TR-013**: Frontend network-mock handlers (e.g. MSW) MUST be pure response-shapers; assertions on request payloads MUST run in the test body against captured request data, never inside the handler. Test files MUST contain no `screen.debug`, `console.log`, `it.only`, `describe.only`, or `debugger` at merge time
+- **TR-014**: Frontend tests MUST assert the absence of UI elements with `queryBy*(...).not.toBeInTheDocument()` keyed on role + accessible name (counting all matches of a role MUST NOT be used as a proxy for "no extra control"), and status/live-region assertions MUST be scoped to a specific region when multiple `role="status"` regions exist
+- **TR-015**: Editable frontend views MUST include at least one test that simulates real user input (typing/clearing/selection) and asserts the resulting request body or derived state reflects the edit; data-bearing views (tables, lists, charts) MUST assert on representative rendered data values, not only on structural roles or counts
+- **TR-016**: In-flight UI states (disabled controls, spinners, loading skeletons) MUST be exercised with deferred promises or fake timers under explicit test control; arbitrary `setTimeout` delays in MSW handlers or test bodies MUST NOT be used as "wait long enough" mechanisms
 
 ### Performance Requirements *(constitution-aligned)*
 

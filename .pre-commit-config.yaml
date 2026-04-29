@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: make-all
         name: Run make (build, test, lint)
-        entry: make
+        entry: scripts/precommit.sh
         language: system
         pass_filenames: false
         always_run: true
