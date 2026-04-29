@@ -29,7 +29,7 @@ The recommended way to develop. Requires [Docker](https://docs.docker.com/get-do
 2. Click **Reopen in Container** when prompted, or run **Dev Containers: Reopen in Container** from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
 3. Wait for the container to build (first time may take a few minutes)
 
-The container provides Python 3.10, Node.js, all dependencies, pre-commit hooks, and a default `config.yml` if none exists. Port 3500 is forwarded for the Python backend and port 5173 for the React frontend.
+The container provides Python 3.10, Node.js, all dependencies, pre-commit hooks, and a default `config.yml` if none exists. Port **3501** is forwarded for the Python backend (matches host port in Docker Compose; the process listens on **3500** inside the container when you run `python backend/run.py` in the workspace) and port **5173** for the React frontend.
 
 **Pre-commit hooks:** Installed automatically. They run before each commit (tests, linting). To run manually: `pre-commit run --all-files` or `make`.
 
