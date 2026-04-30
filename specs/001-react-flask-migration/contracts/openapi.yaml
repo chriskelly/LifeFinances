@@ -10,7 +10,9 @@ servers:
   - url: http://localhost:3501/api
     description: Local backend (direct)
   - url: http://localhost:5173/api
-    description: Via Vite dev proxy
+    description: Via Vite dev proxy (local `npm run dev`)
+  - url: http://localhost:5174/api
+    description: Via Vite dev proxy (Docker Compose host port → container 5173)
 
 paths:
   /config:
