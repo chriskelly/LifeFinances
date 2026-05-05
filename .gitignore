@@ -6,6 +6,7 @@ config.yml
 docs/ideas/
 docs/backlog/
 docs/active/
+docs/features/*/Research/
 
 # Node / frontend
 node_modules/
