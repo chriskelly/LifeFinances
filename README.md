@@ -1,35 +1,19 @@
 # LifeFInances
 
-## Run with Docker
-
-To run the application without any development setup (Docker required):
-
-1. Clone the repository and `cd` into it
-2. Copy a sample config to the project root:
-   ```bash
-   cp backend/tests/sample_configs/full_config.yml config.yml
-   ```
-   (Use `min_config_net_worth.yml` or `min_config_income.yml` for smaller examples.)
-3. Start the application:
-   ```bash
-   docker compose up --build
-   ```
-4. Open **http://localhost:5174** as the **primary** UI (React via Vite in Docker; host port **5174** maps to Vite’s **5173** in the container and avoids clashes with a local IDE/Vite on `127.0.0.1:5173`). The app exposes **two actions**: **Save** (writes `config.yml` only) and **Save & run** (save then simulation). Visiting **http://localhost:3501** hits the Flask API directly; the root URL `/` returns **302** to that frontend URL.
-
----
+A simulator for personal finances and retirement planning. The app is a Python (Flask) backend with a React + TypeScript frontend.
 
 ## Developer Setup
 
-### With DevContainer
+### With DevContainer (recommended)
 
-The recommended way to develop. Requires [Docker](https://docs.docker.com/get-docker/), [VS Code](https://code.visualstudio.com/), and the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
+Requires [Docker](https://docs.docker.com/get-docker/), [VS Code](https://code.visualstudio.com/), and the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
 
 **Installation:**
 1. Clone the repository and open the folder in VS Code
 2. Click **Reopen in Container** when prompted, or run **Dev Containers: Reopen in Container** from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
 3. Wait for the container to build (first time may take a few minutes)
 
-The container provides Python 3.10, Node.js, all dependencies, pre-commit hooks, and a default `config.yml` if none exists. Port **3501** is forwarded for the Python backend (matches host port in Docker Compose; the process listens on **3500** inside the container when you run `python backend/run.py` in the workspace) and port **5173** for the React frontend.
+The container provides Python 3.10, Node.js, all dependencies, pre-commit hooks, and a default `config.yml` if none exists. Port **3501** is forwarded for the Python backend (the process listens on **3500** inside the container when you run `python backend/run.py` in the workspace) and port **5173** for the React frontend.
 
 **Pre-commit hooks:** Installed automatically. They run before each commit (tests, linting). To run manually: `pre-commit run --all-files` or `make`.
 
@@ -59,6 +43,7 @@ The container provides Python 3.10, Node.js, all dependencies, pre-commit hooks,
    ```bash
    cp backend/tests/sample_configs/full_config.yml config.yml
    ```
+   (Use `min_config_net_worth.yml` or `min_config_income.yml` for smaller examples.)
 4. Review allocation options at [`backend/app/data/README.md`](https://github.com/chriskelly/LifeFinances/blob/main/backend/app/data/README.md)
 
 **Pre-commit hooks:**
@@ -77,17 +62,20 @@ Hooks run before each commit (tests, linting). To run manually: `pre-commit run 
 | Run tests | `make test` |
 | Lint and format | `make lint` |
 
+### Migrating from a previous Docker Compose setup
+
+If you previously ran `docker compose up`, run `docker compose down --remove-orphans` once to clean up any leftover containers. This repo no longer uses Docker Compose; the only container in play is the dev container under `.devcontainer/`.
+
 ## Monorepo Structure
 
 - `backend/`: Python application code, tests, and Python tooling configuration
 - `frontend/`: React + TypeScript client for configuration editing and simulation results (Vitest + RTL + MSW); see [feature quickstart](specs/001-react-flask-migration/quickstart.md) for running with the Flask API
-- Root: orchestration and containerization (`Makefile`, `Dockerfile`, `docker-compose.yml`, CI/workspace config)
+- Root: orchestration (`Makefile`, CI/workspace config) and the dev container build (`.devcontainer/`)
 
 ### Command Contract
 
 - Run developer and CI commands from the repository root.
 - Backend commands are root-orchestrated and target `backend/` paths.
-
 
 ### Code Structure
 
@@ -102,8 +90,8 @@ The UI talks to Flask over JSON under the `/api` prefix (see `backend/app/__init
 |--------|------|------|
 | `GET` | `/api/config` | Returns `{ "content": "<yaml string>" }` for the active file. |
 | `PUT` | `/api/config` | Body `{ "content": "<yaml string>" }` — validates against the `User` schema, then writes **`config.yml` in the process working directory** (typically the repo root). |
-| `POST` | `/api/simulation/run` | Runs the simulator from the on-disk config; returns `success_percentage` and `first_result` (`columns` / `data` in pandas “split” form). |
+| `POST` | `/api/simulation/run` | Runs the simulator from the on-disk config; returns `success_percentage` and `first_result` (`columns` / `data` in pandas "split" form). |
 
 **Working directory:** Start the backend from the repo root (`python backend/run.py` or `uv run --project backend python backend/run.py`) so `config.yml` resolves next to the checkout. If that file is missing, `GET /api/config` still returns YAML (fallback to `backend/tests/sample_configs/min_config_income.yml` for read-only display); `PUT` always targets `./config.yml` when no custom path is passed.
 
-**Root URL `/`:** Returns **302** to the SPA. Override the target with **`FRONTEND_REDIRECT_URL`** (Compose sets it to match the published Vite URL, e.g. `http://localhost:5174/`).
+**Root URL `/`:** Returns **302** to the SPA. Override the target with **`FRONTEND_REDIRECT_URL`** (defaults to `http://localhost:5173/`).
