@@ -44,6 +44,18 @@ jobs:
       - name: Create user config
         run: cp backend/tests/sample_configs/full_config.yml config.yml
 
+      # devcontainers/ci@v0.3 uses .devcontainer/devcontainer.json verbatim,
+      # including two bind mounts that only exist on a contributor's machine:
+      # `.devcontainer/history` (persistent zsh history) and `~/.config/gh`
+      # (host gh auth). docker run rejects bind mounts whose source path is
+      # missing, so pre-create both as empty directories on the runner. The
+      # mounted contents are irrelevant in CI — auth uses GITHUB_TOKEN via
+      # docker/login-action above, and shell history isn't needed.
+      - name: Ensure devcontainer mount sources exist
+        run: |
+          mkdir -p .devcontainer/history
+          mkdir -p "$HOME/.config/gh"
+
       # Builds .devcontainer/Dockerfile (with cache pulled from GHCR) and runs
       # `make test` inside the resulting image. This image is the same one VS Code
       # uses locally for "Reopen in Container", so dev/CI parity is real.
