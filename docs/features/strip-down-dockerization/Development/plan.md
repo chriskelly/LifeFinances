@@ -175,7 +175,7 @@ commits remove them and rewrite CI to use the devcontainer image."
 
 - [ ] **Step 2.1: Replace the workflow file**
 
-Replace the entire contents of `.github/workflows/main_ci.yml` with:
+Replace the entire contents of `.github/workflows/main_ci.yml` with the following. The inline comments are part of the deliverable — they document the non-obvious mechanics for future maintainers (GHCR's lowercase requirement, the cache-push-only-on-main semantics, why there are two `devcontainers/ci` invocations).
 
 ```yaml
 name: Main CI
@@ -187,6 +187,9 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # `packages: write` is required so devcontainers/ci can push the built layer
+    # cache to ghcr.io/<repo>-devcontainer on main. PR runs read cache but do not
+    # write (see `push: filter` + `refFilterForPush` below).
     permissions:
       contents: read
       packages: write
@@ -194,12 +197,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # GHCR rejects uppercase characters in image references. `github.repository`
+      # preserves source-of-truth case (e.g. "Owner/RepoName"), so we lowercase it
+      # once and reuse the result via `steps.image.outputs.name` below. Doing this
+      # in a step rather than hard-coding keeps the workflow portable across forks
+      # and renames.
       - name: Compute lowercase image name
         id: image
         run: |
           repo_lower=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           echo "name=ghcr.io/${repo_lower}-devcontainer" >> "$GITHUB_OUTPUT"
 
+      # Authenticates this job's docker client to ghcr.io using the workflow's
+      # built-in GITHUB_TOKEN. Required for both pulling cached layers (cacheFrom)
+      # and pushing them on main. No org-level secrets needed.
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -207,9 +218,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The backend reads ./config.yml at startup. This step runs on the runner,
+      # not inside the container, but devcontainers/ci mounts the workspace, so
+      # the file is visible at /workspace/config.yml inside the container.
       - name: Create user config
         run: cp backend/tests/sample_configs/full_config.yml config.yml
 
+      # Builds .devcontainer/Dockerfile (with cache pulled from GHCR) and runs
+      # `make test` inside the resulting image. This image is the same one VS Code
+      # uses locally for "Reopen in Container", so dev/CI parity is real.
+      #
+      # cacheFrom + imageName: pull existing layer cache from this image ref before
+      #   building; tag the freshly built image with the same ref.
+      # push: filter + refFilterForPush: refs/heads/main: only push the new cache
+      #   image when the workflow runs on the main branch. PR runs reuse main's
+      #   cache without overwriting it, preventing cache thrash from concurrent PRs.
       - name: Run tests in devcontainer
         uses: devcontainers/ci@v0.3
         with:
@@ -219,6 +242,13 @@ jobs:
           refFilterForPush: refs/heads/main
           runCmd: make test
 
+      # Separate devcontainers/ci invocation (one for test, one for lint) so that
+      # failures attribute distinctly in the GitHub Checks UI. The lint step
+      # reuses the image just built by the test step above (cacheFrom hits every
+      # layer), so its build phase is near-instant.
+      #
+      # push: never because the test step already handled this run's cache push;
+      # pushing again here would be redundant.
       - name: Run lint in devcontainer
         uses: devcontainers/ci@v0.3
         with:
@@ -228,11 +258,8 @@ jobs:
           runCmd: make lint
 ```
 
-Notes:
-- The `Create user config` step stays on the runner (not inside the container). `devcontainers/ci@v0.3` mounts the workspace, so the file appears at the same path inside the container.
-- Two separate `runCmd` invocations let test and lint failures attribute distinctly in the GitHub Checks UI. The second invocation reuses the just-built image; cost is near-zero.
-- `push: filter` + `refFilterForPush: refs/heads/main` means PR runs read cache but only `main` writes it. This avoids cache thrash from concurrent PRs.
-- The 3× Docker-Hub retry loop is gone because the warm-cache path doesn't pull base images.
+Other notes (not in the YAML):
+- The 3× Docker-Hub retry loop from the previous workflow is gone because the steady-state warm-cache path doesn't pull base images at all. Cold builds (when the devcontainer files change) still go through Docker Hub for `python:3.10`, `node:24` (via nvm), and `astral-sh/uv`; if those become flaky in the future, escalate by digest-pinning or mirroring those bases to GHCR.
 
 - [ ] **Step 2.2: YAML lint locally if a linter is available, otherwise visual check**
 
