@@ -15,7 +15,7 @@ The Compose layer is the part that "trips CI" and is the least-justified now tha
 
 ## 2. Trade-off summary
 
-Four options were considered (full evaluation preserved locally in `../Research/evaluation.md`).
+Four options were considered.
 
 | Concern | A: Strip all | **B: Keep devcontainer (chosen)** | C: Keep Compose | D: Status quo |
 |---|---|---|---|---|
