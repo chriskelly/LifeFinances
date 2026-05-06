@@ -2,6 +2,8 @@
 
 A simulator for personal finances and retirement planning. The app is a Python (Flask) backend with a React + TypeScript frontend.
 
+> **For coding agents and contributors:** project conventions, commands, and guardrails live in [`AGENTS.md`](AGENTS.md) (root), [`backend/AGENTS.md`](backend/AGENTS.md), and [`frontend/AGENTS.md`](frontend/AGENTS.md). Read those before making changes.
+
 ## Developer Setup
 
 ### With DevContainer (recommended)
