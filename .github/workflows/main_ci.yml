@@ -5,32 +5,86 @@ on:
   pull_request:
 
 jobs:
-  docker_test:
+  ci:
     runs-on: ubuntu-latest
+    # `packages: write` is required so devcontainers/ci can push the built layer
+    # cache to ghcr.io/<repo>-devcontainer on main. PR runs read cache but do not
+    # write (see `push: filter` + `refFilterForPush` below).
+    permissions:
+      contents: read
+      packages: write
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
+      # GHCR rejects uppercase characters in image references. `github.repository`
+      # preserves source-of-truth case (e.g. "Owner/RepoName"), so we lowercase it
+      # once and reuse the result via `steps.image.outputs.name` below. Doing this
+      # in a step rather than hard-coding keeps the workflow portable across forks
+      # and renames.
+      - name: Compute lowercase image name
+        id: image
+        run: |
+          repo_lower=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "name=ghcr.io/${repo_lower}-devcontainer" >> "$GITHUB_OUTPUT"
+
+      # Authenticates this job's docker client to ghcr.io using the workflow's
+      # built-in GITHUB_TOKEN. Required for both pulling cached layers (cacheFrom)
+      # and pushing them on main. No org-level secrets needed.
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The backend reads ./config.yml at startup. This step runs on the runner,
+      # not inside the container, but devcontainers/ci mounts the workspace, so
+      # the file is visible at /workspace/config.yml inside the container.
       - name: Create user config
         run: cp backend/tests/sample_configs/full_config.yml config.yml
 
-      - name: Run Tests (with retry on Docker Hub errors)
+      # devcontainers/ci@v0.3 uses .devcontainer/devcontainer.json verbatim,
+      # including two bind mounts that only exist on a contributor's machine:
+      # `.devcontainer/history` (persistent zsh history) and `~/.config/gh`
+      # (host gh auth). docker run rejects bind mounts whose source path is
+      # missing, so pre-create both as empty directories on the runner. The
+      # mounted contents are irrelevant in CI — auth uses GITHUB_TOKEN via
+      # docker/login-action above, and shell history isn't needed.
+      - name: Ensure devcontainer mount sources exist
         run: |
-          for i in 1 2 3; do
-            echo "Attempt $i of 3..."
-            if make test; then
-              echo "Tests passed!"
-              exit 0
-            else
-              echo "Attempt $i failed"
-              if [ $i -lt 3 ]; then
-                echo "Retrying in 30 seconds..."
-                sleep 30
-              fi
-            fi
-          done
-          echo "All attempts failed"
-          exit 1
-      
-      - name: Lint
-        run: make lint
+          mkdir -p .devcontainer/history
+          mkdir -p "$HOME/.config/gh"
+
+      # Builds .devcontainer/Dockerfile (with cache pulled from GHCR) and runs
+      # `make test` inside the resulting image. This image is the same one VS Code
+      # uses locally for "Reopen in Container", so dev/CI parity is real.
+      #
+      # cacheFrom + imageName: pull existing layer cache from this image ref before
+      #   building; tag the freshly built image with the same ref.
+      # push: filter + refFilterForPush: refs/heads/main: only push the new cache
+      #   image when the workflow runs on the main branch. PR runs reuse main's
+      #   cache without overwriting it, preventing cache thrash from concurrent PRs.
+      - name: Run tests in devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: ${{ steps.image.outputs.name }}
+          cacheFrom: ${{ steps.image.outputs.name }}
+          push: filter
+          refFilterForPush: refs/heads/main
+          runCmd: make test
+
+      # Separate devcontainers/ci invocation (one for test, one for lint) so that
+      # failures attribute distinctly in the GitHub Checks UI. The lint step
+      # reuses the image just built by the test step above (cacheFrom hits every
+      # layer), so its build phase is near-instant.
+      #
+      # push: never because the test step already handled this run's cache push;
+      # pushing again here would be redundant.
+      - name: Run lint in devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: ${{ steps.image.outputs.name }}
+          cacheFrom: ${{ steps.image.outputs.name }}
+          push: never
+          runCmd: make lint
