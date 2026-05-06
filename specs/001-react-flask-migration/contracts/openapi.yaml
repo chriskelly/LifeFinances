@@ -7,12 +7,10 @@ info:
     against the persisted config.yml. Base path /api is mounted by the Flask app.
 
 servers:
-  - url: http://localhost:3501/api
+  - url: http://localhost:3500/api
     description: Local backend (direct)
   - url: http://localhost:5173/api
     description: Via Vite dev proxy (local `npm run dev`)
-  - url: http://localhost:5174/api
-    description: Via Vite dev proxy (Docker Compose host port → container 5173)
 
 paths:
   /config:

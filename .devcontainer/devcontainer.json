@@ -49,11 +49,11 @@
         }
     },
     "forwardPorts": [
-        3501,
+        3500,
         5173
     ],
     "portsAttributes": {
-        "3501": {
+        "3500": {
             "label": "Flask App",
             "onAutoForward": "notify"
         },

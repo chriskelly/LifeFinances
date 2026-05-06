@@ -5,7 +5,7 @@ React + TypeScript + Vite workspace for the LifeFinances UI. It lives beside `ba
 ## Prerequisites
 
 - Node.js `^20.19.0 || ^22.12.0 || >=24.0.0` (also enforced via `engines` in `package.json`). This range is required because `jsdom@29` → `html-encoding-sniffer@6` → `@exodus/bytes` is ESM-only and the test runner does `require()` of those modules, which Node only supports unflagged from those versions onward. The repo pins a default in the root `.nvmrc`; with nvm, run `nvm install && nvm use` from the repo root.
-- A running backend on host port **3501** when you need API calls (see below)
+- A running backend on host port **3500** when you need API calls (see below)
 
 > If your shell resolves `node` to Cursor Server's bundled `v20.18.2`, you'll see `ERR_REQUIRE_ESM` from `html-encoding-sniffer` when running tests. Use nvm (or any other version manager) to put a compatible Node first on `$PATH`. The repo's pre-commit wrapper performs this check automatically.
 
@@ -40,8 +40,8 @@ Open the URL Vite prints (usually `http://localhost:5173`).
 
 Flask registers the HTTP API under the `/api` prefix (`backend/app/__init__.py`). The dev server proxies browser requests for `/api/*` to the backend using `vite.config.ts`:
 
-- **Target:** `http://localhost:3501` (default fallback in `vite.config.ts`; override with `API_PROXY_TARGET` as needed)
-- **Who resolves it:** the Node process running Vite, not the browser. The backend must be reachable at that host and port **from wherever Vite runs** (typically your laptop or the Dev Container with port 3501 forwarded).
+- **Target:** `http://localhost:3500` (default fallback in `vite.config.ts`; override with `API_PROXY_TARGET` as needed)
+- **Who resolves it:** the Node process running Vite, not the browser. The backend must be reachable at that host and port **from wherever Vite runs** (typically your laptop or the Dev Container with port 3500 forwarded).
 
 Call the backend from the browser via relative URLs, e.g. `fetch('/api/...')`, so traffic stays on the Vite origin and goes through the proxy.
 
