@@ -4,23 +4,23 @@
 **Feature**: Split Configuration UI and Simulation Backend  
 **Phase**: 0 – Research & technical decisions
 
-## 1. Browser-to-backend connectivity (dev and Docker)
+## 1. Browser-to-backend connectivity (dev)
 
-**Question**: How should the React app call Flask without CORS pain in dev and in Docker Compose?
+**Question**: How should the React app call Flask without CORS pain during development?
 
-**Decision**: Keep **same-origin API calls** to `/api` from the browser. **Vite dev server** proxies `/api` to the Flask host. Proxy **target must be configurable**: default `http://127.0.0.1:3501` for local laptop dev; in Docker Compose set an environment variable (e.g. `API_PROXY_TARGET=http://backend:3500`) read only in `vite.config.ts` so the frontend container reaches the backend service by name.
+**Decision**: Keep **same-origin API calls** to `/api` from the browser. **Vite dev server** proxies `/api` to the Flask process. Read **`API_PROXY_TARGET`** in `vite.config.ts` with default **`http://127.0.0.1:3500`** so it matches **`backend/run.py`** (`app.run(..., port=3500)`). Override the env var only when Flask listens on a non-default host or port.
 
 **Rationale**:
 
 - Browser only talks to the Vite origin (`:5173`), so no CORS preflight for `/api` during development.
-- `frontend/vite.config.ts` currently hardcodes `localhost:3501`, which **fails inside the frontend container** because the backend is a different container.
+- The proxy runs in the Node process that hosts Vite, so it reaches Flask via **`127.0.0.1`** from the same machine or dev container.
 
 **Alternatives considered**:
 
-- **flask-cors** for cross-origin browser → `:3501`: Works but duplicates origins and complicates cookie/session story; unnecessary if proxy is correct.
-- **Always call absolute `http://localhost:3501` from the client**: Breaks Docker and mixes origins.
+- **flask-cors** for cross-origin browser → Flask: Works but duplicates origins and complicates cookie/session story; unnecessary if proxy is correct.
+- **Hardcode a different port**: Would drift from `backend/run.py` and confuse onboarding.
 
-**Implementation notes**: Update `docker-compose.yml` `frontend` service with `environment: API_PROXY_TARGET: http://backend:3500` (or equivalent). Document in `quickstart.md`.
+**Historical note**: An older Docker Compose stack used **`API_PROXY_TARGET=http://backend:3500`** so a separate frontend container could reach the backend service by name. That stack was removed; Docker-based development now uses the **dev container** only, with Flask on **3500** and the same default proxy target as local host development.
 
 ---
 

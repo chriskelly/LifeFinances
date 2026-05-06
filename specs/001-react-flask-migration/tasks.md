@@ -25,8 +25,8 @@ description: "Task list for Split Configuration UI and Simulation Backend (001-r
 - [x] T001 Add Vitest, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom`, and `msw` devDependencies plus `test` / `test:run` scripts in `frontend/package.json` and refresh `frontend/package-lock.json`
 - [x] T002 Create `frontend/vitest.config.ts` with React plugin, jsdom environment, and setup file path
 - [x] T003 Create `frontend/src/test/setup.ts` for `@testing-library/jest-dom` and optional global MSW lifecycle hooks
-- [x] T004 [P] Read proxy target from `process.env.API_PROXY_TARGET` with fallback `http://127.0.0.1:3501` for `/api` in `frontend/vite.config.ts` per `specs/001-react-flask-migration/research.md`
-- [x] T005 [P] Add `API_PROXY_TARGET=http://backend:3500` (or equivalent) to the `frontend` service in `/workspace/docker-compose.yml` so browser calls via Vite reach Flask in Compose
+- [x] T004 [P] Read proxy target from `process.env.API_PROXY_TARGET` with fallback `http://127.0.0.1:3500` for `/api` in `frontend/vite.config.ts` per `specs/001-react-flask-migration/research.md` (aligned with `backend/run.py` port **3500**)
+- [x] T005 [P] ~~Add `API_PROXY_TARGET=http://backend:3500` to `docker-compose.yml`~~ — superseded: Compose stack removed ([PR #175](https://github.com/chriskelly/LifeFinances/pull/175)); dev container + default `API_PROXY_TARGET` / port **3500** cover full-stack dev
 - [x] T006 [P] Add TypeScript types for `ConfigDocument`, `ConfigSaveResponse`, `FirstResultTable`, `SimulationResult`, and `ErrorBody` aligned with `specs/001-react-flask-migration/contracts/openapi.yaml` in `frontend/src/types/api.ts`
 
 ---

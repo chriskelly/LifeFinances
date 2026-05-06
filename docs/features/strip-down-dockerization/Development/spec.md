@@ -92,12 +92,12 @@ Targets removed: `build`, `up`, `down` (Compose-only). Targets retained, simplif
 ### 4.6 `frontend/README.md` rewrite
 
 - Delete the **"### Docker Compose"** subsection (lines 48–52 today). It explains a Compose-specific `API_PROXY_TARGET` override that no longer applies.
-- The default `API_PROXY_TARGET=http://localhost:3501` already works for both host-direct and devcontainer-forwarded dev; no other edits needed.
+- The default proxy target **`http://127.0.0.1:3500`** (matching `backend/run.py`) works for both host-direct and devcontainer-forwarded dev; no other edits needed.
 
 ### 4.7 Files explicitly *not* edited
 
 - `backend/app/__init__.py` — reads `FRONTEND_REDIRECT_URL` with default `http://localhost:5173/`. The default is correct for both supported dev paths; only the Compose override (`http://localhost:5174/`) goes away with Compose.
-- `frontend/vite.config.ts` — reads `API_PROXY_TARGET` with default `http://127.0.0.1:3501`. Same reasoning. Two Docker-flavored comments inside this file remain; they are minor and can be cleaned up as a separate tidy if desired.
+- `frontend/vite.config.ts` — reads `API_PROXY_TARGET` with default `http://127.0.0.1:3500`. Same reasoning. Two Docker-flavored comments inside this file remain; they are minor and can be cleaned up as a separate tidy if desired.
 - `specs/001-react-flask-migration/*` — historical record; intentionally preserved.
 - `.cursor/commands/speckit.implement.md` — Dockerfile-detection logic is harmless when triggered by the remaining `.devcontainer/Dockerfile`.
 
@@ -170,5 +170,4 @@ Reviewer-friendly commit order, all in one PR:
 - Decide whether the reorg-documentation backlog should rename its proposed `discovery/` → `Research/` (or vice versa) for project consistency. Track in that backlog item.
 - Reassess `docs/backlog/Get gh working in container/` once the devcontainer is the only container path.
 - Optional: cleanup of two Docker-flavored comments in `frontend/vite.config.ts`.
-- Resolve the devcontainer 3501/3500 port-mapping inconsistency. `.devcontainer/devcontainer.json` lists `forwardPorts: [3501, 5173]` and labels 3501 as "Flask App", but `backend/run.py` binds the backend to port 3500. Pre-strip-down, this was bridged by Compose's `"3501:3500"` host:container mapping plus a "matches host port in Docker Compose" parenthetical in the README. The Compose mapping is gone; the README parenthetical is gone; the devcontainer config and the README still claim 3501. Decide whether to (a) change `forwardPorts` to `[3500, 5173]` so it matches the listening port, (b) change `backend/run.py` to bind to 3501, or (c) add a runtime port-rebinding in `post-create.sh`. None of these block the strip-down PR.
 - Document a fork-PR / Dependabot caveat for the new CI: PRs from forks (and Dependabot) run with a read-only `GITHUB_TOKEN` and cannot pull the GHCR cache image if the package is private. After the first cache publish on `main`, mark the `lifefinances-devcontainer` package as public on GHCR so fork/Dependabot CI can read cache too. Until that happens, those PRs will silently fall back to a cold-cache build (~3–6 min slower) but will still pass.

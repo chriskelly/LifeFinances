@@ -26,7 +26,7 @@
 | `.devcontainer/*` | unchanged | Local + CI container source of truth. |
 | `.dockerignore` | unchanged | Still applies to devcontainer build context. |
 | `backend/app/__init__.py` | unchanged | `FRONTEND_REDIRECT_URL` default `http://localhost:5173/` already correct. |
-| `frontend/vite.config.ts` | unchanged | `API_PROXY_TARGET` default `http://127.0.0.1:3501` already correct. |
+| `frontend/vite.config.ts` | unchanged | `API_PROXY_TARGET` default `http://127.0.0.1:3500` already correct. |
 
 ---
 
@@ -482,7 +482,7 @@ Requires [Docker](https://docs.docker.com/get-docker/), [VS Code](https://code.v
 2. Click **Reopen in Container** when prompted, or run **Dev Containers: Reopen in Container** from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
 3. Wait for the container to build (first time may take a few minutes)
 
-The container provides Python 3.10, Node.js, all dependencies, pre-commit hooks, and a default `config.yml` if none exists. Port **3501** is forwarded for the Python backend (the process listens on **3500** inside the container when you run `python backend/run.py` in the workspace) and port **5173** for the React frontend.
+The container provides Python 3.10, Node.js, all dependencies, pre-commit hooks, and a default `config.yml` if none exists. Port **3500** is forwarded for the Python backend (matches `python backend/run.py`, which binds **`0.0.0.0:3500`**) and port **5173** for the React frontend.
 
 **Pre-commit hooks:** Installed automatically. They run before each commit (tests, linting). To run manually: `pre-commit run --all-files` or `make`.
 
@@ -616,7 +616,7 @@ hint."
 **Files:**
 - Modify: `frontend/README.md`
 
-**Why:** The subsection explains a Compose-only `API_PROXY_TARGET=http://backend:3500` override that no longer applies. The default fallback in `vite.config.ts` (`http://127.0.0.1:3501`) already handles host-direct and devcontainer-forwarded development.
+**Why:** The subsection explains a Compose-only `API_PROXY_TARGET=http://backend:3500` override that no longer applies. The default fallback in `vite.config.ts` (`http://127.0.0.1:3500`) already handles host-direct and devcontainer-forwarded development.
 
 - [ ] **Step 6.1: Delete the "### Docker Compose" subsection**
 
@@ -663,7 +663,7 @@ git commit -m "docs(frontend): drop Docker Compose subsection from README
 The subsection described an API_PROXY_TARGET=http://backend:3500
 override only meaningful inside docker-compose.yml. With Compose
 removed, the default fallback in vite.config.ts
-(http://127.0.0.1:3501) already serves both host-direct and
+(http://127.0.0.1:3500) already serves both host-direct and
 devcontainer-forwarded development."
 ```
 
