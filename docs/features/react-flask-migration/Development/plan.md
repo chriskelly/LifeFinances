@@ -76,7 +76,7 @@ Replace the Flask server-rendered index workflow with a **React + TypeScript** c
 ### Documentation (this feature)
 
 ```text
-specs/001-react-flask-migration/
+docs/features/react-flask-migration/Development/
 ├── plan.md
 ├── research.md
 ├── data-model.md

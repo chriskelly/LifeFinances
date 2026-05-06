@@ -98,7 +98,7 @@ Targets removed: `build`, `up`, `down` (Compose-only). Targets retained, simplif
 
 - `backend/app/__init__.py` — reads `FRONTEND_REDIRECT_URL` with default `http://localhost:5173/`. The default is correct for both supported dev paths; only the Compose override (`http://localhost:5174/`) goes away with Compose.
 - `frontend/vite.config.ts` — reads `API_PROXY_TARGET` with default `http://127.0.0.1:3500`. Same reasoning. Two Docker-flavored comments inside this file remain; they are minor and can be cleaned up as a separate tidy if desired.
-- `specs/001-react-flask-migration/*` — historical record; intentionally preserved.
+- `docs/features/react-flask-migration/*` — historical record; intentionally preserved.
 - `.cursor/commands/speckit.implement.md` — Dockerfile-detection logic is harmless when triggered by the remaining `.devcontainer/Dockerfile`.
 
 ### 4.8 `.gitignore` addition

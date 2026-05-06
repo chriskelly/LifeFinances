@@ -400,7 +400,7 @@ rg -n "docker-compose\.yml|docker compose|backend/Dockerfile|frontend/Dockerfile
   || echo "clean (excluding planning docs and historical specs)"
 ```
 
-Expected: `clean`. Hits inside `docs/features/strip-down-dockerization/` (this plan and the spec) and inside `specs/001-react-flask-migration/` are expected and intentional — those are documentation about the change and historical record respectively.
+Expected: `clean`. Hits inside `docs/features/strip-down-dockerization/` (this plan and the spec) and inside `docs/features/react-flask-migration/` are expected and intentional — those are documentation about the change and historical record respectively.
 
 - [ ] **Step 4.2: Delete the three files**
 
@@ -538,7 +538,7 @@ If you previously ran `docker compose up`, run `docker compose down --remove-orp
 ## Monorepo Structure
 
 - `backend/`: Python application code, tests, and Python tooling configuration
-- `frontend/`: React + TypeScript client for configuration editing and simulation results (Vitest + RTL + MSW); see [feature quickstart](specs/001-react-flask-migration/quickstart.md) for running with the Flask API
+- `frontend/`: React + TypeScript client for configuration editing and simulation results (Vitest + RTL + MSW); see [feature quickstart](docs/features/react-flask-migration/Development/quickstart.md) for running with the Flask API
 - Root: orchestration (`Makefile`, CI/workspace config) and the dev container build (`.devcontainer/`)
 
 ### Command Contract
@@ -553,7 +553,7 @@ If you previously ran `docker compose up`, run `docker compose down --remove-orp
 
 ### Flask HTTP API (`/api`)
 
-The UI talks to Flask over JSON under the `/api` prefix (see `backend/app/__init__.py`). Contract and examples: [`specs/001-react-flask-migration/contracts/openapi.yaml`](specs/001-react-flask-migration/contracts/openapi.yaml).
+The UI talks to Flask over JSON under the `/api` prefix (see `backend/app/__init__.py`). Contract and examples: [`docs/features/react-flask-migration/Development/contracts/openapi.yaml`](docs/features/react-flask-migration/Development/contracts/openapi.yaml).
 
 | Method | Path | Role |
 |--------|------|------|
@@ -631,7 +631,7 @@ Call the backend from the browser via relative URLs, e.g. `fetch('/api/...')`, s
 
 The repo’s `docker-compose.yml` sets **`API_PROXY_TARGET=http://backend:3500`** on the `frontend` service so Vite proxies `/api` to the backend by Docker service name (backend listens on **3500** inside its container; the host maps **3501→3500** for direct API access from the host).
 
-If you run a custom Compose layout without that variable, `localhost` inside the frontend container is **not** the backend — set `API_PROXY_TARGET` to a URL reachable from the frontend container (same idea as the feature [quickstart](../../specs/001-react-flask-migration/quickstart.md#docker-compose)).
+If you run a custom Compose layout without that variable, `localhost` inside the frontend container is **not** the backend — set `API_PROXY_TARGET` to a URL reachable from the frontend container (same idea as the feature [quickstart](../../react-flask-migration/Development/quickstart.md#docker-compose)).
 
 ## Scripts
 ```

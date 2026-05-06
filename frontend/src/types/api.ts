@@ -1,4 +1,4 @@
-/** Types aligned with `specs/001-react-flask-migration/contracts/openapi.yaml`. */
+/** Types aligned with `docs/features/react-flask-migration/Development/contracts/openapi.yaml`. */
 
 export interface ConfigDocument {
   content: string

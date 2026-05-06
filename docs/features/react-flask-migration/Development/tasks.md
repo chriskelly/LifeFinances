@@ -4,7 +4,7 @@ description: "Task list for Split Configuration UI and Simulation Backend (001-r
 
 # Tasks: Split Configuration UI and Simulation Backend
 
-**Input**: Design documents from `/workspace/specs/001-react-flask-migration/`  
+**Input**: Design documents from `/workspace/docs/features/react-flask-migration/Development/` and `/workspace/docs/features/react-flask-migration/Research/`  
 **Prerequisites**: [plan.md](./plan.md), [spec.md](./spec.md), [data-model.md](./data-model.md), [contracts/openapi.yaml](./contracts/openapi.yaml), [research.md](./research.md), [quickstart.md](./quickstart.md)
 
 **Tests**: Required per constitution (TDD: write failing tests before implementation for each story where applicable).
@@ -25,9 +25,9 @@ description: "Task list for Split Configuration UI and Simulation Backend (001-r
 - [x] T001 Add Vitest, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom`, and `msw` devDependencies plus `test` / `test:run` scripts in `frontend/package.json` and refresh `frontend/package-lock.json`
 - [x] T002 Create `frontend/vitest.config.ts` with React plugin, jsdom environment, and setup file path
 - [x] T003 Create `frontend/src/test/setup.ts` for `@testing-library/jest-dom` and optional global MSW lifecycle hooks
-- [x] T004 [P] Read proxy target from `process.env.API_PROXY_TARGET` with fallback `http://127.0.0.1:3500` for `/api` in `frontend/vite.config.ts` per `specs/001-react-flask-migration/research.md` (aligned with `backend/run.py` port **3500**)
+- [x] T004 [P] Read proxy target from `process.env.API_PROXY_TARGET` with fallback `http://127.0.0.1:3500` for `/api` in `frontend/vite.config.ts` per `docs/features/react-flask-migration/Research/research.md` (aligned with `backend/run.py` port **3500**)
 - [x] T005 [P] ~~Add `API_PROXY_TARGET=http://backend:3500` to `docker-compose.yml`~~ — superseded: Compose stack removed ([PR #175](https://github.com/chriskelly/LifeFinances/pull/175)); dev container + default `API_PROXY_TARGET` / port **3500** cover full-stack dev
-- [x] T006 [P] Add TypeScript types for `ConfigDocument`, `ConfigSaveResponse`, `FirstResultTable`, `SimulationResult`, and `ErrorBody` aligned with `specs/001-react-flask-migration/contracts/openapi.yaml` in `frontend/src/types/api.ts`
+- [x] T006 [P] Add TypeScript types for `ConfigDocument`, `ConfigSaveResponse`, `FirstResultTable`, `SimulationResult`, and `ErrorBody` aligned with `docs/features/react-flask-migration/Development/contracts/openapi.yaml` in `frontend/src/types/api.ts`
 
 ---
 
@@ -37,7 +37,7 @@ description: "Task list for Split Configuration UI and Simulation Backend (001-r
 
 **⚠️ No user story implementation until this phase is complete.**
 
-- [x] T007 Add module `backend/app/routes/api_json.py` with typed helpers to build JSON success/error responses consistent with `specs/001-react-flask-migration/contracts/openapi.yaml`
+- [x] T007 Add module `backend/app/routes/api_json.py` with typed helpers to build JSON success/error responses consistent with `docs/features/react-flask-migration/Development/contracts/openapi.yaml`
 - [x] T008 Refactor or extend `backend/app/routes/api.py` to register route handlers (stubs acceptable until US1/US2) and keep blueprint import path stable for `backend/app/__init__.py`
 - [x] T009 Change `backend/app/__init__.py` to remove the legacy server-rendered `/` workflow: return HTTP `302` to `http://localhost:5173/` (documented frontend URL) so bookmarks remain discoverable; update `backend/tests/test_routes.py` expectation to accept `302` from `/` per FR-005a
 - [x] T010 Create `frontend/src/services/api.ts` with typed `getConfig`, `putConfig`, and `postSimulationRun` functions using `fetch('/api/...')` and the types from `frontend/src/types/api.ts` (implementations may throw until US1/US2 fill behavior)
@@ -66,7 +66,7 @@ description: "Task list for Split Configuration UI and Simulation Backend (001-r
 - [x] T017 [US1] Run Ruff check and format on touched backend files (`backend/app/routes/api.py`, `backend/app/routes/api_json.py`, `backend/app/__init__.py`)
 - [x] T018 [US1] Run Pyright on `backend/app/` for changed modules
 - [x] T019 [US1] Run `npm run test:run` and `npm run lint` in `frontend/` and fix issues for US1 files
-- [x] T020 [US1] Confirm new backend tests pass via `pytest backend/tests/test_api_config.py` from repo root with appropriate `cwd` for `config.yml` behavior documented in `specs/001-react-flask-migration/quickstart.md`
+- [x] T020 [US1] Confirm new backend tests pass via `pytest backend/tests/test_api_config.py` from repo root with appropriate `cwd` for `config.yml` behavior documented in `docs/features/react-flask-migration/Development/quickstart.md`
 
 **Checkpoint**: MVP – config load/save works through React + API; no simulation yet.
 
@@ -87,7 +87,7 @@ description: "Task list for Split Configuration UI and Simulation Backend (001-r
 ### Implementation for User Story 2
 
 - [x] T024 [US2] Add helper to convert first simulation DataFrame to `FirstResultTable` JSON in `backend/app/routes/api.py` (inline helper; extract to `backend/app/routes/simulation_payload.py` only if it exceeds ~30 lines) using `gen_simulation_results` from `backend/app/models/simulator.py`
-- [x] T025 [US2] Implement `POST /api/simulation/run` in `backend/app/routes/api.py` calling `gen_simulation_results()` and returning JSON per `specs/001-react-flask-migration/data-model.md`
+- [x] T025 [US2] Implement `POST /api/simulation/run` in `backend/app/routes/api.py` calling `gen_simulation_results()` and returning JSON per `docs/features/react-flask-migration/Development/data-model.md`
 - [x] T026 [US2] Add `postSimulationRun` and `saveAndRun` (PUT then POST, abort on PUT error) in `frontend/src/services/api.ts`
 - [x] T027 [US2] Add right-panel results (success percentage heading, scrollable `<table>` with semantic headers) and **Save & run** button in `frontend/src/App.tsx`; match two-panel layout comparable to `backend/app/templates/index.html`
 - [x] T028 [US2] Run Ruff and Pyright on changed backend files
@@ -99,13 +99,13 @@ description: "Task list for Split Configuration UI and Simulation Backend (001-r
 
 ## Phase 5: User Story 3 – Connectivity and responsiveness (Priority: P3)
 
-**Goal**: Repeatable verification per `specs/001-react-flask-migration/quickstart.md` and FR-007/SC-004.
+**Goal**: Repeatable verification per `docs/features/react-flask-migration/Development/quickstart.md` and FR-007/SC-004.
 
 **Independent Test**: Follow quickstart checklist (local and Docker); timing notes for SC-002/SC-003.
 
-- [x] T030 [P] [US3] Add a small scripted API check (e.g. `curl` sequence or `pytest` tests) documented to run from repo root in `specs/001-react-flask-migration/quickstart.md` hitting `GET/PUT` and optionally `POST`
-- [x] T031 [US3] Update `/workspace/README.md` “Run with Docker” / developer sections so the **primary** workflow is React at `http://localhost:5173` with two-button behavior and pointer to `specs/001-react-flask-migration/quickstart.md`
-- [x] T032 [US3] Document multi-tab **last-write-wins** on save in `/workspace/README.md` or `specs/001-react-flask-migration/quickstart.md` per spec edge cases
+- [x] T030 [P] [US3] Add a small scripted API check (e.g. `curl` sequence or `pytest` tests) documented to run from repo root in `docs/features/react-flask-migration/Development/quickstart.md` hitting `GET/PUT` and optionally `POST`
+- [x] T031 [US3] Update `/workspace/README.md` “Run with Docker” / developer sections so the **primary** workflow is React at `http://localhost:5173` with two-button behavior and pointer to `docs/features/react-flask-migration/Development/quickstart.md`
+- [x] T032 [US3] Document multi-tab **last-write-wins** on save in `/workspace/README.md` or `docs/features/react-flask-migration/Development/quickstart.md` per spec edge cases
 
 **Checkpoint**: Onboarding and verification paths are explicit.
 
@@ -119,10 +119,10 @@ description: "Task list for Split Configuration UI and Simulation Backend (001-r
 - [x] T034 [P] Run full `make test` or documented equivalent from `/workspace/Makefile` across backend and frontend
 - [x] T035 [P] Run Ruff and Pyright on `backend/` for all changed modules
 - [x] T036 [P] Confirm `npm run build` succeeds in `frontend/`
-- [x] T037 [P] Manually execute `specs/001-react-flask-migration/quickstart.md` connectivity checklist for **local dev** (run in-container); **Docker steps must be run by the user outside the dev container** — request handoff and record pass/fail in PR description or `specs/001-react-flask-migration/quickstart.md` “Validation log” subsection
-- [x] T038 [P] Spot-check interactive `GET/PUT` latency vs constitution (<2s) and record peak RSS memory during a simulation call; document any `POST` simulation duration vs SC-003 and PR-002 (<100ms/trial) in `specs/001-react-flask-migration/research.md` or plan notes if exceptions apply
-- [x] T039 [P] Verify pytest-cov reports ≥80% line coverage for all new `backend/app/` modules and run `npx vitest run --coverage` to confirm ≥80% for all new `frontend/src/` modules; save frontend report under `frontend/coverage/` and capture backend+frontend coverage summaries in `specs/001-react-flask-migration/research.md`; confirm simulation-related paths reach ≥95%+ per TR-002
-- [x] T040 [P] Profile the actual `POST /api/simulation/run` request path with `cProfile` (one-off harness) and record top-10 hotspots in `specs/001-react-flask-migration/research.md` per PR-004 before merge
+- [x] T037 [P] Manually execute `docs/features/react-flask-migration/Development/quickstart.md` connectivity checklist for **local dev** (run in-container); **Docker steps must be run by the user outside the dev container** — request handoff and record pass/fail in PR description or `docs/features/react-flask-migration/Development/quickstart.md` “Validation log” subsection
+- [x] T038 [P] Spot-check interactive `GET/PUT` latency vs constitution (<2s) and record peak RSS memory during a simulation call; document any `POST` simulation duration vs SC-003 and PR-002 (<100ms/trial) in `docs/features/react-flask-migration/Research/research.md` or plan notes if exceptions apply
+- [x] T039 [P] Verify pytest-cov reports ≥80% line coverage for all new `backend/app/` modules and run `npx vitest run --coverage` to confirm ≥80% for all new `frontend/src/` modules; save frontend report under `frontend/coverage/` and capture backend+frontend coverage summaries in `docs/features/react-flask-migration/Research/research.md`; confirm simulation-related paths reach ≥95%+ per TR-002
+- [x] T040 [P] Profile the actual `POST /api/simulation/run` request path with `cProfile` (one-off harness) and record top-10 hotspots in `docs/features/react-flask-migration/Research/research.md` per PR-004 before merge
 
 ---
 

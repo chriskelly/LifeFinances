@@ -1,6 +1,6 @@
 # Tasks: Total Portfolio Allocation Strategy
 
-**Input**: Design documents from `/specs/002-total-portfolio-allocation/`  
+**Input**: Design documents from `/docs/features/total-portfolio-allocation/Development/` and `/docs/features/total-portfolio-allocation/Research/`  
 **Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`
 
 **Tests**: Tests are REQUIRED by the constitution for all new application code (simulator and Flask app). Tasks below include explicit TDD steps and emphasize reusable, domain-aligned fixtures, factories, and data-driven assertions instead of ad-hoc setup or magic numbers.
@@ -121,7 +121,7 @@
 
 - [x] T035 Add `User` config validation that when `TotalPortfolioStrategy` is chosen, social security uses an age-based strategy (early, mid, or late) and pension uses an age-based strategy (early, mid, or late) or cashout strategy, raising `ValueError` with clear message otherwise in `/workspace/app/models/config/user.py`
 - [x] T036 [P] Add tests for incompatible benefit strategies with total portfolio allocation (expect `ValueError` with clear messages) in `/workspace/tests/models/test_config.py`
-- [x] T037 [P] Ensure quickstart and spec examples remain valid under new validation rules in `/workspace/specs/002-total-portfolio-allocation/quickstart.md` and `/workspace/specs/002-total-portfolio-allocation/spec.md` (NOTE: Sample config already uses age-based strategies, validation passes)
+- [x] T037 [P] Ensure quickstart and spec examples remain valid under new validation rules in `/workspace/docs/features/total-portfolio-allocation/Development/quickstart.md` and `/workspace/docs/features/total-portfolio-allocation/Development/spec.md` (NOTE: Sample config already uses age-based strategies, validation passes)
 
 ---
 
@@ -130,10 +130,10 @@
 **Purpose**: Final clean-up, performance validation, and documentation alignment.
 
 - [x] T038 [P] Add or update docstrings/comments in `_TotalPortfolioStrategy`, config models, and tests to match spec and research decisions in `/workspace/app/models/config/portfolio.py` and `/workspace/app/models/controllers/allocation.py`
-- [x] T039 [P] Profile allocation and PV calculation paths (e.g., via `cProfile` harness) to confirm performance targets (<1ms allocation, <10ms PV) **COMPLETED**: Added feature-specific Makefile with `make profile` target in `/workspace/specs/002-total-portfolio-allocation/`. Actual performance: **0.033ms per allocation (30x faster than target)**, **0.033ms for PV calculation (300x faster than target)**. See `profiling_results.md` in this directory for detailed analysis.
+- [x] T039 [P] Profile allocation and PV calculation paths (e.g., via `cProfile` harness) to confirm performance targets (<1ms allocation, <10ms PV) **COMPLETED**: Added feature-specific Makefile with `make profile` target in `/workspace/docs/features/total-portfolio-allocation/Research/`. Actual performance: **0.033ms per allocation (30x faster than target)**, **0.033ms for PV calculation (300x faster than target)**. See `profiling_results.md` in this directory for detailed analysis.
 - [x] T040 [P] Verify overall test coverage for new/modified modules meets 80%+ (95%+ for financial logic) using coverage tooling **COMPLETED**: Added pytest-cov and feature-specific `make coverage` target. Coverage results: **allocation.py: 93% (164 statements)**, **portfolio.py: 98% (66 statements)**, **user.py: 93% (89 statements)**. All modules exceed 80% threshold; financial logic exceeds 93%.
 - [x] T041 [P] Run full project linting, formatting, and type-checking (`make lint`, `make format-check`, `make type`) to ensure constitutional compliance in `/workspace`
-- [x] T042 Update any user-facing documentation that references allocation strategies to mention total portfolio strategy, its configuration, and constraints in `/workspace/README.md` and `/workspace/specs/002-total-portfolio-allocation/quickstart.md`
+- [x] T042 Update any user-facing documentation that references allocation strategies to mention total portfolio strategy, its configuration, and constraints in `/workspace/README.md` and `/workspace/docs/features/total-portfolio-allocation/Development/quickstart.md`
 
 ---
 

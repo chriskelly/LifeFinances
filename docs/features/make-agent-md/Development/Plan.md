@@ -66,7 +66,7 @@ Transition the project from Speckit-style governance (a single dense `constituti
     - Type hints on every public function/method
     - Google or NumPy docstring style on modules and public APIs
     - No broad `except Exception` without inline justification comment
-  - Routing/API conventions: `/api` prefix, JSON contracts under `backend/app/routes/api*.py`, response shape consistent with [specs/001-react-flask-migration/contracts/openapi.yaml](specs/001-react-flask-migration/contracts/openapi.yaml)
+  - Routing/API conventions: `/api` prefix, JSON contracts under `backend/app/routes/api*.py`, response shape consistent with [docs/features/react-flask-migration/Development/contracts/openapi.yaml](docs/features/react-flask-migration/Development/contracts/openapi.yaml)
   - Testing rules:
     - TDD red-green-refactor; tests written before implementation
     - pytest only; mirror source tree in `backend/tests/`
@@ -132,7 +132,7 @@ I will produce the three AGENTS.md files as a draft set in one pass, plus the RE
 
 ## Out of scope (explicitly)
 
-- Migrating existing `specs/00X-*/` directories into `docs/features/` — that's a separate task in [docs/backlog/reorg-documentation/_overview.md](docs/backlog/reorg-documentation/_overview.md). AGENTS.md will *forbid new top-level specs* but won't touch the legacy ones in this pass.
+- Maintaining `docs/features/` as the canonical home for spec/plan artifacts and forbidding new top-level `specs/` content.
 - Authoring a docs-management skill (also in the reorg backlog) — wait until the AGENTS.md policy has shaken out.
 - Cleaning up `temporary.ipynb`, `htmlcov/`, `__pycache__/` and other repo hygiene.
 - Updating any feature plans currently in flight.

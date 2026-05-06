@@ -59,7 +59,7 @@ Refactor spending calculation from a static method to a Controller-based archite
 ### Documentation (this feature)
 
 ```text
-specs/001-spending-controller/
+docs/features/spending-controller/Development/
 ├── plan.md              # This file
 ├── research.md          # Phase 0: Controller pattern research
 ├── data-model.md        # Phase 1: Spending entities and relationships

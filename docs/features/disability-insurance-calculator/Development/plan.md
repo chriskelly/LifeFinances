@@ -1,7 +1,7 @@
 # Implementation Plan: Disability Insurance Calculator Script
 
 **Branch**: `001-disability-insurance-calculator` | **Date**: 2025-12-10 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/specs/001-disability-insurance-calculator/spec.md`
+**Input**: Feature specification from `/docs/features/disability-insurance-calculator/Development/spec.md`
 
 ## Summary
 
@@ -258,9 +258,9 @@ This class-based approach is used consistently across baseline, disability, and 
 ### Documentation (this feature)
 
 ```text
-specs/001-disability-insurance-calculator/
+docs/features/disability-insurance-calculator/Development/
 ├── plan.md              # This file (/speckit.plan command output)
-├── research.md          # Phase 0 output (/speckit.plan command)
+├── ../Research/research.md          # Phase 0 output (/speckit.plan command)
 ├── data-model.md        # Phase 1 output (/speckit.plan command)
 ├── quickstart.md        # Phase 1 output (/speckit.plan command)
 └── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)

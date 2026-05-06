@@ -248,7 +248,7 @@ This will raise a `ValueError` because net-worth-based benefit strategies create
 Feature-specific commands are available from this directory:
 
 ```bash
-cd specs/002-total-portfolio-allocation
+cd docs/features/total-portfolio-allocation/Research
 
 # Run feature-specific tests
 make test

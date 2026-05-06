@@ -1,7 +1,7 @@
 # Implementation Plan: Total Portfolio Allocation Strategy
 
-**Branch**: `002-total-portfolio-allocation` | **Date**: 2025-12-21 | **Spec**: `/specs/002-total-portfolio-allocation/spec.md`
-**Input**: Feature specification from `/specs/002-total-portfolio-allocation/spec.md`
+**Branch**: `002-total-portfolio-allocation` | **Date**: 2025-12-21 | **Spec**: `/docs/features/total-portfolio-allocation/Development/spec.md`
+**Input**: Feature specification from `/docs/features/total-portfolio-allocation/Development/spec.md`
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
@@ -84,9 +84,9 @@ Add the ability for users to configure a total portfolio allocation strategy whe
 ### Documentation (this feature)
 
 ```text
-specs/002-total-portfolio-allocation/
+docs/features/total-portfolio-allocation/Development/
 ├── plan.md              # This file (/speckit.plan command output)
-├── research.md          # Phase 0 output (/speckit.plan command) - COMPLETE
+├── ../Research/research.md          # Phase 0 output (/speckit.plan command) - COMPLETE
 ├── data-model.md        # Phase 1 output (/speckit.plan command) - COMPLETE
 ├── quickstart.md        # Phase 1 output (/speckit.plan command) - COMPLETE
 ├── contracts/           # Phase 1 output (/speckit.plan command) - COMPLETE

@@ -1,6 +1,6 @@
 # Tasks: Spending Controller
 
-**Input**: Design documents from `/workspace/specs/001-spending-controller/`
+**Input**: Design documents from `/workspace/docs/features/spending-controller/Development/` and `/workspace/docs/features/spending-controller/Research/`
 **Prerequisites**: plan.md ✓, spec.md ✓, research.md ✓, data-model.md ✓, contracts/ ✓
 
 **Tests**: This feature requires TDD per constitution TR-001. All test tasks are included below and MUST be completed before implementation.

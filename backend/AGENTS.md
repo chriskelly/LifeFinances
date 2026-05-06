@@ -162,7 +162,7 @@ Group code by feature/domain. If `app.models.controllers.X` needs `app.models.fi
 
 - All HTTP routes live under `/api` (mounted in [app/\_\_init\_\_.py](app/__init__.py)).
 - Python identifiers: `snake_case`. URL paths: `kebab-case` (e.g. `/api/simulation/run`, not `/api/simulation_run`).
-- Request and response bodies are JSON. Document new endpoints in the existing OpenAPI contract under `specs/001-react-flask-migration/contracts/openapi.yaml` (legacy location, but still the contract source until the docs reorg lands).
+- Request and response bodies are JSON. Document new endpoints in the existing OpenAPI contract under `docs/features/react-flask-migration/Development/contracts/openapi.yaml`.
 - Validate request bodies against Pydantic config models. Don't re-validate by hand once a typed model exists.
 - Error responses MUST include an HTTP status code that matches the error class and a JSON body with at least an `error` (or equivalent) field. Validation errors MUST identify the offending field.
 - Interactive endpoints SHOULD respond within ~2s under normal load. Long-running operations need progress indicators or async status endpoints.

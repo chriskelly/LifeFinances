@@ -22,7 +22,7 @@ Plus this docs reorganization itself: the idea has moved into `docs/features/str
 - Constitution amendments (constitution is silent on container/CI tooling).
 - Production / deploy images (no users, no deploy target).
 - Renaming the reorg-documentation backlog's proposed `discovery/` directory (this feature uses `Research/` for the same role; cross-project naming alignment is a separate decision).
-- Historical `specs/001-react-flask-migration/` Docker mentions (kept as record of how things were).
+- Historical `docs/features/react-flask-migration/` Docker mentions (kept as record of how things were).
 
 ## Pointers
 

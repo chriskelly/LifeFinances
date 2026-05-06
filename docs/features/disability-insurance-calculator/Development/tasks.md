@@ -1,6 +1,6 @@
 # Tasks: Disability Insurance Calculator Script
 
-**Input**: Design documents from `/specs/001-disability-insurance-calculator/`
+**Input**: Design documents from `/docs/features/disability-insurance-calculator/Development/` and `/docs/features/disability-insurance-calculator/Research/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, quickstart.md
 
 **Tests**: Tests are OPTIONAL per constitution - this is a standalone notebook exempted from testing requirements.

@@ -71,7 +71,7 @@ If you previously ran `docker compose up`, run `docker compose down --remove-orp
 ## Monorepo Structure
 
 - `backend/`: Python application code, tests, and Python tooling configuration
-- `frontend/`: React + TypeScript client for configuration editing and simulation results (Vitest + RTL + MSW); see [feature quickstart](specs/001-react-flask-migration/quickstart.md) for running with the Flask API
+- `frontend/`: React + TypeScript client for configuration editing and simulation results (Vitest + RTL + MSW); see [feature quickstart](docs/features/react-flask-migration/Development/quickstart.md) for running with the Flask API
 - Root: orchestration (`Makefile`, CI/workspace config) and the dev container build (`.devcontainer/`)
 
 ### Command Contract
@@ -86,7 +86,7 @@ If you previously ran `docker compose up`, run `docker compose down --remove-orp
 
 ### Flask HTTP API (`/api`)
 
-The UI talks to Flask over JSON under the `/api` prefix (see `backend/app/__init__.py`). Contract and examples: [`specs/001-react-flask-migration/contracts/openapi.yaml`](specs/001-react-flask-migration/contracts/openapi.yaml).
+The UI talks to Flask over JSON under the `/api` prefix (see `backend/app/__init__.py`). Contract and examples: [`docs/features/react-flask-migration/Development/contracts/openapi.yaml`](docs/features/react-flask-migration/Development/contracts/openapi.yaml).
 
 | Method | Path | Role |
 |--------|------|------|

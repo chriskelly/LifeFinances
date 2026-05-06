@@ -285,9 +285,9 @@ State (parameter)
 
 ## Related Documentation
 
-- **Specification**: `specs/001-spending-controller/spec.md`
-- **Data Model**: `specs/001-spending-controller/data-model.md`
-- **Research**: `specs/001-spending-controller/research.md`
+- **Specification**: `docs/features/spending-controller/Development/spec.md`
+- **Data Model**: `docs/features/spending-controller/Development/data-model.md`
+- **Research**: `docs/features/spending-controller/Research/research.md`
 - **Allocation Controller** (similar pattern): `app/models/controllers/allocation.py`
 - **Constitution**: `.specify/memory/constitution.md` (testing & code quality standards)
 

@@ -133,4 +133,4 @@ Stop and ask the user before:
 - Adding a heavyweight dependency (anything that materially expands the install footprint or introduces native build steps).
 - Changing API contracts under `backend/app/routes/api*.py` in a way that breaks `frontend/src/services/api.ts`.
 - Refactoring across both stacks in a single change.
-- Migrating legacy `specs/00X-*/` content (covered by [docs/backlog/reorg-documentation/_overview.md](docs/backlog/reorg-documentation/_overview.md), not this pass).
+- Large-scale documentation reorganizations across `docs/features/` that could impact active workstreams.
