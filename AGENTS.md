@@ -108,7 +108,8 @@ Recommended shape for each feature:
 ## Commit, PR, and workflow conventions
 
 - Keep commits small and reviewable. One logical change per commit.
-- Commit messages: imperative mood, concise subject (≤72 chars), body explains *why* not *what*.
+- Commit messages MUST follow Conventional Commits (`type(scope): description`), e.g. `feat(api): add simulation run timeout`.
+- Use an imperative, concise subject (≤72 chars) and include a body that explains *why* not *what* when context is needed.
 - Tests MUST pass locally before commit. The pre-commit hook enforces this; do not skip it with `--no-verify` unless you have a specific reason and call it out.
 - New dependencies MUST be added through the package manager (`uv add` for backend, `npm install` for frontend), never by hand-editing lockfiles.
 - Never push to `main` directly when a PR is the right vehicle. If unsure, ask.
