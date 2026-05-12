@@ -1,6 +1,6 @@
 """Standalone tools configuration classes"""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class TPAWPlanner(BaseModel):
@@ -42,8 +42,17 @@ class TPAWPlanner(BaseModel):
 class DisabilityCoverage(BaseModel):
     """
     Attributes
-        percentage (float): Defaults to 0.0
-        duration_years (int): Defaults to 0
+        percentage (float): Defaults to 0.0 (no coverage). When greater than zero, income
+            replacement share (e.g. 60.0 for 60% of income).
+        duration_years (int | None): Benefit period in calendar years from the start of the
+            simulation timeline. Mutually exclusive with age_limit.
+        age_limit (int | None): Benefits payable until the insured reaches this age.
+            Mutually exclusive with duration_years.
+
+    Rules:
+        - Set at most one of duration_years or age_limit.
+        - When percentage > 0, set exactly one of them; duration_years must be positive if used.
+        - When percentage == 0, leave both unset (None).
     """
 
     percentage: float = Field(
@@ -58,18 +67,53 @@ class DisabilityCoverage(BaseModel):
             }
         },
     )
-    duration_years: int = Field(
-        default=0,
+    duration_years: int | None = Field(
+        default=None,
         json_schema_extra={
             "ui": {
                 "label": "Coverage Duration (years)",
                 "tooltip": "Number of years disability insurance coverage lasts",
                 "section": "Insurance",
-                "min_value": 0,
+                "min_value": 1,
                 "max_value": 40,
             }
         },
     )
+    age_limit: int | None = Field(
+        default=None,
+        json_schema_extra={
+            "ui": {
+                "label": "Benefit age limit",
+                "tooltip": "Disability benefits payable until the insured reaches this age",
+                "section": "Insurance",
+                "min_value": 18,
+                "max_value": 100,
+            }
+        },
+    )
+
+    @model_validator(mode="after")
+    def duration_xor_age(self) -> "DisabilityCoverage":
+        has_duration = self.duration_years is not None
+        has_age = self.age_limit is not None
+        if has_duration and has_age:
+            msg = "Set only one of duration_years or age_limit, not both."
+            raise ValueError(msg)
+        if self.percentage > 0:
+            if not has_duration and not has_age:
+                msg = "When percentage > 0, set either duration_years or age_limit."
+                raise ValueError(msg)
+            if (
+                has_duration
+                and self.duration_years is not None
+                and self.duration_years <= 0
+            ):
+                msg = "duration_years must be positive when set."
+                raise ValueError(msg)
+        elif has_duration or has_age:
+            msg = "When percentage is 0, omit both duration_years and age_limit."
+            raise ValueError(msg)
+        return self
 
 
 class DisabilityInsuranceCalculator(BaseModel):

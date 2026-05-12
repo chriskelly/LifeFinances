@@ -20,7 +20,13 @@ def test_sample_config_data(sample_config_data):
         user = User(**sample_config_data)
         # If the config model is changed, but the sample_config isn't updated
         # correctly, this test should help capture undeclared objects
-        exceptions = {"same", "net_worth_target"}
+        exceptions = {
+            "same",
+            "net_worth_target",
+            # DisabilityCoverage: duration_years XOR age_limit; unset field is None in model_dump()
+            "duration_years",
+            "age_limit",
+        }
 
         def check_for_none(obj, parent_path=""):
             for key, value in obj.items():
