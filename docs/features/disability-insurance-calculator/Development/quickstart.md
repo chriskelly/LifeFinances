@@ -37,23 +37,23 @@ The notebook will load your user configuration file. Ensure it includes:
 - Your age and partner age (if applicable)
 - Income profiles for working years
 - Social Security and pension settings
-- Existing disability insurance coverage:
+- Existing disability insurance coverage under `disability_insurance_calculator` (set **either** `age_limit` **or** `duration_years`, not both):
   ```yaml
-  user_disability_coverage:
-    percentage: 60.0  # Percentage of income covered
-    duration_years: 5  # Duration of coverage in years
-  
-  partner_disability_coverage:  # Optional
-    percentage: 50.0
-    duration_years: 10
+  disability_insurance_calculator:
+    user_disability_coverage:
+      percentage: 60.0
+      age_limit: 65  # Benefits until insured reaches this age
+    partner_disability_coverage:
+      percentage: 50.0
+      duration_years: 10  # Years from simulation start
   ```
 
 ### Step 2: Run Baseline Scenario
 
 The notebook runs a baseline simulation with your current income profiles to calculate:
-- Expected job income until Benefit cutoff age (configurable, default 65)
-- Expected Social Security benefits (lifetime, including post-Benefit cutoff age)
-- Expected pension benefits (lifetime, including post-Benefit cutoff age)
+- Expected job income until policy end (`age_limit` or `duration_years` from config)
+- Expected Social Security benefits (lifetime, including post-policy end)
+- Expected pension benefits (lifetime, including post-policy end)
 
 **Sanity Check Output**: You'll see a summary of baseline income totals.
 
@@ -70,9 +70,9 @@ The notebook runs a disability simulation with job income set to zero to calcula
 
 The notebook calculates:
 1. **Total Income Replacement Needs**:
-   - Lost job income until Benefit cutoff age (configurable, default 65)
-   - Reduced Social Security (including post-Benefit cutoff age reductions)
-   - Reduced pension (including post-Benefit cutoff age reductions)
+   - Lost job income until policy end (`age_limit` or `duration_years` from config)
+   - Reduced Social Security (including post-policy end reductions)
+   - Reduced pension (including post-policy end reductions)
 
 2. **Existing Coverage Replacement**:
    - Coverage percentage applied to job income
@@ -94,7 +94,7 @@ The notebook outputs structured results:
 
 USER SCENARIO:
 Total Income Replacement Needed: $X,XXX,XXX
-  - Lost Job Income (until Benefit cutoff age): $X,XXX,XXX
+  - Lost Job Income (until policy end): $X,XXX,XXX
   - Reduced Social Security: $XXX,XXX
   - Reduced Pension: $XXX,XXX
 
@@ -113,8 +113,8 @@ Recommended Coverage: X% of income for Y years
 ### Total Income Replacement Needed
 
 This is the total amount of income you would lose if disabled, including:
-- **Lost job income**: Income you would have earned until Benefit cutoff age (configurable, default 65)
-- **Reduced Social Security**: The difference between your expected Social Security (with full earnings) and what you'd receive (with truncated earnings). Includes post-Benefit cutoff age reductions.
+- **Lost job income**: Income you would have earned until policy end (`age_limit` or `duration_years` from config)
+- **Reduced Social Security**: The difference between your expected Social Security (with full earnings) and what you'd receive (with truncated earnings). Includes post-policy end reductions.
 - **Reduced pension**: The difference between your expected pension (with full work history) and what you'd receive (with early disability).
 
 ### Existing Coverage Replacement
@@ -139,7 +139,7 @@ This is how much additional coverage you need:
 - User age: 35
 - Current income: $100,000/year
 - Existing coverage: 60% for 5 years
-- Expected to work until Benefit cutoff age (configurable, default 65)
+- Expected to work until policy end (`age_limit` or `duration_years` from config)
 
 **Output**:
 - Total replacement needs: $3,000,000 (30 years × $100k + reduced SS/pension)
@@ -153,7 +153,7 @@ This is how much additional coverage you need:
 - User age: 40
 - Current income: $80,000/year
 - Existing coverage: 100% for 25 years
-- Expected to work until Benefit cutoff age (configurable, default 65)
+- Expected to work until policy end (`age_limit` or `duration_years` from config)
 
 **Output**:
 - Total replacement needs: $2,000,000
@@ -210,7 +210,7 @@ After running the calculator:
 
 ## Notes
 
-- The calculator assumes disability occurs immediately and lasts until Benefit cutoff age (configurable in script, default 65)
+- The calculator assumes disability occurs immediately and lasts until policy end (from each person's `DisabilityCoverage` in config)
 - All existing coverage is assumed to be employer-provided (taxable)
-- Post-Benefit cutoff age income reductions (reduced Social Security) are included in total needs
+- Post-policy end income reductions (reduced Social Security) are included in total needs
 - The calculator uses SimulationEngine to ensure accurate income and benefit projections

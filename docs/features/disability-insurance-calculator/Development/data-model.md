@@ -88,13 +88,17 @@ The notebook uses a `RealFinancialData` class to encapsulate income stream extra
 - `dates`: Date series for filtering operations
 - Individual real income series: `job_real_q`, `ss_user_real_q`, `ss_partner_real_q`, `pension_real_q`, `income_taxes_real_q`, `medicare_taxes_real_q`
 - **Methods**:
-  - `get_coverage_results(coverage: DisabilityCoverage, benefit_cutoff_date: float)`: Calculates existing coverage replacement (net after taxes). Takes a `DisabilityCoverage` Pydantic model object (from `app.models.config`) with `percentage` and `duration_years` attributes. Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Handles zero coverage internally by returning `CoverageResults(0.0, 0.0, 0.0)` if `coverage.percentage == 0` or `coverage.duration_years == 0`. Coverage end date is capped at `benefit_cutoff_date` using `min(coverage_start + coverage.duration_years, benefit_cutoff_date)`. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline scenario.
+  - `get_coverage_results(coverage: DisabilityCoverage, insured_age: int)`: Calculates existing coverage replacement (net after taxes). Takes a `DisabilityCoverage` Pydantic model object (from `app.models.config`) with `percentage`, `duration_years`, and/or `age_limit`. Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Handles zero coverage internally by returning `CoverageResults(0.0, 0.0, 0.0)` if `coverage.percentage == 0`. Coverage end date is `coverage_policy_end_date(coverage, insured_age, coverage_start)`. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline scenario.
 
 **Additional helper functions and classes** (for DRY principles, eliminating duplication between user and partner scenarios):
 
 - **`build_engine()`**: Creates and configures a `SimulationEngine` instance with fixed inflation. Used for both baseline and partner scenario engine creation.
 
-- **`build_mask_until_benefit_cutoff_age(benefit_cutoff_date: float) -> pd.Series`**: Creates a pandas Series mask for filtering dates up to the benefit cutoff age. Used consistently for both user and partner scenarios.
+- **`coverage_policy_end_date(coverage, insured_age, coverage_start) -> float`**: Single policy-end date from config: `age_limit` → date when insured reaches that age; `duration_years` → `coverage_start + duration_years`.
+
+- **`years_until_policy_end(end_date) -> float`**: Calendar years from `TODAY_YR_QT` until policy end.
+
+- **`format_disability_coverage_period(coverage) -> str`** / **`policy_end_duration_label(...)`**: Human-readable policy period for output.
 
 - **`IncomeComparison` class**: Encapsulates income comparison calculations between baseline and disability scenarios. Properties:
   - `total_replacement_needs`: Post-tax income replacement needed (baseline - disability)
@@ -105,13 +109,13 @@ The notebook uses a `RealFinancialData` class to encapsulate income stream extra
 
 - **`calculate_coverage_gap(total_replacement_needs: float, total_net_replacement: float) -> float`**: Calculates remaining coverage gap as `max(0, total_replacement_needs - total_net_replacement)`. Used for both user and partner scenarios.
 
-- **`calculate_benefit_percentage(coverage_gap: float, years_until_benefit_cutoff_age: float, current_annual_income: float) -> float`**: Calculates recommended benefit percentage using formula: `(coverage_gap / years_until_benefit_cutoff_age) / current_annual_income * 100`. Returns 0.0 if years or income is 0. Used for both user and partner scenarios.
+- **`calculate_benefit_percentage(coverage_gap: float, years_until_policy_end: float, current_annual_income: float) -> float`**: Calculates recommended benefit percentage using formula: `(coverage_gap / years_until_policy_end) / current_annual_income * 100`. Returns 0.0 if years or income is 0. Used for both user and partner scenarios.
 
 **Usage**: 
 - `baseline = RealFinancialData(baseline_df)`
 - `disability = RealFinancialData(disability_df)`
 - `partner_disability = RealFinancialData(partner_disability_df)`
-- `coverage_results = baseline.get_coverage_results(user_disability_coverage, benefit_cutoff_date)`
+- `coverage_results = baseline.get_coverage_results(user_disability_coverage, user_config.age)`
   - Where `user_disability_coverage` is a `DisabilityCoverage` object from `user_config.disability_insurance_calculator.user_disability_coverage`
 
 ### Calculated Values (in-memory)
@@ -125,8 +129,8 @@ The notebook uses a `RealFinancialData` class to encapsulate income stream extra
   - `total_net_replacement`: Net after-tax coverage replacement
 - **existing_coverage_replacement**: Net after-tax benefits from existing coverage (from `coverage_results.total_net_replacement`)
 - **coverage_gap**: Total needs - Existing coverage
-- **benefit_percentage**: (Coverage gap / Years until Benefit cutoff age) / Current annual income
-- **years_until_benefit_cutoff_age**: Benefit cutoff age - user_age (or partner_age for partner scenario, using configurable Benefit cutoff age, default 65)
+- **benefit_percentage**: (Coverage gap / years until policy end) / Current annual income
+- **years_until_policy_end**: `coverage_policy_end_date(...) - TODAY_YR_QT` (per person, from their `DisabilityCoverage`)
 - **current_annual_income**: First income profile with income > $0, annualized
 
 ## Data Transformations
@@ -163,36 +167,33 @@ disability_results = engine.results
 baseline = RealFinancialData(baseline_df)
 disability = RealFinancialData(disability_df)
 
-# Use helper functions and classes for calculations
-benefit_cutoff_date = BENEFIT_CUTOFF_AGE - user_config.age + TODAY_YR_QT
-mask_until_benefit_cutoff_age = build_mask_until_benefit_cutoff_age(benefit_cutoff_date)
+user_coverage_start = float(baseline.dates.iloc[0])
+user_policy_end_date = coverage_policy_end_date(
+    user_disability_coverage, user_config.age, user_coverage_start
+)
 
-# Use IncomeComparison class to encapsulate income comparison calculations
 user_income_comparison = IncomeComparison(baseline, disability)
-# Access properties: total_replacement_needs, lost_pre_tax_job_income, reduced_pre_tax_ss, reduced_pre_tax_pension
 
-# Calculate coverage gap and benefit percentage using helper functions
 coverage_gap = calculate_coverage_gap(
     user_income_comparison.total_replacement_needs,
     coverage_results.total_net_replacement
 )
+years_until_policy_end_user = years_until_policy_end(user_policy_end_date)
 benefit_percentage = calculate_benefit_percentage(
     coverage_gap,
-    years_until_benefit_cutoff_age,
-    current_annual_income
+    years_until_policy_end_user,
+    current_annual_income,
 )
 
 ### 3. Coverage Replacement Calculation
 
-**Input**: `RealFinancialData` instance (baseline), `DisabilityCoverage` object, benefit cutoff date  
+**Input**: `RealFinancialData` instance (baseline), `DisabilityCoverage` object, insured age  
 **Output**: `CoverageResults` object with gross_benefits, taxes, and total_net_replacement
 
 ```python
-# Use RealFinancialData method to calculate coverage replacement
-benefit_cutoff_date = BENEFIT_CUTOFF_AGE - user_config.age + TODAY_YR_QT
 user_disability_coverage = user_config.disability_insurance_calculator.user_disability_coverage
 coverage_results = baseline.get_coverage_results(
-    user_disability_coverage, benefit_cutoff_date
+    user_disability_coverage, user_config.age
 )
 
 # CoverageResults contains:
@@ -204,7 +205,7 @@ existing_coverage = coverage_results.total_net_replacement
 ```
 
 **Implementation details** (inside `get_coverage_results`):
-- Coverage period: `coverage_start` to `min(coverage_start + coverage.duration_years, benefit_cutoff_date)`
+- Coverage period: `coverage_start` to `coverage_policy_end_date(coverage, insured_age, coverage_start)`
 - Coverage percentage capped at 100% for calculation: `min(coverage.percentage, 100.0) / 100.0`
 - Average tax rate calculated from baseline scenario: `(total income taxes + total Medicare taxes) / total income` for coverage period
 - Net benefits: `coverage_benefits - taxes_on_benefits`
@@ -221,13 +222,12 @@ coverage_gap = calculate_coverage_gap(
     coverage_results.total_net_replacement
 )
 
-# Calculate benefit percentage using helper function
-years_until_benefit_cutoff_age = calculate_years_until_benefit_cutoff_age(user_config.age)
+years_until_policy_end_user = years_until_policy_end(user_policy_end_date)
 current_annual_income = get_current_annual_income(user_config, is_partner=False)
 benefit_percentage = calculate_benefit_percentage(
     coverage_gap,
-    years_until_benefit_cutoff_age,
-    current_annual_income
+    years_until_policy_end_user,
+    current_annual_income,
 )
 ```
 
@@ -236,7 +236,7 @@ benefit_percentage = calculate_benefit_percentage(
 ### Input Validation
 
 - User config must have at least one income profile (user or partner)
-- User age must be < Benefit cutoff age (configurable, default 65, or exit with message if already retired)
+- When `percentage > 0`, config must set `age_limit` or `duration_years` (Pydantic validation on `DisabilityCoverage`)
 - Coverage percentage must be >= 0 (can exceed 100%, but capped at 100% for calculation)
 - Coverage duration must be > 0
 
@@ -245,7 +245,7 @@ benefit_percentage = calculate_benefit_percentage(
 - Total replacement needs >= 0
 - Coverage gap >= 0 (cannot be negative)
 - Benefit percentage >= 0
-- Years until Benefit cutoff age > 0
+- Years until policy end > 0 when recommending additional coverage
 
 ### Sanity Checks (Periodic Outputs)
 
@@ -287,10 +287,10 @@ The notebook includes a "Final Summary" section at the end that consolidates all
 **Detection**: `coverage_percentage > 100`  
 **Action**: Cap at 100% for gap calculation, but display actual percentage in output
 
-### Coverage Duration Beyond Benefit Cutoff Age
+### Policy end from config
 
-**Detection**: `coverage_start + coverage_duration_years > benefit_cutoff_date`  
-**Action**: Apply coverage until Benefit cutoff age (coverage naturally ends at LTD age limit, configurable, default 65)
+**Detection**: `age_limit` or `duration_years` on `DisabilityCoverage`  
+**Action**: Employer benefits and gap % denominator use the same `coverage_policy_end_date()` — `age_limit` until that age, or `coverage_start + duration_years` when only duration is set
 
 ## Data Persistence
 

@@ -16,7 +16,7 @@ Build a standalone Jupyter notebook that calculates disability insurance coverag
 - Compare results DataFrames to calculate income replacement needs using post-tax income values
 - Calculate post-tax income for each scenario: (Job Income + Social Security + Pension) - (Income Taxes + Medicare Taxes)
 - Total replacement needs = Baseline post-tax income - Disability post-tax income
-- Include post-Benefit cutoff age income reductions (e.g., reduced Social Security benefits after Benefit cutoff age) in total needs (see FR-005, FR-006, FR-008)
+- Include post-policy-end income reductions (e.g., reduced Social Security after policy end) in total needs (see FR-005, FR-006, FR-008)
 - Calculate existing coverage replacement with tax adjustments
 - Output structured text results with coverage gap and benefit percentage
 
@@ -38,8 +38,8 @@ Build a standalone Jupyter notebook that calculates disability insurance coverag
 **Constraints**: 
 - Must use SimulationEngine (not individual controllers) to avoid tight coupling
 - Must handle edge cases: no income profiles, already retired, coverage > 100%
-- Must account for post-Benefit cutoff age income reductions (e.g., reduced Social Security benefits after Benefit cutoff age)
-- Must allow Benefit cutoff age to be configured in the script (default value is 65, but user must be able to set a different Benefit cutoff age)
+- Must account for post-policy-end income reductions (e.g., reduced Social Security after policy end)
+- Policy end per person from `DisabilityCoverage.age_limit` or `duration_years` in config (see FR-004a)
 - Must handle workspace root path resolution (notebook is in subdirectory)
 - Must prevent Flask app initialization when importing app modules (circular import prevention)
 **Scale/Scope**: Single-user calculations, one-off analysis tool
@@ -168,7 +168,7 @@ To follow DRY (Don't Repeat Yourself) principles, the notebook uses a `RealFinan
   - `dates`: Date series for filtering operations
   - Individual real income series: `job_real_q`, `ss_user_real_q`, `ss_partner_real_q`, `pension_real_q`, `income_taxes_real_q`, `medicare_taxes_real_q`
 - **Methods**:
-  - `get_coverage_results(coverage: DisabilityCoverage, benefit_cutoff_date: float)`: Calculates existing coverage replacement (net after taxes). Takes a `DisabilityCoverage` Pydantic model object (from `app.models.config`) with `percentage` and `duration_years` attributes. Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Coverage end date is capped at `benefit_cutoff_date` using `min(coverage_start + coverage.duration_years, benefit_cutoff_date)`. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline scenario for covered intervals: `(total income taxes + total Medicare taxes) / total income` for the coverage period.
+  - `get_coverage_results(coverage: DisabilityCoverage, insured_age: int)`: Calculates existing coverage replacement (net after taxes). Uses `coverage_policy_end_date()` for the benefit period (`age_limit` or `duration_years` from config). Returns a `CoverageResults` dataclass. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline scenario for covered intervals.
 
 **Usage pattern**:
 ```python
@@ -176,11 +176,9 @@ baseline = RealFinancialData(baseline_df)
 disability = RealFinancialData(disability_df)
 total_replacement_needs = baseline.post_tax_total_lifetime - disability.post_tax_total_lifetime
 
-# Calculate existing coverage
-benefit_cutoff_date = BENEFIT_CUTOFF_AGE - user_config.age + TODAY_YR_QT
 user_disability_coverage = user_config.disability_insurance_calculator.user_disability_coverage
 coverage_results = baseline.get_coverage_results(
-    user_disability_coverage, benefit_cutoff_date
+    user_disability_coverage, user_config.age
 )
 existing_coverage = coverage_results.total_net_replacement
 ```
@@ -191,7 +189,7 @@ This class-based approach is used consistently across baseline, disability, and 
 
 - **`build_engine()`**: Creates and configures a `SimulationEngine` instance with fixed inflation. Used for both baseline and partner scenario engine creation to avoid duplication.
 
-- **`build_mask_until_benefit_cutoff_age(benefit_cutoff_date: float)`**: Creates a pandas Series mask for filtering dates up to the benefit cutoff age. Used consistently for both user and partner scenarios.
+- **`coverage_policy_end_date(coverage, insured_age, coverage_start)`** / **`years_until_policy_end(end_date)`**: Policy end from each person's `DisabilityCoverage` in YAML.
 
 - **`IncomeComparison` class**: Encapsulates income comparison calculations between baseline and disability scenarios. Properties include:
   - `total_replacement_needs`: Post-tax income replacement needed (baseline - disability)
@@ -202,7 +200,7 @@ This class-based approach is used consistently across baseline, disability, and 
 
 - **`calculate_coverage_gap(total_replacement_needs: float, total_net_replacement: float) -> float`**: Calculates remaining coverage gap as `max(0, total_replacement_needs - total_net_replacement)`. Used for both user and partner scenarios.
 
-- **`calculate_benefit_percentage(coverage_gap: float, years_until_benefit_cutoff_age: float, current_annual_income: float) -> float`**: Calculates recommended benefit percentage using the formula: `(coverage_gap / years_until_benefit_cutoff_age) / current_annual_income * 100`. Returns 0.0 if years or income is 0. Used for both user and partner scenarios.
+- **`calculate_benefit_percentage(coverage_gap: float, years_until_policy_end: float, current_annual_income: float) -> float`**: Calculates recommended benefit percentage using the formula: `(coverage_gap / years_until_policy_end) / current_annual_income * 100`. Returns 0.0 if years or income is 0. Used for both user and partner scenarios.
 
 - **`get_coverage_results()` enhancement**: Now handles zero coverage internally by returning `CoverageResults(0.0, 0.0, 0.0)` if `coverage.percentage == 0` or `coverage.duration_years == 0`, eliminating the need for external zero-coverage checks in user and partner scenarios.
 
@@ -215,7 +213,7 @@ This class-based approach is used consistently across baseline, disability, and 
   - `coverage_results`: `CoverageResults` object with existing coverage details
   - `coverage`: `DisabilityCoverage` Pydantic model object (from `app.models.config`) with `percentage` and `duration_years` attributes
   - `coverage_gap`: Remaining coverage gap
-  - `benefit_percentage`, `years_until_benefit_cutoff_age`, `current_annual_income`: Recommended coverage details
+  - `benefit_percentage`, `duration_label`, `current_annual_income`: Recommended coverage details
 - **Output**: Structured text output per FR-009 requirements:
   1. Total income replacement needed (with component breakdown)
   2. Existing coverage replacement (after taxes, with breakdown)
@@ -283,7 +281,7 @@ standalone_tools/
 All technical questions resolved:
 - ✅ How to use SimulationEngine for baseline vs disability scenarios
 - ✅ How to extract income streams and Social Security from results
-- ✅ How to handle post-Benefit cutoff age income reductions
+- ✅ How to handle post-policy-end income reductions
 - ✅ How to calculate existing coverage replacement with taxes
 - ✅ How to calculate coverage gap and benefit percentage
 - ✅ How to handle edge cases
@@ -312,18 +310,17 @@ The plan is complete and ready for task breakdown. Key implementation steps:
 2. Create Jupyter notebook following `tpaw_planner.ipynb` pattern
 3. **CRITICAL**: Implement workspace root path handling and Flask initialization skipping in imports cell (see Implementation Learnings section)
 4. Implement config loading and validation
-5. Implement Benefit cutoff age configuration (configurable in script, default value is 65)
+5. Implement `coverage_policy_end_date()` / `years_until_policy_end()` from each person's `DisabilityCoverage` (`age_limit` or `duration_years`)
 6. Implement `set_fixed_inflation()` helper function (following `tpaw_planner.ipynb` pattern) to set deterministic inflation rate
 7. Implement helper functions for DRY principles to eliminate repeated calculations:
    - `build_engine()`: Engine creation and configuration
-   - `build_mask_until_benefit_cutoff_age()`: Date filtering mask creation
    - `IncomeComparison` class: Income comparison calculations
    - `calculate_coverage_gap()`: Coverage gap calculation
    - `calculate_benefit_percentage()`: Benefit percentage calculation
    - Enhance `get_coverage_results()` to handle zero coverage internally
 8. Implement baseline scenario (use `build_engine()`, run `gen_all_trials()`, use helper functions to extract and process income streams)
 9. Implement disability scenario (modify `engine._user_config.income_profiles` directly to zero job income, clear results, run `gen_all_trials()` again, use `IncomeComparison` class for calculations)
-10. Implement income comparison using `IncomeComparison` class (including post-Benefit cutoff age income reductions, using post-tax income values)
+10. Implement income comparison using `IncomeComparison` class (including post-policy-end income reductions, using post-tax income values)
 11. Implement coverage replacement calculation with taxes (using `get_coverage_results()` which handles zero coverage internally)
 12. Implement gap and benefit percentage calculations using `calculate_coverage_gap()` and `calculate_benefit_percentage()` helper functions
 13. Implement `display_insurance_results()` helper function for structured output formatting (consolidates user and partner output, meets FR-009 requirements)
