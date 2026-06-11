@@ -168,7 +168,7 @@ To follow DRY (Don't Repeat Yourself) principles, the notebook uses a `RealFinan
   - `dates`: Date series for filtering operations
   - Individual real income series: `job_real_q`, `ss_user_real_q`, `ss_partner_real_q`, `pension_real_q`, `income_taxes_real_q`, `medicare_taxes_real_q`
 - **Methods**:
-  - `get_coverage_results(coverage: DisabilityCoverage, insured_age: int)`: Calculates existing coverage replacement (net after taxes). Uses `coverage_policy_end_date()` for the benefit period (`age_limit` or `duration_years` from config). Returns a `CoverageResults` dataclass. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline scenario for covered intervals.
+  - `get_coverage_results(coverage: DisabilityCoverage, insured_age: int, *, current_annual_income: float)`: Calculates existing coverage replacement (net after taxes). Uses flat `current_annual_income` (not projected job income) for each quarter in the capped policy window. Uses `coverage_policy_end_date(..., simulation_end_date=last simulation quarter)` for the benefit period (`age_limit` or `duration_years` from config). Returns a `CoverageResults` dataclass. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline earning quarters (`job_real_q > 0`).
 
 **Usage pattern**:
 ```python
@@ -178,7 +178,9 @@ total_replacement_needs = baseline.post_tax_total_lifetime - disability.post_tax
 
 user_disability_coverage = user_config.disability_insurance_calculator.user_disability_coverage
 coverage_results = baseline.get_coverage_results(
-    user_disability_coverage, user_config.age
+    user_disability_coverage,
+    user_config.age,
+    current_annual_income=get_current_annual_income(user_config),
 )
 existing_coverage = coverage_results.total_net_replacement
 ```
@@ -189,7 +191,7 @@ This class-based approach is used consistently across baseline, disability, and 
 
 - **`build_engine()`**: Creates and configures a `SimulationEngine` instance with fixed inflation. Used for both baseline and partner scenario engine creation to avoid duplication.
 
-- **`coverage_policy_end_date(coverage, insured_age, coverage_start)`** / **`years_until_policy_end(end_date)`**: Policy end from each person's `DisabilityCoverage` in YAML.
+- **`coverage_policy_end_date(coverage, insured_age, coverage_start, *, simulation_end_date=None)`** / **`years_until_policy_end(end_date)`**: Policy end from each person's `DisabilityCoverage` in YAML, capped at `min(configured_end, simulation_end_date)` when simulation end is provided (lifetime / long `duration_years` stop at `calculate_til`).
 
 - **`IncomeComparison` class**: Encapsulates income comparison calculations between baseline and disability scenarios. Properties include:
   - `total_replacement_needs`: Post-tax income replacement needed (baseline - disability)
@@ -202,7 +204,7 @@ This class-based approach is used consistently across baseline, disability, and 
 
 - **`calculate_benefit_percentage(coverage_gap: float, years_until_policy_end: float, current_annual_income: float) -> float`**: Calculates recommended benefit percentage using the formula: `(coverage_gap / years_until_policy_end) / current_annual_income * 100`. Returns 0.0 if years or income is 0. Used for both user and partner scenarios.
 
-- **`get_coverage_results()` enhancement**: Now handles zero coverage internally by returning `CoverageResults(0.0, 0.0, 0.0)` if `coverage.percentage == 0` or `coverage.duration_years == 0`, eliminating the need for external zero-coverage checks in user and partner scenarios.
+- **`get_coverage_results()` enhancement**: Handles zero coverage internally by returning `CoverageResults(0.0, 0.0, 0.0)` if `coverage.percentage == 0` or `current_annual_income <= 0`, eliminating the need for external zero-coverage checks in user and partner scenarios.
 
 **`display_insurance_results()` helper function**:
 - **Purpose**: Consolidates structured output formatting for insurance calculation results, following DRY principles

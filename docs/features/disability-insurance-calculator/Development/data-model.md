@@ -88,13 +88,13 @@ The notebook uses a `RealFinancialData` class to encapsulate income stream extra
 - `dates`: Date series for filtering operations
 - Individual real income series: `job_real_q`, `ss_user_real_q`, `ss_partner_real_q`, `pension_real_q`, `income_taxes_real_q`, `medicare_taxes_real_q`
 - **Methods**:
-  - `get_coverage_results(coverage: DisabilityCoverage, insured_age: int)`: Calculates existing coverage replacement (net after taxes). Takes a `DisabilityCoverage` Pydantic model object (from `app.models.config`) with `percentage`, `duration_years`, and/or `age_limit`. Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Handles zero coverage internally by returning `CoverageResults(0.0, 0.0, 0.0)` if `coverage.percentage == 0`. Coverage end date is `coverage_policy_end_date(coverage, insured_age, coverage_start)`. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline scenario.
+  - `get_coverage_results(coverage: DisabilityCoverage, insured_age: int, *, current_annual_income: float)`: Calculates existing coverage replacement (net after taxes). Takes a `DisabilityCoverage` Pydantic model object (from `app.models.config`) with `percentage`, `duration_years`, and/or `age_limit`. Returns a `CoverageResults` dataclass containing `gross_benefits`, `taxes`, and `total_net_replacement`. Handles zero coverage internally by returning `CoverageResults(0.0, 0.0, 0.0)` if `coverage.percentage == 0` or `current_annual_income <= 0`. Benefit base is flat real quarterly income from `current_annual_income` (not projected future job income). Coverage end date is `coverage_policy_end_date(coverage, insured_age, coverage_start, simulation_end_date=last simulation quarter)`. Coverage percentage is capped at 100% for calculation using `min(coverage.percentage, 100.0)`. Uses average tax rate from baseline earning quarters (`job_real_q > 0`).
 
 **Additional helper functions and classes** (for DRY principles, eliminating duplication between user and partner scenarios):
 
 - **`build_engine()`**: Creates and configures a `SimulationEngine` instance with fixed inflation. Used for both baseline and partner scenario engine creation.
 
-- **`coverage_policy_end_date(coverage, insured_age, coverage_start) -> float`**: Single policy-end date from config: `age_limit` → date when insured reaches that age; `duration_years` → `coverage_start + duration_years`.
+- **`coverage_policy_end_date(coverage, insured_age, coverage_start, *, simulation_end_date=None) -> float`**: Policy-end date from config: `age_limit` → date when insured reaches that age; `duration_years` → `coverage_start + duration_years`. When `simulation_end_date` is set, returns `min(configured_end, simulation_end_date)` so lifetime or very long durations cap at the simulation horizon (`calculate_til` / last trial quarter).
 
 - **`years_until_policy_end(end_date) -> float`**: Calendar years from `TODAY_YR_QT` until policy end.
 
@@ -115,7 +115,7 @@ The notebook uses a `RealFinancialData` class to encapsulate income stream extra
 - `baseline = RealFinancialData(baseline_df)`
 - `disability = RealFinancialData(disability_df)`
 - `partner_disability = RealFinancialData(partner_disability_df)`
-- `coverage_results = baseline.get_coverage_results(user_disability_coverage, user_config.age)`
+- `coverage_results = baseline.get_coverage_results(user_disability_coverage, user_config.age, current_annual_income=get_current_annual_income(user_config))`
   - Where `user_disability_coverage` is a `DisabilityCoverage` object from `user_config.disability_insurance_calculator.user_disability_coverage`
 
 ### Calculated Values (in-memory)
@@ -168,8 +168,12 @@ baseline = RealFinancialData(baseline_df)
 disability = RealFinancialData(disability_df)
 
 user_coverage_start = float(baseline.dates.iloc[0])
+simulation_end = float(baseline.dates.iloc[-1])
 user_policy_end_date = coverage_policy_end_date(
-    user_disability_coverage, user_config.age, user_coverage_start
+    user_disability_coverage,
+    user_config.age,
+    user_coverage_start,
+    simulation_end_date=simulation_end,
 )
 
 user_income_comparison = IncomeComparison(baseline, disability)
@@ -193,7 +197,9 @@ benefit_percentage = calculate_benefit_percentage(
 ```python
 user_disability_coverage = user_config.disability_insurance_calculator.user_disability_coverage
 coverage_results = baseline.get_coverage_results(
-    user_disability_coverage, user_config.age
+    user_disability_coverage,
+    user_config.age,
+    current_annual_income=get_current_annual_income(user_config),
 )
 
 # CoverageResults contains:
@@ -205,10 +211,10 @@ existing_coverage = coverage_results.total_net_replacement
 ```
 
 **Implementation details** (inside `get_coverage_results`):
-- Coverage period: `coverage_start` to `coverage_policy_end_date(coverage, insured_age, coverage_start)`
-- Coverage percentage capped at 100% for calculation: `min(coverage.percentage, 100.0) / 100.0`
-- Average tax rate calculated from baseline scenario: `(total income taxes + total Medicare taxes) / total income` for coverage period
-- Net benefits: `coverage_benefits - taxes_on_benefits`
+- Coverage period: `coverage_start` to capped `coverage_policy_end_date(..., simulation_end_date=last simulation quarter)`
+- Gross benefits: `(current_annual_income / INTERVALS_PER_YEAR) * min(coverage.percentage, 100%) * num_quarters_in_window`
+- Average tax rate from baseline earning quarters only (`job_real_q > 0`): `(total income taxes + total Medicare taxes) / total job income`
+- Net benefits: `gross_benefits - taxes`
 
 ### 4. Gap Calculation
 
@@ -290,7 +296,12 @@ The notebook includes a "Final Summary" section at the end that consolidates all
 ### Policy end from config
 
 **Detection**: `age_limit` or `duration_years` on `DisabilityCoverage`  
-**Action**: Employer benefits and gap % denominator use the same `coverage_policy_end_date()` — `age_limit` until that age, or `coverage_start + duration_years` when only duration is set
+**Action**: Employer benefits and gap % denominator use the same capped `coverage_policy_end_date()` — `age_limit` until that age, or `coverage_start + duration_years` when only duration is set, capped at simulation end
+
+### Policy extends past simulation (lifetime / long duration)
+
+**Detection**: Configured policy end (e.g. `age_limit: 100` or `duration_years: 100`) exceeds `calculate_til` / last simulation quarter  
+**Action**: Cap policy end at `simulation_end_date` so benefits stop at estimated death horizon, not an unbounded calendar date
 
 ## Data Persistence
 
