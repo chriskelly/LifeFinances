@@ -1,137 +1,102 @@
 # LifeFinances — Agent Guide
 
-LifeFinances is a personal finances and retirement simulator. The repo is a monorepo with a Python/Flask backend and a React + TypeScript frontend.
+LifeFinances is a personal finances simulator rebuilt in 2026 (Python, TPAW monthly modeling, SQLite, FastAPI + HTMX). Pre-rebuild Flask/React code lives at git tag `legacy/v1-final` and https://github.com/chriskelly/life-finances-legacy.
 
-This file tells coding agents how to work in this repo. Stack-specific rules live in nested files:
+## Tech stack
 
-- Editing under `backend/` → also read [backend/AGENTS.md](backend/AGENTS.md)
-- Editing under `frontend/` → also read [frontend/AGENTS.md](frontend/AGENTS.md)
-
-The closest `AGENTS.md` to the file you are editing wins for any conflicting rule.
-
-## Tech stack at a glance
-
-| Layer    | Tech                                                            |
-| -------- | --------------------------------------------------------------- |
-| Backend  | Python 3.10+, Flask 3.1, Pydantic 2.4, NumPy, pandas, PyYAML    |
-| Frontend | React 19, TypeScript 5.9 (strict), Vite 7                       |
-| Tests    | pytest 9 (backend), Vitest 4 + React Testing Library + MSW 2    |
-| Tooling  | uv, ruff, pyright, npm, eslint, pre-commit, Make                |
-| Dev env  | VS Code Dev Container (`.devcontainer/`), Python 3.10, Node 20+ |
+| Layer | Tech |
+| ----- | ---- |
+| Runtime | Python 3.10+, uv workspace |
+| Web | FastAPI, Jinja2, HTMX (Phase 1+) |
+| Data | SQLite (`data/data.db`), Pydantic models in `packages/core` |
+| Simulation | TPAW engine in `packages/simulation` |
+| Tools | Marimo apps in `tools/` |
+| Tests | pytest, ruff, pyright |
 
 ## Repo map
 
 ```
 .
-├── AGENTS.md                  # this file (root policy)
-├── Makefile                   # entry point for tests / lint / coverage / profile
-├── README.md                  # human-facing setup
-├── config.yml                 # active simulator config (gitignored; do not commit)
-├── backend/                   # Python / Flask app — see backend/AGENTS.md
-│   ├── AGENTS.md
-│   ├── app/
-│   │   ├── __init__.py        # Flask app factory; mounts /api blueprint
-│   │   ├── routes/            # HTTP routes (api.py, api_json.py)
-│   │   ├── models/            # config, controllers, financial, simulator
-│   │   ├── data/              # constants, historic_data, variable_statistics.csv
-│   │   └── util.py
-│   ├── tests/                 # pytest tree; mirrors app/
-│   ├── standalone_tools/      # *.ipynb tools NOT imported by app code
-│   ├── pyproject.toml         # deps + ruff config
-│   ├── pyrightconfig.json
-│   └── run.py                 # backend entry point
-├── frontend/                  # React + TS SPA — see frontend/AGENTS.md
-│   ├── AGENTS.md
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── vitest.config.ts
-│   └── src/
-│       ├── App.tsx, main.tsx
-│       ├── services/api.ts    # typed API client (single boundary)
-│       ├── types/api.ts       # API contract types
-│       └── test/              # MSW handlers + test setup
-├── specs/                     # LEGACY speckit specs — frozen, do not add new ones
-├── docs/                      # canonical documentation home (see "Documentation policy")
-└── scripts/                   # repo scripts (e.g. precommit.sh)
+├── AGENTS.md
+├── pyproject.toml           # uv workspace root — run commands from here
+├── packages/
+│   ├── core/                # Plan model, SQLite persistence
+│   ├── domain/              # SS, pension, job income, taxes
+│   ├── simulation/          # Monthly TPAW engine
+│   └── web/                 # FastAPI + HTMX UI
+├── tools/                   # Marimo apps — see tools/AGENTS.md
+├── data/
+│   ├── data.db.blank        # committed schema
+│   └── data.db              # gitignored working DB
+├── scripts/
+│   ├── init_db.py
+│   ├── db_inspect.py
+│   └── import_legacy_yaml.py
+├── docs/superpowers/        # active specs and phase plans
+└── archive/                 # frozen legacy docs — ignore unless asked
 ```
 
 ## Working directory contract
 
-Always run developer and CI commands from the **repo root**. The backend resolves `config.yml` against the process working directory, so running from elsewhere breaks `GET/PUT /api/config` and `POST /api/simulation/run`.
+Always run developer commands from the **repository root**. `LIFE_FINANCES_DB_PATH` overrides the default `data/data.db` location.
 
-## Cross-stack commands
+## Bootstrap
 
-Run from the repo root.
+```bash
+uv sync
+uv run python scripts/init_db.py
+```
 
-| Action                             | Command                                                                                    |
-| ---------------------------------- | ------------------------------------------------------------------------------------------ |
-| Run all tests (backend + frontend) | `make test`                                                                                |
-| Lint everything                    | `make lint`                                                                                |
-| Lint + test (default `make` goal)  | `make`                                                                                     |
-| Backend coverage report            | `make coverage`                                                                            |
-| Profile the simulator              | `make profile`                                                                             |
-| Run pre-commit on all files        | `pre-commit run --all-files`                                                               |
-| Start backend (dev)                | `python backend/run.py` (devcontainer) or `uv run --project backend python backend/run.py` |
-| Start frontend (dev)               | `cd frontend && npm run dev`                                                               |
+## Database inspection
 
-`make test` runs both pytest and `npm run test:run`. `make lint` runs ruff check + ruff format check + pyright. The pre-commit hook runs `make` via [scripts/precommit.sh](scripts/precommit.sh), which also validates Node version.
+```bash
+sqlite3 data/data.db ".schema"
+uv run python scripts/db_inspect.py --plan 1
+```
 
-After making substantive changes, you MUST run `make` (or `make test` + `make lint`) and confirm it passes before claiming the task is complete.
+## Commands
 
-## Documentation policy
+| Action | Command |
+| ------ | ------- |
+| Install deps | `uv sync` |
+| Run all tests | `make test` |
+| Lint | `make lint` |
+| Lint + test | `make` |
+| Pre-commit | `pre-commit run --all-files` |
 
-Documentation conventions focus on `docs/features/`.
+After substantive changes, run `make` and confirm it passes before claiming work complete.
 
-### Required feature structure
+## Package dependency direction (strict)
 
-For any feature that has spec/plan-style implementation artifacts, they MUST live under:
+```
+web → simulation, domain, core
+tools → simulation, domain, core   (never import web)
+simulation → domain, core
+domain → core
+core → stdlib + pydantic + sqlite
+```
 
-- `docs/features/<feature>/Development/`
+## AI artifact policy
 
-Recommended shape for each feature:
+| Location | Role |
+| -------- | ---- |
+| `docs/superpowers/specs/` | Architecture spec |
+| `docs/superpowers/plans/` | Phase implementation plans |
+| `packages/simulation/OVERVIEW.md` | TPAW parity backlog (Phase 3+) |
+| `packages/domain/OVERVIEW.md` | Legacy port map (Phase 2+) |
+| `archive/` | Frozen pre-rebuild docs |
 
-- `_overview.md` — short summary of goal, scope, status, next action, and links
-- `Development/` — spec/plan artifacts that directly guide implementation
-- `Research/` — exploration notes and scratch artifacts
+Do not create new `docs/features/.../Development/plan.md` chains.
 
-### Optional personal organization
+## Hard guardrails
 
-`docs/ideas/` and `docs/backlog/` are optional personal workflow folders. Contributors MAY use them, but they are not required project-wide conventions.
+- NEVER commit `data/data.db` or personal plan data.
+- NEVER modify `config.yml` — YAML workflow removed; legacy import is Phase 4 script only.
+- NEVER modify files under `.github/workflows/` without explicit user confirmation.
+- NEVER edit lockfiles by hand — use `uv add` / `uv sync`.
+- NEVER import `web` from `tools/` or `simulation`.
+- NEVER disable lint or type-check rules to pass CI — fix the underlying issue.
 
-### Hard rules
+## Phase planning
 
-- DO put new specs/plans under `docs/features/<feature>/Development/`.
-- DO keep `_overview.md` in each feature directory as the index for that feature.
-- SHOULD keep research and exploration notes under `docs/features/<feature>/Research/`.
-- SHOULD NOT commit research scratch notes or generated exploration artifacts unless they are durable project documentation.
-
-## Commit, PR, and workflow conventions
-
-- Keep commits small and reviewable. One logical change per commit.
-- Commit messages MUST follow Conventional Commits (`type(scope): description`), e.g. `feat(api): add simulation run timeout`.
-- Use an imperative, concise subject (≤72 chars) and include a body that explains *why* not *what* when context is needed.
-- Tests MUST pass locally before commit. The pre-commit hook enforces this; do not skip it with `--no-verify` unless you have a specific reason and call it out.
-- New dependencies MUST be added through the package manager (`uv add` for backend, `npm install` for frontend), never by hand-editing lockfiles.
-- Never push to `main` directly when a PR is the right vehicle. If unsure, ask.
-
-## Hard guardrails (never do these without explicit confirmation)
-
-- NEVER modify files under `.github/workflows/`.
-- NEVER bypass pre-commit silently (`git commit --no-verify`).
-- NEVER commit `config.yml` with real personal data; the file is gitignored for a reason.
-- NEVER modify `config.yml`; the file contains the user's personal info and is not backed up with **git.**
-- NEVER commit secrets, API keys, or `.env` files.
-- NEVER edit lockfiles (`uv.lock`, `package-lock.json`) by hand. Use the package manager.
-- NEVER add a new top-level `specs/` directory or check new files into the legacy `specs/00X-*/` tree.
-- NEVER delete or rewrite `backend/app/data/variable_statistics.csv` or files under `backend/app/data/historic_data/` without confirmation — they encode source-of-truth statistics.
-- NEVER introduce plain JavaScript application code in `frontend/`. TypeScript only (tooling configs are exempt).
-- NEVER disable a lint or type-check rule to make CI pass; fix the underlying issue.
-
-## When to ask before acting
-
-Stop and ask the user before:
-
-- Adding a heavyweight dependency (anything that materially expands the install footprint or introduces native build steps).
-- Changing API contracts under `backend/app/routes/api*.py` in a way that breaks `frontend/src/services/api.ts`.
-- Refactoring across both stacks in a single change.
-- Large-scale documentation reorganizations across `docs/features/` that could impact active workstreams.
+Load `docs/superpowers/plans/2026-06-12-rebuild-index.md` at session start; execute only the active phase plan.
