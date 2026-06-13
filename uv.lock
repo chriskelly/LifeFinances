@@ -153,6 +153,10 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "life-finances-core" },
+    { name = "life-finances-domain" },
+    { name = "life-finances-simulation" },
+    { name = "life-finances-web" },
     { name = "pre-commit" },
     { name = "pyright" },
     { name = "pytest" },
@@ -163,6 +167,10 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "life-finances-core", editable = "packages/core" },
+    { name = "life-finances-domain", editable = "packages/domain" },
+    { name = "life-finances-simulation", editable = "packages/simulation" },
+    { name = "life-finances-web", editable = "packages/web" },
     { name = "pre-commit", specifier = ">=3.5.0" },
     { name = "pyright", specifier = ">=1.1.407" },
     { name = "pytest", specifier = ">=9.0.3" },
