@@ -31,9 +31,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Current phase** | Phase 0 complete |
-| **Active plan** | [`2026-06-12-phase-0-cutover-scaffold.md`](2026-06-12-phase-0-cutover-scaffold.md) |
-| **Next action** | Write `2026-06-12-phase-1-core-loop.md`, then execute Phase 1 |
+| **Current phase** | Phase 1 — ready to execute |
+| **Active plan** | [`2026-06-12-phase-1-core-loop.md`](2026-06-12-phase-1-core-loop.md) |
+| **Next action** | Execute Phase 1 plan via subagent-driven development |
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
 
@@ -94,24 +94,25 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 
 ### Phase 1 — Core loop (minimal E2E)
 
-**Plan file:** `2026-06-12-phase-1-core-loop.md` *(to write)*
+**Plan file:** [`2026-06-12-phase-1-core-loop.md`](2026-06-12-phase-1-core-loop.md)
 
 **PR scope:** Plan model, SQLite repo, simulation stub, split-pane shell with auto-results
 
 | Item | Detail |
 |------|--------|
-| **Delivers** | `packages/core` (minimal `Plan`, repository), `packages/simulation` (stub), `packages/web` (FastAPI split-pane, HTMX debounced results), one editor section |
-| **References** | Design spec §3, §4 |
+| **Delivers** | `packages/core` (`Plan`, repository, default bootstrap), `packages/simulation` (stub), `packages/web` (FastAPI split-pane, HTMX debounced results), **two** editor sections (Household + Current Savings Portfolio) |
+| **References** | [Phase 1 design spec](../specs/2026-06-12-phase-1-core-loop-design.md); architecture spec §3, §4 |
 | **Agent context** | LifeFinances repo |
 
 **Entry criteria:** Phase 0 complete.
 
 **Exit criteria:**
 - [ ] `Plan` persists to SQLite via repository
-- [ ] Web serves split-pane at `/`
+- [ ] Empty DB auto-creates "Default Plan" on first visit
+- [ ] Web serves split-pane at `/` with Household and Current Savings sections
 - [ ] Editing triggers debounced results panel update
 - [ ] Simulation stub returns deterministic placeholder data
-- [ ] pytest passes for core + web smoke tests
+- [ ] pytest passes for core, simulation, and web
 
 ---
 
@@ -333,4 +334,4 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 
 ## Next step
 
-Execute **[Phase 0 plan](2026-06-12-phase-0-cutover-scaffold.md)** via subagent-driven development or executing-plans. After Phase 0 completes, invoke **writing-plans** for `2026-06-12-phase-1-core-loop.md`.
+Execute **[Phase 1 plan](2026-06-12-phase-1-core-loop.md)** via subagent-driven development or executing-plans.
