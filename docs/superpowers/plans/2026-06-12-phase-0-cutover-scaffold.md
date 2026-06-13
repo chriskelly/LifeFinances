@@ -6,7 +6,7 @@
 
 **Architecture:** Same-repo clean cutover per [design spec §2](../specs/2026-06-12-life-finances-rebuild-design.md). Tag the last legacy commit, archive docs, delete Flask/React/devcontainer trees, stand up `packages/{core,domain,simulation,web}`, `data/data.db.blank`, and bootstrap scripts. No web app yet — that is Phase 1.
 
-**Tech Stack:** uv workspace, Python 3.10+, Pydantic 2.4, SQLite, pytest, ruff, pyright, pre-commit
+**Tech Stack:** uv workspace, Python 3.14+, Pydantic 2.4, SQLite, pytest, ruff, pyright, pre-commit
 
 **status:** complete
 

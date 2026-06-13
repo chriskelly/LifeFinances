@@ -1,7 +1,7 @@
 [project]
 name = "life-finances-simulation"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
     "life-finances-core",
     "life-finances-domain",

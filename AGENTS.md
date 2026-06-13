@@ -6,7 +6,7 @@ LifeFinances is a personal finances simulator rebuilt in 2026 (Python, TPAW mont
 
 | Layer | Tech |
 | ----- | ---- |
-| Runtime | Python 3.10+, uv workspace |
+| Runtime | Python 3.14+, uv workspace |
 | Web | FastAPI, Jinja2, HTMX (Phase 1+) |
 | Data | SQLite (`data/data.db`), Pydantic models in `packages/core` |
 | Simulation | TPAW engine in `packages/simulation` |

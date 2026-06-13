@@ -2,7 +2,7 @@
 name = "life-finances"
 version = "0.1.0"
 description = "Personal finances simulator — TPAW monthly modeling"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = []
 
 [tool.uv.workspace]
@@ -32,7 +32,7 @@ pythonpath = ["."]
 
 [tool.ruff]
 line-length = 88
-target-version = "py310"
+target-version = "py314"
 src = ["packages", "scripts", "tests"]
 extend-exclude = ["archive"]
 

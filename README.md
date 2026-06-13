@@ -6,7 +6,7 @@ Personal finances and retirement planning simulator — rebuilt 2026 with monthl
 
 ## Setup
 
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.10+.
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.14+.
 
 ```bash
 uv sync
