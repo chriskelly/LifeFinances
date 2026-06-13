@@ -47,12 +47,31 @@ uv sync
 uv run python scripts/init_db.py
 ```
 
+`uv sync` installs workspace packages (`core`, `domain`, `simulation`, `web`) through the root `[dependency-groups] dev` entries — scripts can `import core` without `--all-packages`.
+
 ## Database inspection
 
 ```bash
 sqlite3 data/data.db ".schema"
 uv run python scripts/db_inspect.py --plan 1
 ```
+
+## Schema changes
+
+1. Edit `SCHEMA` in `scripts/create_blank_db.py`
+2. Run `uv run python scripts/create_blank_db.py` — regenerates `data/data.db.blank`
+3. Commit the updated blank file
+4. Delete local `data/data.db` and re-run `init_db.py` (or use `init_db(force=True)` in tests)
+
+There is no migration framework in Phase 0 — the blank file is the source of truth.
+
+## Package overviews
+
+| Package | Overview |
+| ------- | -------- |
+| `packages/core` | [`OVERVIEW.md`](packages/core/OVERVIEW.md) — paths, SQLite schema |
+| `packages/domain` | [`OVERVIEW.md`](packages/domain/OVERVIEW.md) — legacy port map |
+| `packages/simulation` | [`OVERVIEW.md`](packages/simulation/OVERVIEW.md) — TPAW parity backlog |
 
 ## Commands
 
@@ -82,6 +101,7 @@ core → stdlib + pydantic + sqlite
 | -------- | ---- |
 | `docs/superpowers/specs/` | Architecture spec |
 | `docs/superpowers/plans/` | Phase implementation plans |
+| `packages/core/OVERVIEW.md` | Paths, SQLite schema, bootstrap workflow |
 | `packages/simulation/OVERVIEW.md` | TPAW parity backlog (Phase 3+) |
 | `packages/domain/OVERVIEW.md` | Legacy port map (Phase 2+) |
 | `archive/` | Frozen pre-rebuild docs |
