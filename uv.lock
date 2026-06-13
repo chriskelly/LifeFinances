@@ -157,10 +157,10 @@ dev = [
     { name = "life-finances-domain", editable = "packages/domain" },
     { name = "life-finances-simulation", editable = "packages/simulation" },
     { name = "life-finances-web", editable = "packages/web" },
-    { name = "pre-commit", specifier = ">=3.5.0" },
-    { name = "pyright", specifier = ">=1.1.407" },
+    { name = "pre-commit", specifier = ">=4.6.0" },
+    { name = "pyright", specifier = ">=1.1.410" },
     { name = "pytest", specifier = ">=9.0.3" },
-    { name = "ruff", specifier = ">=0.14.10" },
+    { name = "ruff", specifier = ">=0.15.17" },
 ]
 
 [[package]]
@@ -172,7 +172,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2.4.2" }]
+requires-dist = [{ name = "pydantic", specifier = ">=2.13.4" }]
 
 [[package]]
 name = "life-finances-domain"
@@ -214,8 +214,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.115.0" },
-    { name = "jinja2", specifier = ">=3.1.0" },
+    { name = "fastapi", specifier = ">=0.136.3" },
+    { name = "jinja2", specifier = ">=3.1.6" },
     { name = "life-finances-core", editable = "packages/core" },
     { name = "life-finances-domain", editable = "packages/domain" },
     { name = "life-finances-simulation", editable = "packages/simulation" },

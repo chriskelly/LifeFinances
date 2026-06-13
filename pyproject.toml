@@ -11,9 +11,9 @@ members = ["packages/*"]
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
-    "ruff>=0.14.10",
-    "pyright>=1.1.407",
-    "pre-commit>=3.5.0",
+    "ruff>=0.15.17",
+    "pyright>=1.1.410",
+    "pre-commit>=4.6.0",
     "life-finances-core",
     "life-finances-domain",
     "life-finances-simulation",
