@@ -1,0 +1,50 @@
+[project]
+name = "life-finances"
+version = "0.1.0"
+description = "Personal finances simulator — TPAW monthly modeling"
+requires-python = ">=3.14"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "ruff>=0.15.17",
+    "pyright>=1.1.410",
+    "pre-commit>=4.6.0",
+    "life-finances-core",
+    "life-finances-domain",
+    "life-finances-simulation",
+    "life-finances-web",
+]
+
+[tool.uv.sources]
+life-finances-core = { workspace = true }
+life-finances-domain = { workspace = true }
+life-finances-simulation = { workspace = true }
+life-finances-web = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "packages"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+src = ["packages", "scripts", "tests"]
+extend-exclude = ["archive"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C90"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"

@@ -3,21 +3,17 @@
 
 # LifeFinances Specific
 config.yml
+data/data.db
 docs/ideas/
 docs/backlog/
 docs/active/
 docs/features/*/Research/
 
-# Node / frontend
+# Node / frontend (removed in rebuild; keep node_modules ignore for safety)
 node_modules/
-frontend/node_modules/
-frontend/dist/
-frontend/coverage/
-*.tsbuildinfo
 temporary*
 *.prof
 .vscode/
-.devcontainer/history/.zsh_history
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

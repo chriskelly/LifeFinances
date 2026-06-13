@@ -31,9 +31,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Current phase** | None started |
-| **Active plan** | *(not yet written)* |
-| **Next action** | Write `2026-06-12-phase-0-cutover-scaffold.md`, then execute |
+| **Current phase** | Phase 0 complete |
+| **Active plan** | [`2026-06-12-phase-0-cutover-scaffold.md`](2026-06-12-phase-0-cutover-scaffold.md) |
+| **Next action** | Write `2026-06-12-phase-1-core-loop.md`, then execute Phase 1 |
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
 
@@ -68,7 +68,7 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 
 ### Phase 0 — Cutover and scaffold
 
-**Plan file:** `2026-06-12-phase-0-cutover-scaffold.md` *(to write)*
+**Plan file:** [`2026-06-12-phase-0-cutover-scaffold.md`](2026-06-12-phase-0-cutover-scaffold.md)
 
 **PR scope:** Legacy preservation + empty new tree on `main`
 
@@ -327,14 +327,10 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 
 | Phase | Plan file | Status |
 |-------|-----------|--------|
-| — | — | — |
+| Phase 0 | `2026-06-12-phase-0-cutover-scaffold.md` | complete |
 
 ---
 
 ## Next step
 
-In a fresh session, invoke **writing-plans** to produce:
-
-**`docs/superpowers/plans/2026-06-12-phase-0-cutover-scaffold.md`**
-
-Then execute Phase 0 via subagent-driven development or executing-plans.
+Execute **[Phase 0 plan](2026-06-12-phase-0-cutover-scaffold.md)** via subagent-driven development or executing-plans. After Phase 0 completes, invoke **writing-plans** for `2026-06-12-phase-1-core-loop.md`.
