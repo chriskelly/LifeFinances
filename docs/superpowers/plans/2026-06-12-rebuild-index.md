@@ -82,13 +82,13 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 **Entry criteria:** Architecture spec approved and committed.
 
 **Exit criteria:**
-- [ ] Tag `legacy/v1-final` exists on pre-cutover commit
-- [ ] `life-finances-legacy` repo created (manual GitHub step documented in plan)
-- [ ] New workspace layout matches spec §2 (empty packages, scripts, data/)
-- [ ] `uv sync` succeeds at workspace root
-- [ ] `scripts/init_db.py` creates `data/data.db` from blank
-- [ ] Root `AGENTS.md` documents bootstrap, db inspect, artifact policy
-- [ ] CI placeholder or minimal pass (new Python-only checks)
+- [x] Tag `legacy/v1-final` exists on pre-cutover commit
+- [x] `life-finances-legacy` repo created (manual GitHub step documented in plan)
+- [x] New workspace layout matches spec §2 (empty packages, scripts, data/)
+- [x] `uv sync` succeeds at workspace root
+- [x] `scripts/init_db.py` creates `data/data.db` from blank
+- [x] Root `AGENTS.md` documents bootstrap, db inspect, artifact policy
+- [x] CI placeholder or minimal pass (new Python-only checks)
 
 ---
 
