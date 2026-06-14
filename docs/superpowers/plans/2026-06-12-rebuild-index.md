@@ -31,9 +31,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Current phase** | Phase 1 — ready to execute |
+| **Current phase** | Phase 1 — execute |
 | **Active plan** | [`2026-06-12-phase-1-core-loop.md`](2026-06-12-phase-1-core-loop.md) |
-| **Next action** | Execute Phase 1 plan via subagent-driven development |
+| **Next action** | Execute Phase 1 plan; mark complete when exit criteria met |
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
 
@@ -100,7 +100,7 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 
 | Item | Detail |
 |------|--------|
-| **Delivers** | `packages/core` (`Plan`, repository, default bootstrap), `packages/simulation` (stub), `packages/web` (FastAPI split-pane, HTMX debounced results), **two** editor sections (Household + Current Savings Portfolio) |
+| **Delivers** | `packages/core` (`Plan`, repository, default bootstrap), `packages/simulation` (stub), `packages/web` (FastAPI split-pane, HTMX debounced results), **two** editor sections (Household + Current Savings Portfolio). Base spending is simulation output, not a user input. |
 | **References** | [Phase 1 design spec](../specs/2026-06-12-phase-1-core-loop-design.md); architecture spec §3, §4 |
 | **Agent context** | LifeFinances repo |
 
