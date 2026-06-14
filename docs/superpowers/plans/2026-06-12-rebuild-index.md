@@ -271,6 +271,7 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 - [ ] All major tpaw chart types rendering
 - [ ] Plan create/switch/duplicate
 - [ ] `scripts/import_legacy_yaml.py` with documented gaps
+- [ ] Investigate generated flat form DTOs from `core.models` (`create_model` + prefixed `model_fields`) if hand-written section forms become unwieldy
 
 *May split into Phase 4a (editor) and Phase 4b (charts) if context requires.*
 

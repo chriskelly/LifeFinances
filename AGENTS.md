@@ -97,7 +97,7 @@ Import defaults, thresholds, and config from production code in tests. Do not co
 - **`core.db_bootstrap.materialize_blank_db`** — copy committed blank schema to an arbitrary path; used by tests, `scripts/init_db.py`, and pytest fixtures.
 - **Repo-root `conftest.py`** — cross-package fixtures (`db_path`, `repo`). Pytest discovers it for all `packages/*/tests/`.
 - **Package `conftest.py`** — only fixtures specific to that package (e.g. web `client`). Do not duplicate `db_path` / `repo`.
-- **Web routes and labels** — path/title constants in `web/routes.py`, `web/sections.py`; per-section form DTOs in `web/forms.py` with flat field names bound by FastAPI `Form()`. No manual dot-notation merge.
+- **Web routes and labels** — path/title constants in `web/routes.py`, `web/sections.py`; per-section form DTOs in `web/forms.py` with flat field names bound by FastAPI `Form()`. Form DTOs are transport-only; validation constraints live on `core.models` (see `packages/web/AGENTS.md`).
 
 ## Package dependency direction (strict)
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from core.models import Household, PersonHousehold, Plan
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 # Field-name constants for templates/tests — must match DTO field names
 PERSON1_BIRTH_MONTH = "person1_birth_month"
@@ -16,12 +16,14 @@ CURRENT_SAVINGS_BALANCE = "current_savings_balance"
 
 
 class HouseholdForm(BaseModel):
-    person1_birth_month: int = Field(ge=1, le=12)
+    """Flat transport DTO for HTML forms. Constraints live on core.models only."""
+
+    person1_birth_month: int
     person1_birth_year: int
-    person1_max_age_years: int = Field(ge=1)
-    person2_birth_month: int = Field(ge=1, le=12)
+    person1_max_age_years: int
+    person2_birth_month: int
     person2_birth_year: int
-    person2_max_age_years: int = Field(ge=1)
+    person2_max_age_years: int
 
     def apply_to(self, plan: Plan) -> Plan:
         household = Household(
@@ -40,7 +42,9 @@ class HouseholdForm(BaseModel):
 
 
 class PortfolioForm(BaseModel):
-    current_savings_balance: Decimal = Field(ge=0)
+    """Flat transport DTO for HTML forms. Constraints live on core.models only."""
+
+    current_savings_balance: Decimal
 
     def apply_to(self, plan: Plan) -> Plan:
         portfolio = plan.portfolio.model_copy(
