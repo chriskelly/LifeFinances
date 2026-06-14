@@ -1,5 +1,7 @@
 # Phase 1 — Core Loop (Minimal E2E) Implementation Plan
 
+**status:** complete
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deliver the edit → persist → simulate → refresh loop: `Plan` model + SQLite repository, simulation stub, FastAPI split-pane with Household and Current Savings editor sections, debounced HTMX auto-results.

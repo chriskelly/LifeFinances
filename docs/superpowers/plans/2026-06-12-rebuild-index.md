@@ -31,9 +31,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Current phase** | Phase 1 — execute |
-| **Active plan** | [`2026-06-12-phase-1-core-loop.md`](2026-06-12-phase-1-core-loop.md) |
-| **Next action** | Execute Phase 1 plan; mark complete when exit criteria met |
+| **Current phase** | Phase 2a — plan |
+| **Active plan** | *(to write)* `2026-06-12-phase-2a-domain-core.md` |
+| **Next action** | Write Phase 2a plan before coding |
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
 
@@ -107,12 +107,12 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 **Entry criteria:** Phase 0 complete.
 
 **Exit criteria:**
-- [ ] `Plan` persists to SQLite via repository
-- [ ] Empty DB auto-creates "Default Plan" on first visit
-- [ ] Web serves split-pane at `/` with Household and Current Savings sections
-- [ ] Editing triggers debounced results panel update
-- [ ] Simulation stub returns deterministic placeholder data
-- [ ] pytest passes for core, simulation, and web
+- [x] `Plan` persists to SQLite via repository
+- [x] Empty DB auto-creates "Default Plan" on first visit
+- [x] Web serves split-pane at `/` with Household and Current Savings sections
+- [x] Editing triggers debounced results panel update
+- [x] Simulation stub returns deterministic placeholder data
+- [x] pytest passes for core, simulation, and web
 
 ---
 
@@ -329,9 +329,10 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 | Phase | Plan file | Status |
 |-------|-----------|--------|
 | Phase 0 | `2026-06-12-phase-0-cutover-scaffold.md` | complete |
+| Phase 1 | `2026-06-12-phase-1-core-loop.md` | complete |
 
 ---
 
 ## Next step
 
-Execute **[Phase 1 plan](2026-06-12-phase-1-core-loop.md)** via subagent-driven development or executing-plans.
+Write **Phase 2a plan** (`2026-06-12-phase-2a-domain-core.md`) using writing-plans skill, then execute via subagent-driven development.
