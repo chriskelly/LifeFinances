@@ -57,11 +57,12 @@ def test_growth_compounds_monthly_from_start_anchor() -> None:
 
     series = project_stream(stream, timeline)
 
+    month_index = 12
     expected_month_12 = (
-        base * (Decimal(1) + rate) ** (Decimal(12) / Decimal(12))
+        base * (Decimal(1) + rate) ** (Decimal(month_index) / Decimal(12))
     ).quantize(Decimal("0.01"))
     assert series[0] == base.quantize(Decimal("0.01"))
-    assert series[12] == expected_month_12
+    assert series[month_index] == expected_month_12
 
 
 def test_window_entirely_in_past_returns_all_zero() -> None:
