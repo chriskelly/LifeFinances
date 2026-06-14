@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block body %}
+<header class="app-header">
+  <h1>LifeFinances</h1>
+  <span class="plan-label">Default Plan</span>
+</header>
+
+<div class="layout">
+  <div class="editor-pane">
+    {% include "editor_household.html" %}
+    {% include "editor_portfolio.html" %}
+  </div>
+  <div
+    id="results-panel"
+    hx-get="{{ routes.RESULTS }}"
+    hx-trigger="planUpdated from:body"
+    hx-swap="innerHTML"
+  >
+    {% include "results_stub.html" %}
+  </div>
+</div>
+
+<script>
+  document.body.addEventListener("htmx:afterRequest", function (event) {
+    const form = event.detail.elt;
+    const patchTarget = form.getAttribute && form.getAttribute("hx-patch");
+    if (
+      event.detail.successful &&
+      form.tagName === "FORM" &&
+      (patchTarget === "{{ routes.PLAN_HOUSEHOLD }}" ||
+        patchTarget === "{{ routes.PLAN_PORTFOLIO }}")
+    ) {
+      document.body.dispatchEvent(new CustomEvent("planUpdated"));
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,7 @@
+HOME = "/"
+EDITOR_HOUSEHOLD = "/editor/household"
+EDITOR_PORTFOLIO = "/editor/portfolio"
+PLAN_HOUSEHOLD = "/plan/household"
+PLAN_PORTFOLIO = "/plan/portfolio"
+RESULTS = "/results"
+STATIC = "/static"
