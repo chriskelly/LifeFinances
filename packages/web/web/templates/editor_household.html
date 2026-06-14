@@ -2,7 +2,7 @@
   <h2>{{ sections.HOUSEHOLD_TITLE }}</h2>
   <form
     hx-patch="{{ routes.PLAN_HOUSEHOLD }}"
-    hx-trigger="change delay:750ms from:input,select"
+    hx-trigger="input changed delay:750ms"
     hx-swap="none"
   >
     <fieldset class="person-fields">
