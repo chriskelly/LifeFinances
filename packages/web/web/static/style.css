@@ -116,3 +116,12 @@ select {
   margin: 2rem;
   color: #a00;
 }
+
+.form-error {
+  padding: 0.6rem 0.9rem;
+  background: #fdecea;
+  border: 1px solid #f5c2c0;
+  border-radius: 4px;
+  color: #a00;
+  font-size: 0.9rem;
+}

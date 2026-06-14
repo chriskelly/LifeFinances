@@ -8,6 +8,7 @@
 
 <div class="layout">
   <div class="editor-pane">
+    <div id="form-error" class="form-error" role="alert" hidden></div>
     {% include "editor_household.html" %}
     {% include "editor_portfolio.html" %}
   </div>
@@ -22,15 +23,32 @@
 </div>
 
 <script>
+  const formError = document.getElementById("form-error");
+
+  function showFormError(message) {
+    formError.textContent =
+      message || "Something went wrong saving your changes.";
+    formError.hidden = false;
+  }
+
+  function clearFormError() {
+    formError.textContent = "";
+    formError.hidden = true;
+  }
+
+  document.body.addEventListener("htmx:responseError", function (event) {
+    showFormError(event.detail.xhr && event.detail.xhr.responseText);
+  });
+
   document.body.addEventListener("htmx:afterRequest", function (event) {
     const form = event.detail.elt;
     const patchTarget = form.getAttribute && form.getAttribute("hx-patch");
-    if (
-      event.detail.successful &&
+    const isPlanForm =
       form.tagName === "FORM" &&
       (patchTarget === "{{ routes.PLAN_HOUSEHOLD }}" ||
-        patchTarget === "{{ routes.PLAN_PORTFOLIO }}")
-    ) {
+        patchTarget === "{{ routes.PLAN_PORTFOLIO }}");
+    if (isPlanForm && event.detail.successful) {
+      clearFormError();
       document.body.dispatchEvent(new CustomEvent("planUpdated"));
     }
   });

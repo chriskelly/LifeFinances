@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import ValidationError
 from simulation.stub import run_simulation
 
 from web import forms, routes, sections
@@ -31,6 +32,22 @@ templates.env.globals["sections"] = sections
 templates.env.globals["forms"] = forms
 
 _INIT_DB_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
+
+_FIELD_LABELS = {
+    "birth_month": "Birth month",
+    "birth_year": "Birth year",
+    "max_age_years": "Max age",
+    "current_savings_balance": "Total savings balance",
+}
+
+
+def _validation_message(exc: ValidationError) -> str:
+    parts: list[str] = []
+    for err in exc.errors():
+        field = str(err["loc"][-1]) if err["loc"] else ""
+        label = _FIELD_LABELS.get(field, field or "Value")
+        parts.append(f"{label}: {err['msg']}")
+    return "; ".join(parts)
 
 
 def _resolve_db_path(app: FastAPI) -> Path:
@@ -113,14 +130,17 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
         repo: RepoDep,
     ) -> Response:
         plan_id, plan = repo.get_or_create_default()
-        updated = HouseholdForm(
-            person1_birth_month=person1_birth_month,
-            person1_birth_year=person1_birth_year,
-            person1_max_age_years=person1_max_age_years,
-            person2_birth_month=person2_birth_month,
-            person2_birth_year=person2_birth_year,
-            person2_max_age_years=person2_max_age_years,
-        ).apply_to(plan)
+        try:
+            updated = HouseholdForm(
+                person1_birth_month=person1_birth_month,
+                person1_birth_year=person1_birth_year,
+                person1_max_age_years=person1_max_age_years,
+                person2_birth_month=person2_birth_month,
+                person2_birth_year=person2_birth_year,
+                person2_max_age_years=person2_max_age_years,
+            ).apply_to(plan)
+        except ValidationError as exc:
+            return HTMLResponse(_validation_message(exc), status_code=422)
         repo.save(plan_id, updated)
         return Response(status_code=200)
 
@@ -130,9 +150,12 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
         repo: RepoDep,
     ) -> Response:
         plan_id, plan = repo.get_or_create_default()
-        updated = PortfolioForm(
-            current_savings_balance=current_savings_balance,
-        ).apply_to(plan)
+        try:
+            updated = PortfolioForm(
+                current_savings_balance=current_savings_balance,
+            ).apply_to(plan)
+        except ValidationError as exc:
+            return HTMLResponse(_validation_message(exc), status_code=422)
         repo.save(plan_id, updated)
         return Response(status_code=200)
 
