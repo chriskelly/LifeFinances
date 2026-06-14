@@ -4,6 +4,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
+from core.streams import TimedStream
+
 
 class PersonHousehold(BaseModel):
     birth_month: int = Field(ge=1, le=12)
@@ -24,3 +26,4 @@ class Plan(BaseModel):
     name: str
     household: Household
     portfolio: Portfolio
+    manual_income_streams: list[TimedStream] = Field(default_factory=list)
