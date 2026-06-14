@@ -20,12 +20,14 @@ def test_home_shows_both_editor_sections(client: TestClient) -> None:
 def test_home_auto_creates_default_plan(
     client: TestClient, repo: PlanRepository
 ) -> None:
+    assert repo.get_by_id(1) is None
+
     response: httpx.Response = client.get(HOME)
 
     assert response.status_code == 200
-    plan_id, plan = repo.get_or_create_default()
+    plan = repo.get_by_id(1)
 
-    assert plan_id == 1  # intentionally pinned: first row in empty DB
+    assert plan is not None
     assert plan.name == DEFAULT_PLAN_NAME
 
 
