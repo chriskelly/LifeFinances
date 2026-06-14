@@ -283,7 +283,8 @@ Port pattern: adapt tests from legacy → implement with monthly boundaries → 
 
 - `core`: minimal `Plan`, SQLite repository
 - `simulation`: monthly stub (fixed returns, simple TPAW withdrawal)
-- `web`: split-pane; one editor section; debounced auto-results
+- `web`: split-pane; two editor sections (Household + Current Savings Portfolio); debounced auto-results
+- Base spending is simulation output; only extra essential/discretionary spending are user inputs (Phase 4)
 
 ### Phase 2 — Domain port
 

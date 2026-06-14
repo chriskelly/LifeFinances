@@ -1,0 +1,63 @@
+<section class="editor-section">
+  <h2>{{ sections.HOUSEHOLD_TITLE }}</h2>
+  <form
+    hx-patch="{{ routes.PLAN_HOUSEHOLD }}"
+    hx-trigger="input changed delay:750ms"
+    hx-swap="none"
+  >
+    <fieldset class="person-fields">
+      <legend>You</legend>
+      <label>
+        Birth month
+        <select name="{{ forms.PERSON1_BIRTH_MONTH }}">
+          {% for month in range(1, 13) %}
+          <option value="{{ month }}"{% if plan.household.person1.birth_month == month %} selected{% endif %}>{{ month }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Birth year
+        <input
+          type="number"
+          name="{{ forms.PERSON1_BIRTH_YEAR }}"
+          value="{{ plan.household.person1.birth_year }}"
+        >
+      </label>
+      <label>
+        Max age
+        <input
+          type="number"
+          name="{{ forms.PERSON1_MAX_AGE_YEARS }}"
+          value="{{ plan.household.person1.max_age_years }}"
+        >
+      </label>
+    </fieldset>
+    <fieldset class="person-fields">
+      <legend>Partner</legend>
+      <label>
+        Birth month
+        <select name="{{ forms.PERSON2_BIRTH_MONTH }}">
+          {% for month in range(1, 13) %}
+          <option value="{{ month }}"{% if plan.household.person2.birth_month == month %} selected{% endif %}>{{ month }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Birth year
+        <input
+          type="number"
+          name="{{ forms.PERSON2_BIRTH_YEAR }}"
+          value="{{ plan.household.person2.birth_year }}"
+        >
+      </label>
+      <label>
+        Max age
+        <input
+          type="number"
+          name="{{ forms.PERSON2_MAX_AGE_YEARS }}"
+          value="{{ plan.household.person2.max_age_years }}"
+        >
+      </label>
+    </fieldset>
+  </form>
+</section>

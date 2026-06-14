@@ -66,6 +66,39 @@ uv run python scripts/db_inspect.py --plan 1
 
 After substantive changes, run `make` and confirm it passes before claiming work complete.
 
+## Testing policy
+
+Follow TDD for every feature and bugfix. Test **our logic**, not library behavior — do not add tests that only exercise Pydantic validation, trivial getters, or framework wiring unless a phase plan calls for a specific integration smoke test.
+
+### Avoid fragile values
+
+Never hardcode the same literal in both arrange/act and assert. Bind shared values to a variable and reference it in both places.
+
+### Pull constants from source
+
+Import defaults, thresholds, and config from production code in tests. Do not copy literals that can drift. Inline a literal only for intentional contract tests; comment that the value is pinned.
+
+### TDD: red-green without wasting a structural loop
+
+1. Write the test first against intended behavior (including symbols that do not exist yet).
+2. Add minimal scaffolding so structure exists but logic does not (`NotImplementedError`, stub return).
+3. Run the test once — confirm failure is **logical** (`AssertionError`, `NotImplementedError`), not **structural** (`ImportError`, `AttributeError`, `ModuleNotFoundError`). Fix scaffolding until logical; do not commit or checklist a separate "structural failure" pytest run.
+4. Implement the logic.
+5. Run again — must pass. Never trust an unverified green.
+
+### General rules
+
+- One logical behavior per test; name tests after behavior, not methods.
+- Keep arrange / act / assert visually distinct.
+- Inject clocks and dependencies for time-dependent logic (e.g. optional `today: date`, `ran_at: datetime`) — never assert against wall-clock time.
+
+### Shared test infrastructure
+
+- **`core.db_bootstrap.materialize_blank_db`** — copy committed blank schema to an arbitrary path; used by tests, `scripts/init_db.py`, and pytest fixtures.
+- **Repo-root `conftest.py`** — cross-package fixtures (`db_path`, `repo`). Pytest discovers it for all `packages/*/tests/`.
+- **Package `conftest.py`** — only fixtures specific to that package (e.g. web `client`). Do not duplicate `db_path` / `repo`.
+- **Web routes and labels** — path/title constants in `web/routes.py`, `web/sections.py`; per-section form DTOs in `web/forms.py` with flat field names bound by FastAPI `Form()`. Form DTOs are transport-only; validation constraints live on `core.models` (see `packages/web/AGENTS.md`).
+
 ## Package dependency direction (strict)
 
 ```

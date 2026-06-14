@@ -1,0 +1,22 @@
+<section class="editor-section">
+  <h2>{{ sections.PORTFOLIO_TITLE }}</h2>
+  <form
+    hx-patch="{{ routes.PLAN_PORTFOLIO }}"
+    hx-trigger="input changed delay:750ms"
+    hx-swap="none"
+  >
+    <p class="helper-text">
+      Investment accounts only — exclude home equity and real estate.
+    </p>
+    <label>
+      Total savings balance
+      <input
+        type="number"
+        name="{{ forms.CURRENT_SAVINGS_BALANCE }}"
+        value="{{ plan.portfolio.current_savings_balance }}"
+        min="0"
+        step="1"
+      >
+    </label>
+  </form>
+</section>

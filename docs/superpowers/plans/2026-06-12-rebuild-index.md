@@ -31,9 +31,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Current phase** | Phase 0 complete |
-| **Active plan** | [`2026-06-12-phase-0-cutover-scaffold.md`](2026-06-12-phase-0-cutover-scaffold.md) |
-| **Next action** | Write `2026-06-12-phase-1-core-loop.md`, then execute Phase 1 |
+| **Current phase** | Phase 2a — plan |
+| **Active plan** | *(to write)* `2026-06-12-phase-2a-domain-core.md` |
+| **Next action** | Write Phase 2a plan before coding |
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
 
@@ -94,24 +94,25 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 
 ### Phase 1 — Core loop (minimal E2E)
 
-**Plan file:** `2026-06-12-phase-1-core-loop.md` *(to write)*
+**Plan file:** [`2026-06-12-phase-1-core-loop.md`](2026-06-12-phase-1-core-loop.md)
 
 **PR scope:** Plan model, SQLite repo, simulation stub, split-pane shell with auto-results
 
 | Item | Detail |
 |------|--------|
-| **Delivers** | `packages/core` (minimal `Plan`, repository), `packages/simulation` (stub), `packages/web` (FastAPI split-pane, HTMX debounced results), one editor section |
-| **References** | Design spec §3, §4 |
+| **Delivers** | `packages/core` (`Plan`, repository, default bootstrap), `packages/simulation` (stub), `packages/web` (FastAPI split-pane, HTMX debounced results), **two** editor sections (Household + Current Savings Portfolio). Base spending is simulation output, not a user input. |
+| **References** | [Phase 1 design spec](../specs/2026-06-12-phase-1-core-loop-design.md); architecture spec §3, §4 |
 | **Agent context** | LifeFinances repo |
 
 **Entry criteria:** Phase 0 complete.
 
 **Exit criteria:**
-- [ ] `Plan` persists to SQLite via repository
-- [ ] Web serves split-pane at `/`
-- [ ] Editing triggers debounced results panel update
-- [ ] Simulation stub returns deterministic placeholder data
-- [ ] pytest passes for core + web smoke tests
+- [x] `Plan` persists to SQLite via repository
+- [x] Empty DB auto-creates "Default Plan" on first visit
+- [x] Web serves split-pane at `/` with Household and Current Savings sections
+- [x] Editing triggers debounced results panel update
+- [x] Simulation stub returns deterministic placeholder data
+- [x] pytest passes for core, simulation, and web
 
 ---
 
@@ -270,6 +271,7 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 - [ ] All major tpaw chart types rendering
 - [ ] Plan create/switch/duplicate
 - [ ] `scripts/import_legacy_yaml.py` with documented gaps
+- [ ] Investigate generated flat form DTOs from `core.models` (`create_model` + prefixed `model_fields`) if hand-written section forms become unwieldy
 
 *May split into Phase 4a (editor) and Phase 4b (charts) if context requires.*
 
@@ -328,9 +330,10 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 | Phase | Plan file | Status |
 |-------|-----------|--------|
 | Phase 0 | `2026-06-12-phase-0-cutover-scaffold.md` | complete |
+| Phase 1 | `2026-06-12-phase-1-core-loop.md` | complete |
 
 ---
 
 ## Next step
 
-Execute **[Phase 0 plan](2026-06-12-phase-0-cutover-scaffold.md)** via subagent-driven development or executing-plans. After Phase 0 completes, invoke **writing-plans** for `2026-06-12-phase-1-core-loop.md`.
+Write **Phase 2a plan** (`2026-06-12-phase-2a-domain-core.md`) using writing-plans skill, then execute via subagent-driven development.
