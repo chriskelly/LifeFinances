@@ -20,7 +20,10 @@ def temp_repo_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     blank = data_dir / "data.db.blank"
     blank.write_bytes((REPO_ROOT / "data" / "data.db.blank").read_bytes())
     monkeypatch.setenv("LIFE_FINANCES_DB_PATH", str(data_dir / "data.db"))
-    monkeypatch.setattr(init_db, "DEFAULT_BLANK", blank)
+    monkeypatch.setattr(
+        "core.paths.default_blank_db_path",
+        lambda: blank,
+    )
     return data_dir
 
 
