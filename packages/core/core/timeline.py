@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 
 from core.models import PersonHousehold, Plan
-from core.streams import Boundary, CalendarMonthBoundary, PersonAgeBoundary
+from core.streams import (
+    Boundary,
+    CalendarMonthBoundary,
+    PersonAgeBoundary,
+    TimedStream,
+)
 
 
 def add_months(year: int, month: int, months: int) -> tuple[int, int]:
@@ -50,3 +56,37 @@ class Timeline:
             )
             return self._offset(reached_year, reached_month)
         raise TypeError(f"Unknown boundary: {boundary!r}")
+
+
+_CENTS = Decimal("0.01")
+
+
+def project_stream(stream: TimedStream, timeline: Timeline) -> list[Decimal]:
+    """Project one stream into a horizon-length series of face amounts.
+
+    - Fills `monthly_amount` for indices in [start, end]; 0 elsewhere.
+    - start defaults to 0 (now); end defaults to horizon - 1.
+    - The window is clamped to [0, horizon - 1].
+    - Monthly-compounded growth anchored at the (unclamped) start index:
+      amount(t) = monthly_amount * (1 + annual_growth_rate) ** ((t - start) / 12)
+    - Inflation is NOT applied (spec section 6).
+    """
+    horizon = timeline.horizon_months
+    series = [Decimal("0.00")] * horizon
+    if horizon <= 0:
+        return series
+
+    start_index = 0 if stream.start is None else timeline.index_of(stream.start)
+    end_index = horizon - 1 if stream.end is None else timeline.index_of(stream.end)
+
+    low = max(start_index, 0)
+    high = min(end_index, horizon - 1)
+    growth_base = Decimal(1) + stream.annual_growth_rate
+
+    for month_index in range(low, high + 1):
+        exponent = Decimal(month_index - start_index) / Decimal(12)
+        factor = growth_base**exponent
+        series[month_index] = (stream.monthly_amount * factor).quantize(
+            _CENTS, rounding=ROUND_HALF_UP
+        )
+    return series
