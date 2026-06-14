@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from core.models import PersonHousehold, Plan
+from core.timeline import horizon_months
 
-from simulation.horizon import horizon_months
 from simulation.result import SimulationResult
 
 

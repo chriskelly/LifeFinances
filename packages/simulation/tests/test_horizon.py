@@ -1,7 +1,7 @@
 from datetime import date
 
 from core.defaults import default_plan
-from simulation.horizon import horizon_months, person_end_date
+from core.timeline import horizon_months, person_end_date
 
 
 def test_horizon_months_uses_later_person_end_date() -> None:

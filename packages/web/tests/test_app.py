@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-import httpx
+import httpx2 as httpx
 from core.defaults import DEFAULT_PLAN_NAME, default_plan
 from core.repository import PlanRepository
 from fastapi.testclient import TestClient

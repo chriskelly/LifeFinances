@@ -1,6 +1,7 @@
 """Monthly TPAW simulation engine."""
 
-from simulation.horizon import horizon_months, person_end_date
+from core.timeline import horizon_months, person_end_date
+
 from simulation.result import STUB_VERSION, SimulationResult
 from simulation.stub import run_simulation
 
