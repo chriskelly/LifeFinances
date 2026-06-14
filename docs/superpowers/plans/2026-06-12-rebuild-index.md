@@ -31,9 +31,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Current phase** | Phase 2a — plan |
-| **Active plan** | *(to write)* `2026-06-12-phase-2a-domain-core.md` |
-| **Next action** | Write Phase 2a plan before coding |
+| **Current phase** | Phase 2b — plan |
+| **Active plan** | *(to write)* `2026-06-12-phase-2b-domain-social-security.md` |
+| **Next action** | Write Phase 2b plan before coding |
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
 
@@ -118,7 +118,7 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 
 ### Phase 2a — Domain: core types and timed streams
 
-**Plan file:** `2026-06-12-phase-2a-domain-core.md` *(to write)*
+**Plan file:** [`2026-06-12-phase-2a-domain-core.md`](2026-06-12-phase-2a-domain-core.md)
 
 **Delivers:** Unified timed income/spending stream types, plan schema extensions, domain package skeleton.
 
@@ -127,9 +127,9 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 **Entry criteria:** Phase 1 complete.
 
 **Exit criteria:**
-- [ ] `LabeledAmountTimed` (or equivalent) in `core`/`domain`
-- [ ] Plan schema includes dated-plan fields, per-person end age (default 100)
-- [ ] Unit tests for stream serialization and month indexing
+- [x] `LabeledAmountTimed` (or equivalent) in `core`/`domain`
+- [x] Plan schema includes dated-plan fields, per-person end age (default 100)
+- [x] Unit tests for stream serialization and month indexing
 
 ---
 
@@ -154,15 +154,16 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 
 **Plan file:** `2026-06-12-phase-2c-domain-job-income.md` *(to write)*
 
-**Delivers:** Port job income module; stream ends at configured date; feeds SS earnings and taxes.
+**Delivers:** Port job income module; stream ends at configured date; feeds SS earnings and taxes. Planned sabbaticals (income break or % reduction over a defined window) via stream composition (see Phase 2a design §6.1).
 
-**References:** Legacy `job_income.py`, related tests.
+**References:** Legacy `job_income.py`, related tests; Phase 2a design §4 (growth re-anchoring), §6.1 (composition).
 
 **Entry criteria:** Phase 2a complete (2b may be in progress).
 
 **Exit criteria:**
 - [ ] Job income as unified timed stream
-- [ ] SS earnings integration tested
+- [ ] Planned sabbaticals: full break and % reduction, composed from segmented streams with correct growth re-anchoring
+- [ ] SS earnings integration tested (sabbatical-reduced earnings flow through)
 - [ ] No system-level retirement state
 
 ---
@@ -331,9 +332,10 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 |-------|-----------|--------|
 | Phase 0 | `2026-06-12-phase-0-cutover-scaffold.md` | complete |
 | Phase 1 | `2026-06-12-phase-1-core-loop.md` | complete |
+| Phase 2a | `2026-06-12-phase-2a-domain-core.md` | complete |
 
 ---
 
 ## Next step
 
-Write **Phase 2a plan** (`2026-06-12-phase-2a-domain-core.md`) using writing-plans skill, then execute via subagent-driven development.
+Write **Phase 2b plan** before coding.
