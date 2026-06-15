@@ -43,6 +43,7 @@ Phase 2b is **not** responsible for: system-level retirement state,
 | 10 | `Job` / `SabbaticalWindow` live in **`core`** | `Plan` persists them through the JSON-blob repository, exactly like `TimedStream` |
 | 11 | **Real-only** jobs (`is_nominal=False`); `annual_raise` is a real raise | Nominal jobs deferred (YAGNI) |
 | 12 | **No system-level retirement state** | Per rebuild-index exit criteria; "retired" is just an absence of income, not a flag |
+| 13 | Sabbatical-window structure validated by a **`Household` Pydantic validator**, not the compiler | Ordering/overlap/containment only need birth dates (not `today`); `Household` is the lowest level with both persons' birth dates and their jobs, so all boundaries resolve. Compiler can then assume valid input |
 
 ---
 
@@ -102,18 +103,59 @@ class PersonHousehold(BaseModel):
 The default plan leaves `jobs` empty; existing default-plan behavior is unchanged.
 
 ### Validation
-- Field-level: `annual_income >= 0`, `annual_tax_deferred >= 0`,
+
+All validation is **Pydantic** (no separate compiler pass). It splits across two
+levels by what context each level has:
+
+- **Field-level:** `annual_income >= 0`, `annual_tax_deferred >= 0`,
   `remaining_fraction in [0, 1]`.
-- Model-level on `Job`: `annual_tax_deferred <= annual_income`.
-- **Sabbatical windows** must resolve (via the timeline) to ranges that are
-  inside `[job start, job end]`, ordered, and non-overlapping. Boundary-to-index
-  resolution needs a `Timeline`, so these structural checks live in the
-  **compiler** (§4) and raise a clear domain error, not in Pydantic field
-  validators.
+- **Model-level on `Job`:** `annual_tax_deferred <= annual_income`.
+- **Model-level on `Household`** (`model_validator(mode="after")`) — sabbatical
+  window structure. This lives on `Household`, **not `Job`**, because resolving a
+  `PersonAgeBoundary` to a comparable point needs the person's birth date, and a
+  `Job` validator cannot see it. `Household` is the lowest level that has **both**
+  persons' birth dates *and* their jobs, so it can resolve every boundary —
+  including cross-person age references — onto an absolute calendar axis.
+
+  For each person's each job, after resolving boundaries to absolute
+  `year*12 + month`:
+  - each window: `start <= end`;
+  - windows are ordered and **non-overlapping** (next window's start month is
+    strictly after the previous window's end month — windows are inclusive
+    month ranges);
+  - each window lies within the job's **explicit** bounds: if `job.start` is set,
+    `window.start >= job.start`; if `job.end` is set, `window.end <= job.end`.
+
+  Violations raise `ValueError` (Pydantic `ValidationError`).
+
+> **Why no `today` is needed.** Ordering / overlap / containment are *relative*
+> comparisons on the absolute calendar axis. A `CalendarMonthBoundary` is already
+> absolute; a `PersonAgeBoundary` becomes absolute from
+> `birth_year/birth_month + age_months`. Only `month_index` math (offset from now)
+> needs `today` — and that is not required for this validation.
+>
+> **Open bounds are not enforced.** `job.start = None` (plan start) and
+> `job.end = None` (horizon) depend on `today` / max-age, so windows are **not**
+> validated against an open side. A window partly/entirely in the past is clamped
+> to zero by `project_stream` (§4) — clamping, not an error.
+
+A small pure resolver backs this:
+
+```python
+# core.timeline (or a small core helper module)
+def boundary_to_year_month(boundary: Boundary, household: Household) -> tuple[int, int]:
+    """Resolve a boundary to an absolute (year, month). Birth-date only; no `today`."""
+```
+
+`Timeline.index_of` is refactored to reuse it (resolve to (year, month), then
+offset by `today`), keeping a single resolution implementation.
 
 ---
 
 ## 4. Compilation: `Job` → segmented `TimedStream`s (`domain`)
+
+The compiler assumes **already-validated** input (window ordering / overlap /
+containment are enforced by the `Household` validator, §3).
 
 A job with *N* sabbatical windows compiles into up to *2N+1* `TimedStream`
 segments (full / reduced / full / …). Each segment reuses the Phase 2a
@@ -210,12 +252,12 @@ class JobIncomeProjection(BaseModel):
 packages/core/
 ├── core/
 │   ├── job.py            # NEW — Job, SabbaticalWindow
-│   ├── models.py         # + PersonHousehold.jobs
+│   ├── models.py         # + PersonHousehold.jobs; + Household sabbatical-window validator
 │   ├── streams.py        # unchanged (Boundary reused)
-│   └── timeline.py       # + Timeline.month_boundary(index)
+│   └── timeline.py       # + boundary_to_year_month(); + Timeline.month_boundary(index); index_of reuses resolver
 └── tests/
-    ├── test_job.py        # NEW — config validation, repository round-trip
-    └── test_timeline.py   # + month_boundary behavior
+    ├── test_job.py        # NEW — Job + Household validation, repository round-trip
+    └── test_timeline.py   # + month_boundary + boundary_to_year_month behavior
 
 packages/domain/
 ├── domain/
@@ -238,8 +280,9 @@ a literal across arrange and assert.
 | Area | Representative behaviors |
 |------|--------------------------|
 | `Job` validation | `annual_tax_deferred > annual_income` rejected; `remaining_fraction` outside `[0,1]` rejected |
+| `Household` window validation | out-of-order / overlapping windows rejected; window outside an **explicit** `[job.start, job.end]` rejected; mixed calendar+age boundaries resolved correctly; cross-person age boundary resolved; window against an **open** (None) bound is accepted |
 | Repository round-trip | `Plan` with `PersonHousehold.jobs` (incl. sabbaticals + `Decimal`) → SQLite → equal |
-| `Timeline.month_boundary` | `month_boundary(index)` is the inverse of `index_of(CalendarMonthBoundary)` for sample indices |
+| `boundary_to_year_month` / `Timeline.month_boundary` | age + calendar boundaries resolve to absolute (year, month) without `today`; `month_boundary(index)` is the inverse of `index_of(CalendarMonthBoundary)` |
 | Single job | annual→monthly conversion; flat-then-grown monthly series matches `base*(1+raise)^(t/12)` |
 | Concurrent jobs | two overlapping jobs sum element-wise per person |
 | Sequential jobs | disjoint windows, no overlap, zero between |
@@ -257,8 +300,9 @@ Do **not** test pure Pydantic validation of trivial fields or library behavior.
 
 | Situation | Behavior |
 |-----------|----------|
-| Sabbatical window outside `[job start, job end]` | Compiler raises a clear domain `ValueError` |
-| Overlapping / out-of-order sabbatical windows | Compiler raises a clear domain `ValueError` |
+| Sabbatical window outside an **explicit** `[job.start, job.end]` | `Household` validator raises `ValueError` (Pydantic `ValidationError`) |
+| Overlapping / out-of-order sabbatical windows | `Household` validator raises `ValueError` (Pydantic `ValidationError`) |
+| Window against an **open** (`None`) job bound | Accepted; past portion clamped to zero by `project_stream` |
 | `annual_tax_deferred > annual_income` | Pydantic `ValidationError` at model construction |
 | `annual_income == 0` | Allowed (zero-income placeholder job); tax-deferred fraction is 0 |
 | Job window entirely in the past / beyond horizon | All-zero contribution (via `project_stream` clamping), no error |
@@ -271,6 +315,7 @@ Do **not** test pure Pydantic validation of trivial fields or library behavior.
 - [ ] `Job` + `SabbaticalWindow` in `core`, persisted on `PersonHousehold.jobs`, round-trip through SQLite (proven by test)
 - [ ] Job income projects to month-indexed series via `project_job_income`, reusing `project_stream`
 - [ ] Planned sabbaticals: full break and % reduction, composed from segmented streams with correct growth re-anchoring (raise clock continues)
+- [ ] Sabbatical-window ordering / overlap / containment validated by a `Household` Pydantic validator (birth-date resolution, no `today`); `boundary_to_year_month` resolver added and reused by `index_of`
 - [ ] Per-person `gross` / `ss_covered_gross` / `tax_deferred` + household totals
 - [ ] `ss_covered_gross` is uncapped; wage-base cap explicitly deferred to Phase 2c
 - [ ] No system-level retirement state
