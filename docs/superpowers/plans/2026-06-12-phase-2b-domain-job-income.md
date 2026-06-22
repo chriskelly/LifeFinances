@@ -9,6 +9,7 @@
 **Tech Stack:** Python 3.14, Pydantic v2, `Decimal` money math, pytest, uv workspace. Spec: `docs/superpowers/specs/2026-06-12-phase-2b-domain-job-income-design.md`.
 
 **Conventions for every task:**
+
 - Follow TDD: write the behavior test, scaffold to a *logical* red (`NotImplementedError`/stub), confirm the failure is logical (not `ImportError`/`AttributeError`), implement, confirm green.
 - Inject `today: date`; never read wall-clock time in logic or assertions.
 - Bind shared values to a variable referenced in both arrange and assert; import constants/defaults from source instead of copying literals.
@@ -19,26 +20,29 @@
 
 ## File Structure
 
-**`packages/core/`**
+`**packages/core/`**
+
 - `core/job.py` *(new)* — `Job`, `SabbaticalWindow` models + `Job` model-level validator (`annual_tax_deferred <= annual_income`).
 - `core/models.py` *(modify)* — add `PersonHousehold.jobs`; add `Household` sabbatical-window validator.
 - `core/timeline.py` *(modify)* — add `boundary_to_year_month()`; refactor `Timeline.index_of` to reuse it; add `Timeline.month_boundary()`; move the `core.models` import under `TYPE_CHECKING` to break the new `models → timeline` cycle.
 - `tests/test_job.py` *(new)* — `Job` validation, `Household` window validation, repository round-trip.
 - `tests/test_timeline.py` *(modify)* — `boundary_to_year_month` + `month_boundary` behavior.
 
-**`packages/domain/`**
+`**packages/domain/*`*
+
 - `domain/job_income/__init__.py` *(new)* — `PersonJobIncome`, `JobIncomeProjection`, `project_job_income()`.
 - `domain/job_income/compile.py` *(new)* — `project_job_gross()` (segment split + re-anchoring + projection).
 - `tests/test_job_income.py` *(new)* — compilation and projection behaviors.
 - `OVERVIEW.md` *(modify)* — job-income port status.
 
-**`docs/superpowers/plans/2026-06-12-rebuild-index.md`** *(modify)* — active-phase pointer at the end.
+`**docs/superpowers/plans/2026-06-12-rebuild-index.md*`* *(modify)* — active-phase pointer at the end.
 
 ---
 
 ## Task 1: `Job` and `SabbaticalWindow` config models
 
 **Files:**
+
 - Create: `packages/core/core/job.py`
 - Test: `packages/core/tests/test_job.py`
 
@@ -155,6 +159,7 @@ git commit -m "feat(core): add Job and SabbaticalWindow config models"
 ## Task 2: Persist `jobs` on `PersonHousehold`
 
 **Files:**
+
 - Modify: `packages/core/core/models.py`
 - Test: `packages/core/tests/test_job.py`
 
@@ -243,6 +248,7 @@ git commit -m "feat(core): persist jobs on PersonHousehold"
 ## Task 3: `boundary_to_year_month` resolver + break the import cycle
 
 **Files:**
+
 - Modify: `packages/core/core/timeline.py`
 - Test: `packages/core/tests/test_timeline.py`
 
@@ -318,7 +324,7 @@ if TYPE_CHECKING:
     from core.models import Household, PersonHousehold, Plan
 ```
 
-2. Implement the resolver:
+1. Implement the resolver:
 
 ```python
 def boundary_to_year_month(boundary: Boundary, household: Household) -> tuple[int, int]:
@@ -331,7 +337,7 @@ def boundary_to_year_month(boundary: Boundary, household: Household) -> tuple[in
     raise TypeError(f"Unknown boundary: {boundary!r}")
 ```
 
-3. Refactor `Timeline.index_of` to delegate:
+1. Refactor `Timeline.index_of` to delegate:
 
 ```python
     def index_of(self, boundary: Boundary) -> int:
@@ -357,6 +363,7 @@ git commit -m "feat(core): add boundary_to_year_month resolver and reuse in inde
 ## Task 4: `Timeline.month_boundary` (inverse of the offset)
 
 **Files:**
+
 - Modify: `packages/core/core/timeline.py`
 - Test: `packages/core/tests/test_timeline.py`
 
@@ -415,6 +422,7 @@ git commit -m "feat(core): add Timeline.month_boundary"
 ## Task 5: `Household` sabbatical-window validator
 
 **Files:**
+
 - Modify: `packages/core/core/models.py`
 - Test: `packages/core/tests/test_job.py`
 
@@ -436,7 +444,7 @@ def _household_with_person1_jobs(jobs: list[Job]) -> Household:
     )
 
 
-def test_overlapping_windows_rejected() -> None:
+def test_overlapping_sabbatical_windows_rejected() -> None:
     job = Job(
         annual_income=Decimal("100000"),
         sabbaticals=[
@@ -458,14 +466,15 @@ def test_overlapping_windows_rejected() -> None:
 
 
 def test_window_outside_explicit_job_bounds_rejected() -> None:
+    job_start_year = 2030
     job = Job(
         annual_income=Decimal("100000"),
-        start=CalendarMonthBoundary(year=2030, month=1),
-        end=CalendarMonthBoundary(year=2035, month=12),
+        start=CalendarMonthBoundary(year=job_start_year, month=1),
+        end=CalendarMonthBoundary(year=job_start_year + 5, month=12),
         sabbaticals=[
             SabbaticalWindow(
-                start=CalendarMonthBoundary(year=2029, month=1),
-                end=CalendarMonthBoundary(year=2029, month=6),
+                start=CalendarMonthBoundary(year=job_start_year - 1, month=1),
+                end=CalendarMonthBoundary(year=job_start_year - 1, month=6),
                 remaining_fraction=Decimal("0"),
             )
         ],
@@ -588,6 +597,7 @@ git commit -m "feat(core): validate sabbatical windows on Household"
 ## Task 6: Compile a job into a projected gross series
 
 **Files:**
+
 - Create: `packages/domain/domain/job_income/__init__.py` (empty package marker for now — a docstring only)
 - Create: `packages/domain/domain/job_income/compile.py`
 - Test: `packages/domain/tests/test_job_income.py`
@@ -798,6 +808,7 @@ git commit -m "feat(domain): compile jobs into projected gross series with sabba
 ## Task 7: `project_job_income` aggregator + result types
 
 **Files:**
+
 - Modify: `packages/domain/domain/job_income/__init__.py`
 - Test: `packages/domain/tests/test_job_income.py`
 
@@ -958,10 +969,6 @@ Expected: FAIL with `NotImplementedError`.
 Replace the stub bodies in `__init__.py`:
 
 ```python
-def _zeros(length: int) -> list[Decimal]:
-    return [Decimal("0.00")] * length
-
-
 def _add(left: list[Decimal], right: list[Decimal]) -> list[Decimal]:
     return [a + b for a, b in zip(left, right, strict=True)]
 
@@ -975,25 +982,16 @@ class PersonJobIncome(BaseModel):
 class JobIncomeProjection(BaseModel):
     person1: PersonJobIncome
     person2: PersonJobIncome
-
-    @property
-    def total_gross(self) -> list[Decimal]:
-        return _add(self.person1.gross, self.person2.gross)
-
-    @property
-    def total_ss_covered_gross(self) -> list[Decimal]:
-        return _add(self.person1.ss_covered_gross, self.person2.ss_covered_gross)
-
-    @property
-    def total_tax_deferred(self) -> list[Decimal]:
-        return _add(self.person1.tax_deferred, self.person2.tax_deferred)
+    total_gross: list[Decimal]
+    total_ss_covered_gross: list[Decimal]
+    total_tax_deferred: list[Decimal]
 
 
 def _project_person(person: PersonHousehold, timeline: Timeline) -> PersonJobIncome:
     horizon = timeline.horizon_months
-    gross = _zeros(horizon)
-    ss_covered = _zeros(horizon)
-    tax_deferred = _zeros(horizon)
+    gross = [Decimal("0.00")] * horizon
+    ss_covered = [Decimal("0.00")] * horizon
+    tax_deferred = [Decimal("0.00")] * horizon
     for job in person.jobs:
         job_gross = project_job_gross(job, timeline)
         gross = _add(gross, job_gross)
@@ -1012,9 +1010,14 @@ def _project_person(person: PersonHousehold, timeline: Timeline) -> PersonJobInc
 
 
 def project_job_income(plan: Plan, timeline: Timeline) -> JobIncomeProjection:
+    person1 = _project_person(plan.household.person1, timeline)
+    person2 = _project_person(plan.household.person2, timeline)
     return JobIncomeProjection(
-        person1=_project_person(plan.household.person1, timeline),
-        person2=_project_person(plan.household.person2, timeline),
+        person1=person1,
+        person2=person2,
+        total_gross=_add(person1.gross, person2.gross),
+        total_ss_covered_gross=_add(person1.ss_covered_gross, person2.ss_covered_gross),
+        total_tax_deferred=_add(person1.tax_deferred, person2.tax_deferred),
     )
 ```
 
@@ -1036,6 +1039,7 @@ git commit -m "feat(domain): aggregate per-person and household job income proje
 ## Task 8: Documentation + active-phase pointer + full gate
 
 **Files:**
+
 - Modify: `packages/domain/OVERVIEW.md`
 - Modify: `docs/superpowers/plans/2026-06-12-rebuild-index.md`
 
@@ -1080,12 +1084,13 @@ git commit -m "docs: mark Phase 2b job income complete; point index at Phase 2c"
 ## Self-Review
 
 **Spec coverage (spec §-by-§):**
+
 - §3 models → Tasks 1, 2. §3 validation (field/Job/Household) → Tasks 1, 5. §3 `boundary_to_year_month` + `index_of` reuse → Task 3.
 - §4 segmented compilation + re-anchoring + `month_boundary` → Tasks 4, 6.
 - §5 `JobIncomeProjection` per-person + totals; uncapped `ss_covered_gross`; tax-deferred fraction (incl. `annual_income==0`) → Task 7.
 - §6 file layout → all tasks. §7 testing table → tests across Tasks 1–7. §8 error handling → Tasks 1, 5, 6. §9 exit criteria → Task 8 + suite. §10 deferred → not implemented (correct).
 
-**Type consistency:** `project_job_gross(job, timeline) -> list[Decimal]` (Task 6) is consumed unchanged in Task 7. `PersonJobIncome` fields `gross` / `ss_covered_gross` / `tax_deferred` and `JobIncomeProjection.person1/person2` + `total_*` properties are consistent between definition (Task 7) and tests. `boundary_to_year_month(boundary, household)` signature matches its caller in `index_of` (Task 3) and `_validate_job_windows` (Task 5). `Timeline.month_boundary(index)` matches usage in `_segment_stream` (Task 6).
+**Type consistency:** `project_job_gross(job, timeline) -> list[Decimal]` (Task 6) is consumed unchanged in Task 7. `PersonJobIncome` fields `gross` / `ss_covered_gross` / `tax_deferred` and `JobIncomeProjection.person1/person2` + `total_`* properties are consistent between definition (Task 7) and tests. `boundary_to_year_month(boundary, household)` signature matches its caller in `index_of` (Task 3) and `_validate_job_windows` (Task 5). `Timeline.month_boundary(index)` matches usage in `_segment_stream` (Task 6).
 
 **Placeholder scan:** no `TBD`/`TODO`/"handle edge cases"; every code step shows complete code; every test step shows the assertion.
 

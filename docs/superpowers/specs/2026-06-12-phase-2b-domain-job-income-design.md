@@ -226,9 +226,9 @@ class PersonJobIncome(BaseModel):     # all lists length == timeline.horizon_mon
 class JobIncomeProjection(BaseModel):
     person1: PersonJobIncome
     person2: PersonJobIncome
-
-    # household totals (element-wise sums), e.g. as computed properties:
-    #   total_gross, total_ss_covered_gross, total_tax_deferred
+    total_gross: list[Decimal]              # element-wise sum; computed once at projection
+    total_ss_covered_gross: list[Decimal]
+    total_tax_deferred: list[Decimal]
 ```
 
 - **Per-person** because SS (2c) computes PIA per individual.

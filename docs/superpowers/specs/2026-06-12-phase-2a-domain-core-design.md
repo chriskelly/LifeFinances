@@ -162,7 +162,7 @@ quantization for the growth factor so projections are deterministic and testable
 > `monthly_amount` set to the **already-grown** value at that segment's start —
 > `base * (1 + g) ** (segment_start_index / 12)` — so the segments stitch back
 > into one continuous `base * (1 + g) ** (t / 12)` curve. This is a **consumer**
-> (Phase 2c) responsibility; `core` only projects each stream independently.
+> (Phase 2b) responsibility; `core` only projects each stream independently.
 
 ---
 
@@ -246,7 +246,7 @@ The lean `TimedStream` is deliberately a single bounded window with one
 expressed by **composing multiple streams** at the consumer layer, not by adding
 timing variants to the primitive.
 
-The motivating example is **planned sabbaticals** (a future Phase 2c feature):
+The motivating example is **planned sabbaticals** (a future Phase 2b feature):
 an income break, or a percentage reduction, over a defined window.
 
 - **Full break** → two streams: the job stream ending at the sabbatical start,
@@ -360,7 +360,7 @@ Do **not** test pure Pydantic validation or trivial getters.
 - One-time amounts, `every-X-months` recurrence, named-age boundaries
   (`lastWorkingMonth`/`retirement`), `inThePast` timing — add per consumer need.
 - **Planned sabbaticals** (income break / % reduction over a window) — expressed
-  by stream composition (§6.1); the feature itself lands in Phase 2c (job income).
+  by stream composition (§6.1); the feature itself lands in Phase 2b (job income).
 - `id` / `sortIndex` / `colorIndex` and stream ordering/overlap validation — add
   with the editor.
 - Future-dated nominal anchoring (the 3-way mode) — see §6.
