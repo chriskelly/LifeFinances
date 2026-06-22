@@ -4,7 +4,12 @@ from datetime import date
 
 from core.defaults import default_plan
 from core.streams import CalendarMonthBoundary, PersonAgeBoundary
-from core.timeline import Timeline, horizon_months, person_end_date
+from core.timeline import (
+    Timeline,
+    boundary_to_year_month,
+    horizon_months,
+    person_end_date,
+)
 
 
 def test_index_of_calendar_month_is_offset_from_today() -> None:
@@ -60,3 +65,35 @@ def test_horizon_months_matches_max_age_person_age_boundary() -> None:
     expected = (later.year - today.year) * 12 + (later.month - today.month)
     assert timeline.horizon_months == expected
     assert horizon_months(plan, today=today) == expected
+
+
+def test_boundary_to_year_month_calendar_is_identity() -> None:
+    year, month = 2031, 7
+
+    result = boundary_to_year_month(
+        CalendarMonthBoundary(year=year, month=month), default_plan().household
+    )
+
+    assert result == (year, month)
+
+
+def test_boundary_to_year_month_person_age_uses_birth_plus_age() -> None:
+    household = default_plan().household
+    person = household.person1
+    age_months = 600  # 50 years
+
+    result = boundary_to_year_month(
+        PersonAgeBoundary(person="person1", age_months=age_months), household
+    )
+
+    assert result == (person.birth_year + age_months // 12, person.birth_month)
+
+
+def test_month_boundary_is_inverse_of_index_of() -> None:
+    timeline = Timeline(default_plan(), today=date(2026, 6, 1))
+    index = 19
+
+    boundary = timeline.month_boundary(index)
+
+    assert isinstance(boundary, CalendarMonthBoundary)
+    assert timeline.index_of(boundary) == index

@@ -22,8 +22,8 @@ projected with `core.timeline.project_stream`. See the Phase 2a design spec:
 
 | Legacy module | Destination | Phase | Status |
 |---------------|-------------|-------|--------|
-| `social_security.py` | `domain/social_security/` | 2b | not started |
-| `job_income.py` (incl. planned sabbaticals) | `domain/job_income/` | 2c | not started |
+| `job_income.py` (incl. planned sabbaticals) | `domain/job_income/` | 2b | done |
+| `social_security.py` | `domain/social_security/` | 2c | not started |
 | `pension.py` | `domain/pension/` | 2d | not started |
 | `taxes.py` (income-side) | `domain/taxes/` | 2d | not started |
 | `build_monthly_cashflows(plan)` aggregator | `domain/__init__.py` | 2d | not started |

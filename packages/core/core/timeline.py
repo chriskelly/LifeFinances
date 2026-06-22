@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
+from typing import TYPE_CHECKING
 
-from core.models import PersonHousehold, Plan
+if TYPE_CHECKING:
+    from core.models import Household, PersonHousehold, Plan
 from core.streams import (
     Boundary,
     CalendarMonthBoundary,
@@ -16,6 +18,16 @@ def add_months(year: int, month: int, months: int) -> tuple[int, int]:
     """Add `months` to a (year, month) pair. `month` is 1-12."""
     total = year * 12 + (month - 1) + months
     return total // 12, total % 12 + 1
+
+
+def boundary_to_year_month(boundary: Boundary, household: Household) -> tuple[int, int]:
+    """Resolve a boundary to an absolute (year, month). Birth-date only; no `today`."""
+    if isinstance(boundary, CalendarMonthBoundary):
+        return boundary.year, boundary.month
+    if isinstance(boundary, PersonAgeBoundary):
+        person = getattr(household, boundary.person)
+        return add_months(person.birth_year, person.birth_month, boundary.age_months)
+    raise TypeError(f"Unknown boundary: {boundary!r}")
 
 
 def person_end_date(person: PersonHousehold) -> date:
@@ -47,15 +59,13 @@ class Timeline:
         return (year - self.today.year) * 12 + (month - self.today.month)
 
     def index_of(self, boundary: Boundary) -> int:
-        if isinstance(boundary, CalendarMonthBoundary):
-            return self._offset(boundary.year, boundary.month)
-        if isinstance(boundary, PersonAgeBoundary):
-            person = getattr(self.plan.household, boundary.person)
-            reached_year, reached_month = add_months(
-                person.birth_year, person.birth_month, boundary.age_months
-            )
-            return self._offset(reached_year, reached_month)
-        raise TypeError(f"Unknown boundary: {boundary!r}")
+        year, month = boundary_to_year_month(boundary, self.plan.household)
+        return self._offset(year, month)
+
+    def month_boundary(self, index: int) -> CalendarMonthBoundary:
+        """The calendar month at `index` months from today (index 0 == this month)."""
+        year, month = add_months(self.today.year, self.today.month, index)
+        return CalendarMonthBoundary(year=year, month=month)
 
 
 _CENTS = Decimal("0.01")
