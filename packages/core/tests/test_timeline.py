@@ -87,3 +87,13 @@ def test_boundary_to_year_month_person_age_uses_birth_plus_age() -> None:
     )
 
     assert result == (person.birth_year + age_months // 12, person.birth_month)
+
+
+def test_month_boundary_is_inverse_of_index_of() -> None:
+    timeline = Timeline(default_plan(), today=date(2026, 6, 1))
+    index = 19
+
+    boundary = timeline.month_boundary(index)
+
+    assert isinstance(boundary, CalendarMonthBoundary)
+    assert timeline.index_of(boundary) == index

@@ -62,6 +62,11 @@ class Timeline:
         year, month = boundary_to_year_month(boundary, self.plan.household)
         return self._offset(year, month)
 
+    def month_boundary(self, index: int) -> CalendarMonthBoundary:
+        """The calendar month at `index` months from today (index 0 == this month)."""
+        year, month = add_months(self.today.year, self.today.month, index)
+        return CalendarMonthBoundary(year=year, month=month)
+
 
 _CENTS = Decimal("0.01")
 
