@@ -31,9 +31,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Current phase** | Phase 2b — plan |
-| **Active plan** | *(to write)* `2026-06-12-phase-2b-domain-social-security.md` |
-| **Next action** | Write Phase 2b plan before coding |
+| **Current phase** | Phase 2c — plan |
+| **Active plan** | *(to write)* `2026-06-12-phase-2c-domain-social-security.md` |
+| **Next action** | Write Phase 2c plan before coding |
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
 
@@ -46,8 +46,8 @@ flowchart LR
   P0[Phase 0\nCutover scaffold]
   P1[Phase 1\nCore loop E2E]
   P2a[Phase 2a\nDomain: core types]
-  P2b[Phase 2b\nDomain: SS]
-  P2c[Phase 2c\nDomain: job income]
+  P2b[Phase 2b\nDomain: job income]
+  P2c[Phase 2c\nDomain: SS]
   P2d[Phase 2d\nDomain: pension + taxes]
   P3a[Phase 3a\nSim: data + bootstrap]
   P3b[Phase 3b\nSim: TPAW core]
@@ -60,7 +60,7 @@ flowchart LR
   P2d --> P3a --> P3b --> P3c --> P3d --> P4 --> P5
 ```
 
-Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequential.
+Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must land before 2b. Phases 3a–3d must be sequential.
 
 ---
 
@@ -133,38 +133,38 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 
 ---
 
-### Phase 2b — Domain: Social Security
+### Phase 2b — Domain: Job income
 
-**Plan file:** `2026-06-12-phase-2b-domain-social-security.md` *(to write)*
-
-**Delivers:** Port `social_security.py` with monthly boundaries; auto-generated configurable income streams.
-
-**References:** Legacy `backend/app/models/controllers/social_security.py`, tests in `backend/tests/models/controllers/test_social_security.py`, tpaw for output validation only.
-
-**Entry criteria:** Phase 2a complete.
-
-**Exit criteria:**
-- [ ] Ported tests pass (adapted to monthly)
-- [ ] SS projects to unified timed income streams
-- [ ] `packages/domain/OVERVIEW.md` documents port status
-
----
-
-### Phase 2c — Domain: Job income
-
-**Plan file:** `2026-06-12-phase-2c-domain-job-income.md` *(to write)*
+**Plan file:** [`2026-06-12-phase-2b-domain-job-income.md`](2026-06-12-phase-2b-domain-job-income.md)
 
 **Delivers:** Port job income module; stream ends at configured date; feeds SS earnings and taxes. Planned sabbaticals (income break or % reduction over a defined window) via stream composition (see Phase 2a design §6.1).
 
 **References:** Legacy `job_income.py`, related tests; Phase 2a design §4 (growth re-anchoring), §6.1 (composition).
 
-**Entry criteria:** Phase 2a complete (2b may be in progress).
+**Entry criteria:** Phase 2a complete.
 
 **Exit criteria:**
-- [ ] Job income as unified timed stream
-- [ ] Planned sabbaticals: full break and % reduction, composed from segmented streams with correct growth re-anchoring
+- [x] Job income as unified timed stream
+- [x] Planned sabbaticals: full break and % reduction, composed from segmented streams with correct growth re-anchoring
+- [x] No system-level retirement state
+
+---
+
+### Phase 2c — Domain: Social Security
+
+**Plan file:** `2026-06-12-phase-2c-domain-social-security.md` *(to write)*
+
+**Delivers:** Port `social_security.py` with monthly boundaries; auto-generated configurable income streams. Consumes job-income projections for future earnings.
+
+**References:** Legacy `backend/app/models/controllers/social_security.py`, tests in `backend/tests/models/controllers/test_social_security.py`, tpaw for output validation only.
+
+**Entry criteria:** Phase 2b complete.
+
+**Exit criteria:**
+- [ ] Ported tests pass (adapted to monthly)
+- [ ] SS projects to unified timed income streams
 - [ ] SS earnings integration tested (sabbatical-reduced earnings flow through)
-- [ ] No system-level retirement state
+- [ ] `packages/domain/OVERVIEW.md` documents port status
 
 ---
 
@@ -333,9 +333,10 @@ Phases 2b–2d may overlap only after 2a lands. Phases 3a–3d must be sequentia
 | Phase 0 | `2026-06-12-phase-0-cutover-scaffold.md` | complete |
 | Phase 1 | `2026-06-12-phase-1-core-loop.md` | complete |
 | Phase 2a | `2026-06-12-phase-2a-domain-core.md` | complete |
+| Phase 2b | `2026-06-12-phase-2b-domain-job-income.md` | complete |
 
 ---
 
 ## Next step
 
-Write **Phase 2b plan** before coding.
+Write **Phase 2c plan** before coding.
