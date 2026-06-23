@@ -164,14 +164,23 @@ Historical FICA earnings from SSA XML are already capped for their source year,
 but the calculation still routes all earnings through a single cap step so tests
 can prove the invariant and future earnings are capped consistently.
 
-### Constants and extrapolation
+### Statutory tables and extrapolation
 
-Phase 2c ports the legacy Social Security data tables for:
+Phase 2c establishes the statutory-data pattern that later tax work can reuse.
+Regularly updated statutory inputs live in `domain`, not `core`, because they are
+calculation inputs rather than persisted plan configuration.
+
+Social Security tables live under `domain/statutory/` and include:
 
 - historical taxable maximum (`SS_MAX_EARNINGS`);
 - AWI indexing factors (`SS_INDEXES`);
 - bend points;
 - PIA rates.
+
+The tables are versioned source data checked into the repository, not fetched
+live from SSA at runtime. Each table should carry source URLs, effective year,
+and last-updated notes. Updates happen through normal code/data PRs so
+simulations remain reproducible.
 
 The legacy code used NumPy exponential fit helpers. The rebuild should not add
 NumPy just for this phase; implement a small stdlib log-linear least-squares
@@ -308,6 +317,9 @@ packages/core/
 
 packages/domain/
 ├── domain/
+│   ├── statutory/
+│   │   ├── __init__.py
+│   │   └── social_security.py  # SS taxable max, AWI, bend points, PIA rates
 │   └── social_security/
 │       ├── __init__.py      # project_social_security, output models
 │       ├── earnings.py      # XML parser + earnings/AIME helpers
@@ -318,7 +330,8 @@ packages/domain/
 ```
 
 Exact module names can be adjusted during planning, but responsibilities should
-stay separated: parser/earnings, benefit formula, and projection orchestration.
+stay separated: statutory tables, parser/earnings, benefit formula, and
+projection orchestration.
 
 ---
 
@@ -351,6 +364,7 @@ Representative behaviors:
 | Core models | default claim age is FRA 67; claim age bounds enforced; trust factor bounds enforced; repository round-trip persists earnings records |
 | XML parser | extracts FICA earnings; ignores Medicare earnings; skips `-1`; handles SSA namespace; rejects missing/malformed/multi-year rows |
 | Earnings aggregation | future monthly `ss_covered_gross` groups by calendar year; historical earnings are indexed; future real earnings are not indexed |
+| Statutory tables | SS tables live under `domain/statutory`; tests import source constants instead of duplicating literals |
 | Wage-base cap | annual earnings above the taxable max are capped before AIME |
 | AIME | uses top 35 years; includes implicit zero years when fewer than 35 earnings years exist |
 | PIA | standard 90/32/15 bend-point formula; no WEP path |
@@ -371,6 +385,8 @@ contracts listed above.
 - [ ] `AnnualEarnings` and `SocialSecurity` models in `core`.
 - [ ] `PersonHousehold.social_security` persists through SQLite round-trip.
 - [ ] SSA statement XML parser extracts historical FICA earnings and skips `-1`.
+- [ ] Social Security statutory tables live under `domain/statutory`, setting the
+      pattern for future tax-rate tables.
 - [ ] `project_social_security(plan, timeline, job_income)` returns
       `SocialSecurityProjection`.
 - [ ] Real-aware earnings pipeline: historical earnings indexed, future real
