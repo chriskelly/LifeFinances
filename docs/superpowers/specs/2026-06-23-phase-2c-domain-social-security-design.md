@@ -19,8 +19,8 @@ job income. The output is a month-indexed `SocialSecurityProjection`, mirroring
 
 Phase 2c includes:
 
-1. **Plan-config models** for Social Security claim age, trust factor, and
-   historical annual FICA earnings.
+1. **Plan-config models** for per-person Social Security claim age and
+   historical annual FICA earnings, plus one household-level trust factor.
 2. A **pure SSA statement XML parser** that extracts historical capped FICA
    earnings from SSA's exportable XML.
 3. A **real-aware benefit calculation**: historical nominal earnings are indexed
@@ -64,6 +64,7 @@ Deferred to later phases:
 | 8 | **Drop WEP / `pension_eligible`** | WEP repeal makes the reduced 40/32/15 legacy path obsolete |
 | 9 | **Return projected series, not `TimedStream`s** | Spousal step-ups and selected max benefit are clearer as deterministic monthly series |
 | 10 | **Store `spousal_alternative`; compute `spousal_top_up`** | Keeps output intuitive while avoiding duplicate source-of-truth fields |
+| 11 | **Use one household-level SS trust factor** | Trust is an assumption about the Social Security system, not person-specific data; applying one factor to PIA is equivalent to applying it later to all benefits |
 
 ---
 
@@ -88,15 +89,15 @@ class AnnualEarnings(BaseModel):
     fica_earnings: Decimal = Field(ge=0)
 
 
-class SocialSecurity(BaseModel):
+class PersonSocialSecurityConfig(BaseModel):
     """Per-person Social Security calculation inputs."""
 
     claim_age_months: int = Field(default=67 * 12, ge=62 * 12, le=70 * 12)
-    trust_factor: Decimal = Field(default=Decimal(1), ge=0, le=1)
     earnings_record: list[AnnualEarnings] = Field(default_factory=list)
 ```
 
-`PersonHousehold` gains one field:
+`PersonHousehold` gains one field, and `Household` gains one household-level
+trust factor:
 
 ```python
 class PersonHousehold(BaseModel):
@@ -104,12 +105,27 @@ class PersonHousehold(BaseModel):
     birth_year: int
     max_age_years: int = Field(default=100, ge=1)
     jobs: list[Job] = Field(default_factory=list)
-    social_security: SocialSecurity = Field(default_factory=SocialSecurity)
+    social_security: PersonSocialSecurityConfig = Field(
+        default_factory=PersonSocialSecurityConfig
+    )
+
+
+class Household(BaseModel):
+    person1: PersonHousehold
+    person2: PersonHousehold
+    social_security_trust_factor: Decimal = Field(default=Decimal(1), ge=0, le=1)
 ```
 
 The default claim age is 67 years because the rebuild targets current users born
 in 1960 or later, where Full Retirement Age is 67. General FRA-by-birth-year
 support can be added later if the app needs to model older cohorts.
+
+`social_security_trust_factor` is a household-level assumption about future
+Social Security payments. It applies once to each person's statutory PIA to
+produce an effective PIA used by both own-benefit and spousal-alternative
+calculations. Because the same factor applies to both people, this is
+mathematically equivalent to multiplying the final selected household benefits,
+while keeping downstream projected series in expected received dollars.
 
 ---
 
@@ -208,6 +224,12 @@ PIA uses the standard bend-point formula:
 
 WEP / `pension_eligible` is not ported.
 
+The household trust factor is then applied to produce effective PIA:
+
+```text
+effective_pia = statutory_pia * household.social_security_trust_factor
+```
+
 The benefit multiplier is a monthly formula relative to Full Retirement Age 67:
 
 - Claim before FRA:
@@ -223,7 +245,7 @@ Each person's own monthly benefit starts in the calendar month they reach
 `claim_age_months`:
 
 ```text
-own_benefit = PIA * claim_age_multiplier * trust_factor
+own_benefit = effective_pia * claim_age_multiplier
 ```
 
 Amounts are projected as real monthly dollars. Inflation is applied later by the
@@ -238,7 +260,7 @@ Phase 2c keeps the legacy spousal behavior, adapted to deterministic claim ages.
 Once both spouses have claimed, each person can receive a spousal alternative:
 
 ```text
-spousal_alternative = 0.5 * spouse_pia * person's_claim_age_multiplier * trust_factor
+spousal_alternative = 0.5 * spouse_effective_pia * person's_claim_age_multiplier
 ```
 
 Before both people have claimed, `spousal_alternative` is zero. A person's total
@@ -265,9 +287,9 @@ from pydantic import BaseModel, computed_field
 class PersonSocialSecurity(BaseModel):
     """Projected Social Security for one person.
 
-    All series have length == timeline.horizon_months and are after trust-factor
-    scaling. spousal_alternative is the full alternative benefit, not only the
-    incremental amount above own_benefit.
+    All series have length == timeline.horizon_months and are after household
+    trust-factor scaling. spousal_alternative is the full alternative benefit,
+    not only the incremental amount above own_benefit.
     """
 
     own_benefit: list[Decimal]
@@ -310,8 +332,8 @@ without duplicating job-income logic.
 ```text
 packages/core/
 ├── core/
-│   ├── social_security.py   # NEW — AnnualEarnings, SocialSecurity
-│   └── models.py            # + PersonHousehold.social_security
+│   ├── social_security.py   # NEW — AnnualEarnings, PersonSocialSecurityConfig
+│   └── models.py            # + PersonHousehold.social_security; + Household.social_security_trust_factor
 └── tests/
     └── test_social_security.py
 
@@ -340,7 +362,7 @@ projection orchestration.
 | Situation | Behavior |
 |-----------|----------|
 | `claim_age_months` outside 62-70 | Pydantic `ValidationError` |
-| `trust_factor` outside `[0, 1]` | Pydantic `ValidationError` |
+| `social_security_trust_factor` outside `[0, 1]` | Pydantic `ValidationError` |
 | negative `AnnualEarnings.fica_earnings` | Pydantic `ValidationError`; parser skips only SSA's `-1` sentinel before model construction |
 | SSA XML missing `EarningsRecord` | `ValueError` with a clear message |
 | SSA XML row has `startYear != endYear` | `ValueError` with the row years |
@@ -361,7 +383,7 @@ Representative behaviors:
 
 | Area | Behaviors |
 |------|-----------|
-| Core models | default claim age is FRA 67; claim age bounds enforced; trust factor bounds enforced; repository round-trip persists earnings records |
+| Core models | default claim age is FRA 67; claim age bounds enforced; household trust factor bounds enforced; repository round-trip persists earnings records |
 | XML parser | extracts FICA earnings; ignores Medicare earnings; skips `-1`; handles SSA namespace; rejects missing/malformed/multi-year rows |
 | Earnings aggregation | future monthly `ss_covered_gross` groups by calendar year; historical earnings are indexed; future real earnings are not indexed |
 | Statutory tables | SS tables live under `domain/statutory`; tests import source constants instead of duplicating literals |
@@ -371,7 +393,7 @@ Representative behaviors:
 | Claim multiplier | monthly early/delayed formulas at 62, FRA, 70, and a mid-year claim age |
 | Claim start | benefits begin in the exact calendar month the person reaches `claim_age_months` |
 | Spousal alternative | zero before both people claim; present after both claim; total is max(own, alternative) |
-| Trust factor | scales both own benefit and spousal alternative for the person receiving benefits |
+| Trust factor | household trust factor scales effective PIA and therefore both own benefit and spousal alternative |
 | Job-income integration | sabbatical-reduced `ss_covered_gross` changes future earnings and therefore AIME/PIA |
 | Projection shape | per-person lists and household total have `timeline.horizon_months` length |
 
@@ -382,8 +404,9 @@ contracts listed above.
 
 ## 12. Exit criteria
 
-- [ ] `AnnualEarnings` and `SocialSecurity` models in `core`.
-- [ ] `PersonHousehold.social_security` persists through SQLite round-trip.
+- [ ] `AnnualEarnings` and `PersonSocialSecurityConfig` models in `core`.
+- [ ] `PersonHousehold.social_security` and `Household.social_security_trust_factor`
+      persist through SQLite round-trip.
 - [ ] SSA statement XML parser extracts historical FICA earnings and skips `-1`.
 - [ ] Social Security statutory tables live under `domain/statutory`, setting the
       pattern for future tax-rate tables.
