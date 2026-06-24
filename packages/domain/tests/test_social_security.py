@@ -4,6 +4,8 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from core.social_security import AnnualEarnings
+from domain.social_security.earnings import parse_social_security_statement_xml
 from domain.statutory.social_security import (
     AWI_INDEX_BY_YEAR,
     CURRENT_BEND_POINTS,
@@ -63,3 +65,45 @@ def test_log_linear_extrapolate_extends_two_year_growth() -> None:
 
     expected = second_value * (second_value / first_value)
     assert float(result) == pytest.approx(float(expected), rel=0.0001)
+
+
+def test_parse_social_security_statement_xml_extracts_fica_earnings() -> None:
+    xml_text = """<?xml version="1.0" encoding="UTF-8"?>
+<osss:OnlineSocialSecurityStatementData xmlns:osss="http://ssa.gov/osss/schemas/2.0">
+  <osss:EarningsRecord>
+    <osss:Earnings startYear="2023" endYear="2023">
+      <osss:FicaEarnings>160200</osss:FicaEarnings>
+      <osss:MedicareEarnings>219491</osss:MedicareEarnings>
+    </osss:Earnings>
+    <osss:Earnings startYear="2025" endYear="2025">
+      <osss:FicaEarnings>-1</osss:FicaEarnings>
+      <osss:MedicareEarnings>-1</osss:MedicareEarnings>
+    </osss:Earnings>
+  </osss:EarningsRecord>
+</osss:OnlineSocialSecurityStatementData>
+"""
+    expected = [AnnualEarnings(year=2023, fica_earnings=Decimal("160200"))]
+    earnings = parse_social_security_statement_xml(xml_text)
+    assert earnings == expected
+
+
+def test_parse_social_security_statement_xml_rejects_multi_year_rows() -> None:
+    xml_text = """<?xml version="1.0" encoding="UTF-8"?>
+<osss:OnlineSocialSecurityStatementData xmlns:osss="http://ssa.gov/osss/schemas/2.0">
+  <osss:EarningsRecord>
+    <osss:Earnings startYear="2020" endYear="2021">
+      <osss:FicaEarnings>1000</osss:FicaEarnings>
+    </osss:Earnings>
+  </osss:EarningsRecord>
+</osss:OnlineSocialSecurityStatementData>
+"""
+    with pytest.raises(ValueError, match="multi-year"):
+        parse_social_security_statement_xml(xml_text)
+
+
+def test_parse_social_security_statement_xml_rejects_missing_record() -> None:
+    xml_text = """<?xml version="1.0" encoding="UTF-8"?>
+<osss:OnlineSocialSecurityStatementData xmlns:osss="http://ssa.gov/osss/schemas/2.0" />
+"""
+    with pytest.raises(ValueError, match="EarningsRecord"):
+        parse_social_security_statement_xml(xml_text)
