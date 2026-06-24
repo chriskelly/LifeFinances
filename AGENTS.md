@@ -130,6 +130,15 @@ Do not create new `docs/features/.../Development/plan.md` chains.
 - NEVER import `web` from `tools/` or `simulation`.
 - NEVER disable lint or type-check rules to pass CI — fix the underlying issue.
 
+## Other Coding Preferences
+
+### Complexity Reduction
+- SHOULD avoid single line functions unless there's real risk of drift between call sites
+- SHOULD require named parameters for functions with more than one arguement
+
+### Performance
+- SHOULD evaluate downstream consumers of O(n) operations to prevent O(n^2) performance
+
 ## Phase planning
 
 Load `docs/superpowers/plans/2026-06-12-rebuild-index.md` at session start; execute only the active phase plan.
