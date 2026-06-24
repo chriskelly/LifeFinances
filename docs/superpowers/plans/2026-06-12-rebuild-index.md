@@ -31,9 +31,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Current phase** | Phase 2c — plan |
-| **Active plan** | *(to write)* `2026-06-12-phase-2c-domain-social-security.md` |
-| **Next action** | Write Phase 2c plan before coding |
+| **Current phase** | Phase 2d — plan |
+| **Active plan** | *(to write)* `2026-06-12-phase-2d-domain-pension-taxes.md` |
+| **Next action** | Write Phase 2d plan before coding |
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
 
@@ -152,7 +152,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 
 ### Phase 2c — Domain: Social Security
 
-**Plan file:** `2026-06-12-phase-2c-domain-social-security.md` *(to write)*
+**Plan file:** [`2026-06-12-phase-2c-domain-social-security.md`](2026-06-12-phase-2c-domain-social-security.md)
 
 **Delivers:** Port `social_security.py` with monthly boundaries; auto-generated configurable income streams. Consumes job-income projections for future earnings.
 
@@ -161,10 +161,10 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 **Entry criteria:** Phase 2b complete.
 
 **Exit criteria:**
-- [ ] Ported tests pass (adapted to monthly)
-- [ ] SS projects to unified timed income streams
-- [ ] SS earnings integration tested (sabbatical-reduced earnings flow through)
-- [ ] `packages/domain/OVERVIEW.md` documents port status
+- [x] Ported tests pass (adapted to monthly)
+- [x] SS projects to unified timed income streams
+- [x] SS earnings integration tested (sabbatical-reduced earnings flow through)
+- [x] `packages/domain/OVERVIEW.md` documents port status
 
 ---
 
@@ -334,9 +334,10 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 | Phase 1 | `2026-06-12-phase-1-core-loop.md` | complete |
 | Phase 2a | `2026-06-12-phase-2a-domain-core.md` | complete |
 | Phase 2b | `2026-06-12-phase-2b-domain-job-income.md` | complete |
+| Phase 2c | `2026-06-12-phase-2c-domain-social-security.md` | complete |
 
 ---
 
 ## Next step
 
-Write **Phase 2c plan** before coding.
+Write **Phase 2d plan** before coding.
