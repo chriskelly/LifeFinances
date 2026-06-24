@@ -5,15 +5,16 @@ from decimal import Decimal
 
 import pytest
 from core.defaults import default_plan
+from core.job import Job, SabbaticalWindow
 from core.models import Household, PersonHousehold, Plan, Portfolio
 from core.social_security import (
     FULL_RETIREMENT_AGE_MONTHS,
     AnnualEarnings,
     PersonSocialSecurityConfig,
 )
-from core.streams import PersonAgeBoundary, PersonId
+from core.streams import CalendarMonthBoundary, PersonAgeBoundary, PersonId
 from core.timeline import Timeline
-from domain.job_income import JobIncomeProjection, PersonJobIncome
+from domain.job_income import JobIncomeProjection, PersonJobIncome, project_job_income
 from domain.social_security import project_social_security
 from domain.social_security.benefits import (
     calculate_aime,
@@ -313,3 +314,92 @@ def test_spousal_top_up_is_max_benefit_minus_own_benefit() -> None:
         strict=True,
     ):
         assert top_up == max_benefit - own
+
+
+def test_sabbatical_reduced_ss_covered_income_flows_into_projection() -> None:
+    annual_income = Decimal("120000")
+    claim_age_months = 67 * 12
+    break_start = CalendarMonthBoundary(year=2026, month=1)
+    break_end = CalendarMonthBoundary(year=2026, month=12)
+    person_with_break = PersonHousehold(
+        birth_month=1,
+        birth_year=1990,
+        social_security=PersonSocialSecurityConfig(claim_age_months=claim_age_months),
+        jobs=[
+            Job(
+                annual_income=annual_income,
+                social_security_eligible=True,
+                sabbaticals=[
+                    SabbaticalWindow(
+                        start=break_start,
+                        end=break_end,
+                        remaining_fraction=Decimal("0"),
+                    )
+                ],
+            )
+        ],
+    )
+    person_without_break = PersonHousehold(
+        birth_month=1,
+        birth_year=1990,
+        social_security=PersonSocialSecurityConfig(claim_age_months=claim_age_months),
+        jobs=[Job(annual_income=annual_income, social_security_eligible=True)],
+    )
+    base = default_plan()
+    plan_with_break = Plan(
+        name="SS Sabbatical",
+        household=Household(person1=person_with_break, person2=base.household.person2),
+        portfolio=base.portfolio,
+    )
+    plan_without_break = Plan(
+        name="SS No Sabbatical",
+        household=Household(
+            person1=person_without_break, person2=base.household.person2
+        ),
+        portfolio=base.portfolio,
+    )
+    timeline_with_break = Timeline(plan_with_break, today=date(2026, 1, 1))
+    timeline_without_break = Timeline(plan_without_break, today=date(2026, 1, 1))
+
+    projection_with_break = project_social_security(
+        plan_with_break,
+        timeline_with_break,
+        project_job_income(plan_with_break, timeline_with_break),
+    )
+    projection_without_break = project_social_security(
+        plan_without_break,
+        timeline_without_break,
+        project_job_income(plan_without_break, timeline_without_break),
+    )
+
+    claim_index = timeline_with_break.index_of(
+        PersonAgeBoundary(person="person1", age_months=claim_age_months)
+    )
+    assert (
+        projection_with_break.person1.own_benefit[claim_index]
+        < (projection_without_break.person1.own_benefit[claim_index])
+    )
+
+
+def test_household_trust_factor_scales_projected_benefits() -> None:
+    full_trust = Decimal("1")
+    reduced_trust = Decimal("0.75")
+    full_plan = _ss_plan(trust_factor=full_trust)
+    reduced_plan = _ss_plan(trust_factor=reduced_trust)
+    full_timeline = Timeline(full_plan, today=date(2026, 1, 1))
+    reduced_timeline = Timeline(reduced_plan, today=date(2026, 1, 1))
+    full_projection = project_social_security(
+        full_plan, full_timeline, _zero_job_income(full_timeline.horizon_months)
+    )
+    reduced_projection = project_social_security(
+        reduced_plan,
+        reduced_timeline,
+        _zero_job_income(reduced_timeline.horizon_months),
+    )
+    claim_index = full_timeline.index_of(
+        PersonAgeBoundary(person="person1", age_months=67 * 12)
+    )
+
+    assert reduced_projection.person1.max_benefit[claim_index] == (
+        full_projection.person1.max_benefit[claim_index] * reduced_trust
+    ).quantize(Decimal("0.01"))
