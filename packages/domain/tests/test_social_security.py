@@ -5,8 +5,16 @@ from decimal import Decimal
 
 import pytest
 from core.defaults import default_plan
-from core.social_security import FULL_RETIREMENT_AGE_MONTHS, AnnualEarnings
+from core.models import Household, PersonHousehold, Plan, Portfolio
+from core.social_security import (
+    FULL_RETIREMENT_AGE_MONTHS,
+    AnnualEarnings,
+    PersonSocialSecurityConfig,
+)
+from core.streams import PersonAgeBoundary, PersonId
 from core.timeline import Timeline
+from domain.job_income import JobIncomeProjection, PersonJobIncome
+from domain.social_security import project_social_security
 from domain.social_security.benefits import (
     calculate_aime,
     calculate_pia,
@@ -185,3 +193,75 @@ def test_indexed_annual_earnings_indexes_history_but_not_future_real_income() ->
     expected_history = historical_earning * historical_index
     assert expected_history in earnings
     assert future[future_year] in earnings
+
+
+def _zero_job_income(horizon: int) -> JobIncomeProjection:
+    zeroes = [Decimal("0.00")] * horizon
+    person = PersonJobIncome(gross=zeroes, ss_covered_gross=zeroes, tax_deferred=zeroes)
+    return JobIncomeProjection(
+        person1=person,
+        person2=person,
+        total_gross=zeroes,
+        total_ss_covered_gross=zeroes,
+        total_tax_deferred=zeroes,
+    )
+
+
+def _ss_plan(
+    *,
+    person1_claim_age_months: int = FULL_RETIREMENT_AGE_MONTHS,
+    person2_claim_age_months: int = FULL_RETIREMENT_AGE_MONTHS,
+    trust_factor: Decimal = Decimal("1"),
+) -> Plan:
+    return Plan(
+        name="SS Test Plan",
+        household=Household(
+            person1=PersonHousehold(
+                birth_month=1,
+                birth_year=1960,
+                social_security=PersonSocialSecurityConfig(
+                    claim_age_months=person1_claim_age_months,
+                    earnings_record=[
+                        AnnualEarnings(year=2023, fica_earnings=Decimal("160200"))
+                    ],
+                ),
+            ),
+            person2=PersonHousehold(
+                birth_month=1,
+                birth_year=1962,
+                social_security=PersonSocialSecurityConfig(
+                    claim_age_months=person2_claim_age_months,
+                ),
+            ),
+            social_security_trust_factor=trust_factor,
+        ),
+        portfolio=Portfolio(current_savings_balance=Decimal("0")),
+    )
+
+
+def test_project_social_security_returns_horizon_length_series() -> None:
+    plan = _ss_plan()
+    timeline = Timeline(plan, today=date(2026, 1, 1))
+    job_income = _zero_job_income(timeline.horizon_months)
+
+    projection = project_social_security(plan, timeline, job_income)
+
+    assert len(projection.person1.max_benefit) == timeline.horizon_months
+    assert len(projection.person2.max_benefit) == timeline.horizon_months
+    assert len(projection.total) == timeline.horizon_months
+
+
+def test_project_social_security_starts_own_benefit_at_claim_month() -> None:
+    claim_age = 67 * 12
+    plan = _ss_plan(person1_claim_age_months=claim_age)
+    timeline = Timeline(plan, today=date(2026, 1, 1))
+    job_income = _zero_job_income(timeline.horizon_months)
+    person_id: PersonId = "person1"
+    claim_index = timeline.index_of(
+        PersonAgeBoundary(person=person_id, age_months=claim_age)
+    )
+
+    projection = project_social_security(plan, timeline, job_income)
+
+    assert projection.person1.own_benefit[claim_index - 1] == Decimal("0.00")
+    assert projection.person1.own_benefit[claim_index] > Decimal("0.00")
