@@ -4,7 +4,12 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from core.social_security import AnnualEarnings
+from core.social_security import FULL_RETIREMENT_AGE_MONTHS, AnnualEarnings
+from domain.social_security.benefits import (
+    calculate_aime,
+    calculate_pia,
+    claim_age_multiplier,
+)
 from domain.social_security.earnings import parse_social_security_statement_xml
 from domain.statutory.social_security import (
     AWI_INDEX_BY_YEAR,
@@ -107,3 +112,40 @@ def test_parse_social_security_statement_xml_rejects_missing_record() -> None:
 """
     with pytest.raises(ValueError, match="EarningsRecord"):
         parse_social_security_statement_xml(xml_text)
+
+
+def test_calculate_aime_uses_highest_35_years_with_implicit_zeroes() -> None:
+    earning_years = 10
+    annual_earnings = [Decimal("42000")] * earning_years
+    aime = calculate_aime(annual_earnings)
+    expected = sum(annual_earnings) / Decimal(35 * 12)
+    assert aime == expected
+
+
+def test_calculate_pia_uses_standard_bend_point_formula() -> None:
+    aime = Decimal("9000")
+    pia = calculate_pia(aime)
+    first_bend, second_bend = CURRENT_BEND_POINTS
+    rate1, rate2, rate3 = PIA_RATES
+    expected = (
+        first_bend * rate1
+        + (second_bend - first_bend) * rate2
+        + (aime - second_bend) * rate3
+    ).quantize(Decimal("0.01"))
+    assert pia == expected
+
+
+def test_claim_age_multiplier_uses_monthly_early_and_delayed_rules() -> None:
+    fra_multiplier = Decimal("1")
+    earliest_claim_age = 62 * 12
+    delayed_claim_age = 70 * 12
+    early = claim_age_multiplier(earliest_claim_age)
+    fra = claim_age_multiplier(FULL_RETIREMENT_AGE_MONTHS)
+    delayed = claim_age_multiplier(delayed_claim_age)
+    first_36_months = Decimal(36) * Decimal(5) / Decimal(900)
+    remaining_24_months = Decimal(24) * Decimal(5) / Decimal(1200)
+    expected_early = Decimal("1") - first_36_months - remaining_24_months
+    expected_delayed = Decimal("1") + Decimal(36) * Decimal(2) / Decimal(300)
+    assert early == expected_early
+    assert fra == fra_multiplier
+    assert delayed == expected_delayed
