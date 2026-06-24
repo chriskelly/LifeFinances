@@ -58,14 +58,7 @@ def _person_inputs(
     future_ss_covered: list[Decimal],
     trust_factor: Decimal,
 ) -> _PersonInputs:
-    claim_start_index = timeline.index_of(
-        PersonAgeBoundary(
-            person=person_id,
-            age_months=person.social_security.claim_age_months,
-        )
-    )
-    earning_months = future_ss_covered[: max(claim_start_index, 0)]
-    future_by_year = group_monthly_earnings_by_year(earning_months, timeline)
+    future_by_year = group_monthly_earnings_by_year(future_ss_covered, timeline)
     earnings = indexed_annual_earnings(
         historical_earnings=person.social_security.earnings_record,
         future_real_earnings_by_year=future_by_year,
@@ -74,6 +67,12 @@ def _person_inputs(
     pia = calculate_pia(calculate_aime(earnings)) if earnings else Decimal("0.00")
     effective_pia = (pia * trust_factor).quantize(_CENTS)
     claim_multiplier = claim_age_multiplier(person.social_security.claim_age_months)
+    claim_start_index = timeline.index_of(
+        PersonAgeBoundary(
+            person=person_id,
+            age_months=person.social_security.claim_age_months,
+        )
+    )
     return _PersonInputs(
         pia=pia,
         effective_pia=effective_pia,

@@ -319,6 +319,7 @@ def test_spousal_top_up_is_max_benefit_minus_own_benefit() -> None:
 def test_sabbatical_reduced_ss_covered_income_flows_into_projection() -> None:
     annual_income = Decimal("120000")
     claim_age_months = 67 * 12
+    career_end = CalendarMonthBoundary(year=2040, month=12)
     break_start = CalendarMonthBoundary(year=2026, month=1)
     break_end = CalendarMonthBoundary(year=2026, month=12)
     person_with_break = PersonHousehold(
@@ -329,6 +330,7 @@ def test_sabbatical_reduced_ss_covered_income_flows_into_projection() -> None:
             Job(
                 annual_income=annual_income,
                 social_security_eligible=True,
+                end=career_end,
                 sabbaticals=[
                     SabbaticalWindow(
                         start=break_start,
@@ -343,7 +345,13 @@ def test_sabbatical_reduced_ss_covered_income_flows_into_projection() -> None:
         birth_month=1,
         birth_year=1990,
         social_security=PersonSocialSecurityConfig(claim_age_months=claim_age_months),
-        jobs=[Job(annual_income=annual_income, social_security_eligible=True)],
+        jobs=[
+            Job(
+                annual_income=annual_income,
+                social_security_eligible=True,
+                end=career_end,
+            )
+        ],
     )
     base = default_plan()
     plan_with_break = Plan(
