@@ -2,6 +2,7 @@
 # guide: https://www.atlassian.com/git/tutorials/saving-changes/gitignore
 
 # LifeFinances Specific
+.worktrees/
 config.yml
 data/data.db
 docs/ideas/

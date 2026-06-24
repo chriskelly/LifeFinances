@@ -186,17 +186,31 @@ Phase 2c establishes the statutory-data pattern that later tax work can reuse.
 Regularly updated statutory inputs live in `domain`, not `core`, because they are
 calculation inputs rather than persisted plan configuration.
 
-Social Security tables live under `domain/statutory/` and include:
+Social Security inputs live under `domain/statutory/` and split into two kinds,
+because they are maintained differently:
 
-- historical taxable maximum (`SS_MAX_EARNINGS`);
-- AWI indexing factors (`SS_INDEXES`);
-- bend points;
-- PIA rates.
+- **Append-only historical records** — each year's row is permanent and matters
+  forever for indexing; add a new row each year and never edit prior rows:
+  - historical taxable maximum (`SS_MAX_EARNINGS_BY_YEAR`);
+  - AWI indexing factors (`AWI_INDEX_BY_YEAR`).
+- **Single current sets** — one value the government replaces each year (no
+  historical series is kept); replaced in place:
+  - bend points (`CURRENT_BEND_POINTS`);
+  - PIA rates (`PIA_RATES`).
 
-The tables are versioned source data checked into the repository, not fetched
-live from SSA at runtime. Each table should carry source URLs, effective year,
-and last-updated notes. Updates happen through normal code/data PRs so
-simulations remain reproducible.
+Both are versioned source data checked into the repository, not fetched live from
+SSA at runtime, each carrying its source URL. Updates happen through normal
+code/data PRs so simulations stay reproducible.
+
+To keep the current sets from silently drifting for years, the module exposes a
+single `LAST_REVIEWED_YEAR` plus an `is_statutory_data_stale(current_year)`
+helper. It is a **soft** reminder: data is stale only once `current_year` reaches
+`LAST_REVIEWED_YEAR + STALENESS_GRACE_YEARS` (grace = 2). A test calls it with
+the real current year, so review is enforced in CI without breaking on every new
+calendar year — appropriate because real-dollar bend points barely move year to
+year. The annual chore is: verify each value against its source URL, refresh any
+that changed, then bump `LAST_REVIEWED_YEAR`. The same pattern carries to future
+tax rates and brackets.
 
 The legacy code used NumPy exponential fit helpers. The rebuild should not add
 NumPy just for this phase; implement a small stdlib log-linear least-squares
@@ -263,12 +277,12 @@ Once both spouses have claimed, each person can receive a spousal alternative:
 spousal_alternative = 0.5 * spouse_effective_pia * person's_claim_age_multiplier
 ```
 
-Before both people have claimed, `spousal_alternative` is zero. A person's total
-benefit is the month-by-month maximum of their own benefit and spousal
+Before both people have claimed, `spousal_alternative` is zero. A person's
+`max_benefit` is the month-by-month maximum of their own benefit and spousal
 alternative:
 
 ```text
-total = max(own_benefit, spousal_alternative)
+max_benefit = max(own_benefit, spousal_alternative)
 ```
 
 The spousal alternative uses the worker's own claim-age multiplier, matching the
@@ -289,26 +303,27 @@ class PersonSocialSecurity(BaseModel):
 
     All series have length == timeline.horizon_months and are after household
     trust-factor scaling. spousal_alternative is the full alternative benefit,
-    not only the incremental amount above own_benefit.
+    not only the incremental amount above own_benefit. max_benefit is
+    month-by-month max(own_benefit, spousal_alternative).
     """
 
     own_benefit: list[Decimal]
     spousal_alternative: list[Decimal]
-    total: list[Decimal]
+    max_benefit: list[Decimal]
 
     @computed_field
     @property
     def spousal_top_up(self) -> list[Decimal]:
         return [
-            total - own
-            for own, total in zip(self.own_benefit, self.total, strict=True)
+            benefit - own
+            for own, benefit in zip(self.own_benefit, self.max_benefit, strict=True)
         ]
 
 
 class SocialSecurityProjection(BaseModel):
     person1: PersonSocialSecurity
     person2: PersonSocialSecurity
-    total: list[Decimal]
+    total: list[Decimal]  # person1.max_benefit + person2.max_benefit, month by month
 ```
 
 Public API:
@@ -341,7 +356,7 @@ packages/domain/
 ├── domain/
 │   ├── statutory/
 │   │   ├── __init__.py
-│   │   └── social_security.py  # SS taxable max, AWI, bend points, PIA rates
+│   │   └── social_security.py  # SS taxable max + AWI history; current bend points + PIA rates; staleness check
 │   └── social_security/
 │       ├── __init__.py      # project_social_security, output models
 │       ├── earnings.py      # XML parser + earnings/AIME helpers
@@ -387,12 +402,13 @@ Representative behaviors:
 | XML parser | extracts FICA earnings; ignores Medicare earnings; skips `-1`; handles SSA namespace; rejects missing/malformed/multi-year rows |
 | Earnings aggregation | future monthly `ss_covered_gross` groups by calendar year; historical earnings are indexed; future real earnings are not indexed |
 | Statutory tables | SS tables live under `domain/statutory`; tests import source constants instead of duplicating literals |
+| Statutory staleness | `is_statutory_data_stale` is false within the grace window and true once `LAST_REVIEWED_YEAR + STALENESS_GRACE_YEARS` is reached; a real-calendar test guards against stale current data |
 | Wage-base cap | annual earnings above the taxable max are capped before AIME |
 | AIME | uses top 35 years; includes implicit zero years when fewer than 35 earnings years exist |
 | PIA | standard 90/32/15 bend-point formula; no WEP path |
 | Claim multiplier | monthly early/delayed formulas at 62, FRA, 70, and a mid-year claim age |
 | Claim start | benefits begin in the exact calendar month the person reaches `claim_age_months` |
-| Spousal alternative | zero before both people claim; present after both claim; total is max(own, alternative) |
+| Spousal alternative | zero before both people claim; present after both claim; `max_benefit` is max(own, alternative) |
 | Trust factor | household trust factor scales effective PIA and therefore both own benefit and spousal alternative |
 | Job-income integration | sabbatical-reduced `ss_covered_gross` changes future earnings and therefore AIME/PIA |
 | Projection shape | per-person lists and household total have `timeline.horizon_months` length |
@@ -408,8 +424,9 @@ contracts listed above.
 - [ ] `PersonHousehold.social_security` and `Household.social_security_trust_factor`
       persist through SQLite round-trip.
 - [ ] SSA statement XML parser extracts historical FICA earnings and skips `-1`.
-- [ ] Social Security statutory tables live under `domain/statutory`, setting the
-      pattern for future tax-rate tables.
+- [ ] Social Security statutory inputs live under `domain/statutory`, split into
+      append-only history vs. current sets, with a soft `LAST_REVIEWED_YEAR`
+      staleness check — setting the pattern for future tax-rate tables.
 - [ ] `project_social_security(plan, timeline, job_income)` returns
       `SocialSecurityProjection`.
 - [ ] Real-aware earnings pipeline: historical earnings indexed, future real
