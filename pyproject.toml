@@ -29,6 +29,7 @@ life-finances-web = { workspace = true }
 [tool.pytest.ini_options]
 testpaths = ["tests", "packages"]
 pythonpath = ["."]
+addopts = "--import-mode=importlib"
 
 [tool.ruff]
 line-length = 88
