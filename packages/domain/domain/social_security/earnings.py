@@ -4,6 +4,13 @@ from decimal import Decimal, InvalidOperation
 from xml.etree import ElementTree
 
 from core.social_security import AnnualEarnings
+from core.timeline import Timeline
+
+from domain.statutory.social_security import (
+    AWI_INDEX_BY_YEAR,
+    SS_MAX_EARNINGS_BY_YEAR,
+    statutory_value_for_year,
+)
 
 _NAMESPACE = {"osss": "http://ssa.gov/osss/schemas/2.0"}
 
@@ -47,3 +54,41 @@ def parse_social_security_statement_xml(xml_text: str) -> list[AnnualEarnings]:
             continue
         earnings.append(AnnualEarnings(year=start_year, fica_earnings=fica_earnings))
     return earnings
+
+
+def group_monthly_earnings_by_year(
+    monthly_earnings: list[Decimal],
+    timeline: Timeline,
+) -> dict[int, Decimal]:
+    grouped: dict[int, Decimal] = {}
+    for month_index, earnings in enumerate(monthly_earnings):
+        boundary = timeline.month_boundary(month_index)
+        grouped[boundary.year] = grouped.get(boundary.year, Decimal("0")) + earnings
+    return grouped
+
+
+def _indexed_taxable_max(year: int) -> Decimal:
+    nominal_max = statutory_value_for_year(SS_MAX_EARNINGS_BY_YEAR, year)
+    index = statutory_value_for_year(AWI_INDEX_BY_YEAR, year)
+    return nominal_max * index
+
+
+def indexed_annual_earnings(
+    *,
+    historical_earnings: list[AnnualEarnings],
+    future_real_earnings_by_year: dict[int, Decimal],
+    today_year: int,
+) -> list[Decimal]:
+    values: list[Decimal] = []
+    for row in historical_earnings:
+        capped_nominal = min(
+            row.fica_earnings,
+            statutory_value_for_year(SS_MAX_EARNINGS_BY_YEAR, row.year),
+        )
+        index = statutory_value_for_year(AWI_INDEX_BY_YEAR, row.year)
+        values.append(capped_nominal * index)
+    for year, earnings in future_real_earnings_by_year.items():
+        if year < today_year:
+            continue
+        values.append(min(earnings, _indexed_taxable_max(year)))
+    return values

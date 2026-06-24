@@ -4,13 +4,19 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from core.defaults import default_plan
 from core.social_security import FULL_RETIREMENT_AGE_MONTHS, AnnualEarnings
+from core.timeline import Timeline
 from domain.social_security.benefits import (
     calculate_aime,
     calculate_pia,
     claim_age_multiplier,
 )
-from domain.social_security.earnings import parse_social_security_statement_xml
+from domain.social_security.earnings import (
+    group_monthly_earnings_by_year,
+    indexed_annual_earnings,
+    parse_social_security_statement_xml,
+)
 from domain.statutory.social_security import (
     AWI_INDEX_BY_YEAR,
     CURRENT_BEND_POINTS,
@@ -149,3 +155,33 @@ def test_claim_age_multiplier_uses_monthly_early_and_delayed_rules() -> None:
     assert early == expected_early
     assert fra == fra_multiplier
     assert delayed == expected_delayed
+
+
+def test_group_monthly_earnings_by_year_uses_timeline_calendar_months() -> None:
+    plan = default_plan()
+    timeline = Timeline(plan, today=date(2026, 11, 1))
+    year1_month11 = Decimal("100")
+    year1_month12 = Decimal("200")
+    year2_month1 = Decimal("300")
+    monthly = [year1_month11, year1_month12, year2_month1]
+    grouped = group_monthly_earnings_by_year(monthly, timeline)
+    assert grouped == {2026: year1_month11 + year1_month12, 2027: year2_month1}
+
+
+def test_indexed_annual_earnings_indexes_history_but_not_future_real_income() -> None:
+    historical_year = 2023
+    historical_earning = Decimal("1000")
+    future_year = 2026
+    historical = [
+        AnnualEarnings(year=historical_year, fica_earnings=historical_earning)
+    ]
+    future = {future_year: Decimal("2000")}
+    earnings = indexed_annual_earnings(
+        historical_earnings=historical,
+        future_real_earnings_by_year=future,
+        today_year=2026,
+    )
+    historical_index = statutory_value_for_year(AWI_INDEX_BY_YEAR, historical_year)
+    expected_history = historical_earning * historical_index
+    assert expected_history in earnings
+    assert future[future_year] in earnings
