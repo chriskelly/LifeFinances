@@ -265,3 +265,51 @@ def test_project_social_security_starts_own_benefit_at_claim_month() -> None:
 
     assert projection.person1.own_benefit[claim_index - 1] == Decimal("0.00")
     assert projection.person1.own_benefit[claim_index] > Decimal("0.00")
+
+
+def test_spousal_alternative_starts_after_both_people_claim() -> None:
+    person1_claim = 67 * 12
+    person2_claim = 70 * 12
+    plan = _ss_plan(
+        person1_claim_age_months=person1_claim,
+        person2_claim_age_months=person2_claim,
+    )
+    plan.household.person2.social_security.earnings_record = [
+        AnnualEarnings(year=2023, fica_earnings=Decimal("160200"))
+    ]
+    timeline = Timeline(plan, today=date(2026, 1, 1))
+    job_income = _zero_job_income(timeline.horizon_months)
+    person1_claim_index = timeline.index_of(
+        PersonAgeBoundary(person="person1", age_months=person1_claim)
+    )
+    person2_claim_index = timeline.index_of(
+        PersonAgeBoundary(person="person2", age_months=person2_claim)
+    )
+
+    projection = project_social_security(plan, timeline, job_income)
+
+    assert projection.person1.spousal_alternative[person1_claim_index] == (
+        Decimal("0.00")
+    )
+    assert projection.person1.spousal_alternative[person2_claim_index] > (
+        Decimal("0.00")
+    )
+
+
+def test_spousal_top_up_is_max_benefit_minus_own_benefit() -> None:
+    plan = _ss_plan()
+    plan.household.person2.social_security.earnings_record = [
+        AnnualEarnings(year=2023, fica_earnings=Decimal("160200"))
+    ]
+    timeline = Timeline(plan, today=date(2026, 1, 1))
+    job_income = _zero_job_income(timeline.horizon_months)
+
+    projection = project_social_security(plan, timeline, job_income)
+
+    for own, max_benefit, top_up in zip(
+        projection.person1.own_benefit,
+        projection.person1.max_benefit,
+        projection.person1.spousal_top_up,
+        strict=True,
+    ):
+        assert top_up == max_benefit - own

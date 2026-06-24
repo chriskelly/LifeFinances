@@ -81,10 +81,34 @@ def _person_inputs(
     )
 
 
+def _zeroes(horizon: int) -> list[Decimal]:
+    return [Decimal("0.00")] * horizon
+
+
 def _own_series(inputs: _PersonInputs, horizon: int) -> list[Decimal]:
-    series = [Decimal("0.00")] * horizon
+    series = _zeroes(horizon)
     monthly = (inputs.effective_pia * inputs.claim_multiplier).quantize(_CENTS)
     low = max(inputs.claim_start_index, 0)
+    for month_index in range(low, horizon):
+        series[month_index] = monthly
+    return series
+
+
+def _spousal_series(
+    *,
+    receiver_inputs: _PersonInputs,
+    spouse_inputs: _PersonInputs,
+    horizon: int,
+) -> list[Decimal]:
+    SPOUSAL_RATIO = Decimal("0.5")
+    series = _zeroes(horizon)
+    start_index = max(
+        receiver_inputs.claim_start_index, spouse_inputs.claim_start_index
+    )
+    monthly = (
+        spouse_inputs.effective_pia * SPOUSAL_RATIO * receiver_inputs.claim_multiplier
+    ).quantize(_CENTS)
+    low = max(start_index, 0)
     for month_index in range(low, horizon):
         series[month_index] = monthly
     return series
@@ -126,12 +150,20 @@ def project_social_security(
         future_ss_covered=job_income.person2.ss_covered_gross,
         trust_factor=trust_factor,
     )
-    person1 = _person_projection(
-        _own_series(person1_inputs, horizon), [Decimal("0.00")] * horizon
+    person1_own = _own_series(person1_inputs, horizon)
+    person2_own = _own_series(person2_inputs, horizon)
+    person1_spousal = _spousal_series(
+        receiver_inputs=person1_inputs,
+        spouse_inputs=person2_inputs,
+        horizon=horizon,
     )
-    person2 = _person_projection(
-        _own_series(person2_inputs, horizon), [Decimal("0.00")] * horizon
+    person2_spousal = _spousal_series(
+        receiver_inputs=person2_inputs,
+        spouse_inputs=person1_inputs,
+        horizon=horizon,
     )
+    person1 = _person_projection(person1_own, person1_spousal)
+    person2 = _person_projection(person2_own, person2_spousal)
     return SocialSecurityProjection(
         person1=person1,
         person2=person2,
