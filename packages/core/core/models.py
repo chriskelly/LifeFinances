@@ -5,6 +5,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, model_validator
 
 from core.job import Job
+from core.social_security import PersonSocialSecurityConfig
 from core.streams import TimedStream
 from core.timeline import boundary_to_year_month
 
@@ -37,11 +38,15 @@ class PersonHousehold(BaseModel):
     birth_year: int
     max_age_years: int = Field(default=100, ge=1)
     jobs: list[Job] = Field(default_factory=list)
+    social_security: PersonSocialSecurityConfig = Field(
+        default_factory=PersonSocialSecurityConfig
+    )
 
 
 class Household(BaseModel):
     person1: PersonHousehold
     person2: PersonHousehold
+    social_security_trust_factor: Decimal = Field(default=Decimal(1), ge=0, le=1)
 
     @model_validator(mode="after")
     def _validate_sabbatical_windows(self) -> Household:
