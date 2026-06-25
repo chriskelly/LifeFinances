@@ -47,9 +47,10 @@ def _fica_social_security(
 ) -> list[Decimal]:
     horizon = timeline.horizon_months
     wage_base = statutory_value_for_year(SS_MAX_EARNINGS_BY_YEAR, timeline.today.year)
-    person_series = (
-        job_income.person1.ss_covered_gross,
-        job_income.person2.ss_covered_gross,
+    person_series = tuple(
+        person.ss_covered_gross
+        for person in (job_income.person1, job_income.person2)
+        if person is not None
     )
     series = [Decimal("0.00")] * horizon
     cumulative: dict[tuple[int, int], Decimal] = {}
@@ -86,7 +87,7 @@ def compute_taxes(
         )
 
     household = plan.household
-    filing = household.filing_status
+    filing = household.resolved_filing_status
     ss_pension_fraction = household.ss_pension_taxable_fraction
     state = household.residence_state
 

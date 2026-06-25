@@ -6,6 +6,7 @@ from core.repository import PlanRepository
 from fastapi.testclient import TestClient
 from web.forms import (
     CURRENT_SAVINGS_BALANCE,
+    HAS_PARTNER,
     PERSON1_BIRTH_MONTH,
     PERSON1_BIRTH_YEAR,
     PERSON1_MAX_AGE_YEARS,
@@ -21,6 +22,7 @@ def _household_form_data() -> dict[str, str]:
     plan = default_plan()
     p1 = plan.household.person1
     p2 = plan.household.person2
+    assert p2 is not None
     return {
         PERSON1_BIRTH_MONTH: str(p1.birth_month),
         PERSON1_BIRTH_YEAR: str(p1.birth_year),
@@ -68,6 +70,42 @@ def test_patch_portfolio_persists_balance_change(
     assert response.status_code == 200
     _, plan = repo.get_or_create_default()
     assert plan.portfolio.current_savings_balance == expected_balance
+
+
+def test_patch_household_without_partner_saves_single_person(
+    client: TestClient, repo: PlanRepository
+) -> None:
+    home_response: httpx.Response = client.get(HOME)
+    assert home_response.status_code == 200
+    form_data = _household_form_data()
+    del form_data[PERSON2_BIRTH_MONTH]
+    del form_data[PERSON2_BIRTH_YEAR]
+    del form_data[PERSON2_MAX_AGE_YEARS]
+
+    response: httpx.Response = client.patch(PLAN_HOUSEHOLD, data=form_data)
+
+    assert response.status_code == 200
+    loaded = repo.get_by_id(1)
+    assert loaded is not None
+    assert loaded.household.person2 is None
+    assert loaded.household.resolved_filing_status == "single"
+
+
+def test_patch_household_with_partner_saves_two_people(
+    client: TestClient, repo: PlanRepository
+) -> None:
+    home_response: httpx.Response = client.get(HOME)
+    assert home_response.status_code == 200
+    form_data = _household_form_data()
+    form_data[HAS_PARTNER] = "on"
+
+    response: httpx.Response = client.patch(PLAN_HOUSEHOLD, data=form_data)
+
+    assert response.status_code == 200
+    loaded = repo.get_by_id(1)
+    assert loaded is not None
+    assert loaded.household.person2 is not None
+    assert loaded.household.resolved_filing_status == "married_filing_jointly"
 
 
 def test_patch_household_invalid_value_returns_422_without_persisting(

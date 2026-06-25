@@ -57,10 +57,7 @@ def test_horizon_months_matches_max_age_person_age_boundary() -> None:
     today = date(2026, 6, 1)
     plan = default_plan()
     timeline = Timeline(plan, today=today)
-    later = max(
-        person_end_date(plan.household.person1),
-        person_end_date(plan.household.person2),
-    )
+    later = max(person_end_date(person) for person in plan.household.people)
 
     expected = (later.year - today.year) * 12 + (later.month - today.month)
     assert timeline.horizon_months == expected

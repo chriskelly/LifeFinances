@@ -15,7 +15,8 @@ def test_household_defaults_to_married_filing_jointly() -> None:
 
     household = default_plan().household
 
-    assert household.filing_status == expected_status
+    assert household.filing_status is None
+    assert household.resolved_filing_status == expected_status
     assert household.residence_state is None
     assert household.ss_pension_taxable_fraction == expected_fraction
 
@@ -36,6 +37,7 @@ def test_filing_status_rejects_unknown_value() -> None:
     base = default_plan().household
 
     with pytest.raises(ValidationError):
+        assert base.person2 is not None
         Household.model_validate(
             {
                 "person1": base.person1.model_dump(),

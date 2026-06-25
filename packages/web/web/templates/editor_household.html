@@ -32,13 +32,22 @@
         >
       </label>
     </fieldset>
-    <fieldset class="person-fields">
+    <label class="partner-toggle">
+      <input
+        type="checkbox"
+        name="{{ forms.HAS_PARTNER }}"
+        {% if plan.household.person2 %}checked{% endif %}
+        onchange="this.closest('form').querySelectorAll('.partner-fields input, .partner-fields select').forEach(el => el.disabled = !this.checked)"
+      >
+      Include a partner
+    </label>
+    <fieldset class="person-fields partner-fields">
       <legend>Partner</legend>
       <label>
         Birth month
-        <select name="{{ forms.PERSON2_BIRTH_MONTH }}">
+        <select name="{{ forms.PERSON2_BIRTH_MONTH }}"{% if not plan.household.person2 %} disabled{% endif %}>
           {% for month in range(1, 13) %}
-          <option value="{{ month }}"{% if plan.household.person2.birth_month == month %} selected{% endif %}>{{ month }}</option>
+          <option value="{{ month }}"{% if plan.household.person2 and plan.household.person2.birth_month == month %} selected{% endif %}>{{ month }}</option>
           {% endfor %}
         </select>
       </label>
@@ -47,7 +56,8 @@
         <input
           type="number"
           name="{{ forms.PERSON2_BIRTH_YEAR }}"
-          value="{{ plan.household.person2.birth_year }}"
+          value="{{ plan.household.person2.birth_year if plan.household.person2 else '' }}"
+          {% if not plan.household.person2 %}disabled{% endif %}
         >
       </label>
       <label>
@@ -55,7 +65,8 @@
         <input
           type="number"
           name="{{ forms.PERSON2_MAX_AGE_YEARS }}"
-          value="{{ plan.household.person2.max_age_years }}"
+          value="{{ plan.household.person2.max_age_years if plan.household.person2 else '' }}"
+          {% if not plan.household.person2 %}disabled{% endif %}
         >
       </label>
     </fieldset>

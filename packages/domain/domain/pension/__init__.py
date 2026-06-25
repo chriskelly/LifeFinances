@@ -54,7 +54,7 @@ def project_pension(
     horizon = timeline.horizon_months
     formula = [Decimal("0.00")] * horizon
     household = plan.household
-    for person in (household.person1, household.person2):
+    for person in household.people:
         for job in person.jobs:
             if job.pension is None:
                 continue

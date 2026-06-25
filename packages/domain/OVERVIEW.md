@@ -30,3 +30,11 @@ projected with `core.timeline.project_stream`. See the Phase 2a design spec:
 
 Port pattern: adapt legacy tests -> implement with monthly boundaries -> wire to
 the engine.
+
+## Single-person households (Phase 2e)
+
+`Household.person2` is optional (`None` = single-person plan). `Household.people`
+yields present members; `Household.resolved_filing_status` derives `single` vs
+`married_filing_jointly` from household size unless `filing_status` is set
+explicitly. Job income, Social Security (spousal skipped when absent), pension,
+taxes, and `build_monthly_cashflows` all operate over present members only.

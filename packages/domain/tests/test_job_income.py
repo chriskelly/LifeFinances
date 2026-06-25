@@ -93,6 +93,8 @@ def test_partial_reduction_scales_window() -> None:
 
 def _plan_with_jobs(person1_jobs: list[Job], person2_jobs: list[Job]) -> Plan:
     base = default_plan()
+    base_person2 = base.household.person2
+    assert base_person2 is not None
     return Plan(
         name=base.name,
         household=Household(
@@ -103,9 +105,9 @@ def _plan_with_jobs(person1_jobs: list[Job], person2_jobs: list[Job]) -> Plan:
                 jobs=person1_jobs,
             ),
             person2=PersonHousehold(
-                birth_month=base.household.person2.birth_month,
-                birth_year=base.household.person2.birth_year,
-                max_age_years=base.household.person2.max_age_years,
+                birth_month=base_person2.birth_month,
+                birth_year=base_person2.birth_year,
+                max_age_years=base_person2.max_age_years,
                 jobs=person2_jobs,
             ),
         ),
@@ -185,6 +187,8 @@ def test_household_totals_equal_sum_of_persons() -> None:
 
     projection = project_job_income(plan, timeline)
 
+    person2_projection = projection.person2
+    assert person2_projection is not None
     assert projection.total_gross[0] == (
-        projection.person1.gross[0] + projection.person2.gross[0]
+        projection.person1.gross[0] + person2_projection.gross[0]
     )

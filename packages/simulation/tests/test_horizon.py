@@ -9,6 +9,7 @@ def test_horizon_months_uses_later_person_end_date() -> None:
     plan = default_plan()
     person1 = plan.household.person1
     person2 = plan.household.person2
+    assert person2 is not None
     later_end_offset_years = 5
     person2.birth_year = person1.birth_year + later_end_offset_years
 
