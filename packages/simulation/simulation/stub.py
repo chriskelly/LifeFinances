@@ -24,13 +24,16 @@ def run_simulation(
     ran_at = ran_at or datetime.now()
     _ = percentiles  # reserved for future API
     household = plan.household
+    person2 = household.person2
     return SimulationResult(
         ran_at=ran_at,
         horizon_months=horizon_months(plan, today=today),
         echo={
             "balance": plan.portfolio.current_savings_balance,
             "person1_age_years": age_years(household.person1, today=today),
-            "person2_age_years": age_years(household.person2, today=today),
+            "person2_age_years": (
+                age_years(person2, today=today) if person2 is not None else None
+            ),
             "plan_name": plan.name,
         },
     )

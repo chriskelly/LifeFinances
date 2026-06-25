@@ -48,15 +48,27 @@ class PersonHousehold(BaseModel):
 
 class Household(BaseModel):
     person1: PersonHousehold
-    person2: PersonHousehold
+    person2: PersonHousehold | None = None
     social_security_trust_factor: Decimal = Field(default=Decimal(1), ge=0, le=1)
-    filing_status: FilingStatus = "married_filing_jointly"
+    filing_status: FilingStatus | None = None
     residence_state: str | None = None
     ss_pension_taxable_fraction: Decimal = Field(default=Decimal("0.80"), ge=0, le=1)
 
+    @property
+    def people(self) -> tuple[PersonHousehold, ...]:
+        if self.person2 is None:
+            return (self.person1,)
+        return (self.person1, self.person2)
+
+    @property
+    def resolved_filing_status(self) -> FilingStatus:
+        if self.filing_status is not None:
+            return self.filing_status
+        return "single" if self.person2 is None else "married_filing_jointly"
+
     @model_validator(mode="after")
     def _validate_sabbatical_windows(self) -> Household:
-        for person in (self.person1, self.person2):
+        for person in self.people:
             for job in person.jobs:
                 _validate_job_windows(job, self)
         return self

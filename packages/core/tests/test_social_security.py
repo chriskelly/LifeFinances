@@ -23,9 +23,9 @@ def test_default_plan_has_social_security_defaults() -> None:
     assert plan.household.person1.social_security.claim_age_months == (
         FULL_RETIREMENT_AGE_MONTHS
     )
-    assert plan.household.person2.social_security.claim_age_months == (
-        FULL_RETIREMENT_AGE_MONTHS
-    )
+    person2 = plan.household.person2
+    assert person2 is not None
+    assert person2.social_security.claim_age_months == (FULL_RETIREMENT_AGE_MONTHS)
     assert plan.household.social_security_trust_factor == Decimal("1")
 
 

@@ -21,6 +21,7 @@ def _household_form_data() -> dict[str, str]:
     plan = default_plan()
     p1 = plan.household.person1
     p2 = plan.household.person2
+    assert p2 is not None
     return {
         PERSON1_BIRTH_MONTH: str(p1.birth_month),
         PERSON1_BIRTH_YEAR: str(p1.birth_year),

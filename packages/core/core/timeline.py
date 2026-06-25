@@ -37,7 +37,7 @@ def person_end_date(person: PersonHousehold) -> date:
 def horizon_months(plan: Plan, *, today: date | None = None) -> int:
     today = today or date.today()
     household = plan.household
-    end = max(person_end_date(household.person1), person_end_date(household.person2))
+    end = max(person_end_date(person) for person in household.people)
     return (end.year - today.year) * 12 + (end.month - today.month)
 
 
