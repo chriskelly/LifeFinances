@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -8,6 +9,8 @@ from core.job import Job
 from core.social_security import PersonSocialSecurityConfig
 from core.streams import TimedStream
 from core.timeline import boundary_to_year_month
+
+FilingStatus = Literal["married_filing_jointly", "single"]
 
 
 def _validate_job_windows(job: Job, household: Household) -> None:
@@ -47,6 +50,9 @@ class Household(BaseModel):
     person1: PersonHousehold
     person2: PersonHousehold
     social_security_trust_factor: Decimal = Field(default=Decimal(1), ge=0, le=1)
+    filing_status: FilingStatus = "married_filing_jointly"
+    residence_state: str | None = None
+    ss_pension_taxable_fraction: Decimal = Field(default=Decimal("0.80"), ge=0, le=1)
 
     @model_validator(mode="after")
     def _validate_sabbatical_windows(self) -> Household:
