@@ -25,7 +25,7 @@ class PersonJobIncome(BaseModel):
 
 class JobIncomeProjection(BaseModel):
     person1: PersonJobIncome
-    person2: PersonJobIncome
+    person2: PersonJobIncome | None = None
     total_gross: list[Decimal]
     total_ss_covered_gross: list[Decimal]
     total_tax_deferred: list[Decimal]
@@ -55,11 +55,21 @@ def _project_person(person: PersonHousehold, timeline: Timeline) -> PersonJobInc
 
 def project_job_income(plan: Plan, timeline: Timeline) -> JobIncomeProjection:
     person1 = _project_person(plan.household.person1, timeline)
-    person2 = _project_person(plan.household.person2, timeline)
+    partner = plan.household.person2
+    person2 = _project_person(partner, timeline) if partner is not None else None
+
+    total_gross = person1.gross
+    total_ss_covered_gross = person1.ss_covered_gross
+    total_tax_deferred = person1.tax_deferred
+    if person2 is not None:
+        total_gross = _add(total_gross, person2.gross)
+        total_ss_covered_gross = _add(total_ss_covered_gross, person2.ss_covered_gross)
+        total_tax_deferred = _add(total_tax_deferred, person2.tax_deferred)
+
     return JobIncomeProjection(
         person1=person1,
         person2=person2,
-        total_gross=_add(person1.gross, person2.gross),
-        total_ss_covered_gross=_add(person1.ss_covered_gross, person2.ss_covered_gross),
-        total_tax_deferred=_add(person1.tax_deferred, person2.tax_deferred),
+        total_gross=total_gross,
+        total_ss_covered_gross=total_ss_covered_gross,
+        total_tax_deferred=total_tax_deferred,
     )
