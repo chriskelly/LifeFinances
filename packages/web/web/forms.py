@@ -12,6 +12,7 @@ PERSON1_MAX_AGE_YEARS = "person1_max_age_years"
 PERSON2_BIRTH_MONTH = "person2_birth_month"
 PERSON2_BIRTH_YEAR = "person2_birth_year"
 PERSON2_MAX_AGE_YEARS = "person2_max_age_years"
+HAS_PARTNER = "has_partner"
 CURRENT_SAVINGS_BALANCE = "current_savings_balance"
 
 
@@ -21,22 +22,28 @@ class HouseholdForm(BaseModel):
     person1_birth_month: int
     person1_birth_year: int
     person1_max_age_years: int
-    person2_birth_month: int
-    person2_birth_year: int
-    person2_max_age_years: int
+    has_partner: bool = False
+    person2_birth_month: int | None = None
+    person2_birth_year: int | None = None
+    person2_max_age_years: int | None = None
 
     def apply_to(self, plan: Plan) -> Plan:
+        person2 = None
+        if self.has_partner:
+            person2 = PersonHousehold.model_validate(
+                {
+                    "birth_month": self.person2_birth_month,
+                    "birth_year": self.person2_birth_year,
+                    "max_age_years": self.person2_max_age_years,
+                }
+            )
         household = Household(
             person1=PersonHousehold(
                 birth_month=self.person1_birth_month,
                 birth_year=self.person1_birth_year,
                 max_age_years=self.person1_max_age_years,
             ),
-            person2=PersonHousehold(
-                birth_month=self.person2_birth_month,
-                birth_year=self.person2_birth_year,
-                max_age_years=self.person2_max_age_years,
-            ),
+            person2=person2,
         )
         return plan.model_copy(update={"household": household})
 

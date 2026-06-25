@@ -124,10 +124,11 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
         person1_birth_month: Annotated[int, Form()],
         person1_birth_year: Annotated[int, Form()],
         person1_max_age_years: Annotated[int, Form()],
-        person2_birth_month: Annotated[int, Form()],
-        person2_birth_year: Annotated[int, Form()],
-        person2_max_age_years: Annotated[int, Form()],
         repo: RepoDep,
+        has_partner: Annotated[bool, Form()] = False,
+        person2_birth_month: Annotated[int | None, Form()] = None,
+        person2_birth_year: Annotated[int | None, Form()] = None,
+        person2_max_age_years: Annotated[int | None, Form()] = None,
     ) -> Response:
         plan_id, plan = repo.get_or_create_default()
         try:
@@ -135,6 +136,7 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
                 person1_birth_month=person1_birth_month,
                 person1_birth_year=person1_birth_year,
                 person1_max_age_years=person1_max_age_years,
+                has_partner=has_partner,
                 person2_birth_month=person2_birth_month,
                 person2_birth_year=person2_birth_year,
                 person2_max_age_years=person2_max_age_years,
