@@ -24,9 +24,9 @@ projected with `core.timeline.project_stream`. See the Phase 2a design spec:
 |---------------|-------------|-------|--------|
 | `job_income.py` (incl. planned sabbaticals) | `domain/job_income/` | 2b | done |
 | `social_security.py` | `domain/social_security/` | 2c | done |
-| `pension.py` | `domain/pension/` | 2d | not started |
-| `taxes.py` (income-side) | `domain/taxes/` | 2d | not started |
-| `build_monthly_cashflows(plan)` aggregator | `domain/__init__.py` | 2d | not started |
+| `pension.py` | `domain/pension/` | 2d | done |
+| `taxes.py` (income-side) | `domain/taxes/` | 2d | done |
+| `build_monthly_cashflows(plan)` aggregator | `domain/__init__.py` | 2d | done |
 
 Port pattern: adapt legacy tests -> implement with monthly boundaries -> wire to
 the engine.

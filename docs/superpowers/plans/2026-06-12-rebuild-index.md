@@ -14,12 +14,14 @@
 
 ## How planning works
 
-| Layer | File | When to load |
-|-------|------|--------------|
-| Architecture spec | `docs/superpowers/specs/2026-06-12-life-finances-rebuild-design.md` | Reference sections as needed |
-| **This index** | `docs/superpowers/plans/2026-06-12-rebuild-index.md` | Every implementation session |
-| Phase plan | `docs/superpowers/plans/YYYY-MM-DD-phase-N-<name>.md` | Only while executing that phase |
-| Package OVERVIEW | `packages/*/OVERVIEW.md` | When touching domain/simulation logic |
+
+| Layer             | File                                                                | When to load                          |
+| ----------------- | ------------------------------------------------------------------- | ------------------------------------- |
+| Architecture spec | `docs/superpowers/specs/2026-06-12-life-finances-rebuild-design.md` | Reference sections as needed          |
+| **This index**    | `docs/superpowers/plans/2026-06-12-rebuild-index.md`                | Every implementation session          |
+| Phase plan        | `docs/superpowers/plans/YYYY-MM-DD-phase-N-<name>.md`               | Only while executing that phase       |
+| Package OVERVIEW  | `packages/*/OVERVIEW.md`                                            | When touching domain/simulation logic |
+
 
 **Do not** generate or load a monolithic all-phases plan. Each phase plan is written **on demand** in a fresh session before work starts, using writing-plans skill at phase scope (~1–3 agent sessions of detail).
 
@@ -29,11 +31,13 @@
 
 ## Active phase
 
-| Field | Value |
-|-------|-------|
-| **Current phase** | Phase 2d — plan |
-| **Active plan** | *(to write)* `2026-06-12-phase-2d-domain-pension-taxes.md` |
-| **Next action** | Write Phase 2d plan before coding |
+
+| Field             | Value                                                      |
+| ----------------- | ---------------------------------------------------------- |
+| **Current phase** | Phase 2e — plan                                            |
+| **Active plan**   | *(to write)* `2026-06-12-phase-2e-domain-single-household.md` |
+| **Next action**   | Write Phase 2e plan before coding                          |
+
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
 
@@ -49,6 +53,7 @@ flowchart LR
   P2b[Phase 2b\nDomain: job income]
   P2c[Phase 2c\nDomain: SS]
   P2d[Phase 2d\nDomain: pension + taxes]
+  P2e[Phase 2e\nDomain: single household]
   P3a[Phase 3a\nSim: data + bootstrap]
   P3b[Phase 3b\nSim: TPAW core]
   P3c[Phase 3c\nSim: allocation + PV]
@@ -56,11 +61,13 @@ flowchart LR
   P4[Phase 4\nUI completeness]
   P5[Phase 5\nTools]
 
-  P0 --> P1 --> P2a --> P2b --> P2c --> P2d
-  P2d --> P3a --> P3b --> P3c --> P3d --> P4 --> P5
+  P0 --> P1 --> P2a --> P2b --> P2c --> P2d --> P2e
+  P2e --> P3a --> P3b --> P3c --> P3d --> P4 --> P5
 ```
 
-Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must land before 2b. Phases 3a–3d must be sequential.
+
+
+Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pension/taxes before single-household). Phase 2a must land before 2b. Phases 3a–3d must be sequential.
 
 ---
 
@@ -68,20 +75,23 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 
 ### Phase 0 — Cutover and scaffold
 
-**Plan file:** [`2026-06-12-phase-0-cutover-scaffold.md`](2026-06-12-phase-0-cutover-scaffold.md)
+**Plan file:** `[2026-06-12-phase-0-cutover-scaffold.md](2026-06-12-phase-0-cutover-scaffold.md)`
 
 **PR scope:** Legacy preservation + empty new tree on `main`
 
-| Item | Detail |
-|------|--------|
-| **Delivers** | Tag `legacy/v1-final`, `life-finances-legacy` mirror instructions, new uv workspace skeleton, `data.db.blank`, `init_db.py`, root `AGENTS.md`, `.gitignore` for `data/data.db` |
-| **Removes** | Legacy tree (`backend/`, `frontend/`, devcontainer, old docs chains) |
-| **References** | Current `main` before cutover; design spec §2 |
-| **Agent context** | Workspace — compare old layout while deleting |
+
+| Item              | Detail                                                                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Delivers**      | Tag `legacy/v1-final`, `life-finances-legacy` mirror instructions, new uv workspace skeleton, `data.db.blank`, `init_db.py`, root `AGENTS.md`, `.gitignore` for `data/data.db` |
+| **Removes**       | Legacy tree (`backend/`, `frontend/`, devcontainer, old docs chains)                                                                                                           |
+| **References**    | Current `main` before cutover; design spec §2                                                                                                                                  |
+| **Agent context** | Workspace — compare old layout while deleting                                                                                                                                  |
+
 
 **Entry criteria:** Architecture spec approved and committed.
 
 **Exit criteria:**
+
 - [ ] Tag `legacy/v1-final` exists on pre-cutover commit
 - [ ] `life-finances-legacy` repo created (manual GitHub step documented in plan)
 - [ ] New workspace layout matches spec §2 (empty packages, scripts, data/)
@@ -94,19 +104,22 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 
 ### Phase 1 — Core loop (minimal E2E)
 
-**Plan file:** [`2026-06-12-phase-1-core-loop.md`](2026-06-12-phase-1-core-loop.md)
+**Plan file:** `[2026-06-12-phase-1-core-loop.md](2026-06-12-phase-1-core-loop.md)`
 
 **PR scope:** Plan model, SQLite repo, simulation stub, split-pane shell with auto-results
 
-| Item | Detail |
-|------|--------|
-| **Delivers** | `packages/core` (`Plan`, repository, default bootstrap), `packages/simulation` (stub), `packages/web` (FastAPI split-pane, HTMX debounced results), **two** editor sections (Household + Current Savings Portfolio). Base spending is simulation output, not a user input. |
-| **References** | [Phase 1 design spec](../specs/2026-06-12-phase-1-core-loop-design.md); architecture spec §3, §4 |
-| **Agent context** | LifeFinances repo |
+
+| Item              | Detail                                                                                                                                                                                                                                                                     |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Delivers**      | `packages/core` (`Plan`, repository, default bootstrap), `packages/simulation` (stub), `packages/web` (FastAPI split-pane, HTMX debounced results), **two** editor sections (Household + Current Savings Portfolio). Base spending is simulation output, not a user input. |
+| **References**    | [Phase 1 design spec](../specs/2026-06-12-phase-1-core-loop-design.md); architecture spec §3, §4                                                                                                                                                                           |
+| **Agent context** | LifeFinances repo                                                                                                                                                                                                                                                          |
+
 
 **Entry criteria:** Phase 0 complete.
 
 **Exit criteria:**
+
 - [x] `Plan` persists to SQLite via repository
 - [x] Empty DB auto-creates "Default Plan" on first visit
 - [x] Web serves split-pane at `/` with Household and Current Savings sections
@@ -118,7 +131,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 
 ### Phase 2a — Domain: core types and timed streams
 
-**Plan file:** [`2026-06-12-phase-2a-domain-core.md`](2026-06-12-phase-2a-domain-core.md)
+**Plan file:** `[2026-06-12-phase-2a-domain-core.md](2026-06-12-phase-2a-domain-core.md)`
 
 **Delivers:** Unified timed income/spending stream types, plan schema extensions, domain package skeleton.
 
@@ -127,6 +140,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 **Entry criteria:** Phase 1 complete.
 
 **Exit criteria:**
+
 - [x] `LabeledAmountTimed` (or equivalent) in `core`/`domain`
 - [x] Plan schema includes dated-plan fields, per-person end age (default 100)
 - [x] Unit tests for stream serialization and month indexing
@@ -135,7 +149,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 
 ### Phase 2b — Domain: Job income
 
-**Plan file:** [`2026-06-12-phase-2b-domain-job-income.md`](2026-06-12-phase-2b-domain-job-income.md)
+**Plan file:** `[2026-06-12-phase-2b-domain-job-income.md](2026-06-12-phase-2b-domain-job-income.md)`
 
 **Delivers:** Port job income module; stream ends at configured date; feeds SS earnings and taxes. Planned sabbaticals (income break or % reduction over a defined window) via stream composition (see Phase 2a design §6.1).
 
@@ -144,6 +158,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 **Entry criteria:** Phase 2a complete.
 
 **Exit criteria:**
+
 - [x] Job income as unified timed stream
 - [x] Planned sabbaticals: full break and % reduction, composed from segmented streams with correct growth re-anchoring
 - [x] No system-level retirement state
@@ -152,7 +167,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 
 ### Phase 2c — Domain: Social Security
 
-**Plan file:** [`2026-06-12-phase-2c-domain-social-security.md`](2026-06-12-phase-2c-domain-social-security.md)
+**Plan file:** `[2026-06-12-phase-2c-domain-social-security.md](2026-06-12-phase-2c-domain-social-security.md)`
 
 **Delivers:** Port `social_security.py` with monthly boundaries; auto-generated configurable income streams. Consumes job-income projections for future earnings.
 
@@ -161,6 +176,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 **Entry criteria:** Phase 2b complete.
 
 **Exit criteria:**
+
 - [x] Ported tests pass (adapted to monthly)
 - [x] SS projects to unified timed income streams
 - [x] SS earnings integration tested (sabbatical-reduced earnings flow through)
@@ -170,18 +186,40 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 
 ### Phase 2d — Domain: Pension and taxes
 
-**Plan file:** `2026-06-12-phase-2d-domain-pension-taxes.md` *(to write)*
+**Plan file:** `2026-06-12-phase-2d-domain-pension-taxes.md`
 
-**Delivers:** Formula pension (admin DB) + manual streams; income-side taxes only.
+**Delivers:** Job-attached formula DB pension (CalSTRS defaults) + manual streams; income-side taxes; `Household.filing_status` (MFJ/single) honored by tax brackets; `domain.build_monthly_cashflows(plan)` aggregator.
 
-**References:** Legacy `pension.py`, `taxes.py`, tests.
+**References:** [Phase 2d design spec](../specs/2026-06-25-phase-2d-domain-pension-taxes-design.md); legacy `pension.py`, `taxes.py`, tests.
 
 **Entry criteria:** Phase 2c complete.
 
 **Exit criteria:**
-- [ ] Pension formula path + manual stream path
-- [ ] Income-side tax application on domain cashflows
-- [ ] `domain.build_monthly_cashflows(plan)` API defined and tested
+
+- [x] Pension formula path + manual stream path
+- [x] Income-side tax application on domain cashflows
+- [x] `Household.filing_status` selects MFJ vs single brackets
+- [x] `domain.build_monthly_cashflows(plan)` API defined and tested
+
+---
+
+### Phase 2e — Domain: single-person household
+
+**Plan file:** `2026-06-12-phase-2e-domain-single-household.md` *(to write)*
+
+**Delivers:** Optional `person2`; auto-wire `filing_status` from household size (MFJ when two people, single when one); adapt job income, SS spousal, pension, and horizon logic for absent partner.
+
+**References:** Phase 2d design spec §10 (deferred items); architecture spec §6 item 10.
+
+**Entry criteria:** Phase 2d complete.
+
+**Exit criteria:**
+
+- [ ] `Household.person2` optional (`None` = single-person plan)
+- [ ] `filing_status` defaults from household size; user override still honored
+- [ ] Job income, SS, pension, and `build_monthly_cashflows` work with one person
+- [ ] Spousal SS logic skipped when partner absent
+- [ ] `packages/domain/OVERVIEW.md` documents single-household support
 
 ---
 
@@ -193,9 +231,10 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 
 **References:** `tpaw/packages/simulator-rust/src/lib/historical_monthly_returns/`, design spec §6 items 6–7, 22–23, 27.
 
-**Entry criteria:** Phase 2d complete.
+**Entry criteria:** Phase 2e complete.
 
 **Exit criteria:**
+
 - [ ] tpaw data files ported or vendored with attribution
 - [ ] Block-bootstrap produces monthly return paths per percentile config
 - [ ] Inflation paths: bootstrap default + suggested/manual override
@@ -214,6 +253,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 **Entry criteria:** Phase 3a complete.
 
 **Exit criteria:**
+
 - [ ] Monthly loop: income − taxes − spending → portfolio delta
 - [ ] Essential/discretionary withdrawal split in outputs
 - [ ] Spending tilt applied
@@ -232,6 +272,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 **Entry criteria:** Phase 3b complete.
 
 **Exit criteria:**
+
 - [ ] Stock allocation from RRA on total portfolio
 - [ ] PV of future income from domain cashflows
 - [ ] Planning stats separate from bootstrap paths
@@ -249,6 +290,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 **Entry criteria:** Phase 3c complete.
 
 **Exit criteria:**
+
 - [ ] Result types match chart requirements (balance, spending, withdrawals, allocation, …)
 - [ ] User-configurable percentile list
 - [ ] Per-person end age respected; simulation starts from today
@@ -268,6 +310,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 **Entry criteria:** Phase 3d complete.
 
 **Exit criteria:**
+
 - [ ] Split-pane editor sections for all plan domains
 - [ ] All major tpaw chart types rendering
 - [ ] Plan create/switch/duplicate
@@ -289,6 +332,7 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 **Entry criteria:** Phase 4 usable for plan editing and simulation.
 
 **Exit criteria:**
+
 - [ ] `tools/disability_insurance.py` runs via `uv run marimo edit …`
 - [ ] Uses `domain` + `simulation`; no `web` import
 - [ ] `tools/AGENTS.md` documents adding new tools
@@ -297,13 +341,15 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 
 ## Cross-cutting tasks (woven into phases)
 
-| Task | Phase |
-|------|-------|
-| Legacy YAML import | 4 |
-| `import_legacy_yaml.py` | 4 |
+
+| Task                                               | Phase                          |
+| -------------------------------------------------- | ------------------------------ |
+| Legacy YAML import                                 | 4                              |
+| `import_legacy_yaml.py`                            | 4                              |
 | `packages/simulation/OVERVIEW.md` parity checklist | 3b onward, updated per feature |
-| Pre-commit / CI for Python-only monorepo | 0–1 |
-| Remove/archive old `docs/features/` to `archive/` | 0 |
+| Pre-commit / CI for Python-only monorepo           | 0–1                            |
+| Remove/archive old `docs/features/` to `archive/`  | 0                              |
+
 
 ---
 
@@ -317,27 +363,32 @@ Phases 2b → 2c → 2d are sequential (job income before SS). Phase 2a must lan
 
 ## Context budget guidance
 
-| Session type | Load |
-|--------------|------|
-| Index review | This file only (~4k tokens) |
-| Phase planning | Index + spec relevant sections + tpaw/legacy files for that phase |
-| Phase execution | Index + active phase plan + files for current task |
-| Avoid | Full spec + all phase plans + tpaw repo in one context |
+
+| Session type    | Load                                                              |
+| --------------- | ----------------------------------------------------------------- |
+| Index review    | This file only (~4k tokens)                                       |
+| Phase planning  | Index + spec relevant sections + tpaw/legacy files for that phase |
+| Phase execution | Index + active phase plan + files for current task                |
+| Avoid           | Full spec + all phase plans + tpaw repo in one context            |
+
 
 ---
 
 ## Completed plans
 
-| Phase | Plan file | Status |
-|-------|-----------|--------|
-| Phase 0 | `2026-06-12-phase-0-cutover-scaffold.md` | complete |
-| Phase 1 | `2026-06-12-phase-1-core-loop.md` | complete |
-| Phase 2a | `2026-06-12-phase-2a-domain-core.md` | complete |
-| Phase 2b | `2026-06-12-phase-2b-domain-job-income.md` | complete |
+
+| Phase    | Plan file                                       | Status   |
+| -------- | ----------------------------------------------- | -------- |
+| Phase 0  | `2026-06-12-phase-0-cutover-scaffold.md`        | complete |
+| Phase 1  | `2026-06-12-phase-1-core-loop.md`               | complete |
+| Phase 2a | `2026-06-12-phase-2a-domain-core.md`            | complete |
+| Phase 2b | `2026-06-12-phase-2b-domain-job-income.md`      | complete |
 | Phase 2c | `2026-06-12-phase-2c-domain-social-security.md` | complete |
+| Phase 2d | `2026-06-12-phase-2d-domain-pension-taxes.md` | complete |
+
 
 ---
 
 ## Next step
 
-Write **Phase 2d plan** before coding.
+Write **Phase 2e plan** before coding.
