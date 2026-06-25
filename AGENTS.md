@@ -68,7 +68,7 @@ After substantive changes, run `make` and confirm it passes before claiming work
 
 ## Testing policy
 
-Follow TDD for every feature and bugfix. Test **our logic**, not library behavior — do not add tests that only exercise Pydantic validation, trivial getters, or framework wiring unless a phase plan calls for a specific integration smoke test.
+Follow TDD for every feature and bugfix. Test **our logic**, not library behavior — do not add tests that only exercise Pydantic validation, trivial getters, simple attribute defaults or framework wiring unless a phase plan calls for a specific integration smoke test.
 
 ### Avoid fragile values
 
@@ -132,12 +132,15 @@ Do not create new `docs/features/.../Development/plan.md` chains.
 
 ## Other Coding Preferences
 
+- SHOULD use underscores to make large values human readable (ex: Decimal('1_000_000') instead of Decimal('1000000'))
+
 ### Complexity Reduction
 - SHOULD avoid single line functions unless there's real risk of drift between call sites
 - SHOULD require named parameters for functions with more than one arguement
+- SHOULD configure sensible defaults for arguements rather than making each caller have to do the work
 
 ### Performance
-- SHOULD evaluate downstream consumers of O(n) operations to prevent O(n^2) performance
+- SHOULD evaluate downstream consumers of O(n) operations to prevent O(n^2) performance, for example in calculated properties that zip/sum lists
 
 ## Phase planning
 
