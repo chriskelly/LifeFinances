@@ -1,5 +1,7 @@
 # Phase 2e — Domain: Single-Person Household Implementation Plan
 
+> **Status:** complete
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make the second household member optional so a plan can model a single person, auto-deriving `filing_status` from household size while honoring an explicit override.
@@ -222,14 +224,16 @@ from core.timeline import horizon_months
 
 
 def test_horizon_uses_only_present_people() -> None:
+    birth_year=1980
+    max_age_years=90
     today = date(2026, 1, 1)
-    person1 = PersonHousehold(birth_month=1, birth_year=1980, max_age_years=90)
+    person1 = PersonHousehold(birth_month=1, birth_year=birth_year, max_age_years=max_age_years)
     plan = Plan(
         name="Single",
         household=Household(person1=person1, person2=None),
         portfolio=Portfolio(current_savings_balance=Decimal("0")),
     )
-    expected = (1980 + 90 - today.year) * 12 + (1 - today.month)
+    expected = (birth_year + max_age_years - today.year) * 12 + (1 - today.month)
 
     assert horizon_months(plan, today=today) == expected
 ```

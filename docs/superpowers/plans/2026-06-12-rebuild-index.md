@@ -34,9 +34,9 @@
 
 | Field             | Value                                                      |
 | ----------------- | ---------------------------------------------------------- |
-| **Current phase** | Phase 2e — plan                                            |
-| **Active plan**   | *(to write)* `2026-06-12-phase-2e-domain-single-household.md` |
-| **Next action**   | Write Phase 2e plan before coding                          |
+| **Current phase** | Phase 3a — plan                                            |
+| **Active plan**   | *(to write)* `2026-06-12-phase-3a-simulation-market-data.md` |
+| **Next action**   | Write Phase 3a plan before coding                          |
 
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
@@ -205,7 +205,7 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 
 ### Phase 2e — Domain: single-person household
 
-**Plan file:** `2026-06-12-phase-2e-domain-single-household.md` *(to write)*
+**Plan file:** `[2026-06-12-phase-2e-domain-single-household.md](2026-06-12-phase-2e-domain-single-household.md)`
 
 **Delivers:** Optional `person2`; auto-wire `filing_status` from household size (MFJ when two people, single when one); adapt job income, SS spousal, pension, and horizon logic for absent partner.
 
@@ -215,11 +215,11 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 
 **Exit criteria:**
 
-- [ ] `Household.person2` optional (`None` = single-person plan)
-- [ ] `filing_status` defaults from household size; user override still honored
-- [ ] Job income, SS, pension, and `build_monthly_cashflows` work with one person
-- [ ] Spousal SS logic skipped when partner absent
-- [ ] `packages/domain/OVERVIEW.md` documents single-household support
+- [x] `Household.person2` optional (`None` = single-person plan)
+- [x] `filing_status` defaults from household size; user override still honored
+- [x] Job income, SS, pension, and `build_monthly_cashflows` work with one person
+- [x] Spousal SS logic skipped when partner absent
+- [x] `packages/domain/OVERVIEW.md` documents single-household support
 
 ---
 
@@ -385,10 +385,11 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 | Phase 2b | `2026-06-12-phase-2b-domain-job-income.md`      | complete |
 | Phase 2c | `2026-06-12-phase-2c-domain-social-security.md` | complete |
 | Phase 2d | `2026-06-12-phase-2d-domain-pension-taxes.md` | complete |
+| Phase 2e | `2026-06-12-phase-2e-domain-single-household.md` | complete |
 
 
 ---
 
 ## Next step
 
-Write **Phase 2e plan** before coding.
+Write **Phase 3a plan** before coding.
