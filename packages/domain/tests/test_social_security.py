@@ -247,8 +247,10 @@ def test_project_social_security_returns_horizon_length_series() -> None:
 
     projection = project_social_security(plan, timeline, job_income)
 
+    person2_projection = projection.person2
+    assert person2_projection is not None
     assert len(projection.person1.max_benefit) == timeline.horizon_months
-    assert len(projection.person2.max_benefit) == timeline.horizon_months
+    assert len(person2_projection.max_benefit) == timeline.horizon_months
     assert len(projection.total) == timeline.horizon_months
 
 
@@ -275,7 +277,9 @@ def test_spousal_alternative_starts_after_both_people_claim() -> None:
         person1_claim_age_months=person1_claim,
         person2_claim_age_months=person2_claim,
     )
-    plan.household.person2.social_security.earnings_record = [
+    person2 = plan.household.person2
+    assert person2 is not None
+    person2.social_security.earnings_record = [
         AnnualEarnings(year=2023, fica_earnings=Decimal("160200"))
     ]
     timeline = Timeline(plan, today=date(2026, 1, 1))
@@ -299,7 +303,9 @@ def test_spousal_alternative_starts_after_both_people_claim() -> None:
 
 def test_spousal_top_up_is_max_benefit_minus_own_benefit() -> None:
     plan = _ss_plan()
-    plan.household.person2.social_security.earnings_record = [
+    person2 = plan.household.person2
+    assert person2 is not None
+    person2.social_security.earnings_record = [
         AnnualEarnings(year=2023, fica_earnings=Decimal("160200"))
     ]
     timeline = Timeline(plan, today=date(2026, 1, 1))

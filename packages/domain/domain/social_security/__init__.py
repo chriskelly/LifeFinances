@@ -39,7 +39,7 @@ class PersonSocialSecurity(BaseModel):
 
 class SocialSecurityProjection(BaseModel):
     person1: PersonSocialSecurity
-    person2: PersonSocialSecurity
+    person2: PersonSocialSecurity | None = None
     total: list[Decimal]
 
 
@@ -97,11 +97,13 @@ def _own_series(inputs: _PersonInputs, horizon: int) -> list[Decimal]:
 def _spousal_series(
     *,
     receiver_inputs: _PersonInputs,
-    spouse_inputs: _PersonInputs,
+    spouse_inputs: _PersonInputs | None,
     horizon: int,
 ) -> list[Decimal]:
     SPOUSAL_RATIO = Decimal("0.5")
     series = _zeroes(horizon)
+    if spouse_inputs is None:
+        return series
     start_index = max(
         receiver_inputs.claim_start_index, spouse_inputs.claim_start_index
     )
@@ -143,26 +145,40 @@ def project_social_security(
         future_ss_covered=job_income.person1.ss_covered_gross,
         trust_factor=trust_factor,
     )
-    person2_inputs = _person_inputs(
-        person=plan.household.person2,
-        person_id="person2",
-        timeline=timeline,
-        future_ss_covered=job_income.person2.ss_covered_gross,
-        trust_factor=trust_factor,
+    partner = plan.household.person2
+    person2_inputs = (
+        _person_inputs(
+            person=partner,
+            person_id="person2",
+            timeline=timeline,
+            future_ss_covered=job_income.person2.ss_covered_gross,
+            trust_factor=trust_factor,
+        )
+        if partner is not None and job_income.person2 is not None
+        else None
     )
+
     person1_own = _own_series(person1_inputs, horizon)
-    person2_own = _own_series(person2_inputs, horizon)
     person1_spousal = _spousal_series(
         receiver_inputs=person1_inputs,
         spouse_inputs=person2_inputs,
         horizon=horizon,
     )
+    person1 = _person_projection(person1_own, person1_spousal)
+
+    if person2_inputs is None:
+        return SocialSecurityProjection(
+            person1=person1,
+            person2=None,
+            total=list(person1.max_benefit),
+        )
+
+    person2_own = _own_series(person2_inputs, horizon)
     person2_spousal = _spousal_series(
         receiver_inputs=person2_inputs,
         spouse_inputs=person1_inputs,
         horizon=horizon,
     )
-    person1 = _person_projection(person1_own, person1_spousal)
     person2 = _person_projection(person2_own, person2_spousal)
     return SocialSecurityProjection(
         person1=person1,
