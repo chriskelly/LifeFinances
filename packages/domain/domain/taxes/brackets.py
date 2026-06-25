@@ -7,6 +7,24 @@ from domain.statutory.taxes import Bracket
 _CENTS = Decimal("0.01")
 
 
+def cumulative_prior_at_bracket_index(
+    brackets: tuple[Bracket, ...], index: int
+) -> Decimal:
+    """Tax owed at the top of the prior bracket (entering ``index``).
+
+    Derived from rate and cap columns only; quantize to cents at the boundary.
+    """
+    if index == 0:
+        return Decimal("0.00")
+    cumulative = Decimal(0)
+    lower_cap = Decimal(0)
+    for j in range(index):
+        rate, cap, _ = brackets[j]
+        cumulative += rate * (cap - lower_cap)
+        lower_cap = cap
+    return cumulative.quantize(_CENTS, rounding=ROUND_HALF_UP)
+
+
 def progressive_tax(brackets: tuple[Bracket, ...], taxable_income: Decimal) -> Decimal:
     """Tax owed (positive) on `taxable_income` in dollars."""
     if taxable_income <= 0:

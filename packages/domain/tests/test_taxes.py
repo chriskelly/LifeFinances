@@ -20,10 +20,30 @@ from domain.statutory.taxes import (
     MEDICARE_TAX_RATE,
     SOCIAL_SECURITY_TAX_RATE,
     STALENESS_GRACE_YEARS,
+    STATE_BRACKETS,
+    Bracket,
     is_tax_data_stale,
 )
 from domain.taxes import TaxBreakdown, compute_taxes
-from domain.taxes.brackets import annual_income_tax, progressive_tax
+from domain.taxes.brackets import (
+    annual_income_tax,
+    cumulative_prior_at_bracket_index,
+    progressive_tax,
+)
+
+
+def _all_bracket_schedules() -> list[tuple[Bracket, ...]]:
+    schedules = list(FEDERAL_BRACKETS.values())
+    for state_schedules in STATE_BRACKETS.values():
+        schedules.extend(state_schedules.values())
+    return schedules
+
+
+def test_bracket_cumulative_prior_tax_matches_rate_and_cap_columns() -> None:
+    for brackets in _all_bracket_schedules():
+        for index, (_, _, cumulative_prior) in enumerate(brackets):
+            expected = cumulative_prior_at_bracket_index(brackets, index=index)
+            assert cumulative_prior == expected
 
 
 def test_federal_brackets_cover_single_and_mfj() -> None:
