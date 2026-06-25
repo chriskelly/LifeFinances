@@ -6,6 +6,7 @@ from core.job import AgeFactor, Job
 from core.models import Household, PersonHousehold
 from core.streams import Boundary
 from core.timeline import Timeline, boundary_to_year_month
+
 from domain.job_income.compile import project_job_gross
 
 _MONTHS_PER_YEAR = Decimal(12)
