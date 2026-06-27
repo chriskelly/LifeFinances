@@ -34,9 +34,9 @@
 
 | Field             | Value                                                      |
 | ----------------- | ---------------------------------------------------------- |
-| **Current phase** | Phase 3a — plan                                            |
-| **Active plan**   | *(to write)* `2026-06-12-phase-3a-simulation-market-data.md` |
-| **Next action**   | Write Phase 3a plan before coding                          |
+| **Current phase** | Phase 3a — execute                                          |
+| **Active plan**   | `2026-06-12-phase-3a-simulation-market-data.md`             |
+| **Next action**   | Execute Phase 3a plan task-by-task                          |
 
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
@@ -225,9 +225,9 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 
 ### Phase 3a — Simulation: market data and bootstrap
 
-**Plan file:** `2026-06-12-phase-3a-simulation-market-data.md` *(to write)*
+**Plan file:** `2026-06-12-phase-3a-simulation-market-data.md`
 
-**Delivers:** Port tpaw historical monthly data; block-bootstrap returns; inflation (bootstrap + suggested/manual override).
+**Delivers:** Port tpaw historical monthly data; block-bootstrap real return paths; scalar inflation (suggested vendored breakeven + manual override).
 
 **References:** `tpaw/packages/simulator-rust/src/lib/historical_monthly_returns/`, design spec §6 items 6–7, 22–23, 27.
 
@@ -235,10 +235,10 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 
 **Exit criteria:**
 
-- [ ] tpaw data files ported or vendored with attribution
-- [ ] Block-bootstrap produces monthly return paths per percentile config
-- [ ] Inflation paths: bootstrap default + suggested/manual override
-- [ ] Sampling: tpaw defaults + advanced overrides (UI wiring may come in Phase 4)
+- [ ] tpaw v7 data vendored with attribution (returns CSV + FRED T10YIE)
+- [ ] Block-bootstrap produces `(num_runs, months_per_run)` monthly log-return paths per asset
+- [ ] Inflation: scalar suggested (vendored breakeven) + manual override; bootstrapped inflation paths deferred (interface left open, [#186](https://github.com/chriskelly/LifeFinances/issues/186))
+- [ ] Sampling: tpaw defaults on `Plan` + advanced overrides (UI wiring deferred to Phase 4)
 
 ---
 
