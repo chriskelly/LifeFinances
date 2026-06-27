@@ -12,6 +12,29 @@ from core.timeline import boundary_to_year_month
 
 FilingStatus = Literal["married_filing_jointly", "single"]
 
+DEFAULT_BLOCK_SIZE_MONTHS = 60  # tpaw blockSize.inMonths = 12 * 5
+DEFAULT_NUM_RUNS = 500  # tpaw numOfSimulationForMonteCarloSampling
+DEFAULT_STAGGER_RUN_STARTS = True  # tpaw staggerRunStarts
+DEFAULT_SAMPLING_SEED = 1_234_567  # LifeFinances default for reproducibility
+
+
+class SamplingConfig(BaseModel):
+    block_size_months: int = Field(default=DEFAULT_BLOCK_SIZE_MONTHS, ge=1)
+    num_runs: int = Field(default=DEFAULT_NUM_RUNS, ge=1)
+    stagger_run_starts: bool = DEFAULT_STAGGER_RUN_STARTS
+    seed: int = DEFAULT_SAMPLING_SEED
+
+
+class InflationConfig(BaseModel):
+    mode: Literal["suggested", "manual"] = "suggested"
+    manual_annual_rate: Decimal | None = None
+
+    @model_validator(mode="after")
+    def _require_manual_rate(self) -> InflationConfig:
+        if self.mode == "manual" and self.manual_annual_rate is None:
+            raise ValueError("manual_annual_rate is required when mode == 'manual'")
+        return self
+
 
 def _validate_job_windows(job: Job, household: Household) -> None:
     def absolute(boundary) -> int:
@@ -83,3 +106,5 @@ class Plan(BaseModel):
     household: Household
     portfolio: Portfolio
     manual_income_streams: list[TimedStream] = Field(default_factory=list)
+    sampling: SamplingConfig = Field(default_factory=SamplingConfig)
+    inflation: InflationConfig = Field(default_factory=InflationConfig)
