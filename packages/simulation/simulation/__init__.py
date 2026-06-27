@@ -2,13 +2,27 @@
 
 from core.timeline import horizon_months, person_end_date
 
+from simulation.market_data import (
+    HistoricalReturns,
+    InflationResolved,
+    ReturnPaths,
+    build_return_paths,
+    load_historical_returns,
+    resolve_inflation,
+)
 from simulation.result import STUB_VERSION, SimulationResult
 from simulation.stub import run_simulation
 
 __all__ = [
     "STUB_VERSION",
+    "HistoricalReturns",
+    "InflationResolved",
+    "ReturnPaths",
     "SimulationResult",
+    "build_return_paths",
     "horizon_months",
+    "load_historical_returns",
     "person_end_date",
+    "resolve_inflation",
     "run_simulation",
 ]
