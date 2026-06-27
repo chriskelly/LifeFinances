@@ -18,7 +18,7 @@
 - **Source:** FRED series `T10YIE` (10-Year Breakeven Inflation Rate),
   https://fred.stlouisfed.org/series/T10YIE — downloaded from the public CSV endpoint
   `https://fred.stlouisfed.org/graph/fredgraph.csv?id=T10YIE`.
-- **Downloaded:** <FILL IN download date when Task 6 runs>.
+- **Downloaded:** 2026-06-27.
 - **Columns:** first column is the observation date (`YYYY-MM-DD`), second column is the
   breakeven rate in **percent** (e.g. `2.35`). Missing observations appear as `.`.
 - **Use:** "suggested" inflation = latest observation at or before `today`, parsed
