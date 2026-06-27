@@ -5,6 +5,7 @@ requires-python = ">=3.14"
 dependencies = [
     "life-finances-core",
     "life-finances-domain",
+    "numpy>=2.5.0",
 ]
 
 [tool.uv.sources]
