@@ -261,7 +261,7 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 - [ ] Suggested inflation best-effort auto-updates from the FRED JSON API when `allow_refresh` + `FRED_API_KEY` + stale cache; vendored CSV remains the guaranteed fallback
 - [ ] Refresh is fail-silent and never blocks the simulation; `make test` stays network-free (injected fetcher, never `allow_refresh=True`)
 - [ ] Manual refresh CLI (`scripts/refresh_market_data.py`) warms the cache loudly; `--update-vendored` rewrites the committed CSV from a full-series fetch
-- [ ] `FRED_API_KEY` documented in setup; never stored in SQLite, committed, or required in CI
+- [ ] `FRED_API_KEY` in repo-root `.env` (from `.env.example`); documented in `AGENTS.md`; never in SQLite, committed, or CI
 
 **Not blocking:** Phase 3b may proceed without 3a+.
 
@@ -302,7 +302,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 | Principle | Detail |
 | --------- | ------ |
-| **User-owned key** | Each user sets `EOD_API_KEY` in their environment (or local `.env`, gitignored). Never stored in SQLite, never committed, never required in CI. |
+| **User-owned key** | Each user copies `.env.example` → `.env` at the repo root and sets `EOD_API_KEY` (and `FRED_API_KEY` from 3a+). Never stored in SQLite, never committed, never required in CI. |
 | **Vendored fallback** | When the key is absent, the network fails, or rate limits/errors occur → use vendored snapshots (v7 historical CSV / CAPE column, plus any 3c-vendored daily SP500/ETF files). Simulation and presets must remain usable offline. |
 | **Caching** | Cache successful live fetches on disk with TTL; avoid hammering the API (tpaw uses ~30-day lookback, 3 symbols per refresh). |
 | **Free tier** | EODHD free tier (~20 calls/day) is sufficient for personal use with caching; paid tier (~$20/mo) only if limits are hit in practice. |
@@ -386,7 +386,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 | Legacy YAML import                                 | 4                              |
 | `import_legacy_yaml.py`                            | 4                              |
 | `packages/simulation/OVERVIEW.md` parity checklist | 3b onward, updated per feature |
-| `EOD_API_KEY` BYOK + vendored fallback (EODHD)    | 3c                             |
+| `FRED_API_KEY` / `EOD_API_KEY` via repo-root `.env` (`.env.example`) | 3a+ / 3c |
 | Pre-commit / CI for Python-only monorepo           | 0–1                            |
 | Remove/archive old `docs/features/` to `archive/`  | 0                              |
 

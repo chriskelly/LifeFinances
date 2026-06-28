@@ -30,6 +30,8 @@ Phase 3a+ includes:
 4. **Manual refresh command** — a real, tested CLI replacing the throwaway PoC, with a
    `--update-vendored` maintainer mode that rewrites the committed CSV from a full-series
    fetch.
+5. **Secrets via repo-root `.env`** — committed `.env.example`; `core.env` loads keys on
+   demand (`FRED_API_KEY` now; `EOD_API_KEY` placeholder for Phase 3c).
 
 Phase 3a+ does **not** include:
 
@@ -54,6 +56,7 @@ Phase 3a+ does **not** include:
 | 8   | **Manual command with `--update-vendored` maintainer mode**| Folds the PoC into a tested entrypoint. Auto path uses 30-day lookback; vendored update uses a full-series fetch + `PROVENANCE.md` bump.        |
 | 9   | **`truststore` stays a guarded dev-only import**           | Optional best-effort feature; a missing `truststore` just degrades to vendored fallback on affected macOS builds. No new runtime dep.           |
 | 10  | **Treasury real-yield deferred to Phase 3c**               | It feeds bond-return presets, not inflation. PoC smoke test de-risks 3c; full cache/fallback wiring is YAGNI for 3a+.                           |
+| 11  | **API keys in repo-root `.env`, not ad-hoc `os.environ`**  | Users copy `.env.example` → `.env` (gitignored). A small `core.env` loader reads keys on demand; same file will hold `EOD_API_KEY` in Phase 3c. |
 
 ---
 
@@ -63,6 +66,12 @@ New code stays inside the existing `simulation/market_data/` subpackage. Fetchin
 (network, foreign formats) is kept separate from resolving (the Phase 3a scalar logic).
 
 ```
+.
+├── .env.example              # NEW — committed template for API keys (copy → .env)
+├── .env                      # gitignored — user secrets (see .env.example)
+├── packages/core/core/
+│   env.py                    # NEW — load repo-root .env; api_key("FRED_API_KEY")
+│   paths.py                  # EXISTING — repo_root()
 packages/simulation/simulation/market_data/
   inflation.py        # EXISTING — resolve_inflation(), _suggested_annual() (CSV reader)
   fetch.py            # NEW — FRED JSON API client; JSON → list[(date, Decimal)]
@@ -77,11 +86,40 @@ data/market_cache/                  # NEW, gitignored — live refresh target
 scripts/refresh_market_data.py      # NEW — manual refresh CLI (replaces fetch_t10yie_poc.py)
 ```
 
+### `core.env` — secrets from `.env`
+
+API keys are **not** read via scattered `os.environ.get` calls. Users configure secrets
+in a **repo-root** `.env` file (gitignored; already in `.gitignore`). A committed
+`.env.example` documents required/optional keys:
+
+```dotenv
+# Copy to .env at the repository root (never commit .env).
+# FRED: https://fred.stlouisfed.org/docs/api/api_key.html
+FRED_API_KEY=
+
+# EOD Historical Data (Phase 3c): https://eodhd.com/
+# EOD_API_KEY=
+```
+
+`core.env` (alongside `core.paths`, which already exposes `repo_root()`):
+
+- `load_dotenv()` — idempotent; loads `repo_root() / ".env"` if the file exists (via
+  `python-dotenv`). Does not error when `.env` is absent (offline / CI).
+- `api_key(name: str) -> str | None` — calls `load_dotenv()` once, returns the stripped
+  value for `name`, or `None` if unset/blank.
+
+`fetch.py` and the refresh CLI call `core.env.api_key("FRED_API_KEY")`. Phase 3c EOD
+fetch uses the same helper with `"EOD_API_KEY"` — no new secret-loading pattern.
+
+**Precedence:** `python-dotenv` does not override variables already in the process
+environment, so CI and one-off `FRED_API_KEY=…` invocations still work, but **documented
+setup is copy `.env.example` → `.env`**. Keys are never stored in SQLite or committed.
+
 ### `fetch.py` — wire → pairs
 
 - Owns the single FRED JSON API request (`series_id=T10YIE`, `file_type=json`,
   `observation_start` lookback, `Cache-Control: no-cache`, short timeout).
-- Reads `FRED_API_KEY` from the environment.
+- Reads `FRED_API_KEY` via `core.env.api_key("FRED_API_KEY")`.
 - Applies the guarded `truststore` import (macOS SSL) exactly as the PoC does.
 - Returns normalized `list[tuple[date, Decimal]]`; skips unparseable rows (the `"."`
   holiday value, e.g. `2023-05-29`). Raises a typed error on transport/HTTP/JSON failure.
@@ -112,7 +150,7 @@ scripts/refresh_market_data.py      # NEW — manual refresh CLI (replaces fetch
 resolve_inflation(plan, *, today, allow_refresh=False, now=None, fetcher=...)
 ├─ manual mode → return configured rate                       (UNCHANGED)
 └─ suggested mode
-   ├─ if allow_refresh and FRED_API_KEY set and cache.is_stale(now):
+   ├─ if allow_refresh and api_key("FRED_API_KEY") and cache.is_stale(now):
    │     try:
    │         pairs = fetcher(observation_start=...)            # short timeout
    │         cache.write(pairs, now=now, source="fred_api")
@@ -126,7 +164,7 @@ resolve_inflation(plan, *, today, allow_refresh=False, now=None, fetcher=...)
 ### Refresh trigger (all three required)
 
 1. `allow_refresh=True` (app/sim passes this; tests never do), **and**
-2. `FRED_API_KEY` is set, **and**
+2. `core.env.api_key("FRED_API_KEY")` is non-empty, **and**
 3. cache is stale (sidecar `fetched_at` older than `CACHE_TTL`).
 
 ### Read ladder (always runs)
@@ -182,21 +220,25 @@ HTTP and no monkeypatching is required.
 | `cache.py` TTL | Injected `now`; stale-vs-fresh boundary using `CACHE_TTL` imported from source (not copied). |
 | `cache.py` read path | cache present → cache wins; cache absent → vendored. |
 | `resolve_inflation` gating | `allow_refresh=False` (default) → fetcher (a spy) is **never** called; manual mode unchanged. |
+| `core.env` loader | `.env` present → key returned; absent/blank → `None`; idempotent `load_dotenv` |
 | Refresh failure swallow | Injected fetcher raises → resolve still returns the vendored value, no exception. |
 
 **Not tested in CI:** the live FRED call and `--update-vendored`. Documented as
-manual/maintainer actions in `AGENTS.md` and `PROVENANCE.md`.
+manual/maintainer actions in `AGENTS.md` and `PROVENANCE.md`. Tests do not create a
+`.env` file; key presence is exercised via injected fetchers, not `core.env`.
 
 ---
 
 ## 7. Dependencies
 
+`python-dotenv` is added to **`packages/core`** (lightweight; used only by `core.env`).
+
 `truststore` stays a **guarded, dev-only import** (`try: import truststore;
 truststore.inject_into_ssl() except ImportError: pass`). The refresh feature is opt-in
 and best-effort; a missing `truststore` on some macOS builds simply degrades to the
-vendored fallback — the designed behavior. No new runtime dependency is added.
+vendored fallback — the designed behavior. No new runtime dependency in `simulation`.
 
-`FRED_API_KEY` is read from the environment (or a local gitignored `.env`); never stored
+API keys live in repo-root `.env` (gitignored); `.env.example` is committed. Never stored
 in SQLite, never committed, never required in CI.
 
 ---
