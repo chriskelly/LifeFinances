@@ -30,8 +30,9 @@ Phase 3a+ includes:
 4. **Manual refresh command** — a real, tested CLI replacing the throwaway PoC, with a
    `--update-vendored` maintainer mode that rewrites the committed CSV from a full-series
    fetch.
-5. **Secrets via repo-root `.env`** — committed `.env.example`; `core.env` loads keys on
-   demand (`FRED_API_KEY` now; `EOD_API_KEY` placeholder for Phase 3c).
+5. **DB-backed API keys + minimal settings UI** — a singleton `AppSettings` row in
+   SQLite holds the FRED key (and a placeholder for the Phase 3c EOD key); a small
+   masked web form lets the user enter it without touching the filesystem.
 
 Phase 3a+ does **not** include:
 
@@ -56,22 +57,24 @@ Phase 3a+ does **not** include:
 | 8   | **Manual command with `--update-vendored` maintainer mode**| Folds the PoC into a tested entrypoint. Auto path uses 30-day lookback; vendored update uses a full-series fetch + `PROVENANCE.md` bump.        |
 | 9   | **`truststore` stays a guarded dev-only import**           | Optional best-effort feature; a missing `truststore` just degrades to vendored fallback on affected macOS builds. No new runtime dep.           |
 | 10  | **Treasury real-yield deferred to Phase 3c**               | It feeds bond-return presets, not inflation. PoC smoke test de-risks 3c; full cache/fallback wiring is YAGNI for 3a+.                           |
-| 11  | **API keys in repo-root `.env`, not ad-hoc `os.environ`**  | Users copy `.env.example` → `.env` (gitignored). A small `core.env` loader reads keys on demand; same file will hold `EOD_API_KEY` in Phase 3c. |
+| 11  | **API keys in a singleton `AppSettings` DB row, not `.env`**| The DB is the existing gitignored personal asset; a local-only app shouldn't push users to the filesystem. Keys enter through a UI form, travel with the DB, and stay off the `Plan` (no per-plan duplication, never in plan export/import). Same row holds `EOD_API_KEY` in Phase 3c. |
+| 12  | **Keys injected at the web/CLI boundary, not read by `simulation`**| `simulation` never reaches into the DB for secrets. The web layer / CLI loads the key from the repository and passes it in, mirroring the injected-`fetcher` seam and keeping package boundaries clean. |
+| 13  | **Minimal masked settings form ships in 3a+**              | Closes the UX gap so live refresh is usable without SQL or scripts; the full advanced editor remains Phase 4. Values render masked (`••••••••`) and are never echoed back in HTML. |
 
 ---
 
 ## 3. Components
 
-New code stays inside the existing `simulation/market_data/` subpackage. Fetching
-(network, foreign formats) is kept separate from resolving (the Phase 3a scalar logic).
+Market-data code stays inside the existing `simulation/market_data/` subpackage; secrets
+live in `core` (model + repository) and `web` (settings form). Fetching (network, foreign
+formats) is kept separate from resolving (the Phase 3a scalar logic), and `simulation`
+never reads secrets — the key is injected at the web/CLI boundary.
 
 ```
-.
-├── .env.example              # NEW — committed template for API keys (copy → .env)
-├── .env                      # gitignored — user secrets (see .env.example)
-├── packages/core/core/
-│   env.py                    # NEW — load repo-root .env; api_key("FRED_API_KEY")
-│   paths.py                  # EXISTING — repo_root()
+packages/core/core/
+  models.py           # EXISTING — add AppSettings (singleton settings model)
+  settings_repository.py  # NEW — load/save the singleton AppSettings row
+
 packages/simulation/simulation/market_data/
   inflation.py        # EXISTING — resolve_inflation(), _suggested_annual() (CSV reader)
   fetch.py            # NEW — FRED JSON API client; JSON → list[(date, Decimal)]
@@ -79,51 +82,60 @@ packages/simulation/simulation/market_data/
   data/
     t10yie_daily.csv  # EXISTING vendored fallback (committed)
 
+packages/web/web/
+  sections.py         # EXISTING — add SETTINGS title constant
+  forms.py            # EXISTING — add AppSettingsForm (masked key field)
+  routes.py           # EXISTING — add PLAN_SETTINGS route
+  templates/…         # NEW editor_settings.html partial
+
 data/market_cache/                  # NEW, gitignored — live refresh target
   t10yie_daily.csv                  # cache, identical shape to vendored
   t10yie_daily.meta.json            # sidecar: { fetched_at, source, series_id }
 
+scripts/create_blank_db.py          # EXISTING — add app_settings table to SCHEMA
 scripts/refresh_market_data.py      # NEW — manual refresh CLI (replaces fetch_t10yie_poc.py)
 ```
 
-### `core.env` — secrets from `.env`
+### `AppSettings` — DB-backed secrets
 
-API keys are **not** read via scattered `os.environ.get` calls. Users configure secrets
-in a **repo-root** `.env` file (gitignored; already in `.gitignore`). A committed
-`.env.example` documents required/optional keys:
+API keys are **not** read from the environment or a `.env` file. They live in a
+**singleton row** in SQLite (the existing gitignored `data/data.db`), separate from any
+`Plan`:
 
-```dotenv
-# Copy to .env at the repository root (never commit .env).
-# FRED: https://fred.stlouisfed.org/docs/api/api_key.html
-FRED_API_KEY=
+- **Model** — `core.models.AppSettings` (Pydantic): `fred_api_key: str | None = None`,
+  `eod_api_key: str | None = None` (the latter unused until Phase 3c). Blank strings
+  normalize to `None`.
+- **Schema** — `scripts/create_blank_db.py` gains an `app_settings` table with a single
+  pinned row (`id INTEGER PRIMARY KEY CHECK (id = 1)`), columns nullable, **always empty
+  in the committed `data.db.blank`**. The blank DB is regenerated; no real keys committed.
+- **Repository** — `core.settings_repository.SettingsRepository` mirrors `PlanRepository`
+  (constructed with an optional `db_path`): `get() -> AppSettings` (returns defaults when
+  the row is empty) and `save(settings)`.
 
-# EOD Historical Data (Phase 3c): https://eodhd.com/
-# EOD_API_KEY=
-```
-
-`core.env` (alongside `core.paths`, which already exposes `repo_root()`):
-
-- `load_dotenv()` — idempotent; loads `repo_root() / ".env"` if the file exists (via
-  `python-dotenv`). Does not error when `.env` is absent (offline / CI).
-- `api_key(name: str) -> str | None` — calls `load_dotenv()` once, returns the stripped
-  value for `name`, or `None` if unset/blank.
-
-`fetch.py` and the refresh CLI call `core.env.api_key("FRED_API_KEY")`. Phase 3c EOD
-fetch uses the same helper with `"EOD_API_KEY"` — no new secret-loading pattern.
-
-**Precedence:** `python-dotenv` does not override variables already in the process
-environment, so CI and one-off `FRED_API_KEY=…` invocations still work, but **documented
-setup is copy `.env.example` → `.env`**. Keys are never stored in SQLite or committed.
+Why not on `Plan`: keys would duplicate across named plans (Phase 4), behave
+inconsistently per plan, and leak into plan export / YAML import. Global app settings are
+entered once and excluded from plan I/O.
 
 ### `fetch.py` — wire → pairs
 
 - Owns the single FRED JSON API request (`series_id=T10YIE`, `file_type=json`,
   `observation_start` lookback, `Cache-Control: no-cache`, short timeout).
-- Reads `FRED_API_KEY` via `core.env.api_key("FRED_API_KEY")`.
+- Receives the API key as a **parameter** (`api_key: str`); it does not read the DB or the
+  environment itself. The caller (web / CLI) loads it from `SettingsRepository`.
 - Applies the guarded `truststore` import (macOS SSL) exactly as the PoC does.
 - Returns normalized `list[tuple[date, Decimal]]`; skips unparseable rows (the `"."`
   holiday value, e.g. `2023-05-29`). Raises a typed error on transport/HTTP/JSON failure.
 - No disk access, no fallback logic — pure wire→pairs.
+
+### Web settings form (minimal)
+
+- A small `editor_settings.html` partial with a masked password input for the FRED key,
+  `PATCH`ing a new `PLAN_SETTINGS` route, following the existing section-form pattern
+  (`forms.py` DTO → `apply_to` → `SettingsRepository.save`).
+- The current value is **never** echoed into HTML; the field renders empty with a
+  placeholder like `•••• set ••••` when a key is stored, and saving blank leaves the
+  stored key unchanged (explicit "clear" affordance to remove it).
+- This is the only UI in 3a+; the full advanced editor stays Phase 4.
 
 ### `cache.py` — canonical store
 
@@ -138,21 +150,28 @@ setup is copy `.env.example` → `.env`**. Keys are never stored in SQLite or co
 ### `inflation.py` — minimal additions
 
 - `resolve_inflation` gains `allow_refresh: bool = False`, `now: datetime | None = None`,
-  and an injected `fetcher` (defaulting to `fetch.fred_observations`).
+  an optional `api_key: str | None = None`, and an injected `fetcher` (defaulting to the
+  real `fetch.fred_observations`).
 - `_suggested_annual` and the manual-mode path are **unchanged**; only the read path now
   selects between cache and vendored via `cache.resolve_read_path()`.
+- `simulation` does not load `AppSettings`; the caller passes `api_key` in. The web layer
+  reads it from `SettingsRepository` and forwards it on a real run.
 
 ---
 
 ## 4. Control flow
 
 ```
-resolve_inflation(plan, *, today, allow_refresh=False, now=None, fetcher=...)
+# web/CLI boundary:
+#   settings = SettingsRepository(db_path).get()
+#   resolve_inflation(plan, today=…, allow_refresh=True, api_key=settings.fred_api_key)
+
+resolve_inflation(plan, *, today, allow_refresh=False, now=None, api_key=None, fetcher=...)
 ├─ manual mode → return configured rate                       (UNCHANGED)
 └─ suggested mode
-   ├─ if allow_refresh and api_key("FRED_API_KEY") and cache.is_stale(now):
+   ├─ if allow_refresh and api_key and cache.is_stale(now):
    │     try:
-   │         pairs = fetcher(observation_start=...)            # short timeout
+   │         pairs = fetcher(api_key=api_key, observation_start=...)   # short timeout
    │         cache.write(pairs, now=now, source="fred_api")
    │     except Exception:
    │         pass                                              # best-effort; log a warning
@@ -163,8 +182,8 @@ resolve_inflation(plan, *, today, allow_refresh=False, now=None, fetcher=...)
 
 ### Refresh trigger (all three required)
 
-1. `allow_refresh=True` (app/sim passes this; tests never do), **and**
-2. `core.env.api_key("FRED_API_KEY")` is non-empty, **and**
+1. `allow_refresh=True` (app/CLI passes this; tests never do), **and**
+2. `api_key` is non-empty (loaded from `AppSettings` by the caller), **and**
 3. cache is stale (sidecar `fetched_at` older than `CACHE_TTL`).
 
 ### Read ladder (always runs)
@@ -181,6 +200,9 @@ never blocks and never raises on network trouble.
 ## 5. Manual refresh command
 
 `scripts/refresh_market_data.py` promotes the PoC into a tested entrypoint with two modes:
+
+The CLI loads the FRED key from `SettingsRepository` (the same DB the app uses); no
+environment variable or `.env` is consulted.
 
 ```bash
 # Warm the gitignored cache (30-day lookback); loud on failure, prints provenance.
@@ -219,33 +241,55 @@ HTTP and no monkeypatching is required.
 | `cache.py` write | Pairs → cache CSV round-trips through the existing reader; sidecar has `fetched_at`/`source`/`series_id`. |
 | `cache.py` TTL | Injected `now`; stale-vs-fresh boundary using `CACHE_TTL` imported from source (not copied). |
 | `cache.py` read path | cache present → cache wins; cache absent → vendored. |
-| `resolve_inflation` gating | `allow_refresh=False` (default) → fetcher (a spy) is **never** called; manual mode unchanged. |
-| `core.env` loader | `.env` present → key returned; absent/blank → `None`; idempotent `load_dotenv` |
+| `resolve_inflation` gating | `allow_refresh=False` (default) **or** `api_key=None` → fetcher (a spy) is **never** called; manual mode unchanged. |
+| `AppSettings` model | Blank key strings normalize to `None`; round-trips through Pydantic. |
+| `SettingsRepository` | `save` then `get` round-trips keys against a temp DB (repo-root `db_path` fixture); empty row → defaults. |
+| Web settings form | `PATCH` saves the key via the repository; response never contains the stored key value (masked). |
 | Refresh failure swallow | Injected fetcher raises → resolve still returns the vendored value, no exception. |
 
 **Not tested in CI:** the live FRED call and `--update-vendored`. Documented as
-manual/maintainer actions in `AGENTS.md` and `PROVENANCE.md`. Tests do not create a
-`.env` file; key presence is exercised via injected fetchers, not `core.env`.
+manual/maintainer actions in `AGENTS.md` and `PROVENANCE.md`. Tests use a temp DB with no
+keys and never pass `allow_refresh=True` to a real fetcher.
 
 ---
 
 ## 7. Dependencies
 
-`python-dotenv` is added to **`packages/core`** (lightweight; used only by `core.env`).
+**No new package dependencies.** Secrets use the existing `sqlite3` + Pydantic stack;
+there is no `python-dotenv`.
 
 `truststore` stays a **guarded, dev-only import** (`try: import truststore;
 truststore.inject_into_ssl() except ImportError: pass`). The refresh feature is opt-in
 and best-effort; a missing `truststore` on some macOS builds simply degrades to the
 vendored fallback — the designed behavior. No new runtime dependency in `simulation`.
 
-API keys live in repo-root `.env` (gitignored); `.env.example` is committed. Never stored
-in SQLite, never committed, never required in CI.
+API keys live in a singleton `AppSettings` row in the gitignored `data/data.db`; the
+committed `data.db.blank` carries the empty `app_settings` table only. Keys never appear
+in plan JSON, plan export/import, git, or CI.
 
 ---
 
 ## 8. Out of scope (deferred)
 
-- Live SP500 / EOD equity data, CAPE regression, expected-return presets → Phase 3c.
+- Live SP500 / EOD equity data, CAPE regression, expected-return presets → Phase 3c
+  (reuses the `AppSettings.eod_api_key` field added here).
 - Fully wired Treasury real-yield cache/fallback → Phase 3c (PoC smoke test only here).
 - Per-run bootstrapped inflation paths → [#186](https://github.com/chriskelly/LifeFinances/issues/186).
-- Sampling / inflation editor UI → Phase 4.
+- Sampling / inflation editor UI and the **full** advanced settings section → Phase 4
+  (3a+ ships only the minimal masked API-key form).
+
+---
+
+## 9. Schema change note
+
+The `app_settings` table is additive. Regenerate the committed blank DB after editing
+`scripts/create_blank_db.py`:
+
+```bash
+uv run python scripts/create_blank_db.py   # rewrites data/data.db.blank (empty app_settings)
+```
+
+Existing personal `data/data.db` files predating 3a+ need the new table; the
+implementation plan covers a tiny idempotent `CREATE TABLE IF NOT EXISTS` applied on
+`SettingsRepository` access (or a one-line migration in `init_db.py`) so older DBs keep
+working without losing plan data.

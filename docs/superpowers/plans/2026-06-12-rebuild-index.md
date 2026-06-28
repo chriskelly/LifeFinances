@@ -250,7 +250,7 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 
 **Design spec:** [2026-06-28-phase-3a-plus-networked-market-data-design.md](../specs/2026-06-28-phase-3a-plus-networked-market-data-design.md)
 
-**Delivers:** tpaw parity for suggested inflation via best-effort live FRED `T10YIE` fetch (official JSON API, `FRED_API_KEY` required) with gitignored CSV cache + offline fallback to the vendored CSV; manual refresh CLI with a `--update-vendored` maintainer mode. **SP500 / EOD equity data and Treasury bond-yield feed deferred to Phase 3c.** Per-run bootstrapped inflation paths remain tracked separately ([#186](https://github.com/chriskelly/LifeFinances/issues/186)).
+**Delivers:** tpaw parity for suggested inflation via best-effort live FRED `T10YIE` fetch (official JSON API, `FRED_API_KEY` required) with gitignored CSV cache + offline fallback to the vendored CSV; manual refresh CLI with a `--update-vendored` maintainer mode; DB-backed API keys (`AppSettings` singleton) entered via a minimal masked web form. **SP500 / EOD equity data and Treasury bond-yield feed deferred to Phase 3c.** Per-run bootstrapped inflation paths remain tracked separately ([#186](https://github.com/chriskelly/LifeFinances/issues/186)).
 
 **References:** [Phase 3a+ design spec](../specs/2026-06-28-phase-3a-plus-networked-market-data-design.md); [Phase 3a design spec §10](../specs/2026-06-25-phase-3a-simulation-market-data-design.md); tpaw `get_daily_market_data_series_from_source` (`get_inflation`).
 
@@ -258,10 +258,10 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 
 **Exit criteria:**
 
-- [ ] Suggested inflation best-effort auto-updates from the FRED JSON API when `allow_refresh` + `FRED_API_KEY` + stale cache; vendored CSV remains the guaranteed fallback
+- [ ] Suggested inflation best-effort auto-updates from the FRED JSON API when `allow_refresh` + key present + stale cache; vendored CSV remains the guaranteed fallback
 - [ ] Refresh is fail-silent and never blocks the simulation; `make test` stays network-free (injected fetcher, never `allow_refresh=True`)
 - [ ] Manual refresh CLI (`scripts/refresh_market_data.py`) warms the cache loudly; `--update-vendored` rewrites the committed CSV from a full-series fetch
-- [ ] `FRED_API_KEY` in repo-root `.env` (from `.env.example`); documented in `AGENTS.md`; never in SQLite, committed, or CI
+- [ ] API keys stored in `AppSettings` (singleton DB row), entered via a minimal masked web form; injected at the web/CLI boundary; never in plan JSON, plan export, git, or CI
 
 **Not blocking:** Phase 3b may proceed without 3a+.
 
@@ -302,7 +302,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 | Principle | Detail |
 | --------- | ------ |
-| **User-owned key** | Each user copies `.env.example` → `.env` at the repo root and sets `EOD_API_KEY` (and `FRED_API_KEY` from 3a+). Never stored in SQLite, never committed, never required in CI. |
+| **User-owned key** | Each user enters `EOD_API_KEY` (and `FRED_API_KEY` from 3a+) via the in-app settings form; stored in the `AppSettings` singleton row in the gitignored `data/data.db`. Never committed, never in plan JSON/export, never required in CI. |
 | **Vendored fallback** | When the key is absent, the network fails, or rate limits/errors occur → use vendored snapshots (v7 historical CSV / CAPE column, plus any 3c-vendored daily SP500/ETF files). Simulation and presets must remain usable offline. |
 | **Caching** | Cache successful live fetches on disk with TTL; avoid hammering the API (tpaw uses ~30-day lookback, 3 symbols per refresh). |
 | **Free tier** | EODHD free tier (~20 calls/day) is sufficient for personal use with caching; paid tier (~$20/mo) only if limits are hit in practice. |
@@ -314,7 +314,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 - [ ] Planning stats separate from bootstrap paths
 - [ ] CAPE / stock expected-return presets: live `GSPC.INDX` via `EOD_API_KEY` when available; vendored fallback otherwise
 - [ ] (Optional) Live `VT.US` / `BND.US` daily returns for preset parity; same fallback pattern
-- [ ] `EOD_API_KEY` documented in setup (README or `AGENTS.md`); no key path tested in CI
+- [ ] `EOD_API_KEY` stored in `AppSettings` (reusing the 3a+ settings form/field); no key path tested in CI
 
 ---
 
@@ -386,7 +386,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 | Legacy YAML import                                 | 4                              |
 | `import_legacy_yaml.py`                            | 4                              |
 | `packages/simulation/OVERVIEW.md` parity checklist | 3b onward, updated per feature |
-| `FRED_API_KEY` / `EOD_API_KEY` via repo-root `.env` (`.env.example`) | 3a+ / 3c |
+| `FRED_API_KEY` / `EOD_API_KEY` via `AppSettings` DB row + settings form | 3a+ / 3c |
 | Pre-commit / CI for Python-only monorepo           | 0–1                            |
 | Remove/archive old `docs/features/` to `archive/`  | 0                              |
 
