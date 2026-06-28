@@ -2,10 +2,14 @@ from decimal import Decimal
 
 import httpx2 as httpx
 from core.defaults import DEFAULT_PLAN_NAME, default_plan
+from core.models import AppSettings
 from core.repository import PlanRepository
+from core.settings_repository import SettingsRepository
 from fastapi.testclient import TestClient
 from web.forms import (
+    CLEAR_FRED_API_KEY,
     CURRENT_SAVINGS_BALANCE,
+    FRED_API_KEY,
     HAS_PARTNER,
     PERSON1_BIRTH_MONTH,
     PERSON1_BIRTH_YEAR,
@@ -14,8 +18,8 @@ from web.forms import (
     PERSON2_BIRTH_YEAR,
     PERSON2_MAX_AGE_YEARS,
 )
-from web.routes import HOME, PLAN_HOUSEHOLD, PLAN_PORTFOLIO, RESULTS
-from web.sections import HOUSEHOLD_TITLE, PORTFOLIO_TITLE
+from web.routes import HOME, PLAN_HOUSEHOLD, PLAN_PORTFOLIO, PLAN_SETTINGS, RESULTS
+from web.sections import HOUSEHOLD_TITLE, PORTFOLIO_TITLE, SETTINGS_TITLE
 
 
 def _household_form_data() -> dict[str, str]:
@@ -39,6 +43,13 @@ def test_home_shows_both_editor_sections(client: TestClient) -> None:
     assert response.status_code == 200
     assert HOUSEHOLD_TITLE in response.text
     assert PORTFOLIO_TITLE in response.text
+
+
+def test_home_shows_settings_section(client: TestClient) -> None:
+    response: httpx.Response = client.get(HOME)
+
+    assert response.status_code == 200
+    assert SETTINGS_TITLE in response.text
 
 
 def test_home_auto_creates_default_plan(
@@ -70,6 +81,53 @@ def test_patch_portfolio_persists_balance_change(
     assert response.status_code == 200
     _, plan = repo.get_or_create_default()
     assert plan.portfolio.current_savings_balance == expected_balance
+
+
+def test_patch_settings_persists_fred_api_key(client: TestClient, db_path) -> None:
+    expected_key = "fred-ui-key"
+    response: httpx.Response = client.patch(
+        PLAN_SETTINGS,
+        data={FRED_API_KEY: expected_key},
+    )
+
+    assert response.status_code == 200
+    loaded = SettingsRepository(db_path=db_path).get()
+    assert loaded.fred_api_key == expected_key
+
+
+def test_settings_section_never_echoes_stored_api_key(
+    client: TestClient, db_path
+) -> None:
+    secret_key = "fred-secret-value"
+    SettingsRepository(db_path=db_path).save(AppSettings(fred_api_key=secret_key))
+
+    response: httpx.Response = client.get(HOME)
+
+    assert response.status_code == 200
+    assert secret_key not in response.text
+    assert "FRED API key is set" in response.text
+
+
+def test_blank_settings_patch_keeps_existing_key(client: TestClient, db_path) -> None:
+    expected_key = "keep-existing-key"
+    SettingsRepository(db_path=db_path).save(AppSettings(fred_api_key=expected_key))
+
+    response: httpx.Response = client.patch(PLAN_SETTINGS, data={FRED_API_KEY: ""})
+
+    assert response.status_code == 200
+    assert SettingsRepository(db_path=db_path).get().fred_api_key == expected_key
+
+
+def test_clear_settings_patch_removes_existing_key(client: TestClient, db_path) -> None:
+    SettingsRepository(db_path=db_path).save(AppSettings(fred_api_key="clear-me"))
+
+    response: httpx.Response = client.patch(
+        PLAN_SETTINGS,
+        data={FRED_API_KEY: "", CLEAR_FRED_API_KEY: "on"},
+    )
+
+    assert response.status_code == 200
+    assert SettingsRepository(db_path=db_path).get().fred_api_key is None
 
 
 def test_patch_household_without_partner_saves_single_person(

@@ -11,6 +11,7 @@
     <div id="form-error" class="form-error" role="alert" hidden></div>
     {% include "editor_household.html" %}
     {% include "editor_portfolio.html" %}
+    {% include "editor_settings.html" %}
   </div>
   <div
     id="results-panel"
@@ -46,7 +47,8 @@
     const isPlanForm =
       form.tagName === "FORM" &&
       (patchTarget === "{{ routes.PLAN_HOUSEHOLD }}" ||
-        patchTarget === "{{ routes.PLAN_PORTFOLIO }}");
+        patchTarget === "{{ routes.PLAN_PORTFOLIO }}" ||
+        patchTarget === "{{ routes.PLAN_SETTINGS }}");
     if (isPlanForm && event.detail.successful) {
       clearFormError();
       document.body.dispatchEvent(new CustomEvent("planUpdated"));
