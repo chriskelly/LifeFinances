@@ -34,9 +34,9 @@
 
 | Field             | Value                                                      |
 | ----------------- | ---------------------------------------------------------- |
-| **Current phase** | Phase 3a — execute                                          |
-| **Active plan**   | `2026-06-12-phase-3a-simulation-market-data.md`             |
-| **Next action**   | Execute Phase 3a plan task-by-task                          |
+| **Current phase** | Phase 3b — plan                                            |
+| **Active plan**   | *(to write)* `2026-06-12-phase-3b-simulation-tpaw-withdrawals.md` |
+| **Next action**   | Write Phase 3b plan before coding                          |
 
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
@@ -55,6 +55,7 @@ flowchart LR
   P2d[Phase 2d\nDomain: pension + taxes]
   P2e[Phase 2e\nDomain: single household]
   P3a[Phase 3a\nSim: data + bootstrap]
+  P3aPlus[Phase 3a+\nNetworked data\noptional]
   P3b[Phase 3b\nSim: TPAW core]
   P3c[Phase 3c\nSim: allocation + PV]
   P3d[Phase 3d\nSim: charts data layer]
@@ -63,11 +64,12 @@ flowchart LR
 
   P0 --> P1 --> P2a --> P2b --> P2c --> P2d --> P2e
   P2e --> P3a --> P3b --> P3c --> P3d --> P4 --> P5
+  P3a -.->|optional| P3aPlus
 ```
 
 
 
-Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pension/taxes before single-household). Phase 2a must land before 2b. Phases 3a–3d must be sequential.
+Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pension/taxes before single-household). Phase 2a must land before 2b. Phases 3a–3d must be sequential. **Phase 3a+ is optional** — live market-data acquisition; does not block Phase 3b.
 
 ---
 
@@ -235,10 +237,33 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 
 **Exit criteria:**
 
-- [ ] tpaw v7 data vendored with attribution (returns CSV + FRED T10YIE)
-- [ ] Block-bootstrap produces `(num_runs, months_per_run)` monthly log-return paths per asset
-- [ ] Inflation: scalar suggested (vendored breakeven) + manual override; bootstrapped inflation paths deferred (interface left open, [#186](https://github.com/chriskelly/LifeFinances/issues/186))
-- [ ] Sampling: tpaw defaults on `Plan` + advanced overrides (UI wiring deferred to Phase 4)
+- [x] tpaw v7 data vendored with attribution (returns CSV + FRED T10YIE)
+- [x] Block-bootstrap produces `(num_runs, months_per_run)` monthly log-return paths per asset
+- [x] Inflation: scalar suggested (vendored breakeven) + manual override; bootstrapped inflation paths deferred (interface left open, [#186](https://github.com/chriskelly/LifeFinances/issues/186))
+- [x] Sampling: tpaw defaults on `Plan` + advanced overrides (UI wiring deferred to Phase 4)
+
+---
+
+### Phase 3a+ — Simulation: networked market data *(optional)*
+
+**Plan file:** `2026-06-12-phase-3a-plus-networked-market-data.md` *(to write)*
+
+**Design spec:** [2026-06-28-phase-3a-plus-networked-market-data-design.md](../specs/2026-06-28-phase-3a-plus-networked-market-data-design.md)
+
+**Delivers:** tpaw parity for suggested inflation via best-effort live FRED `T10YIE` fetch (official JSON API, `FRED_API_KEY` required) with gitignored CSV cache + offline fallback to the vendored CSV; manual refresh CLI with a `--update-vendored` maintainer mode. **SP500 / EOD equity data and Treasury bond-yield feed deferred to Phase 3c.** Per-run bootstrapped inflation paths remain tracked separately ([#186](https://github.com/chriskelly/LifeFinances/issues/186)).
+
+**References:** [Phase 3a+ design spec](../specs/2026-06-28-phase-3a-plus-networked-market-data-design.md); [Phase 3a design spec §10](../specs/2026-06-25-phase-3a-simulation-market-data-design.md); tpaw `get_daily_market_data_series_from_source` (`get_inflation`).
+
+**Entry criteria:** Phase 3a complete.
+
+**Exit criteria:**
+
+- [ ] Suggested inflation best-effort auto-updates from the FRED JSON API when `allow_refresh` + `FRED_API_KEY` + stale cache; vendored CSV remains the guaranteed fallback
+- [ ] Refresh is fail-silent and never blocks the simulation; `make test` stays network-free (injected fetcher, never `allow_refresh=True`)
+- [ ] Manual refresh CLI (`scripts/refresh_market_data.py`) warms the cache loudly; `--update-vendored` rewrites the committed CSV from a full-series fetch
+- [ ] `FRED_API_KEY` documented in setup; never stored in SQLite, committed, or required in CI
+
+**Not blocking:** Phase 3b may proceed without 3a+.
 
 ---
 
@@ -265,17 +290,31 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 
 **Plan file:** `2026-06-12-phase-3c-simulation-allocation-pv.md` *(to write)*
 
-**Delivers:** RRA (at-20, delta, time preference); total portfolio = savings + PV future income; separate planning expected returns/vol.
+**Delivers:** RRA (at-20, delta, time preference); total portfolio = savings + PV future income; separate planning expected returns/vol; **live market presets with vendored fallback** (CAPE / expected-return path uses current S&P 500 level when available).
 
-**References:** tpaw `process_risk`, legacy total-portfolio allocation; design spec §6 items 4, 20–21, 26.
+**References:** tpaw `process_risk`, `process_market_data_for_presets`, `get_daily_market_data_series_from_source` (`get_from_eod`); legacy total-portfolio allocation; design spec §6 items 4, 20–21, 26.
 
 **Entry criteria:** Phase 3b complete.
+
+**EOD Historical Data (bring-your-own-key):**
+
+tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`GSPC.INDX`, `VT.US`, `BND.US`). LifeFinances follows the same **BYOK** model as tpaw:
+
+| Principle | Detail |
+| --------- | ------ |
+| **User-owned key** | Each user sets `EOD_API_KEY` in their environment (or local `.env`, gitignored). Never stored in SQLite, never committed, never required in CI. |
+| **Vendored fallback** | When the key is absent, the network fails, or rate limits/errors occur → use vendored snapshots (v7 historical CSV / CAPE column, plus any 3c-vendored daily SP500/ETF files). Simulation and presets must remain usable offline. |
+| **Caching** | Cache successful live fetches on disk with TTL; avoid hammering the API (tpaw uses ~30-day lookback, 3 symbols per refresh). |
+| **Free tier** | EODHD free tier (~20 calls/day) is sufficient for personal use with caching; paid tier (~$20/mo) only if limits are hit in practice. |
 
 **Exit criteria:**
 
 - [ ] Stock allocation from RRA on total portfolio
 - [ ] PV of future income from domain cashflows
 - [ ] Planning stats separate from bootstrap paths
+- [ ] CAPE / stock expected-return presets: live `GSPC.INDX` via `EOD_API_KEY` when available; vendored fallback otherwise
+- [ ] (Optional) Live `VT.US` / `BND.US` daily returns for preset parity; same fallback pattern
+- [ ] `EOD_API_KEY` documented in setup (README or `AGENTS.md`); no key path tested in CI
 
 ---
 
@@ -347,6 +386,7 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 | Legacy YAML import                                 | 4                              |
 | `import_legacy_yaml.py`                            | 4                              |
 | `packages/simulation/OVERVIEW.md` parity checklist | 3b onward, updated per feature |
+| `EOD_API_KEY` BYOK + vendored fallback (EODHD)    | 3c                             |
 | Pre-commit / CI for Python-only monorepo           | 0–1                            |
 | Remove/archive old `docs/features/` to `archive/`  | 0                              |
 
@@ -386,10 +426,11 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 | Phase 2c | `2026-06-12-phase-2c-domain-social-security.md` | complete |
 | Phase 2d | `2026-06-12-phase-2d-domain-pension-taxes.md` | complete |
 | Phase 2e | `2026-06-12-phase-2e-domain-single-household.md` | complete |
+| Phase 3a | `2026-06-12-phase-3a-simulation-market-data.md` | complete |
 
 
 ---
 
 ## Next step
 
-Write **Phase 3a plan** before coding.
+Write **Phase 3b plan** before coding. Phase 3a+ (networked market data) is optional and may run in parallel or after 3b.
