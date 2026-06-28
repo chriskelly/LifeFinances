@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+import csv
+import json
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
+from pathlib import Path
+
+from core.paths import repo_root
+
+from simulation.market_data.fetch import FRED_T10YIE_SERIES_ID
+
+CACHE_TTL = timedelta(hours=24)
+_DATA_DIR = Path(__file__).parent / "data"
+DEFAULT_T10YIE_VENDORED_PATH = _DATA_DIR / "t10yie_daily.csv"
+DEFAULT_MARKET_CACHE_DIR = repo_root() / "data" / "market_cache"
+DEFAULT_T10YIE_CACHE_PATH = DEFAULT_MARKET_CACHE_DIR / "t10yie_daily.csv"
+DEFAULT_T10YIE_META_PATH = DEFAULT_MARKET_CACHE_DIR / "t10yie_daily.meta.json"
+
+
+def write_t10yie_cache(
+    pairs: list[tuple[date, Decimal]],
+    *,
+    now: datetime,
+    cache_path: Path = DEFAULT_T10YIE_CACHE_PATH,
+    meta_path: Path = DEFAULT_T10YIE_META_PATH,
+    source: str = "fred_api",
+) -> None:
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    with cache_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["observation_date", FRED_T10YIE_SERIES_ID])
+        for observed, percent in sorted(pairs, key=lambda item: item[0]):
+            writer.writerow([observed.isoformat(), str(percent)])
+
+    meta_path.write_text(
+        json.dumps(
+            {
+                "fetched_at": now.isoformat(),
+                "source": source,
+                "series_id": FRED_T10YIE_SERIES_ID,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def resolve_t10yie_read_path(
+    *,
+    cache_path: Path = DEFAULT_T10YIE_CACHE_PATH,
+    vendored_path: Path = DEFAULT_T10YIE_VENDORED_PATH,
+) -> Path:
+    if cache_path.is_file():
+        return cache_path
+    return vendored_path
+
+
+def is_t10yie_cache_stale(
+    *,
+    now: datetime,
+    meta_path: Path = DEFAULT_T10YIE_META_PATH,
+    ttl: timedelta = CACHE_TTL,
+) -> bool:
+    if not meta_path.is_file():
+        return True
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        fetched_at = datetime.fromisoformat(meta["fetched_at"])
+    except KeyError, TypeError, ValueError, json.JSONDecodeError:
+        return True
+    if fetched_at.tzinfo is None:
+        fetched_at = fetched_at.replace(tzinfo=UTC)
+    return now - fetched_at > ttl
