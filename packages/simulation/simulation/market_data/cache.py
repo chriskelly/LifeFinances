@@ -69,7 +69,12 @@ def is_t10yie_cache_stale(
     try:
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
         fetched_at = datetime.fromisoformat(meta["fetched_at"])
-    except KeyError, TypeError, ValueError, json.JSONDecodeError:
+    except (
+        KeyError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ):
         return True
     if fetched_at.tzinfo is None:
         fetched_at = fetched_at.replace(tzinfo=UTC)
