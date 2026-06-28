@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -62,6 +62,98 @@ def test_suggested_skips_non_numeric_rows(tmp_path: Path) -> None:
 
     resolved = resolve_inflation(
         _suggested_plan(), today=date(2026, 2, 15), t10yie_path=csv
+    )
+
+    assert resolved.annual == pytest.approx(0.020)
+
+
+def test_refresh_does_not_call_fetcher_when_not_allowed(tmp_path: Path) -> None:
+    csv = _write_t10yie(tmp_path / "vendored.csv", ["2026-01-01,2.0"])
+    calls = 0
+
+    def fetcher(**kwargs):
+        nonlocal calls
+        calls += 1
+        return []
+
+    resolved = resolve_inflation(
+        _suggested_plan(),
+        today=date(2026, 1, 2),
+        t10yie_path=csv,
+        allow_refresh=False,
+        api_key="fred-key",
+        fetcher=fetcher,
+    )
+
+    assert resolved.annual == pytest.approx(0.020)
+    assert calls == 0
+
+
+def test_refresh_does_not_call_fetcher_without_api_key(tmp_path: Path) -> None:
+    csv = _write_t10yie(tmp_path / "vendored.csv", ["2026-01-01,2.0"])
+    calls = 0
+
+    def fetcher(**kwargs):
+        nonlocal calls
+        calls += 1
+        return []
+
+    resolve_inflation(
+        _suggested_plan(),
+        today=date(2026, 1, 2),
+        t10yie_path=csv,
+        allow_refresh=True,
+        api_key=None,
+        fetcher=fetcher,
+    )
+
+    assert calls == 0
+
+
+def test_refresh_writes_cache_and_uses_live_value_when_stale(tmp_path: Path) -> None:
+    vendored = _write_t10yie(tmp_path / "vendored.csv", ["2026-01-01,2.0"])
+    cache_path = tmp_path / "cache.csv"
+    meta_path = tmp_path / "cache.meta.json"
+    expected_percent = Decimal("2.50")
+
+    def fetcher(**kwargs):
+        return [(date(2026, 1, 3), expected_percent)]
+
+    resolved = resolve_inflation(
+        _suggested_plan(),
+        today=date(2026, 1, 4),
+        t10yie_path=vendored,
+        allow_refresh=True,
+        now=datetime(2026, 1, 4, 12, tzinfo=UTC),
+        api_key="fred-key",
+        fetcher=fetcher,
+        t10yie_cache_path=cache_path,
+        t10yie_meta_path=meta_path,
+    )
+
+    assert resolved.annual == pytest.approx(0.025)
+    assert cache_path.is_file()
+    assert meta_path.is_file()
+
+
+def test_refresh_failure_falls_back_to_vendored(tmp_path: Path) -> None:
+    vendored = _write_t10yie(tmp_path / "vendored.csv", ["2026-01-01,2.0"])
+    cache_path = tmp_path / "cache.csv"
+    meta_path = tmp_path / "cache.meta.json"
+
+    def fetcher(**kwargs):
+        raise RuntimeError("network unavailable")
+
+    resolved = resolve_inflation(
+        _suggested_plan(),
+        today=date(2026, 1, 4),
+        t10yie_path=vendored,
+        allow_refresh=True,
+        now=datetime(2026, 1, 4, 12, tzinfo=UTC),
+        api_key="fred-key",
+        fetcher=fetcher,
+        t10yie_cache_path=cache_path,
+        t10yie_meta_path=meta_path,
     )
 
     assert resolved.annual == pytest.approx(0.020)
