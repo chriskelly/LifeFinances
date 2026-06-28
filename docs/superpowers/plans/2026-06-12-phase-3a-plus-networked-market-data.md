@@ -8,6 +8,8 @@
 
 **Tech Stack:** Python 3.14, SQLite, Pydantic, FastAPI + Jinja2 + HTMX, urllib standard library, pytest, ruff, pyright.
 
+**Status:** Complete
+
 ---
 
 ## Spec And Scope
@@ -878,6 +880,7 @@ def test_fred_observations_builds_official_json_api_request() -> None:
     expected_key = "fred-request-key"
     observation_start = date(2026, 1, 1)
     payload = json.dumps({"observations": [{"date": "2026-01-02", "value": "2.35"}]})
+    timeout = 7.5
 
     def opener(request: Request, timeout: float):
         captured["url"] = request.full_url
@@ -887,7 +890,7 @@ def test_fred_observations_builds_official_json_api_request() -> None:
     pairs = fred_observations(
         api_key=expected_key,
         observation_start=observation_start,
-        timeout_seconds=7.5,
+        timeout_seconds=timeout,
         opener=opener,
     )
 
@@ -896,7 +899,7 @@ def test_fred_observations_builds_official_json_api_request() -> None:
     assert f"api_key={expected_key}" in str(captured["url"])
     assert "file_type=json" in str(captured["url"])
     assert f"observation_start={observation_start.isoformat()}" in str(captured["url"])
-    assert captured["timeout"] == 7.5
+    assert captured["timeout"] == timeout
 ```
 
 - [ ] **Step 8: Run request test and verify structural failure**
@@ -1680,21 +1683,9 @@ rm -f scripts/fetch_t10yie_poc.py
 
 Expected: no output. If the file was untracked, this simply removes scratch code from the workspace.
 
-- [ ] **Step 6: Manual live verification when FRED key is available**
+- [x] **Step 6: Manual live verification when FRED key is available**
 
-Ask the user for the FRED API key now if it has not already been entered in the local UI:
-
-> Please enter the FRED API key in the Settings section of the app, or tell me if you want me to insert it into the local `data/data.db` for this verification run.
-
-Then run:
-
-```bash
-uv run python scripts/refresh_market_data.py
-```
-
-Expected with a valid key: `Wrote T10YIE cache to .../data/market_cache/t10yie_daily.csv (latest YYYY-MM-DD)`.
-
-If no key is available, skip the live command and say in the final summary that live FRED verification was not run.
+Live FRED verification succeeded: `Wrote T10YIE cache to .../data/market_cache/t10yie_daily.csv (latest 2026-06-26)`.
 
 - [ ] **Step 7: Commit**
 

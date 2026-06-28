@@ -246,7 +246,7 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 
 ### Phase 3a+ — Simulation: networked market data *(optional)*
 
-**Plan file:** `2026-06-12-phase-3a-plus-networked-market-data.md` *(to write)*
+**Plan file:** `[2026-06-12-phase-3a-plus-networked-market-data.md](2026-06-12-phase-3a-plus-networked-market-data.md)` *(complete)*
 
 **Design spec:** [2026-06-28-phase-3a-plus-networked-market-data-design.md](../specs/2026-06-28-phase-3a-plus-networked-market-data-design.md)
 
@@ -258,10 +258,10 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 
 **Exit criteria:**
 
-- [ ] Suggested inflation best-effort auto-updates from the FRED JSON API when `allow_refresh` + key present + stale cache; vendored CSV remains the guaranteed fallback
-- [ ] Refresh is fail-silent and never blocks the simulation; `make test` stays network-free (injected fetcher, never `allow_refresh=True`)
-- [ ] Manual refresh CLI (`scripts/refresh_market_data.py`) warms the cache loudly; `--update-vendored` rewrites the committed CSV from a full-series fetch
-- [ ] API keys stored in `AppSettings` (singleton DB row), entered via a minimal masked web form; injected at the web/CLI boundary; never in plan JSON, plan export, git, or CI
+- [x] Suggested inflation best-effort auto-updates from the FRED JSON API when `allow_refresh` + key present + stale cache; vendored CSV remains the guaranteed fallback
+- [x] Refresh is fail-silent and never blocks the simulation; `make test` stays network-free (injected fetcher, never `allow_refresh=True`)
+- [x] Manual refresh CLI (`scripts/refresh_market_data.py`) warms the cache loudly; `--update-vendored` rewrites the committed CSV from a full-series fetch
+- [x] API keys stored in `AppSettings` (singleton DB row), entered via a minimal masked web form; injected at the web/CLI boundary; never in plan JSON, plan export, git, or CI
 
 **Not blocking:** Phase 3b may proceed without 3a+.
 
