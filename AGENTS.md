@@ -31,6 +31,7 @@ LifeFinances is a personal finances simulator rebuilt in 2026 (Python, TPAW mont
 ├── scripts/
 │   ├── init_db.py
 │   ├── db_inspect.py
+│   ├── refresh_market_data.py
 │   └── import_legacy_yaml.py
 ├── docs/superpowers/        # active specs and phase plans
 └── archive/                 # frozen legacy docs — ignore unless asked
@@ -53,6 +54,31 @@ uv run python scripts/init_db.py
 sqlite3 data/data.db ".schema"
 uv run python scripts/db_inspect.py --plan 1
 ```
+
+## Market data refresh
+
+Manual FRED `T10YIE` fetch for suggested inflation. The FRED API key is read from
+`AppSettings` in the local SQLite DB (enter it in the app Settings UI, or use
+`--db-path` to point at another DB). No `.env` is consulted.
+
+```bash
+# Warm the gitignored cache (30-day lookback)
+uv run python scripts/refresh_market_data.py
+
+# Use a specific database
+uv run python scripts/refresh_market_data.py --db-path data/data.db
+
+# Maintainer: full-series fetch → rewrite committed vendored CSV
+uv run python scripts/refresh_market_data.py --update-vendored
+```
+
+Default cache output: `data/market_cache/t10yie_daily.csv` (+ sidecar metadata).
+`--update-vendored` writes `packages/simulation/simulation/market_data/data/t10yie_daily.csv`
+and reminds you to update `PROVENANCE.md` before committing.
+
+Exit codes: `0` success, `1` no usable FRED observations, `2` FRED key not configured.
+
+See also: `docs/superpowers/specs/2026-06-28-phase-3a-plus-networked-market-data-design.md` §5.
 
 ## Commands
 

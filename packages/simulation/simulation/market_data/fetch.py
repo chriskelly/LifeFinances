@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from types import TracebackType
@@ -12,6 +13,8 @@ from urllib.request import Request, urlopen
 FRED_OBSERVATIONS_URL = "https://api.stlouisfed.org/fred/series/observations"
 FRED_T10YIE_SERIES_ID = "T10YIE"
 LOOKBACK_DAYS = 30
+
+logger = logging.getLogger(__name__)
 
 
 class _ReadableResponse(Protocol):
@@ -34,6 +37,13 @@ class UrlOpener(Protocol):
 
 
 def _default_opener(request: Request, timeout: float) -> _ResponseContext:
+    # Python's urllib uses its bundled cert bundle. On macOS that often fails HTTPS
+    # verification against public APIs (including FRED) because the interpreter does
+    # not automatically trust the OS keychain the way Safari does.
+    #
+    # truststore patches ssl to use the platform trust store when available. We import
+    # lazily and tolerate ImportError so simulation stays usable without this optional
+    # dev dependency — callers fall back to vendored data if the fetch fails.
     try:
         truststore = importlib.import_module("truststore")
     except ImportError:
@@ -45,7 +55,20 @@ def _default_opener(request: Request, timeout: float) -> _ResponseContext:
 
 
 def parse_fred_observations(payload: str) -> list[tuple[date, Decimal]]:
-    data = json.loads(payload)
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        logger.exception("FRED T10YIE response was not valid JSON")
+        raise
+
+    if "error_message" in data or "error_code" in data:
+        logger.warning(
+            "FRED API returned an error for %s: %s",
+            FRED_T10YIE_SERIES_ID,
+            data.get("error_message", data.get("error_code")),
+        )
+        return []
+
     pairs: list[tuple[date, Decimal]] = []
 
     for row in data.get("observations", []):
@@ -75,7 +98,21 @@ def fred_observations(
         params["observation_start"] = observation_start.isoformat()
 
     request = Request(f"{FRED_OBSERVATIONS_URL}?{urlencode(params)}")
-    with opener(request, timeout_seconds) as response:
-        payload = response.read().decode("utf-8")
+    try:
+        with opener(request, timeout_seconds) as response:
+            payload = response.read().decode("utf-8")
+        pairs = parse_fred_observations(payload)
+    except Exception:
+        logger.exception(
+            "FRED T10YIE fetch failed for series %s",
+            FRED_T10YIE_SERIES_ID,
+        )
+        raise
 
-    return parse_fred_observations(payload)
+    if not pairs:
+        logger.warning(
+            "FRED T10YIE fetch returned no usable observations for series %s",
+            FRED_T10YIE_SERIES_ID,
+        )
+
+    return pairs

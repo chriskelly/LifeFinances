@@ -106,6 +106,8 @@ def test_settings_section_never_echoes_stored_api_key(
     assert response.status_code == 200
     assert secret_key not in response.text
     assert "FRED API key is set" in response.text
+    assert "<button" in response.text
+    assert "Clear stored FRED API key" in response.text
 
 
 def test_blank_settings_patch_keeps_existing_key(client: TestClient, db_path) -> None:
@@ -123,7 +125,7 @@ def test_clear_settings_patch_removes_existing_key(client: TestClient, db_path) 
 
     response: httpx.Response = client.patch(
         PLAN_SETTINGS,
-        data={FRED_API_KEY: "", CLEAR_FRED_API_KEY: "on"},
+        data={CLEAR_FRED_API_KEY: "true"},
     )
 
     assert response.status_code == 200

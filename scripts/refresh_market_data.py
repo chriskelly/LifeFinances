@@ -1,4 +1,32 @@
 #!/usr/bin/env python3
+# Manual FRED T10YIE fetch for suggested inflation.
+#
+# Prerequisites:
+#   Configure a FRED API key in the app Settings UI. Keys live in the gitignored
+#   SQLite DB (data/data.db by default), not in plan JSON or git. Pass --db-path
+#   to use a different database.
+#
+# Usage:
+#   # Warm the gitignored cache (30-day lookback)
+#   uv run python scripts/refresh_market_data.py
+#
+#   # Maintainer: full-series fetch → rewrite committed vendored CSV
+#   uv run python scripts/refresh_market_data.py --update-vendored
+#   # Update PROVENANCE.md before committing vendored data changes.
+#
+# Options:
+#   --db-path PATH        SQLite DB with AppSettings (default: data/data.db)
+#   --cache-path PATH     Cache CSV (default: data/market_cache/t10yie_daily.csv)
+#   --meta-path PATH      Cache metadata JSON
+#   --vendored-path PATH  Target vendored CSV for --update-vendored
+#   --update-vendored     Fetch full series and write vendored CSV (maintainer only)
+#
+# Exit codes:
+#   0  Success
+#   1  FRED returned no usable observations
+#   2  FRED API key not configured in Settings
+#
+# See AGENTS.md and docs/superpowers/specs/2026-06-28-phase-3a-plus-networked-market-data-design.md §5.
 """Refresh live market-data cache from configured local API keys."""
 
 from __future__ import annotations

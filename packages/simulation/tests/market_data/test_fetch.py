@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date
 from decimal import Decimal
 from urllib.request import Request
 
+import pytest
 from simulation.market_data.fetch import (
     FRED_T10YIE_SERIES_ID,
     fred_observations,
@@ -75,3 +77,31 @@ def test_fred_observations_builds_official_json_api_request() -> None:
     assert "file_type=json" in str(captured["url"])
     assert f"observation_start={observation_start.isoformat()}" in str(captured["url"])
     assert captured["timeout"] == timeout
+
+
+def test_fred_observations_logs_fetch_failure(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.ERROR)
+
+    def opener(request: Request, timeout: float):
+        raise RuntimeError("network unavailable")
+
+    with pytest.raises(RuntimeError, match="network unavailable"):
+        fred_observations(
+            api_key="fred-request-key",
+            observation_start=date(2026, 1, 1),
+            opener=opener,
+        )
+
+    assert "FRED T10YIE fetch failed" in caplog.text
+
+
+def test_parse_fred_observations_logs_api_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.WARNING)
+    payload = json.dumps({"error_code": 400, "error_message": "Bad Request"})
+
+    pairs = parse_fred_observations(payload)
+
+    assert pairs == []
+    assert "FRED API returned an error" in caplog.text

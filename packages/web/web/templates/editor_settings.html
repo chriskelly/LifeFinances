@@ -19,11 +19,15 @@
         autocomplete="off"
       >
     </label>
-    {% if settings.fred_api_key %}
-    <label>
-      <input type="checkbox" name="{{ forms.CLEAR_FRED_API_KEY }}">
-      Clear stored FRED API key
-    </label>
-    {% endif %}
   </form>
+  {% if settings.fred_api_key %}
+  <form
+    hx-patch="{{ routes.PLAN_SETTINGS }}"
+    hx-trigger="submit"
+    hx-swap="none"
+  >
+    <input type="hidden" name="{{ forms.CLEAR_FRED_API_KEY }}" value="true">
+    <button type="submit">Clear stored FRED API key</button>
+  </form>
+  {% endif %}
 </section>
