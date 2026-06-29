@@ -1,0 +1,79 @@
+from __future__ import annotations
+
+import sys
+from datetime import date
+from decimal import Decimal
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = REPO_ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+
+from core.models import AppSettings  # noqa: E402
+from core.settings_repository import SettingsRepository  # noqa: E402
+
+import refresh_market_data  # noqa: E402
+
+
+def test_refresh_market_data_requires_configured_fred_key(db_path, capsys) -> None:
+    exit_code = refresh_market_data.main(["--db-path", str(db_path)])
+
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert "FRED API key is not configured" in captured.err
+
+
+def test_refresh_market_data_writes_cache_with_fake_fetcher(
+    tmp_path, db_path, capsys
+) -> None:
+    SettingsRepository(db_path=db_path).save(AppSettings(fred_api_key="fred-cli-key"))
+    cache_path = tmp_path / "t10yie_daily.csv"
+    meta_path = tmp_path / "t10yie_daily.meta.json"
+
+    def fetcher(**kwargs):
+        return [(date(2026, 6, 27), Decimal("2.35"))]
+
+    exit_code = refresh_market_data.main(
+        [
+            "--db-path",
+            str(db_path),
+            "--cache-path",
+            str(cache_path),
+            "--meta-path",
+            str(meta_path),
+        ],
+        fetcher=fetcher,
+    )
+
+    assert exit_code == 0
+    assert "2026-06-27" in cache_path.read_text(encoding="utf-8")
+    assert meta_path.is_file()
+    captured = capsys.readouterr()
+    assert "Wrote T10YIE cache" in captured.out
+
+
+def test_refresh_market_data_update_vendored_writes_target_path(
+    tmp_path, db_path, capsys
+) -> None:
+    SettingsRepository(db_path=db_path).save(AppSettings(fred_api_key="fred-cli-key"))
+    vendored_path = tmp_path / "t10yie_daily.csv"
+
+    def fetcher(**kwargs):
+        assert kwargs["observation_start"] is None
+        return [(date(2026, 6, 27), Decimal("2.35"))]
+
+    exit_code = refresh_market_data.main(
+        [
+            "--db-path",
+            str(db_path),
+            "--update-vendored",
+            "--vendored-path",
+            str(vendored_path),
+        ],
+        fetcher=fetcher,
+    )
+
+    assert exit_code == 0
+    assert "2026-06-27" in vendored_path.read_text(encoding="utf-8")
+    captured = capsys.readouterr()
+    assert "Update PROVENANCE.md" in captured.out

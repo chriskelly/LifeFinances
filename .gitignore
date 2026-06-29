@@ -5,6 +5,7 @@
 .worktrees/
 config.yml
 data/data.db
+data/market_cache/
 docs/ideas/
 docs/backlog/
 docs/active/

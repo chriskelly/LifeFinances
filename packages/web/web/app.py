@@ -6,6 +6,7 @@ from typing import Annotated
 
 from core.paths import default_db_path
 from core.repository import PlanRepository
+from core.settings_repository import SettingsRepository
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -15,13 +16,15 @@ from simulation.stub import run_simulation
 
 from web import forms, routes, sections
 from web.dependencies import get_repository
-from web.forms import HouseholdForm, PortfolioForm
+from web.forms import AppSettingsForm, HouseholdForm, PortfolioForm
 from web.routes import (
     EDITOR_HOUSEHOLD,
     EDITOR_PORTFOLIO,
+    EDITOR_SETTINGS,
     HOME,
     PLAN_HOUSEHOLD,
     PLAN_PORTFOLIO,
+    PLAN_SETTINGS,
     RESULTS,
 )
 
@@ -61,20 +64,24 @@ def get_repo(request: Request) -> PlanRepository:
     return get_repository(_resolve_db_path(request.app))
 
 
+def get_settings_repo(request: Request) -> SettingsRepository:
+    return SettingsRepository(db_path=_resolve_db_path(request.app))
+
+
 RepoDep = Annotated[PlanRepository, Depends(get_repo)]
+SettingsRepoDep = Annotated[SettingsRepository, Depends(get_settings_repo)]
 
 
-def create_app(*, db_path: Path | None = None) -> FastAPI:
-    app = FastAPI()
-    app.state.db_path = db_path
-
-    app.mount(
+def _mount_static(web_app: FastAPI) -> None:
+    web_app.mount(
         routes.STATIC,
         StaticFiles(directory=_PACKAGE_DIR / "static"),
         name="static",
     )
 
-    @app.get(HOME, response_class=HTMLResponse)
+
+def _register_home_route(web_app: FastAPI) -> None:
+    @web_app.get(HOME, response_class=HTMLResponse)
     def home(
         request: Request,
         repo: RepoDep,
@@ -88,14 +95,17 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
             )
 
         _, plan = repo.get_or_create_default()
+        settings = get_settings_repo(request).get()
         result = run_simulation(plan)
         return templates.TemplateResponse(
             request,
             "index.html",
-            {"plan": plan, "result": result},
+            {"plan": plan, "result": result, "settings": settings},
         )
 
-    @app.get(EDITOR_HOUSEHOLD, response_class=HTMLResponse)
+
+def _register_editor_routes(web_app: FastAPI) -> None:
+    @web_app.get(EDITOR_HOUSEHOLD, response_class=HTMLResponse)
     def editor_household(
         request: Request,
         repo: RepoDep,
@@ -107,7 +117,7 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
             {"plan": plan},
         )
 
-    @app.get(EDITOR_PORTFOLIO, response_class=HTMLResponse)
+    @web_app.get(EDITOR_PORTFOLIO, response_class=HTMLResponse)
     def editor_portfolio(
         request: Request,
         repo: RepoDep,
@@ -119,7 +129,21 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
             {"plan": plan},
         )
 
-    @app.patch(PLAN_HOUSEHOLD)
+    @web_app.get(EDITOR_SETTINGS, response_class=HTMLResponse)
+    def editor_settings(
+        request: Request,
+        settings_repo: SettingsRepoDep,
+    ) -> HTMLResponse:
+        settings = settings_repo.get()
+        return templates.TemplateResponse(
+            request,
+            "editor_settings.html",
+            {"settings": settings},
+        )
+
+
+def _register_patch_routes(web_app: FastAPI) -> None:
+    @web_app.patch(PLAN_HOUSEHOLD)
     def patch_household(
         person1_birth_month: Annotated[int, Form()],
         person1_birth_year: Annotated[int, Form()],
@@ -146,7 +170,7 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
         repo.save(plan_id, updated)
         return Response(status_code=200)
 
-    @app.patch(PLAN_PORTFOLIO)
+    @web_app.patch(PLAN_PORTFOLIO)
     def patch_portfolio(
         current_savings_balance: Annotated[Decimal, Form()],
         repo: RepoDep,
@@ -161,7 +185,23 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
         repo.save(plan_id, updated)
         return Response(status_code=200)
 
-    @app.get(RESULTS, response_class=HTMLResponse)
+    @web_app.patch(PLAN_SETTINGS)
+    def patch_settings(
+        settings_repo: SettingsRepoDep,
+        fred_api_key: Annotated[str | None, Form()] = None,
+        clear_fred_api_key: Annotated[bool, Form()] = False,
+    ) -> Response:
+        current = settings_repo.get()
+        updated = AppSettingsForm(
+            fred_api_key=fred_api_key,
+            clear_fred_api_key=clear_fred_api_key,
+        ).apply_to(current)
+        settings_repo.save(updated)
+        return Response(status_code=200)
+
+
+def _register_results_route(web_app: FastAPI) -> None:
+    @web_app.get(RESULTS, response_class=HTMLResponse)
     def results(
         request: Request,
         repo: RepoDep,
@@ -174,7 +214,18 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
             {"result": result},
         )
 
-    return app
+
+def create_app(*, db_path: Path | None = None) -> FastAPI:
+    web_app = FastAPI()
+    web_app.state.db_path = db_path
+
+    _mount_static(web_app)
+    _register_home_route(web_app)
+    _register_editor_routes(web_app)
+    _register_patch_routes(web_app)
+    _register_results_route(web_app)
+
+    return web_app
 
 
 app = create_app()

@@ -1,0 +1,33 @@
+<section class="editor-section">
+  <h2>{{ sections.SETTINGS_TITLE }}</h2>
+  <form
+    hx-patch="{{ routes.PLAN_SETTINGS }}"
+    hx-trigger="input changed delay:750ms"
+    hx-swap="none"
+  >
+    <p class="helper-text">
+      Optional local-only API keys for live market data. Keys are stored in your
+      gitignored SQLite database and are never included in plan data.
+    </p>
+    <label>
+      FRED API key
+      <input
+        type="password"
+        name="{{ forms.FRED_API_KEY }}"
+        value=""
+        placeholder="{% if settings.fred_api_key %}FRED API key is set{% else %}Paste FRED API key{% endif %}"
+        autocomplete="off"
+      >
+    </label>
+  </form>
+  {% if settings.fred_api_key %}
+  <form
+    hx-patch="{{ routes.PLAN_SETTINGS }}"
+    hx-trigger="submit"
+    hx-swap="none"
+  >
+    <input type="hidden" name="{{ forms.CLEAR_FRED_API_KEY }}" value="true">
+    <button type="submit">Clear stored FRED API key</button>
+  </form>
+  {% endif %}
+</section>

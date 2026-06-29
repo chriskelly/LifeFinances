@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from core.job import Job
 from core.social_security import PersonSocialSecurityConfig
@@ -16,6 +16,19 @@ DEFAULT_BLOCK_SIZE_MONTHS = 60  # tpaw blockSize.inMonths = 12 * 5
 DEFAULT_NUM_RUNS = 500  # tpaw numOfSimulationForMonteCarloSampling
 DEFAULT_STAGGER_RUN_STARTS = True  # tpaw staggerRunStarts
 DEFAULT_SAMPLING_SEED = 1_234_567  # LifeFinances default for reproducibility
+
+
+class AppSettings(BaseModel):
+    fred_api_key: str | None = None
+    eod_api_key: str | None = None
+
+    @field_validator("fred_api_key", "eod_api_key", mode="before")
+    @classmethod
+    def _blank_to_none(cls, value: object) -> object:
+        if isinstance(value, str):
+            stripped = value.strip()
+            return stripped or None
+        return value
 
 
 class SamplingConfig(BaseModel):

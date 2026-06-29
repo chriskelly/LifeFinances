@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from core.models import Household, PersonHousehold, Plan
+from core.models import AppSettings, Household, PersonHousehold, Plan
 from pydantic import BaseModel
 
 # Field-name constants for templates/tests — must match DTO field names
@@ -14,6 +14,8 @@ PERSON2_BIRTH_YEAR = "person2_birth_year"
 PERSON2_MAX_AGE_YEARS = "person2_max_age_years"
 HAS_PARTNER = "has_partner"
 CURRENT_SAVINGS_BALANCE = "current_savings_balance"
+FRED_API_KEY = "fred_api_key"
+CLEAR_FRED_API_KEY = "clear_fred_api_key"
 
 
 class HouseholdForm(BaseModel):
@@ -58,3 +60,19 @@ class PortfolioForm(BaseModel):
             update={"current_savings_balance": self.current_savings_balance}
         )
         return plan.model_copy(update={"portfolio": portfolio})
+
+
+class AppSettingsForm(BaseModel):
+    """Flat transport DTO for local app settings."""
+
+    fred_api_key: str | None = None
+    clear_fred_api_key: bool = False
+
+    def apply_to(self, settings: AppSettings) -> AppSettings:
+        if self.clear_fred_api_key:
+            return settings.model_copy(update={"fred_api_key": None})
+
+        key = self.fred_api_key.strip() if self.fred_api_key else ""
+        if key:
+            return settings.model_copy(update={"fred_api_key": key})
+        return settings
