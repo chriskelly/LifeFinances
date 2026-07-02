@@ -1,15 +1,24 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 
-from pydantic import BaseModel
+import numpy as np
+from pydantic import BaseModel, ConfigDict
 
-STUB_VERSION = "phase1"
+ENGINE_VERSION = "phase3b"
 
 
 class SimulationResult(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     ran_at: datetime
     horizon_months: int
-    echo: dict[str, Any]
-    stub_version: str = STUB_VERSION
+    num_runs: int
+    balance_start: np.ndarray
+    withdrawals_essential: np.ndarray
+    withdrawals_discretionary: np.ndarray
+    withdrawals_general: np.ndarray
+    withdrawals_total: np.ndarray
+    savings_stock_allocation: np.ndarray
+    num_runs_insufficient: int
+    engine_version: str = ENGINE_VERSION
