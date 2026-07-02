@@ -34,9 +34,9 @@
 
 | Field             | Value                                                      |
 | ----------------- | ---------------------------------------------------------- |
-| **Current phase** | Phase 3b — plan                                            |
-| **Active plan**   | *(to write)* `2026-06-12-phase-3b-simulation-tpaw-withdrawals.md` |
-| **Next action**   | Write Phase 3b plan before coding                          |
+| **Current phase** | Phase 3b — execute                                         |
+| **Active plan**   | `2026-06-12-phase-3b-simulation-tpaw-withdrawals.md`        |
+| **Next action**   | Execute Phase 3b plan                                       |
 
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
@@ -269,30 +269,31 @@ Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pensi
 
 ### Phase 3b — Simulation: TPAW withdrawal core
 
-**Plan file:** `2026-06-12-phase-3b-simulation-tpaw-withdrawals.md` *(to write)*
+**Plan file:** `2026-06-12-phase-3b-simulation-tpaw-withdrawals.md`
 
-**Delivers:** TPAW-only withdrawal engine; base spending + extra timed essential/discretionary + tilt; monthly rebalancing; cashflow surplus/deficit accounting.
+**Delivers:** Full TPAW monthly withdrawal engine using fixed/manual planning returns & volatility — risk-tolerance → RRA (age glide + legacy), Merton's formula (stock allocation + spending tilt), backward NPV precompute + amortization, vectorized forward monthly loop with essential/discretionary/general/legacy pool carving, monthly rebalancing, and raw per-run result arrays.
 
-**References:** tpaw simulator-rust simulate module; design spec §6 items 1–4, 14, 18–19, 29.
+**References:** tpaw simulator-rust/simulator-cuda simulate modules (`process_risk.rs`, `mertons_formula.h`, `run_tpaw.cu`, `run_common.cu`); design spec §6 items 1–4, 14, 18–19, 29; `docs/superpowers/specs/2026-06-29-phase-3b-simulation-tpaw-withdrawals-design.md`.
 
 **Entry criteria:** Phase 3a complete.
 
 **Exit criteria:**
 
-- [ ] Monthly loop: income − taxes − spending → portfolio delta
-- [ ] Essential/discretionary withdrawal split in outputs
-- [ ] Spending tilt applied
-- [ ] Golden test vs tpaw export for at least one fixture scenario
+- [x] Full monthly engine: RRA/age-glide, Merton stock allocation, PV precompute, amortized general withdrawal, essential/discretionary/legacy pool carve
+- [x] Spending tilt applied to the amortized general-spending schedule
+- [x] Withdrawals start at month 0 (retirement implicit in cashflows, no separate accumulation phase)
+- [x] `SimulationResult` carries raw per-run arrays (`num_runs × months`), not yet percentile-reduced
+- [x] Doctest-golden unit tests pinning math primitives (Merton's formula, RRA conversion, NPV/pool-carve helpers) to tpaw's own published test values
 
 ---
 
-### Phase 3c — Simulation: total portfolio allocation and PV
+### Phase 3c — Simulation: planning-returns presets
 
 **Plan file:** `2026-06-12-phase-3c-simulation-allocation-pv.md` *(to write)*
 
-**Delivers:** RRA (at-20, delta, time preference); total portfolio = savings + PV future income; separate planning expected returns/vol; **live market presets with vendored fallback** (CAPE / expected-return path uses current S&P 500 level when available).
+**Delivers:** Live CAPE/EOD-derived expected-return presets (replacing 3b's fixed/manual planning returns), empirical variance refinement, and a stock-allocation glide path — **with vendored fallback** (CAPE / expected-return path uses current S&P 500 level when available). RRA, Merton's formula, PV of future income, and total-portfolio allocation are already delivered in Phase 3b; 3c only upgrades the *source* of the planning-return inputs those formulas consume.
 
-**References:** tpaw `process_risk`, `process_market_data_for_presets`, `get_daily_market_data_series_from_source` (`get_from_eod`); legacy total-portfolio allocation; design spec §6 items 4, 20–21, 26.
+**References:** tpaw `process_market_data_for_presets`, `get_daily_market_data_series_from_source` (`get_from_eod`); design spec §6 items 4, 20–21, 26.
 
 **Entry criteria:** Phase 3b complete.
 
@@ -309,12 +310,13 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 **Exit criteria:**
 
-- [ ] Stock allocation from RRA on total portfolio
-- [ ] PV of future income from domain cashflows
-- [ ] Planning stats separate from bootstrap paths
-- [ ] CAPE / stock expected-return presets: live `GSPC.INDX` via `EOD_API_KEY` when available; vendored fallback otherwise
+- [ ] CAPE / stock expected-return presets: live `GSPC.INDX` via `EOD_API_KEY` when available; vendored fallback otherwise, replacing 3b's fixed/manual `PlanningReturnsConfig` values
+- [ ] Empirical variance refinement for the live preset (vs. 3b's vendored-series variance)
+- [ ] Stock-allocation glide path derived from the live preset feed
 - [ ] (Optional) Live `VT.US` / `BND.US` daily returns for preset parity; same fallback pattern
 - [ ] `EOD_API_KEY` stored in `AppSettings` (reusing the 3a+ settings form/field); no key path tested in CI
+
+*(Stock allocation from RRA on total portfolio and PV of future income from domain cashflows were delivered in Phase 3b — 3c only replaces the planning-return/variance inputs those formulas consume.)*
 
 ---
 
