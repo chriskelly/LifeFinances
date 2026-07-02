@@ -198,4 +198,4 @@ def test_results_echoes_updated_balance(client: TestClient) -> None:
     response: httpx.Response = client.get(RESULTS)
 
     assert response.status_code == 200
-    assert str(expected_balance) in response.text
+    assert str(float(expected_balance)) in response.text
