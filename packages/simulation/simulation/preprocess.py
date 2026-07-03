@@ -71,6 +71,16 @@ def preprocess(plan: Plan, *, today: date | None = None) -> ProcessedPlan:
         )
     inflation = resolve_inflation(plan, today=today)
     planning = resolve_planning_returns(plan)
+    if 1.0 + planning.annual_bonds <= 0.0:
+        raise ValueError(
+            f"planning annual bond return {planning.annual_bonds} implies "
+            "total loss or worse (1 + rate <= 0); cannot compound monthly"
+        )
+    if 1.0 + planning.annual_stocks <= 0.0:
+        raise ValueError(
+            f"planning annual stock return {planning.annual_stocks} implies "
+            "total loss or worse (1 + rate <= 0); cannot compound monthly"
+        )
 
     # Real conversion: divide month t nominal by (1 + monthly_inflation) ** t.
     deflator = (1.0 + inflation.monthly) ** np.arange(months, dtype=np.float64)
@@ -124,16 +134,6 @@ def preprocess(plan: Plan, *, today: date | None = None) -> ProcessedPlan:
         annual_additional_spending_tilt=0.0,
     ).stock_allocation
 
-    if 1.0 + planning.annual_bonds <= 0.0:
-        raise ValueError(
-            f"planning annual bond return {planning.annual_bonds} implies "
-            "total loss or worse (1 + rate <= 0); cannot compound monthly"
-        )
-    if 1.0 + planning.annual_stocks <= 0.0:
-        raise ValueError(
-            f"planning annual stock return {planning.annual_stocks} implies "
-            "total loss or worse (1 + rate <= 0); cannot compound monthly"
-        )
     monthly_bonds = (1.0 + planning.annual_bonds) ** (1.0 / 12.0) - 1.0
     monthly_stocks = (1.0 + planning.annual_stocks) ** (1.0 / 12.0) - 1.0
     one_over_1p_bonds = 1.0 / (1.0 + monthly_bonds)

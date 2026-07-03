@@ -57,24 +57,6 @@ def carve_pools(
     return discretionary, legacy, general
 
 
-def precomputation_general_pool(
-    *,
-    wealth: FloatOrArray,
-    npv_essential: FloatOrArray,
-    npv_discretionary: FloatOrArray,
-    npv_legacy: FloatOrArray,
-    scale_discretionary: FloatOrArray,
-    scale_legacy: FloatOrArray,
-) -> FloatOrArray:
-    _, _, general = carve_pools(
-        wealth=wealth,
-        essential_reserve=npv_essential,
-        discretionary_reserve=npv_discretionary * scale_discretionary,
-        legacy_reserve=npv_legacy * scale_legacy,
-    )
-    return general
-
-
 def target_general_withdrawal(
     *,
     general_pool: FloatOrArray,

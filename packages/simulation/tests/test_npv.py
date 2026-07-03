@@ -3,7 +3,6 @@ import pytest
 from simulation.npv import (
     carve_pools,
     expenses_scale_for_normal_run,
-    precomputation_general_pool,
     target_general_withdrawal,
 )
 
@@ -54,19 +53,18 @@ def test_expenses_scale_clamped_to_zero():
 
 
 def test_general_pool_is_wealth_minus_constrained_spending():
-    # essential then discretionary*scale then legacy*scale, each clamped to balance.
+    # essential then discretionary then legacy, each clamped to balance; with
+    # all reserves zero, the entire wealth flows through to the general pool.
     wealth = 150000.0
 
-    pool = precomputation_general_pool(
+    _, _, general = carve_pools(
         wealth=wealth,
-        npv_essential=0.0,
-        npv_discretionary=0.0,
-        npv_legacy=0.0,
-        scale_discretionary=1.0,
-        scale_legacy=1.0,
+        essential_reserve=0.0,
+        discretionary_reserve=0.0,
+        legacy_reserve=0.0,
     )
 
-    assert pool == pytest.approx(wealth, abs=TOL)
+    assert general == pytest.approx(wealth, abs=TOL)
 
 
 def test_target_general_withdrawal_amortizes_pool():

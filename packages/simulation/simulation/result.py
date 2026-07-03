@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, ClassVar
+from typing import Any
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -33,8 +33,6 @@ class SimulationResult(BaseModel):
     num_runs_insufficient: int
     engine_version: str = ENGINE_VERSION
 
-    _array_fields: ClassVar[tuple[str, ...]] = _ARRAY_FIELDS
-
     def __eq__(self, other: Any) -> bool:
         # Pydantic's generated __eq__ compares fields with `==`, which raises
         # on np.ndarray fields ("truth value of an array is ambiguous").
@@ -43,10 +41,10 @@ class SimulationResult(BaseModel):
             return NotImplemented
         if not all(
             np.array_equal(getattr(self, field), getattr(other, field))
-            for field in self._array_fields
+            for field in _ARRAY_FIELDS
         ):
             return False
-        scalar_fields = set(type(self).model_fields) - set(self._array_fields)
+        scalar_fields = set(type(self).model_fields) - set(_ARRAY_FIELDS)
         return all(
             getattr(self, field) == getattr(other, field) for field in scalar_fields
         )

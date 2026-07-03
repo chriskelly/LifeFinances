@@ -127,17 +127,18 @@ def test_insufficient_funds_are_flagged_and_withdrawals_stay_clamped():
     # be clamped to what's actually available (non-negative, balance never
     # goes negative to fund the shortfall).
     months = 3
+    num_runs = 1
     starting_balance = 10.0
     current_essential = 1000.0
     essential_real = np.full(months, current_essential, dtype=np.float64)
     processed = _flat_processed(
         months, starting_balance=starting_balance, essential_real=essential_real
     )
-    z = np.zeros((1, months), dtype=np.float64)
+    z = np.zeros((num_runs, months), dtype=np.float64)
 
     result = simulate_monthly(processed, stocks_return=z, bonds_return=z.copy())
 
-    assert result.num_runs_insufficient == 1
+    assert result.num_runs_insufficient == num_runs
     assert np.all(result.withdrawals_essential >= 0.0)
     assert np.all(result.withdrawals_discretionary >= 0.0)
     assert np.all(result.withdrawals_general >= 0.0)
