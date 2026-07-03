@@ -12,30 +12,15 @@ from datetime import datetime
 
 import numpy as np
 
+from simulation.npv import (
+    carve_pools,
+    expenses_scale_for_normal_run,
+    target_general_withdrawal,
+)
 from simulation.preprocess import ProcessedPlan
 from simulation.result import SimulationResult
 
 _SAVINGS_FLOOR = 1e-5  # tpaw _get_stock_allocation limit as savings balance → 0
-
-
-def _carve_pools(
-    *,
-    wealth,
-    essential_reserve,
-    discretionary_reserve,
-    legacy_reserve,
-):
-    """`AccountForWithdrawal` carve: draw each reserve clamped to the running
-    balance (essential → discretionary → legacy), returning the constrained
-    (discretionary, legacy, general) pools. Works elementwise on floats or arrays.
-    Mirrors tpaw's `_NPVSpendingScaledAndConstrainedToWealth` construction.
-    """
-    remaining = np.maximum(0.0, wealth - np.minimum(wealth, essential_reserve))
-    discretionary = np.minimum(remaining, discretionary_reserve)
-    remaining = np.maximum(0.0, remaining - discretionary)
-    legacy = np.minimum(remaining, legacy_reserve)
-    general = np.maximum(0.0, remaining - legacy)
-    return discretionary, legacy, general
 
 
 def _stock_fraction(
@@ -53,7 +38,7 @@ def _stock_fraction(
     """
     savings_balance = np.maximum(balance_after_withdrawals, _SAVINGS_FLOOR)
     base = savings_balance + processed.npv_income_without_current[month]
-    discretionary, legacy, general = _carve_pools(
+    discretionary, legacy, general = carve_pools(
         wealth=base,
         essential_reserve=processed.npv_essential_without_current[month],
         discretionary_reserve=(
@@ -65,13 +50,6 @@ def _stock_fraction(
     legacy_alloc = processed.legacy_stock_allocation
     stocks_target = legacy * legacy_alloc + (discretionary + general) * alloc
     return np.clip(stocks_target / savings_balance, 0.0, 1.0)
-
-
-def _general_target(processed: ProcessedPlan, month: int, general_pool):
-    cumulative = processed.cumulative_1_plus_g_over_1_plus_r[month]
-    if cumulative == 0.0:
-        return general_pool * 0.0  # preserves scalar/array shape
-    return general_pool / cumulative
 
 
 def _expected_run(
@@ -102,7 +80,7 @@ def _expected_run(
         scheduled_wealth[month] = wealth
 
         # Wealth-based pools (current month included), scale = 1 on the expected run.
-        discretionary_pool, legacy_pool, general_pool = _carve_pools(
+        discretionary_pool, legacy_pool, general_pool = carve_pools(
             wealth=wealth,
             essential_reserve=(
                 processed.npv_essential_without_current[month] + current_essential
@@ -128,7 +106,12 @@ def _expected_run(
             elasticity_legacy[month] = legacy_alloc / elasticity_wealth
 
         # Target withdrawals then advance the balance at planning returns.
-        target_general = _general_target(processed, month, general_pool)
+        target_general = target_general_withdrawal(
+            general_pool=general_pool,
+            cumulative_1_plus_g_over_1_plus_r=processed.cumulative_1_plus_g_over_1_plus_r[
+                month
+            ],
+        )
         avail = balance + income
         avail -= min(avail, current_essential)
         avail -= min(avail, current_discretionary)
@@ -181,15 +164,17 @@ def simulate_monthly(
         wealth = balance + processed.npv_income_without_current[month] + income
 
         # Elasticity scaling of discretionary/legacy goals vs. the scheduled run.
-        if scheduled_wealth[month] == 0.0:
-            p_increase = np.zeros(num_runs, dtype=np.float64)
-        else:
-            p_increase = wealth / scheduled_wealth[month] - 1.0
-        scale_disc = np.maximum(0.0, p_increase * elast_disc[month] + 1.0)
-        scale_legacy = np.maximum(0.0, p_increase * elast_legacy[month] + 1.0)
+        scale = expenses_scale_for_normal_run(
+            wealth=wealth,
+            scheduled_wealth=scheduled_wealth[month],
+            elasticity_discretionary=elast_disc[month],
+            elasticity_legacy=elast_legacy[month],
+        )
+        scale_disc = scale.discretionary
+        scale_legacy = scale.legacy
 
         # Wealth-based pools (current month included) → general pool to amortize.
-        _, _, general_pool = _carve_pools(
+        _, _, general_pool = carve_pools(
             wealth=wealth,
             essential_reserve=(
                 processed.npv_essential_without_current[month] + current_essential
@@ -204,7 +189,12 @@ def simulate_monthly(
 
         target_essential = current_essential
         target_discretionary = current_discretionary * scale_disc
-        target_general = _general_target(processed, month, general_pool)
+        target_general = target_general_withdrawal(
+            general_pool=general_pool,
+            cumulative_1_plus_g_over_1_plus_r=processed.cumulative_1_plus_g_over_1_plus_r[
+                month
+            ],
+        )
 
         # Contributions + withdrawals (each draw clamped to the running balance).
         avail = balance + income

@@ -2,54 +2,87 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from simulation.withdrawals import _withdraw
+import numpy as np
+
+FloatOrArray = float | np.ndarray
 
 
 @dataclass(frozen=True)
 class ExpensesScale:
-    discretionary: float
-    legacy: float
+    discretionary: FloatOrArray
+    legacy: FloatOrArray
 
 
 def expenses_scale_for_normal_run(
     *,
-    wealth: float,
+    wealth: FloatOrArray,
     scheduled_wealth: float,
     elasticity_discretionary: float,
     elasticity_legacy: float,
 ) -> ExpensesScale:
+    """Scale discretionary/legacy goals by how this run's wealth compares to
+    the scheduled (expected-run) wealth. `scheduled_wealth` and the
+    elasticities are always per-month scalars; `wealth` may be a scalar (the
+    expected run) or a per-run array (normal runs), and the result shape
+    follows `wealth`.
+    """
     if scheduled_wealth == 0.0:
         p_increase = 0.0
     else:
         p_increase = wealth / scheduled_wealth - 1.0
     return ExpensesScale(
-        discretionary=max(0.0, p_increase * elasticity_discretionary + 1.0),
-        legacy=max(0.0, p_increase * elasticity_legacy + 1.0),
+        discretionary=np.maximum(0.0, p_increase * elasticity_discretionary + 1.0),
+        legacy=np.maximum(0.0, p_increase * elasticity_legacy + 1.0),
     )
+
+
+def carve_pools(
+    *,
+    wealth: FloatOrArray,
+    essential_reserve: FloatOrArray,
+    discretionary_reserve: FloatOrArray,
+    legacy_reserve: FloatOrArray,
+) -> tuple[FloatOrArray, FloatOrArray, FloatOrArray]:
+    """`AccountForWithdrawal` carve: draw each reserve clamped to the running
+    balance (essential -> discretionary -> legacy), returning the constrained
+    (discretionary, legacy, general) pools. Works elementwise on floats or
+    arrays. Mirrors tpaw's `_NPVSpendingScaledAndConstrainedToWealth`
+    construction.
+    """
+    remaining = np.maximum(0.0, wealth - np.minimum(wealth, essential_reserve))
+    discretionary = np.minimum(remaining, discretionary_reserve)
+    remaining = np.maximum(0.0, remaining - discretionary)
+    legacy = np.minimum(remaining, legacy_reserve)
+    general = np.maximum(0.0, remaining - legacy)
+    return discretionary, legacy, general
 
 
 def precomputation_general_pool(
     *,
-    wealth: float,
-    npv_essential: float,
-    npv_discretionary: float,
-    npv_legacy: float,
-    scale_discretionary: float,
-    scale_legacy: float,
-) -> float:
-    balance = wealth
-    _, balance = _withdraw(balance, npv_essential)
-    _, balance = _withdraw(balance, npv_discretionary * scale_discretionary)
-    _, balance = _withdraw(balance, npv_legacy * scale_legacy)
-    return balance
+    wealth: FloatOrArray,
+    npv_essential: FloatOrArray,
+    npv_discretionary: FloatOrArray,
+    npv_legacy: FloatOrArray,
+    scale_discretionary: FloatOrArray,
+    scale_legacy: FloatOrArray,
+) -> FloatOrArray:
+    _, _, general = carve_pools(
+        wealth=wealth,
+        essential_reserve=npv_essential,
+        discretionary_reserve=npv_discretionary * scale_discretionary,
+        legacy_reserve=npv_legacy * scale_legacy,
+    )
+    return general
 
 
 def target_general_withdrawal(
     *,
-    withdrawal_started: bool,
-    general_pool: float,
+    general_pool: FloatOrArray,
     cumulative_1_plus_g_over_1_plus_r: float,
-) -> float:
-    if not withdrawal_started:
-        return 0.0
+    withdrawal_started: bool = True,
+) -> FloatOrArray:
+    # `general_pool * 0.0` (rather than a bare `0.0`) preserves the
+    # scalar/array shape of `general_pool` for the vectorized forward loop.
+    if not withdrawal_started or cumulative_1_plus_g_over_1_plus_r == 0.0:
+        return general_pool * 0.0
     return general_pool / cumulative_1_plus_g_over_1_plus_r

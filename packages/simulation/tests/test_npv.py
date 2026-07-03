@@ -1,5 +1,7 @@
+import numpy as np
 import pytest
 from simulation.npv import (
+    carve_pools,
     expenses_scale_for_normal_run,
     precomputation_general_pool,
     target_general_withdrawal,
@@ -92,3 +94,78 @@ def test_target_general_zero_before_withdrawal_start():
     )
 
     assert result == 0.0
+
+
+def test_target_general_defaults_to_withdrawal_started():
+    general_pool = 50000.0
+    cumulative = 0.05
+
+    result = target_general_withdrawal(
+        general_pool=general_pool,
+        cumulative_1_plus_g_over_1_plus_r=cumulative,
+    )
+
+    assert result == pytest.approx(general_pool / cumulative, abs=TOL)
+
+
+def test_target_general_zero_when_cumulative_factor_is_zero():
+    # Guards a division-by-zero that would otherwise crash the very first
+    # simulated month, where the cumulative discount factor starts at 0.
+    general_pool = 50000.0
+    cumulative_zero = 0.0
+
+    result = target_general_withdrawal(
+        general_pool=general_pool,
+        cumulative_1_plus_g_over_1_plus_r=cumulative_zero,
+    )
+
+    assert result == 0.0
+
+
+def test_carve_pools_draws_essential_then_discretionary_then_legacy_in_order():
+    wealth = 100.0
+    essential_reserve = 30.0
+    discretionary_reserve = 50.0
+    legacy_reserve = 40.0
+
+    discretionary, legacy, general = carve_pools(
+        wealth=wealth,
+        essential_reserve=essential_reserve,
+        discretionary_reserve=discretionary_reserve,
+        legacy_reserve=legacy_reserve,
+    )
+
+    remaining_after_essential = wealth - essential_reserve
+    expected_discretionary = min(remaining_after_essential, discretionary_reserve)
+    remaining_after_discretionary = remaining_after_essential - expected_discretionary
+    expected_legacy = min(remaining_after_discretionary, legacy_reserve)
+    expected_general = remaining_after_discretionary - expected_legacy
+    assert discretionary == pytest.approx(expected_discretionary, abs=TOL)
+    assert legacy == pytest.approx(expected_legacy, abs=TOL)
+    assert general == pytest.approx(expected_general, abs=TOL)
+
+
+def test_carve_pools_is_array_safe():
+    wealth = np.array([100.0, 10.0])
+    essential_reserve = 30.0
+    discretionary_reserve = 50.0
+    legacy_reserve = 40.0
+
+    discretionary, legacy, general = carve_pools(
+        wealth=wealth,
+        essential_reserve=essential_reserve,
+        discretionary_reserve=discretionary_reserve,
+        legacy_reserve=legacy_reserve,
+    )
+    discretionary = np.asarray(discretionary)
+    legacy = np.asarray(legacy)
+    general = np.asarray(general)
+
+    assert discretionary.shape == wealth.shape
+    assert legacy.shape == wealth.shape
+    assert general.shape == wealth.shape
+    # The second run has less wealth than the essential reserve alone, so
+    # every downstream pool must clamp to zero rather than go negative.
+    assert discretionary[1] == pytest.approx(0.0, abs=TOL)
+    assert legacy[1] == pytest.approx(0.0, abs=TOL)
+    assert general[1] == pytest.approx(0.0, abs=TOL)

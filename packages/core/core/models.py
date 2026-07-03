@@ -154,4 +154,7 @@ class Plan(BaseModel):
     )
     extra_essential_spending: list[TimedStream] = Field(default_factory=list)
     extra_discretionary_spending: list[TimedStream] = Field(default_factory=list)
+    # Interpreted as already-real (today's dollars) by the simulation engine —
+    # unlike every other spending/income stream on this model, it is NOT
+    # inflation-adjusted before being discounted.
     legacy_target: Decimal = Field(default=Decimal(0), ge=0)

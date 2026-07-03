@@ -43,6 +43,9 @@ def _interpolate_risk_tolerance(
         return max(0.0, at_20)
     at_max = at_20 + float(config.delta_at_max_age)
     fraction = (age_months - 20.0 * 12.0) / (max_age_months - 20.0 * 12.0)
+    # Clamp so the glide plateaus at `at_max` once the horizon-defining
+    # person reaches max age, rather than extrapolating past it.
+    fraction = min(1.0, max(0.0, fraction))
     return max(0.0, at_20 + (at_max - at_20) * fraction)
 
 
@@ -68,4 +71,7 @@ def legacy_rra(config: RiskConfig) -> float:
     risk_tolerance = float(config.risk_tolerance_at_20) + float(
         config.legacy_delta_from_at_20
     )
-    return risk_tolerance_to_rra(risk_tolerance)
+    # Floor at 0 (infinite RRA / 0% stocks), matching the age-glide path's
+    # clamp — a sufficiently negative legacy delta must not extrapolate the
+    # log-scale formula past its calibrated [0, 24] range.
+    return risk_tolerance_to_rra(max(0.0, risk_tolerance))

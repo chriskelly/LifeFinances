@@ -14,7 +14,7 @@ from datetime import date
 import numpy as np
 from core.models import PersonHousehold, Plan
 from core.streams import TimedStream
-from core.timeline import Timeline, project_stream
+from core.timeline import Timeline, person_end_date, project_stream
 
 from domain import build_monthly_cashflows
 from simulation.market_data import resolve_inflation
@@ -64,9 +64,11 @@ def preprocess(plan: Plan, *, today: date | None = None) -> ProcessedPlan:
     months = timeline.horizon_months
 
     cashflows = build_monthly_cashflows(plan, today=today)
-    assert len(cashflows.net_cashflow) == months, (
-        "domain cashflow horizon must match core.timeline horizon"
-    )
+    if len(cashflows.net_cashflow) != months:
+        raise ValueError(
+            "domain cashflow horizon must match core.timeline horizon: "
+            f"got {len(cashflows.net_cashflow)}, expected {months}"
+        )
     inflation = resolve_inflation(plan, today=today)
     planning = resolve_planning_returns(plan)
 
@@ -81,9 +83,13 @@ def preprocess(plan: Plan, *, today: date | None = None) -> ProcessedPlan:
         _sum_streams(plan.extra_discretionary_spending, timeline) / deflator
     )
 
-    # Per-month RRA from the longer-lived person's age glide.
+    # Per-month RRA from the longer-lived person's age glide. "Longer-lived"
+    # must match core.timeline.horizon_months's own criterion (latest
+    # birth_year + max_age_years), not raw max_age_years alone — two people
+    # with different birth years can have the higher max_age_years but the
+    # earlier absolute end date.
     people = plan.household.people
-    longer = max(people, key=lambda p: p.max_age_years)
+    longer = max(people, key=person_end_date)
     rra = rra_by_month(
         plan.risk,
         num_months=months,
@@ -118,6 +124,16 @@ def preprocess(plan: Plan, *, today: date | None = None) -> ProcessedPlan:
         annual_additional_spending_tilt=0.0,
     ).stock_allocation
 
+    if 1.0 + planning.annual_bonds <= 0.0:
+        raise ValueError(
+            f"planning annual bond return {planning.annual_bonds} implies "
+            "total loss or worse (1 + rate <= 0); cannot compound monthly"
+        )
+    if 1.0 + planning.annual_stocks <= 0.0:
+        raise ValueError(
+            f"planning annual stock return {planning.annual_stocks} implies "
+            "total loss or worse (1 + rate <= 0); cannot compound monthly"
+        )
     monthly_bonds = (1.0 + planning.annual_bonds) ** (1.0 / 12.0) - 1.0
     monthly_stocks = (1.0 + planning.annual_stocks) ** (1.0 / 12.0) - 1.0
     one_over_1p_bonds = 1.0 / (1.0 + monthly_bonds)

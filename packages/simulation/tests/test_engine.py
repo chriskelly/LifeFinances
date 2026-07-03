@@ -95,3 +95,52 @@ def test_current_month_essential_is_reserved_before_general_pool():
     assert result.withdrawals_general[0, 0] == pytest.approx(expected_general_month_0)
     # Nothing is left unaccounted: essential + both general draws == starting balance.
     assert result.withdrawals_total.sum() == pytest.approx(starting_balance)
+
+
+def test_higher_starting_balance_implies_higher_general_withdrawal():
+    # End-to-end sanity check promised by the design spec: a wealthier plan
+    # must never withdraw *less* from the general pool in any month.
+    months = 6
+    lower_balance = 100_000.0
+    higher_balance = 200_000.0
+    z = np.zeros((1, months), dtype=np.float64)
+
+    lower_result = simulate_monthly(
+        _flat_processed(months, starting_balance=lower_balance),
+        stocks_return=z,
+        bonds_return=z.copy(),
+    )
+    higher_result = simulate_monthly(
+        _flat_processed(months, starting_balance=higher_balance),
+        stocks_return=z,
+        bonds_return=z.copy(),
+    )
+
+    assert np.all(
+        higher_result.withdrawals_general[0] >= lower_result.withdrawals_general[0]
+    )
+
+
+def test_insufficient_funds_are_flagged_and_withdrawals_stay_clamped():
+    # A starting balance far below the essential-expense schedule must run out
+    # of money: flagged via num_runs_insufficient, and withdrawals must still
+    # be clamped to what's actually available (non-negative, balance never
+    # goes negative to fund the shortfall).
+    months = 3
+    starting_balance = 10.0
+    current_essential = 1000.0
+    essential_real = np.full(months, current_essential, dtype=np.float64)
+    processed = _flat_processed(
+        months, starting_balance=starting_balance, essential_real=essential_real
+    )
+    z = np.zeros((1, months), dtype=np.float64)
+
+    result = simulate_monthly(processed, stocks_return=z, bonds_return=z.copy())
+
+    assert result.num_runs_insufficient == 1
+    assert np.all(result.withdrawals_essential >= 0.0)
+    assert np.all(result.withdrawals_discretionary >= 0.0)
+    assert np.all(result.withdrawals_general >= 0.0)
+    assert np.all(result.balance_start >= 0.0)
+    # Nothing is ever withdrawn beyond that month's available balance + income.
+    assert np.all(result.withdrawals_total[0] <= result.balance_start[0])

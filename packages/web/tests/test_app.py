@@ -1,6 +1,8 @@
+import re
 from decimal import Decimal
 
 import httpx2 as httpx
+import pytest
 from core.defaults import DEFAULT_PLAN_NAME, default_plan
 from core.models import AppSettings
 from core.repository import PlanRepository
@@ -198,4 +200,6 @@ def test_results_echoes_updated_balance(client: TestClient) -> None:
     response: httpx.Response = client.get(RESULTS)
 
     assert response.status_code == 200
-    assert str(float(expected_balance)) in response.text
+    match = re.search(r"Starting balance: ([\d.eE+-]+)", response.text)
+    assert match is not None, response.text
+    assert float(match.group(1)) == pytest.approx(float(expected_balance))

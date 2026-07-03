@@ -58,3 +58,18 @@ def test_legacy_rra_uses_legacy_delta():
     assert legacy_rra(config) == risk_tolerance_to_rra(
         float(risk_tolerance_at_20 + legacy_delta_from_at_20)
     )
+
+
+def test_legacy_rra_floors_at_zero_tolerance_for_extreme_negative_delta():
+    # A legacy delta that would push tolerance below 0 must floor at 0
+    # (infinite RRA / 0% stocks), matching _interpolate_risk_tolerance's
+    # clamp, rather than extrapolating the log-scale formula past its
+    # calibrated range.
+    risk_tolerance_at_20 = Decimal(12)
+    legacy_delta_from_at_20 = Decimal(-20)
+    config = RiskConfig(
+        risk_tolerance_at_20=risk_tolerance_at_20,
+        legacy_delta_from_at_20=legacy_delta_from_at_20,
+    )
+
+    assert legacy_rra(config) == risk_tolerance_to_rra(0.0)
