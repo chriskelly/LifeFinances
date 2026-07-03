@@ -344,7 +344,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 **Plan file:** `2026-06-12-phase-4-web-ui.md` *(to write)*
 
-**Delivers:** All editor sections, full tpaw chart set in results panel, multiple named plans, legacy YAML import script.
+**Delivers:** All editor sections, full tpaw chart set in results panel, multiple named plans, legacy YAML import script, **Launcher** (double-click `.command` → `init_db` + uvicorn + browser).
 
 **References:** Design spec §4, §6 items 24–25, 28.
 
@@ -357,6 +357,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 - [ ] Plan create/switch/duplicate
 - [ ] `scripts/import_legacy_yaml.py` with documented gaps
 - [ ] Investigate generated flat form DTOs from `core.models` (`create_model` + prefixed `model_fields`) if hand-written section forms become unwieldy
+- [ ] Launcher: `scripts/LifeFinances.command` — double-clickable launcher (no bundling; requires `uv` + repo checkout), `init_db`, ephemeral port, `open` browser, foreground uvicorn
 
 *May split into Phase 4a (editor) and Phase 4b (charts) if context requires.*
 
@@ -387,6 +388,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 | -------------------------------------------------- | ------------------------------ |
 | Legacy YAML import                                 | 4                              |
 | `import_legacy_yaml.py`                            | 4                              |
+| `scripts/LifeFinances.command` (Launcher)  | 4                              |
 | `packages/simulation/OVERVIEW.md` parity checklist | 3b onward, updated per feature |
 | `FRED_API_KEY` / `EOD_API_KEY` via `AppSettings` DB row + settings form | 3a+ / 3c |
 | Pre-commit / CI for Python-only monorepo           | 0–1                            |
