@@ -63,7 +63,8 @@ systematic drift (up or down) applied to the amortized general-spending
 schedule to account for the risk-adjusted return the portfolio is expected to
 earn over time. The formula includes guardrails for degenerate inputs (zero or
 negative equity premium, infinite RRA meaning "no stocks at all") so it never
-produces nonsensical allocations.
+produces nonsensical allocations. See [Merton's formula](#mertons-formula) for
+the equations.
 
 **Backward NPV pass.** Before the forward simulation can run, the engine needs
 to know, at every month, the net present value of all *future* cashflows and
@@ -127,6 +128,97 @@ the raw per-run, per-month arrays (starting balances, and the essential /
 discretionary / general / total withdrawals, plus the resulting stock
 allocation and a count of runs that ran out of money), so downstream code can
 choose how to summarize them.
+
+## Merton's formula
+
+Implementation lives in `mertons.py`. The engine calls `effective_mertons` (not
+`plain_mertons` directly) once per month during preprocess, using planning
+(expected) returns and the month's RRA. Symbols below match the code and TPAW.
+
+| Symbol | Code / plan field | Meaning |
+| ------ | ----------------- | ------- |
+| \(r_b\) | `planning.annual_bonds` | Expected annual bond return |
+| \(\mu\) | `planning.annual_stocks − planning.annual_bonds` | Expected annual equity premium |
+| \(\sigma^2\) | vendored stock log-variance × 12 | Annual variance of stock log returns |
+| \(\gamma\) | RRA from `risk.py` (per month, or legacy RRA) | Relative risk aversion |
+| \(\rho\) | `plan.risk.time_preference` | Time preference (impatience) |
+| \(g_{\text{add}}\) | `plan.risk.additional_annual_spending_tilt` | User override on annual consumption growth |
+
+### Stock allocation
+
+The plain Merton optimal equity weight (before guardrails) is:
+
+\[
+\pi^* = \frac{1}{\gamma}\,\frac{\mu}{\sigma^2}
+\]
+
+`effective_mertons` applies three guardrails that TPAW uses as well:
+
+1. **Non-negative premium** — \(\mu_{\text{eff}} = \max(0,\,\mu)\). Negative
+   equity premium would imply leverage; the engine treats it as zero stocks
+   instead of calling the raw formula.
+2. **RRA floor for 100% stocks** — \(\gamma_{\min} = \mu_{\text{eff}} / \sigma^2\)
+   is the RRA at which Merton would allocate 100% to equities. The engine uses
+   \(\gamma_{\text{eff}} = \max(\gamma_{\min},\, \gamma)\) so allocation never
+   exceeds 100% without leverage.
+3. **Saturate to \([0, 1]\)** — \(\pi = \min(1,\,\max(0,\,\pi^*))\) after the
+   above, to absorb floating-point edge cases.
+
+**Infinite RRA** (\(\gamma \to \infty\), meaning zero tolerance for stocks):
+\(\pi = 0\).
+
+### Spending tilt
+
+Spending tilt is the optimal *annual* consumption growth rate from the same
+Merton model, plus any user add-on. Define:
+
+\[
+c_0 = r_b - \rho + \frac{\mu^2}{2\sigma^2}, \qquad
+c_1 = \frac{\mu^2}{2\sigma^2}
+\]
+
+Then:
+
+\[
+g_{\text{annual}}
+  = \frac{1}{\gamma}\,c_0 + \frac{1}{\gamma^2}\,c_1 + g_{\text{add}}
+  = \frac{r_b - \rho}{\gamma}
+    + \frac{\mu^2}{2\sigma^2}\left(\frac{1}{\gamma} + \frac{1}{\gamma^2}\right)
+    + g_{\text{add}}
+\]
+
+The value stored on `ProcessedPlan.spending_tilt` is the **monthly** rate,
+compounded from the annual figure:
+
+\[
+g_{\text{monthly}} = (1 + g_{\text{annual}})^{1/12} - 1
+\]
+
+**Infinite RRA:** only the add-on survives — \(g_{\text{annual}} = g_{\text{add}}\).
+
+#### Why tilt can be non-zero when \(\rho = 0\)
+
+Time preference \(\rho\) is impatience: it appears only in the \(r_b - \rho\)
+term. Setting \(\rho = 0\) does *not* mean flat spending. Bond returns
+(\(r_b/\gamma\)) and the equity-risk terms (\(\mu^2/(2\sigma^2)\) scaled by
+\(1/\gamma\) and \(1/\gamma^2\)) still push optimal consumption growth up or
+down. Zero tilt requires zero returns, zero risk effects, and \(g_{\text{add}} = 0\)
+(or infinite RRA with no add-on).
+
+#### Where tilt is consumed
+
+During the backward NPV pass in `preprocess.py`, each month's
+`spending_tilt` enters the cumulative amortization factor for general spending:
+
+\[
+(1 + g_{\text{monthly}}) \times \frac{1}{1 + r_{\text{portfolio}}}
+\]
+
+where \(r_{\text{portfolio}}\) is that month's planning total-portfolio return.
+That cumulative factor amortizes the general pool into monthly withdrawal
+targets in the forward loop.
+
+Unit tests pin numeric outputs against TPAW doctests in `test_mertons.py`.
 
 ## What essential, discretionary, general, and legacy mean
 
