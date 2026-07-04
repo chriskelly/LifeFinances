@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from core.models import Plan
+from core.models import PersonHousehold, Plan
+from core.timeline import horizon_months
 
-from simulation.engine import simulate_monthly
-from simulation.market_data import build_return_paths
-from simulation.preprocess import preprocess
 from simulation.result import SimulationResult
+
+
+def age_years(person: PersonHousehold, *, today: date) -> int:
+    birthday_not_yet = (today.month, today.day) < (person.birth_month, 1)
+    return today.year - person.birth_year - (1 if birthday_not_yet else 0)
 
 
 def run_simulation(
@@ -17,15 +20,20 @@ def run_simulation(
     today: date | None = None,
     ran_at: datetime | None = None,
 ) -> SimulationResult:
-    _ = percentiles  # reserved for Phase 3d aggregation
     today = today or date.today()
     ran_at = ran_at or datetime.now()
-
-    processed = preprocess(plan, today=today)
-    paths = build_return_paths(plan, months_per_run=processed.months, today=today)
-    return simulate_monthly(
-        processed,
-        stocks_return=paths.stocks_log_to_simple(),
-        bonds_return=paths.bonds_log_to_simple(),
+    _ = percentiles  # reserved for future API
+    household = plan.household
+    person2 = household.person2
+    return SimulationResult(
         ran_at=ran_at,
+        horizon_months=horizon_months(plan, today=today),
+        echo={
+            "balance": plan.portfolio.current_savings_balance,
+            "person1_age_years": age_years(household.person1, today=today),
+            "person2_age_years": (
+                age_years(person2, today=today) if person2 is not None else None
+            ),
+            "plan_name": plan.name,
+        },
     )

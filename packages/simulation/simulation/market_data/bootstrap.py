@@ -19,12 +19,6 @@ class ReturnPaths(BaseModel):
     num_runs: int
     months_per_run: int
 
-    def stocks_log_to_simple(self) -> np.ndarray:
-        return np.expm1(self.stocks_log)
-
-    def bonds_log_to_simple(self) -> np.ndarray:
-        return np.expm1(self.bonds_log)
-
 
 def build_index_sequences(
     *,

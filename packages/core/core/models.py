@@ -17,20 +17,6 @@ DEFAULT_NUM_RUNS = 500  # tpaw numOfSimulationForMonteCarloSampling
 DEFAULT_STAGGER_RUN_STARTS = True  # tpaw staggerRunStarts
 DEFAULT_SAMPLING_SEED = 1_234_567  # LifeFinances default for reproducibility
 
-DEFAULT_RISK_TOLERANCE_AT_20 = Decimal(12)  # tpaw default test plan "Moderate"
-DEFAULT_DELTA_AT_MAX_AGE = Decimal(0)
-DEFAULT_LEGACY_DELTA_FROM_AT_20 = Decimal(0)
-DEFAULT_TIME_PREFERENCE = Decimal(0)
-DEFAULT_ADDITIONAL_ANNUAL_SPENDING_TILT = Decimal(0)
-
-# Pinned tpaw risk-tolerance -> RRA scale constants. Not user-editable.
-RISK_TOLERANCE_NUM_VALUES = 25
-RISK_TOLERANCE_START_RRA = 16.0
-RISK_TOLERANCE_END_RRA = 0.5
-
-DEFAULT_EXPECTED_ANNUAL_RETURN_STOCKS = Decimal("0.05")
-DEFAULT_EXPECTED_ANNUAL_RETURN_BONDS = Decimal("0.02")
-
 
 class AppSettings(BaseModel):
     fred_api_key: str | None = None
@@ -61,19 +47,6 @@ class InflationConfig(BaseModel):
         if self.mode == "manual" and self.manual_annual_rate is None:
             raise ValueError("manual_annual_rate is required when mode == 'manual'")
         return self
-
-
-class RiskConfig(BaseModel):
-    risk_tolerance_at_20: Decimal = Field(default=DEFAULT_RISK_TOLERANCE_AT_20, ge=0)
-    delta_at_max_age: Decimal = DEFAULT_DELTA_AT_MAX_AGE
-    legacy_delta_from_at_20: Decimal = DEFAULT_LEGACY_DELTA_FROM_AT_20
-    time_preference: Decimal = DEFAULT_TIME_PREFERENCE
-    additional_annual_spending_tilt: Decimal = DEFAULT_ADDITIONAL_ANNUAL_SPENDING_TILT
-
-
-class PlanningReturnsConfig(BaseModel):
-    expected_annual_return_stocks: Decimal = DEFAULT_EXPECTED_ANNUAL_RETURN_STOCKS
-    expected_annual_return_bonds: Decimal = DEFAULT_EXPECTED_ANNUAL_RETURN_BONDS
 
 
 def _validate_job_windows(job: Job, household: Household) -> None:
@@ -148,13 +121,3 @@ class Plan(BaseModel):
     manual_income_streams: list[TimedStream] = Field(default_factory=list)
     sampling: SamplingConfig = Field(default_factory=SamplingConfig)
     inflation: InflationConfig = Field(default_factory=InflationConfig)
-    risk: RiskConfig = Field(default_factory=RiskConfig)
-    planning_returns: PlanningReturnsConfig = Field(
-        default_factory=PlanningReturnsConfig
-    )
-    extra_essential_spending: list[TimedStream] = Field(default_factory=list)
-    extra_discretionary_spending: list[TimedStream] = Field(default_factory=list)
-    # Interpreted as already-real (today's dollars) by the simulation engine —
-    # unlike every other spending/income stream on this model, it is NOT
-    # inflation-adjusted before being discounted.
-    legacy_target: Decimal = Field(default=Decimal(0), ge=0)
