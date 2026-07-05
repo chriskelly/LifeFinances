@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import csv
 import importlib
 import json
 import logging
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from types import TracebackType
 from typing import Protocol
@@ -173,3 +174,76 @@ def eod_gspc_close(
     if not pairs:
         logger.warning("EOD %s fetch returned no usable rows", EOD_SP500_SYMBOL)
     return pairs
+
+
+TREASURY_REAL_YIELD_URL = (
+    "https://home.treasury.gov/resource-center/data-chart-center/"
+    "interest-rates/daily-treasury-rates.csv"
+)
+TREASURY_REAL_YIELD_TYPE = "daily_treasury_real_yield_curve"
+# Treasury CSV column label -> tenor key we expose.
+_TREASURY_COLUMNS = {
+    "5 YR": "5",
+    "7 YR": "7",
+    "10 YR": "10",
+    "20 YR": "20",
+    "30 YR": "30",
+}
+
+
+def parse_treasury_real_yields(csv_text: str) -> list[tuple[date, dict[str, Decimal]]]:
+    reader = csv.reader(csv_text.splitlines())
+    try:
+        header = next(reader)
+    except StopIteration:
+        return []
+
+    tenor_by_index = {
+        index: _TREASURY_COLUMNS[label]
+        for index, label in enumerate(header)
+        if label in _TREASURY_COLUMNS
+    }
+
+    rows: list[tuple[date, dict[str, Decimal]]] = []
+    for cols in reader:
+        if not cols:
+            continue
+        try:
+            observed = datetime.strptime(cols[0], "%m/%d/%Y").date()
+        except ValueError:
+            continue
+        yields: dict[str, Decimal] = {}
+        for index, tenor in tenor_by_index.items():
+            if index >= len(cols):
+                continue
+            try:
+                yields[tenor] = Decimal(cols[index]) / Decimal(100)
+            except InvalidOperation:
+                continue
+        if yields:
+            rows.append((observed, yields))
+    return rows
+
+
+def treasury_real_yield_curve(
+    *,
+    year: int,
+    timeout_seconds: float = 10.0,
+    opener: UrlOpener = _default_opener,
+) -> list[tuple[date, dict[str, Decimal]]]:
+    params = {"type": TREASURY_REAL_YIELD_TYPE, "field_tdr_date_value": str(year)}
+    request = Request(
+        f"{TREASURY_REAL_YIELD_URL}/{year}/all?{urlencode(params)}",
+        headers={"Cache-Control": "no-cache"},
+    )
+    try:
+        with opener(request, timeout_seconds) as response:
+            csv_text = response.read().decode("utf-8")
+        rows = parse_treasury_real_yields(csv_text)
+    except Exception:
+        logger.exception("Treasury real-yield fetch failed for %s", year)
+        raise
+
+    if not rows:
+        logger.warning("Treasury real-yield fetch returned no usable rows for %s", year)
+    return rows

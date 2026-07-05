@@ -172,3 +172,76 @@ def test_eod_gspc_close_builds_request() -> None:
     assert f"api_token={expected_key}" in str(captured["url"])
     assert "fmt=json" in str(captured["url"])
     assert f"from={from_date.isoformat()}" in str(captured["url"])
+
+
+def test_parse_treasury_real_yields_normalizes_percent_to_decimal() -> None:
+    from simulation.market_data.fetch import parse_treasury_real_yields
+
+    observed = date(2026, 1, 2)
+    percent_by_tenor = {
+        "5": "1.85",
+        "7": "1.90",
+        "10": "1.95",
+        "20": "2.05",
+        "30": "2.15",
+    }
+    csv_text = "\n".join(
+        [
+            'Date,"5 YR","7 YR","10 YR","20 YR","30 YR"',
+            f"01/02/2026,{percent_by_tenor['5']},{percent_by_tenor['7']},{percent_by_tenor['10']},{percent_by_tenor['20']},{percent_by_tenor['30']}",
+        ]
+    )
+
+    rows = parse_treasury_real_yields(csv_text)
+
+    expected_yields = {
+        tenor: Decimal(value) / Decimal(100)
+        for tenor, value in percent_by_tenor.items()
+    }
+    assert rows == [(observed, expected_yields)]
+
+
+def test_parse_treasury_real_yields_skips_blank_cells() -> None:
+    from simulation.market_data.fetch import parse_treasury_real_yields
+
+    observed = date(2026, 1, 2)
+    twenty_yr_percent = "2.05"
+    csv_text = "\n".join(
+        [
+            'Date,"5 YR","7 YR","10 YR","20 YR","30 YR"',
+            f"01/02/2026,1.85,1.90,1.95,{twenty_yr_percent},",
+        ]
+    )
+
+    rows = parse_treasury_real_yields(csv_text)
+
+    assert rows[0][0] == observed
+    assert rows[0][1]["20"] == Decimal(twenty_yr_percent) / Decimal(100)
+    assert "30" not in rows[0][1]
+
+
+def test_treasury_real_yield_curve_builds_request() -> None:
+    from simulation.market_data.fetch import (
+        TREASURY_REAL_YIELD_TYPE,
+        treasury_real_yield_curve,
+    )
+
+    captured: dict[str, object] = {}
+    year = 2026
+    observed = date(2026, 1, 2)
+    csv_text = "\n".join(
+        [
+            'Date,"5 YR","7 YR","10 YR","20 YR","30 YR"',
+            "01/02/2026,1.85,1.90,1.95,2.05,2.15",
+        ]
+    )
+
+    def opener(request: Request, timeout: float):
+        captured["url"] = request.full_url
+        return _FakeResponse(csv_text)
+
+    rows = treasury_real_yield_curve(year=year, opener=opener)
+
+    assert rows[0][0] == observed
+    assert f"/{year}/all" in str(captured["url"])
+    assert f"type={TREASURY_REAL_YIELD_TYPE}" in str(captured["url"])
