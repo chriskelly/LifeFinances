@@ -77,3 +77,71 @@ def test_refresh_market_data_update_vendored_writes_target_path(
     assert "2026-06-27" in vendored_path.read_text(encoding="utf-8")
     captured = capsys.readouterr()
     assert "Update PROVENANCE.md" in captured.out
+
+
+def test_refresh_only_sp500_writes_cache(tmp_path, db_path) -> None:
+    SettingsRepository(db_path=db_path).save(AppSettings(eod_api_key="eod-cli-key"))
+    cache_path = tmp_path / "sp500_close.csv"
+    meta_path = tmp_path / "sp500_close.meta.json"
+    live_observed = date(2026, 1, 3)
+    live_close = Decimal("5200.0")
+
+    def eod_fetcher(**kwargs):
+        return [(live_observed, live_close)]
+
+    exit_code = refresh_market_data.main(
+        [
+            "--db-path",
+            str(db_path),
+            "--only",
+            "sp500",
+            "--sp500-cache-path",
+            str(cache_path),
+            "--sp500-meta-path",
+            str(meta_path),
+        ],
+        eod_fetcher=eod_fetcher,
+    )
+
+    assert exit_code == 0
+    assert str(live_close) in cache_path.read_text(encoding="utf-8")
+
+
+def test_refresh_only_treasury_needs_no_key(tmp_path, db_path) -> None:
+    from simulation.market_data.cache import TREASURY_TENORS
+
+    SettingsRepository(db_path=db_path).save(AppSettings())  # no keys
+    cache_path = tmp_path / "treasury_real_yield.csv"
+    meta_path = tmp_path / "treasury_real_yield.meta.json"
+    live_observed = date(2026, 1, 3)
+    live_yield = Decimal("0.02")
+
+    def treasury_fetcher(**kwargs):
+        return [(live_observed, {t: live_yield for t in TREASURY_TENORS})]
+
+    exit_code = refresh_market_data.main(
+        [
+            "--db-path",
+            str(db_path),
+            "--only",
+            "treasury",
+            "--treasury-cache-path",
+            str(cache_path),
+            "--treasury-meta-path",
+            str(meta_path),
+        ],
+        treasury_fetcher=treasury_fetcher,
+    )
+
+    assert exit_code == 0
+    assert cache_path.is_file()
+
+
+def test_refresh_only_sp500_without_key_returns_two(db_path, capsys) -> None:
+    SettingsRepository(db_path=db_path).save(AppSettings())  # no EOD key
+
+    exit_code = refresh_market_data.main(["--db-path", str(db_path), "--only", "sp500"])
+
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert "EOD API key is not configured" in captured.err
