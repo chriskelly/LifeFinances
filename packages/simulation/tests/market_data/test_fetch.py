@@ -105,3 +105,70 @@ def test_parse_fred_observations_logs_api_error(
 
     assert pairs == []
     assert "FRED API returned an error" in caplog.text
+
+
+def test_parse_eod_close_reads_close_and_skips_bad_rows() -> None:
+    from simulation.market_data.fetch import parse_eod_close
+
+    good_date = date(2026, 1, 2)
+    good_close = Decimal("4700.10")
+    skipped_date = date(2026, 1, 5)
+    second_good_date = date(2026, 1, 6)
+    second_good_close = Decimal("4725.50")
+    payload = json.dumps(
+        [
+            {
+                "date": good_date.isoformat(),
+                "close": float(good_close),
+                "adjusted_close": float(good_close),
+            },
+            {
+                "date": skipped_date.isoformat(),
+                "close": "bad",
+                "adjusted_close": 4725.50,
+            },
+            {
+                "date": second_good_date.isoformat(),
+                "close": float(second_good_close),
+                "adjusted_close": float(second_good_close),
+            },
+        ]
+    )
+
+    pairs = parse_eod_close(payload)
+
+    assert pairs == [
+        (good_date, good_close),
+        (second_good_date, second_good_close),
+    ]
+
+
+def test_eod_gspc_close_builds_request() -> None:
+    from simulation.market_data.fetch import EOD_SP500_SYMBOL, eod_gspc_close
+
+    captured: dict[str, object] = {}
+    expected_key = "eod-request-key"
+    from_date = date(2026, 1, 1)
+    observed = date(2026, 1, 2)
+    expected_close = Decimal("4700.10")
+    payload = json.dumps(
+        [
+            {
+                "date": observed.isoformat(),
+                "close": float(expected_close),
+                "adjusted_close": float(expected_close),
+            }
+        ]
+    )
+
+    def opener(request: Request, timeout: float):
+        captured["url"] = request.full_url
+        return _FakeResponse(payload)
+
+    pairs = eod_gspc_close(api_key=expected_key, from_date=from_date, opener=opener)
+
+    assert pairs == [(observed, expected_close)]
+    assert EOD_SP500_SYMBOL in str(captured["url"])
+    assert f"api_token={expected_key}" in str(captured["url"])
+    assert "fmt=json" in str(captured["url"])
+    assert f"from={from_date.isoformat()}" in str(captured["url"])

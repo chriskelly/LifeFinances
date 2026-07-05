@@ -116,3 +116,60 @@ def fred_observations(
         )
 
     return pairs
+
+
+EOD_BASE_URL = "https://eodhistoricaldata.com/api/eod"
+EOD_SP500_SYMBOL = "GSPC.INDX"
+
+
+def parse_eod_close(payload: str) -> list[tuple[date, Decimal]]:
+    try:
+        rows = json.loads(payload)
+    except json.JSONDecodeError:
+        logger.exception("EOD %s response was not valid JSON", EOD_SP500_SYMBOL)
+        raise
+
+    if not isinstance(rows, list):
+        logger.warning("EOD %s response was not a JSON array", EOD_SP500_SYMBOL)
+        return []
+
+    pairs: list[tuple[date, Decimal]] = []
+    for row in rows:
+        try:
+            observed = date.fromisoformat(row["date"])
+            close = Decimal(str(row["close"]))
+        except KeyError, TypeError, ValueError, InvalidOperation:
+            continue
+        pairs.append((observed, close))
+    return pairs
+
+
+def eod_gspc_close(
+    *,
+    api_key: str,
+    from_date: date,
+    timeout_seconds: float = 10.0,
+    opener: UrlOpener = _default_opener,
+) -> list[tuple[date, Decimal]]:
+    params = {
+        "api_token": api_key,
+        "fmt": "json",
+        "period": "d",
+        "order": "a",
+        "from": from_date.isoformat(),
+    }
+    request = Request(
+        f"{EOD_BASE_URL}/{EOD_SP500_SYMBOL}?{urlencode(params)}",
+        headers={"Cache-Control": "no-cache"},
+    )
+    try:
+        with opener(request, timeout_seconds) as response:
+            payload = response.read().decode("utf-8")
+        pairs = parse_eod_close(payload)
+    except Exception:
+        logger.exception("EOD %s fetch failed", EOD_SP500_SYMBOL)
+        raise
+
+    if not pairs:
+        logger.warning("EOD %s fetch returned no usable rows", EOD_SP500_SYMBOL)
+    return pairs
