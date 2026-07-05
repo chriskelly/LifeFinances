@@ -77,3 +77,55 @@ def test_cache_stale_uses_source_ttl_constant(tmp_path: Path) -> None:
         json.dumps({"fetched_at": stale.isoformat()}), encoding="utf-8"
     )
     assert is_t10yie_cache_stale(now=now, meta_path=meta_path) is True
+
+
+def test_write_sp500_cache_shape(tmp_path: Path) -> None:
+    from simulation.market_data.cache import write_sp500_cache
+
+    cache_path = tmp_path / "sp500_close.csv"
+    meta_path = tmp_path / "sp500_close.meta.json"
+    fetched_at = datetime(2026, 6, 28, 12, 0, tzinfo=UTC)
+    observed = date(2026, 6, 27)
+    close = Decimal("5762.48")
+    pairs = [(observed, close)]
+
+    write_sp500_cache(pairs, now=fetched_at, cache_path=cache_path, meta_path=meta_path)
+
+    assert (
+        cache_path.read_text(encoding="utf-8")
+        == f"observation_date,close\n{observed.isoformat()},{close}\n"
+    )
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    assert meta["fetched_at"] == fetched_at.isoformat()
+    assert meta["source"] == "eod_api"
+
+
+def test_write_treasury_cache_shape(tmp_path: Path) -> None:
+    from simulation.market_data.cache import TREASURY_TENORS, write_treasury_cache
+
+    cache_path = tmp_path / "treasury_real_yield.csv"
+    meta_path = tmp_path / "treasury_real_yield.meta.json"
+    fetched_at = datetime(2026, 6, 28, 12, 0, tzinfo=UTC)
+    observed = date(2026, 6, 27)
+    yield_values = [
+        Decimal("0.0185"),
+        Decimal("0.0190"),
+        Decimal("0.0195"),
+        Decimal("0.0205"),
+        Decimal("0.0215"),
+    ]
+    yields: dict[str, Decimal] = dict(zip(TREASURY_TENORS, yield_values, strict=True))
+    row = (observed, yields)
+
+    write_treasury_cache(
+        [row], now=fetched_at, cache_path=cache_path, meta_path=meta_path
+    )
+
+    header = ",".join(["observation_date", *TREASURY_TENORS])
+    values = ",".join(str(yields[t]) for t in TREASURY_TENORS)
+    assert (
+        cache_path.read_text(encoding="utf-8")
+        == f"{header}\n{observed.isoformat()},{values}\n"
+    )
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    assert meta["source"] == "treasury_csv"

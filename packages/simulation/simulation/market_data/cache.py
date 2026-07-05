@@ -79,3 +79,65 @@ def is_t10yie_cache_stale(
     if fetched_at.tzinfo is None:
         fetched_at = fetched_at.replace(tzinfo=UTC)
     return now - fetched_at > ttl
+
+
+resolve_cache_read_path = resolve_t10yie_read_path
+is_cache_stale = is_t10yie_cache_stale
+
+DEFAULT_SP500_VENDORED_PATH = _DATA_DIR / "sp500_close.csv"
+DEFAULT_SP500_CACHE_PATH = DEFAULT_MARKET_CACHE_DIR / "sp500_close.csv"
+DEFAULT_SP500_META_PATH = DEFAULT_MARKET_CACHE_DIR / "sp500_close.meta.json"
+
+DEFAULT_TREASURY_VENDORED_PATH = _DATA_DIR / "treasury_real_yield.csv"
+DEFAULT_TREASURY_CACHE_PATH = DEFAULT_MARKET_CACHE_DIR / "treasury_real_yield.csv"
+DEFAULT_TREASURY_META_PATH = DEFAULT_MARKET_CACHE_DIR / "treasury_real_yield.meta.json"
+
+TREASURY_TENORS = ("5", "7", "10", "20", "30")
+
+
+def _write_meta(meta_path: Path, *, now: datetime, source: str) -> None:
+    meta_path.write_text(
+        json.dumps(
+            {"fetched_at": now.isoformat(), "source": source},
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def write_sp500_cache(
+    pairs: list[tuple[date, Decimal]],
+    *,
+    now: datetime,
+    cache_path: Path = DEFAULT_SP500_CACHE_PATH,
+    meta_path: Path = DEFAULT_SP500_META_PATH,
+    source: str = "eod_api",
+) -> None:
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    with cache_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["observation_date", "close"])
+        for observed, close in sorted(pairs, key=lambda item: item[0]):
+            writer.writerow([observed.isoformat(), str(close)])
+    _write_meta(meta_path, now=now, source=source)
+
+
+def write_treasury_cache(
+    rows: list[tuple[date, dict[str, Decimal]]],
+    *,
+    now: datetime,
+    cache_path: Path = DEFAULT_TREASURY_CACHE_PATH,
+    meta_path: Path = DEFAULT_TREASURY_META_PATH,
+    source: str = "treasury_csv",
+) -> None:
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    with cache_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["observation_date", *TREASURY_TENORS])
+        for observed, yields in sorted(rows, key=lambda item: item[0]):
+            writer.writerow(
+                [observed.isoformat(), *(str(yields[t]) for t in TREASURY_TENORS)]
+            )
+    _write_meta(meta_path, now=now, source=source)
