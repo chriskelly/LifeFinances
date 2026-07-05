@@ -17,6 +17,7 @@ FRED_T10YIE_SERIES_ID = "T10YIE"
 LOOKBACK_DAYS = 30
 
 EodCloseFetcher = Callable[..., list[tuple[date, Decimal]]]
+TreasuryFetcher = Callable[..., list[tuple[date, dict[str, Decimal]]]]
 
 logger = logging.getLogger(__name__)
 
