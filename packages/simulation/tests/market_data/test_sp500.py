@@ -123,3 +123,21 @@ def test_refresh_failure_falls_back_to_vendored(tmp_path: Path) -> None:
     )
 
     assert resolved.close == pytest.approx(vendored_close)
+
+
+def test_vendored_snapshot_resolves_latest_committed_row() -> None:
+    import csv
+
+    from simulation.market_data.cache import DEFAULT_SP500_VENDORED_PATH
+
+    today = date(2026, 6, 30)
+    with DEFAULT_SP500_VENDORED_PATH.open(newline="", encoding="utf-8-sig") as handle:
+        rows = list(csv.DictReader(handle))
+    expected_row = max(rows, key=lambda row: row["observation_date"])
+    expected_close = float(expected_row["close"])
+    expected_date = date.fromisoformat(expected_row["observation_date"])
+
+    resolved = resolve_latest_sp500_close(today=today)
+
+    assert resolved.close == pytest.approx(expected_close)
+    assert resolved.observation_date == expected_date

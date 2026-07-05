@@ -115,3 +115,27 @@ def test_refresh_failure_falls_back_to_vendored(tmp_path: Path) -> None:
     )
 
     assert resolved.yields["20"] == pytest.approx(vendored_twenty_yr)
+
+
+def test_vendored_snapshot_resolves_latest_committed_curve() -> None:
+    import csv
+
+    from simulation.market_data.cache import (
+        DEFAULT_TREASURY_VENDORED_PATH,
+        TREASURY_TENORS,
+    )
+
+    today = date(2026, 6, 30)
+    with DEFAULT_TREASURY_VENDORED_PATH.open(
+        newline="", encoding="utf-8-sig"
+    ) as handle:
+        rows = list(csv.DictReader(handle))
+    expected_row = max(rows, key=lambda row: row["observation_date"])
+    expected_twenty_yr = float(expected_row["20"])
+    expected_date = date.fromisoformat(expected_row["observation_date"])
+
+    resolved = resolve_treasury_real_yields(today=today)
+
+    assert resolved.yields["20"] == pytest.approx(expected_twenty_yr)
+    assert resolved.observation_date == expected_date
+    assert set(resolved.yields) == set(TREASURY_TENORS)
