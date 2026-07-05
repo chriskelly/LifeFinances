@@ -4,6 +4,7 @@ import csv
 import importlib
 import json
 import logging
+from collections.abc import Callable
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from types import TracebackType
@@ -14,6 +15,8 @@ from urllib.request import Request, urlopen
 FRED_OBSERVATIONS_URL = "https://api.stlouisfed.org/fred/series/observations"
 FRED_T10YIE_SERIES_ID = "T10YIE"
 LOOKBACK_DAYS = 30
+
+EodCloseFetcher = Callable[..., list[tuple[date, Decimal]]]
 
 logger = logging.getLogger(__name__)
 
