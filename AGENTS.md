@@ -81,6 +81,9 @@ uv run python scripts/refresh_market_data.py --update-vendored
 uv run python scripts/refresh_market_data.py --all --update-vendored
 ```
 
+Treasury `--update-vendored` loops years from 2003 through the current year (the Treasury
+API is year-scoped). S&P `--update-vendored` uses a long `from` date (1990-01-01).
+
 Default cache output: `data/market_cache/t10yie_daily.csv` (+ sidecar metadata). S&P and
 Treasury caches live alongside it (`sp500_close.csv`, `treasury_real_yield.csv`). Vendored
 fallbacks are under `packages/simulation/simulation/market_data/data/`. Update

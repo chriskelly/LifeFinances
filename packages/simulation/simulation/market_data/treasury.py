@@ -11,11 +11,14 @@ from simulation.market_data.cache import (
     DEFAULT_TREASURY_META_PATH,
     DEFAULT_TREASURY_VENDORED_PATH,
     TREASURY_TENORS,
+    MarketDataSource,
     is_cache_stale,
     resolve_cache_read_path,
     write_treasury_cache,
 )
 from simulation.market_data.fetch import TreasuryFetcher, treasury_real_yield_curve
+
+TREASURY_VENDORED_START_YEAR = 2003
 
 
 def treasury_rows_with_all_tenors(
@@ -28,6 +31,7 @@ def treasury_rows_with_all_tenors(
 class TreasuryYieldsResolved:
     yields: dict[str, float]
     observation_date: date
+    source: MarketDataSource
 
 
 def _latest_curve(today: date, path: Path) -> tuple[date, dict[str, float]]:
@@ -60,6 +64,19 @@ def _latest_curve(today: date, path: Path) -> tuple[date, dict[str, float]]:
     return best_date, best_yields
 
 
+def _resolve_source(
+    *,
+    refreshed_live: bool,
+    read_path: Path,
+    cache_path: Path,
+) -> MarketDataSource:
+    if refreshed_live:
+        return "live"
+    if read_path == cache_path and cache_path.is_file():
+        return "cache"
+    return "vendored"
+
+
 def resolve_treasury_real_yields(
     *,
     today: date | None = None,
@@ -74,6 +91,7 @@ def resolve_treasury_real_yields(
     read_path = resolve_cache_read_path(
         cache_path=cache_path, vendored_path=vendored_path
     )
+    refreshed_live = False
 
     if allow_refresh:
         resolved_now = now or datetime.now(tz=UTC)
@@ -90,8 +108,16 @@ def resolve_treasury_real_yields(
                     read_path = resolve_cache_read_path(
                         cache_path=cache_path, vendored_path=vendored_path
                     )
+                    refreshed_live = True
             except Exception:
                 pass
 
     observed, yields = _latest_curve(today, read_path)
-    return TreasuryYieldsResolved(yields=yields, observation_date=observed)
+    source = _resolve_source(
+        refreshed_live=refreshed_live,
+        read_path=read_path,
+        cache_path=cache_path,
+    )
+    return TreasuryYieldsResolved(
+        yields=yields, observation_date=observed, source=source
+    )

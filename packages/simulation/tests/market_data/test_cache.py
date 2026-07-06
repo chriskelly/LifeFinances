@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
 from simulation.market_data.cache import (
     CACHE_TTL,
     is_t10yie_cache_stale,
@@ -135,3 +136,21 @@ def test_write_treasury_cache_shape(tmp_path: Path) -> None:
     from simulation.market_data.fetch import TREASURY_REAL_YIELD_TYPE
 
     assert meta["series_id"] == TREASURY_REAL_YIELD_TYPE
+
+
+def test_write_treasury_cache_rejects_incomplete_rows(tmp_path: Path) -> None:
+    from simulation.market_data.cache import write_treasury_cache
+
+    cache_path = tmp_path / "treasury_real_yield.csv"
+    meta_path = tmp_path / "treasury_real_yield.meta.json"
+    fetched_at = datetime(2026, 6, 28, 12, 0, tzinfo=UTC)
+    observed = date(2026, 6, 27)
+    partial_yields = {"20": Decimal("0.0205")}
+
+    with pytest.raises(ValueError, match="all five tenors"):
+        write_treasury_cache(
+            [(observed, partial_yields)],
+            now=fetched_at,
+            cache_path=cache_path,
+            meta_path=meta_path,
+        )

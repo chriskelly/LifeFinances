@@ -174,6 +174,10 @@ def test_eod_gspc_close_builds_request() -> None:
     assert f"from={from_date.isoformat()}" in str(captured["url"])
 
 
+# Pinned to Treasury.gov daily TIPS real-yield CSV column contract (external format).
+_TREASURY_CSV_HEADER = 'Date,"5 YR","7 YR","10 YR","20 YR","30 YR"'
+
+
 def test_parse_treasury_real_yields_normalizes_percent_to_decimal() -> None:
     from simulation.market_data.fetch import parse_treasury_real_yields
 
@@ -187,7 +191,7 @@ def test_parse_treasury_real_yields_normalizes_percent_to_decimal() -> None:
     }
     csv_text = "\n".join(
         [
-            'Date,"5 YR","7 YR","10 YR","20 YR","30 YR"',
+            _TREASURY_CSV_HEADER,
             f"01/02/2026,{percent_by_tenor['5']},{percent_by_tenor['7']},{percent_by_tenor['10']},{percent_by_tenor['20']},{percent_by_tenor['30']}",
         ]
     )
@@ -208,7 +212,7 @@ def test_parse_treasury_real_yields_skips_blank_cells() -> None:
     twenty_yr_percent = "2.05"
     csv_text = "\n".join(
         [
-            'Date,"5 YR","7 YR","10 YR","20 YR","30 YR"',
+            _TREASURY_CSV_HEADER,
             f"01/02/2026,1.85,1.90,1.95,{twenty_yr_percent},",
         ]
     )
@@ -231,7 +235,7 @@ def test_treasury_real_yield_curve_builds_request() -> None:
     observed = date(2026, 1, 2)
     csv_text = "\n".join(
         [
-            'Date,"5 YR","7 YR","10 YR","20 YR","30 YR"',
+            _TREASURY_CSV_HEADER,
             "01/02/2026,1.85,1.90,1.95,2.05,2.15",
         ]
     )

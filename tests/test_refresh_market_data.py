@@ -172,6 +172,42 @@ def test_refresh_only_treasury_skips_incomplete_rows(tmp_path, db_path) -> None:
     assert incomplete_observed.isoformat() not in cache_path.read_text(encoding="utf-8")
 
 
+def test_refresh_update_vendored_treasury_fetches_multiple_years(
+    tmp_path, db_path
+) -> None:
+    from simulation.market_data.cache import TREASURY_TENORS
+    from simulation.market_data.treasury import TREASURY_VENDORED_START_YEAR
+
+    SettingsRepository(db_path=db_path).save(AppSettings())
+    vendored_path = tmp_path / "treasury_real_yield.csv"
+    years_called: list[int] = []
+
+    def treasury_fetcher(**kwargs):
+        year = kwargs["year"]
+        years_called.append(year)
+        observed = date(year, 6, 30)
+        live_yield = Decimal("0.02")
+        return [(observed, {t: live_yield for t in TREASURY_TENORS})]
+
+    exit_code = refresh_market_data.main(
+        [
+            "--db-path",
+            str(db_path),
+            "--only",
+            "treasury",
+            "--update-vendored",
+            "--treasury-vendored-path",
+            str(vendored_path),
+        ],
+        treasury_fetcher=treasury_fetcher,
+    )
+
+    assert exit_code == 0
+    assert years_called[0] == TREASURY_VENDORED_START_YEAR
+    assert years_called[-1] == date.today().year
+    assert len(years_called) == date.today().year - TREASURY_VENDORED_START_YEAR + 1
+
+
 def test_refresh_only_sp500_without_key_returns_two(db_path, capsys) -> None:
     SettingsRepository(db_path=db_path).save(AppSettings())  # no EOD key
 

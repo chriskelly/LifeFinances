@@ -36,6 +36,32 @@ def test_resolves_latest_curve_at_or_before_today(tmp_path: Path) -> None:
 
     assert resolved.yields["20"] == pytest.approx(earlier_twenty_yr)
     assert resolved.observation_date == earlier
+    assert resolved.source == "vendored"
+
+
+def test_reports_live_source_after_refresh(tmp_path: Path) -> None:
+    vendored = _write_treasury(
+        tmp_path / "v.csv", [(date(2026, 1, 1), {t: 0.02 for t in TREASURY_TENORS})]
+    )
+    cache_path = tmp_path / "cache.csv"
+    meta_path = tmp_path / "cache.meta.json"
+    live_observed = date(2026, 1, 3)
+    live_twenty_yr = Decimal("0.013")
+
+    def fetcher(**kwargs):
+        return [(live_observed, {t: live_twenty_yr for t in TREASURY_TENORS})]
+
+    resolved = resolve_treasury_real_yields(
+        today=date(2026, 1, 4),
+        vendored_path=vendored,
+        allow_refresh=True,
+        now=datetime(2026, 1, 4, 12, tzinfo=UTC),
+        fetcher=fetcher,
+        cache_path=cache_path,
+        meta_path=meta_path,
+    )
+
+    assert resolved.source == "live"
 
 
 def test_does_not_call_fetcher_when_not_allowed(tmp_path: Path) -> None:

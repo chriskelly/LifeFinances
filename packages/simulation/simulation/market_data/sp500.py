@@ -9,6 +9,7 @@ from simulation.market_data.cache import (
     DEFAULT_SP500_CACHE_PATH,
     DEFAULT_SP500_META_PATH,
     DEFAULT_SP500_VENDORED_PATH,
+    MarketDataSource,
     is_cache_stale,
     resolve_cache_read_path,
     write_sp500_cache,
@@ -20,6 +21,7 @@ from simulation.market_data.fetch import LOOKBACK_DAYS, EodCloseFetcher, eod_gsp
 class SP500Resolved:
     close: float
     observation_date: date
+    source: MarketDataSource
 
 
 def _latest_close(today: date, path: Path) -> tuple[date, float]:
@@ -43,6 +45,19 @@ def _latest_close(today: date, path: Path) -> tuple[date, float]:
     return best_date, best_close
 
 
+def _resolve_source(
+    *,
+    refreshed_live: bool,
+    read_path: Path,
+    cache_path: Path,
+) -> MarketDataSource:
+    if refreshed_live:
+        return "live"
+    if read_path == cache_path and cache_path.is_file():
+        return "cache"
+    return "vendored"
+
+
 def resolve_latest_sp500_close(
     *,
     today: date | None = None,
@@ -59,6 +74,7 @@ def resolve_latest_sp500_close(
     read_path = resolve_cache_read_path(
         cache_path=cache_path, vendored_path=vendored_path
     )
+    refreshed_live = False
 
     if allow_refresh and api_key:
         resolved_now = now or datetime.now(tz=UTC)
@@ -78,8 +94,14 @@ def resolve_latest_sp500_close(
                     read_path = resolve_cache_read_path(
                         cache_path=cache_path, vendored_path=vendored_path
                     )
+                    refreshed_live = True
             except Exception:
                 pass
 
     observed, close = _latest_close(today, read_path)
-    return SP500Resolved(close=close, observation_date=observed)
+    source = _resolve_source(
+        refreshed_live=refreshed_live,
+        read_path=read_path,
+        cache_path=cache_path,
+    )
+    return SP500Resolved(close=close, observation_date=observed, source=source)

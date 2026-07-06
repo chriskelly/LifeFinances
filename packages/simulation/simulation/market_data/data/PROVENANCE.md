@@ -28,7 +28,10 @@
 
 - **Source:** EOD Historical Data (EODHD) `GSPC.INDX` daily `close`
   (https://eodhistoricaldata.com/api/eod/GSPC.INDX). Used unadjusted (price, for CAPE).
-- **Seeded:** 2026-07-05 (month-end reference values, manual public-source snapshot).
+- **Seeded:** 2026-07-05 — **synthetic placeholder** month-end values for offline CI and
+  resolver smoke tests. These are **not** authoritative market data; do not use for
+  financial decisions. Maintainer must run `--update-vendored` with a live EOD key before
+  release and replace this file with an authoritative pull.
 - **Columns:** `observation_date` (`YYYY-MM-DD`), `close` (index level).
 - **Use:** latest close at or before `today` feeds the Phase 3c-2 1/CAPE regression presets.
 - **Refresh:** `scripts/refresh_market_data.py --update-vendored` (requires the EOD API key configured in Settings).
@@ -37,7 +40,10 @@
 
 - **Source:** U.S. Treasury daily TIPS real-yield curve
   (https://home.treasury.gov/.../daily-treasury-rates.csv, `daily_treasury_real_yield_curve`).
-- **Seeded:** 2026-07-05 (month-end reference values, manual public-source snapshot).
+- **Seeded:** 2026-07-05 — **synthetic placeholder** month-end values for offline CI and
+  resolver smoke tests. These are **not** authoritative market data; do not use for
+  financial decisions. Maintainer must run `--update-vendored` with a live EOD key before
+  release and replace this file with an authoritative pull.
 - **Columns:** `observation_date` (`YYYY-MM-DD`), `5,7,10,20,30` real yields as **decimals**
   (e.g. `0.0217` = 2.17%).
 - **Use:** latest curve at or before `today`; the 20-yr yield is the Phase 3c-2 bond preset.

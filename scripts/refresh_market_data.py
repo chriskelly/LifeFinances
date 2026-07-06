@@ -77,7 +77,10 @@ from simulation.market_data.fetch import (
     fred_observations,
     treasury_real_yield_curve,
 )
-from simulation.market_data.treasury import treasury_rows_with_all_tenors
+from simulation.market_data.treasury import (
+    TREASURY_VENDORED_START_YEAR,
+    treasury_rows_with_all_tenors,
+)
 
 Fetcher = Callable[..., list[tuple[date, Decimal]]]
 SOURCES = ("t10yie", "sp500", "treasury")
@@ -173,7 +176,13 @@ def _warm_sp500(*, args, settings, now, fetcher) -> int:
 
 
 def _warm_treasury(*, args, now, fetcher) -> int:
-    rows = treasury_rows_with_all_tenors(fetcher(year=now.year))
+    if args.update_vendored:
+        fetched_rows = []
+        for year in range(TREASURY_VENDORED_START_YEAR, now.year + 1):
+            fetched_rows.extend(fetcher(year=year))
+        rows = treasury_rows_with_all_tenors(fetched_rows)
+    else:
+        rows = treasury_rows_with_all_tenors(fetcher(year=now.year))
     if not rows:
         print("Treasury returned no usable rows.", file=sys.stderr)
         return 1
