@@ -21,6 +21,35 @@ def test_refresh_market_data_requires_configured_fred_key(db_path, capsys) -> No
     assert exit_code == 2
     captured = capsys.readouterr()
     assert "FRED API key is not configured" in captured.err
+    assert str(db_path) in captured.err
+
+
+def test_treasury_vendored_fetch_failure_exits_without_traceback(
+    tmp_path, db_path, capsys
+) -> None:
+    SettingsRepository(db_path=db_path).save(AppSettings())
+    vendored_path = tmp_path / "treasury_real_yield.csv"
+
+    def treasury_fetcher(**kwargs):
+        raise TimeoutError("The read operation timed out")
+
+    exit_code = refresh_market_data.main(
+        [
+            "--db-path",
+            str(db_path),
+            "--only",
+            "treasury",
+            "--update-vendored",
+            "--treasury-vendored-path",
+            str(vendored_path),
+        ],
+        treasury_fetcher=treasury_fetcher,
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "Treasury fetch failed for" in captured.err
+    assert "Traceback" not in captured.err + captured.out
 
 
 def test_refresh_market_data_writes_cache_with_fake_fetcher(

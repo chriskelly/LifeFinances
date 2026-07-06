@@ -54,6 +54,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+from core.paths import default_db_path
 from core.settings_repository import SettingsRepository
 from simulation.market_data.cache import (
     DEFAULT_SP500_CACHE_PATH,
@@ -84,6 +85,14 @@ from simulation.market_data.treasury import (
 
 Fetcher = Callable[..., list[tuple[date, Decimal]]]
 SOURCES = ("t10yie", "sp500", "treasury")
+
+
+def _missing_api_key_message(*, label: str, db_path: Path) -> str:
+    return (
+        f"{label} is not configured in Settings "
+        f"(database: {db_path}). "
+        "Add the key in the app Settings UI, or pass --db-path / set LIFE_FINANCES_DB_PATH."
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -117,14 +126,23 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _warm_t10yie(*, args, settings, now, fetcher) -> int:
+def _warm_t10yie(*, args, settings, now, fetcher, db_path: Path) -> int:
     if not settings.fred_api_key:
-        print("FRED API key is not configured in Settings.", file=sys.stderr)
+        print(
+            _missing_api_key_message(label="FRED API key", db_path=db_path),
+            file=sys.stderr,
+        )
         return 2
     observation_start = (
         None if args.update_vendored else now.date() - timedelta(days=LOOKBACK_DAYS)
     )
-    pairs = fetcher(api_key=settings.fred_api_key, observation_start=observation_start)
+    try:
+        pairs = fetcher(
+            api_key=settings.fred_api_key, observation_start=observation_start
+        )
+    except Exception as exc:
+        print(f"FRED T10YIE fetch failed: {exc}", file=sys.stderr)
+        return 1
     if not pairs:
         print("FRED returned no usable T10YIE observations.", file=sys.stderr)
         return 1
@@ -148,16 +166,23 @@ def _warm_t10yie(*, args, settings, now, fetcher) -> int:
     return 0
 
 
-def _warm_sp500(*, args, settings, now, fetcher) -> int:
+def _warm_sp500(*, args, settings, now, fetcher, db_path: Path) -> int:
     if not settings.eod_api_key:
-        print("EOD API key is not configured in Settings.", file=sys.stderr)
+        print(
+            _missing_api_key_message(label="EOD API key", db_path=db_path),
+            file=sys.stderr,
+        )
         return 2
     from_date = (
         date(1990, 1, 1)
         if args.update_vendored
         else now.date() - timedelta(days=LOOKBACK_DAYS)
     )
-    pairs = fetcher(api_key=settings.eod_api_key, from_date=from_date)
+    try:
+        pairs = fetcher(api_key=settings.eod_api_key, from_date=from_date)
+    except Exception as exc:
+        print(f"EOD S&P fetch failed: {exc}", file=sys.stderr)
+        return 1
     if not pairs:
         print("EOD returned no usable S&P rows.", file=sys.stderr)
         return 1
@@ -178,11 +203,27 @@ def _warm_sp500(*, args, settings, now, fetcher) -> int:
 def _warm_treasury(*, args, now, fetcher) -> int:
     if args.update_vendored:
         fetched_rows = []
+        failed_years: list[int] = []
         for year in range(TREASURY_VENDORED_START_YEAR, now.year + 1):
-            fetched_rows.extend(fetcher(year=year))
+            try:
+                fetched_rows.extend(fetcher(year=year))
+            except Exception as exc:
+                failed_years.append(year)
+                print(f"Treasury fetch failed for {year}: {exc}", file=sys.stderr)
+        if failed_years:
+            failed = ", ".join(str(year) for year in failed_years)
+            print(
+                f"Treasury vendored update aborted after {len(failed_years)} failed year(s): {failed}.",
+                file=sys.stderr,
+            )
+            return 1
         rows = treasury_rows_with_all_tenors(fetched_rows)
     else:
-        rows = treasury_rows_with_all_tenors(fetcher(year=now.year))
+        try:
+            rows = treasury_rows_with_all_tenors(fetcher(year=now.year))
+        except Exception as exc:
+            print(f"Treasury fetch failed: {exc}", file=sys.stderr)
+            return 1
     if not rows:
         print("Treasury returned no usable rows.", file=sys.stderr)
         return 1
@@ -212,7 +253,8 @@ def main(
     treasury_fetcher: TreasuryFetcher = treasury_real_yield_curve,
 ) -> int:
     args = _parser().parse_args(argv)
-    settings = SettingsRepository(db_path=args.db_path).get()
+    db_path = args.db_path or default_db_path()
+    settings = SettingsRepository(db_path=db_path).get()
     now = datetime.now(tz=UTC)
     if args.only:
         selected = [args.only]
@@ -224,12 +266,21 @@ def main(
     worst = 0
     if "t10yie" in selected:
         worst = max(
-            worst, _warm_t10yie(args=args, settings=settings, now=now, fetcher=fetcher)
+            worst,
+            _warm_t10yie(
+                args=args, settings=settings, now=now, fetcher=fetcher, db_path=db_path
+            ),
         )
     if "sp500" in selected:
         worst = max(
             worst,
-            _warm_sp500(args=args, settings=settings, now=now, fetcher=eod_fetcher),
+            _warm_sp500(
+                args=args,
+                settings=settings,
+                now=now,
+                fetcher=eod_fetcher,
+                db_path=db_path,
+            ),
         )
     if "treasury" in selected:
         worst = max(worst, _warm_treasury(args=args, now=now, fetcher=treasury_fetcher))

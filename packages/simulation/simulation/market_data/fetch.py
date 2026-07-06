@@ -107,10 +107,11 @@ def fred_observations(
         with opener(request, timeout_seconds) as response:
             payload = response.read().decode("utf-8")
         pairs = parse_fred_observations(payload)
-    except Exception:
-        logger.exception(
-            "FRED T10YIE fetch failed for series %s",
+    except Exception as exc:
+        logger.error(
+            "FRED T10YIE fetch failed for series %s: %s",
             FRED_T10YIE_SERIES_ID,
+            exc,
         )
         raise
 
@@ -171,8 +172,8 @@ def eod_gspc_close(
         with opener(request, timeout_seconds) as response:
             payload = response.read().decode("utf-8")
         pairs = parse_eod_close(payload)
-    except Exception:
-        logger.exception("EOD %s fetch failed", EOD_SP500_SYMBOL)
+    except Exception as exc:
+        logger.error("EOD %s fetch failed: %s", EOD_SP500_SYMBOL, exc)
         raise
 
     if not pairs:
@@ -244,8 +245,8 @@ def treasury_real_yield_curve(
         with opener(request, timeout_seconds) as response:
             csv_text = response.read().decode("utf-8")
         rows = parse_treasury_real_yields(csv_text)
-    except Exception:
-        logger.exception("Treasury real-yield fetch failed for %s", year)
+    except Exception as exc:
+        logger.error("Treasury real-yield fetch failed for %s: %s", year, exc)
         raise
 
     if not rows:
