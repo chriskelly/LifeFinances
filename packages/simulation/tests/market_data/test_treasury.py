@@ -117,6 +117,34 @@ def test_refresh_failure_falls_back_to_vendored(tmp_path: Path) -> None:
     assert resolved.yields["20"] == pytest.approx(vendored_twenty_yr)
 
 
+def test_skips_incomplete_curve_row_when_newer(tmp_path: Path) -> None:
+    complete_date = date(2026, 1, 1)
+    complete_twenty_yr = 0.021
+    incomplete_date = date(2026, 2, 1)
+    today = date(2026, 2, 15)
+    header = ",".join(["observation_date", *TREASURY_TENORS])
+    complete_values = ",".join(str(complete_twenty_yr) for _ in TREASURY_TENORS)
+    incomplete_values = ",".join(["0.0185", "0.0190", "0.0195", "0.0205", ""])
+    vendored = tmp_path / "v.csv"
+    vendored.write_text(
+        "\n".join(
+            [
+                header,
+                f"{complete_date.isoformat()},{complete_values}",
+                f"{incomplete_date.isoformat()},{incomplete_values}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    resolved = resolve_treasury_real_yields(today=today, vendored_path=vendored)
+
+    assert resolved.observation_date == complete_date
+    assert resolved.yields["20"] == pytest.approx(complete_twenty_yr)
+    assert set(resolved.yields) == set(TREASURY_TENORS)
+
+
 def test_vendored_snapshot_resolves_latest_committed_curve() -> None:
     import csv
 

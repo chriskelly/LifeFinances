@@ -71,10 +71,13 @@ from simulation.market_data.cache import (
 )
 from simulation.market_data.fetch import (
     LOOKBACK_DAYS,
+    EodCloseFetcher,
+    TreasuryFetcher,
     eod_gspc_close,
     fred_observations,
     treasury_real_yield_curve,
 )
+from simulation.market_data.treasury import treasury_rows_with_all_tenors
 
 Fetcher = Callable[..., list[tuple[date, Decimal]]]
 SOURCES = ("t10yie", "sp500", "treasury")
@@ -83,8 +86,9 @@ SOURCES = ("t10yie", "sp500", "treasury")
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db-path", type=Path, default=None)
-    parser.add_argument("--only", choices=SOURCES, default=None)
-    parser.add_argument("--all", action="store_true", help="warm every source")
+    source_group = parser.add_mutually_exclusive_group()
+    source_group.add_argument("--only", choices=SOURCES, default=None)
+    source_group.add_argument("--all", action="store_true", help="warm every source")
     parser.add_argument("--cache-path", type=Path, default=DEFAULT_T10YIE_CACHE_PATH)
     parser.add_argument("--meta-path", type=Path, default=DEFAULT_T10YIE_META_PATH)
     parser.add_argument(
@@ -110,7 +114,7 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _warm_t10yie(args, settings, now, fetcher) -> int:
+def _warm_t10yie(*, args, settings, now, fetcher) -> int:
     if not settings.fred_api_key:
         print("FRED API key is not configured in Settings.", file=sys.stderr)
         return 2
@@ -141,7 +145,7 @@ def _warm_t10yie(args, settings, now, fetcher) -> int:
     return 0
 
 
-def _warm_sp500(args, settings, now, fetcher) -> int:
+def _warm_sp500(*, args, settings, now, fetcher) -> int:
     if not settings.eod_api_key:
         print("EOD API key is not configured in Settings.", file=sys.stderr)
         return 2
@@ -168,8 +172,8 @@ def _warm_sp500(args, settings, now, fetcher) -> int:
     return 0
 
 
-def _warm_treasury(args, now, fetcher) -> int:
-    rows = fetcher(year=now.year)
+def _warm_treasury(*, args, now, fetcher) -> int:
+    rows = treasury_rows_with_all_tenors(fetcher(year=now.year))
     if not rows:
         print("Treasury returned no usable rows.", file=sys.stderr)
         return 1
@@ -195,8 +199,8 @@ def main(
     argv: list[str] | None = None,
     *,
     fetcher: Fetcher = fred_observations,
-    eod_fetcher: Callable[..., list] = eod_gspc_close,
-    treasury_fetcher: Callable[..., list] = treasury_real_yield_curve,
+    eod_fetcher: EodCloseFetcher = eod_gspc_close,
+    treasury_fetcher: TreasuryFetcher = treasury_real_yield_curve,
 ) -> int:
     args = _parser().parse_args(argv)
     settings = SettingsRepository(db_path=args.db_path).get()
@@ -210,11 +214,16 @@ def main(
 
     worst = 0
     if "t10yie" in selected:
-        worst = max(worst, _warm_t10yie(args, settings, now, fetcher))
+        worst = max(
+            worst, _warm_t10yie(args=args, settings=settings, now=now, fetcher=fetcher)
+        )
     if "sp500" in selected:
-        worst = max(worst, _warm_sp500(args, settings, now, eod_fetcher))
+        worst = max(
+            worst,
+            _warm_sp500(args=args, settings=settings, now=now, fetcher=eod_fetcher),
+        )
     if "treasury" in selected:
-        worst = max(worst, _warm_treasury(args, now, treasury_fetcher))
+        worst = max(worst, _warm_treasury(args=args, now=now, fetcher=treasury_fetcher))
     return worst
 
 

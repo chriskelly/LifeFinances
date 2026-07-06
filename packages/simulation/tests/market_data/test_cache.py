@@ -98,6 +98,9 @@ def test_write_sp500_cache_shape(tmp_path: Path) -> None:
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     assert meta["fetched_at"] == fetched_at.isoformat()
     assert meta["source"] == "eod_api"
+    from simulation.market_data.fetch import EOD_SP500_SYMBOL
+
+    assert meta["series_id"] == EOD_SP500_SYMBOL
 
 
 def test_write_treasury_cache_shape(tmp_path: Path) -> None:
@@ -129,3 +132,6 @@ def test_write_treasury_cache_shape(tmp_path: Path) -> None:
     )
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     assert meta["source"] == "treasury_csv"
+    from simulation.market_data.fetch import TREASURY_REAL_YIELD_TYPE
+
+    assert meta["series_id"] == TREASURY_REAL_YIELD_TYPE

@@ -31,7 +31,7 @@
 - **Seeded:** 2026-07-05 (month-end reference values, manual public-source snapshot).
 - **Columns:** `observation_date` (`YYYY-MM-DD`), `close` (index level).
 - **Use:** latest close at or before `today` feeds the Phase 3c-2 1/CAPE regression presets.
-- **Refresh:** `scripts/refresh_market_data.py --update-vendored` (requires `EOD_API_KEY`).
+- **Refresh:** `scripts/refresh_market_data.py --update-vendored` (requires the EOD API key configured in Settings).
 
 ## treasury_real_yield.csv
 

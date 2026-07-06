@@ -8,7 +8,11 @@ from pathlib import Path
 
 from core.paths import repo_root
 
-from simulation.market_data.fetch import FRED_T10YIE_SERIES_ID
+from simulation.market_data.fetch import (
+    EOD_SP500_SYMBOL,
+    FRED_T10YIE_SERIES_ID,
+    TREASURY_REAL_YIELD_TYPE,
+)
 
 CACHE_TTL = timedelta(hours=24)
 _DATA_DIR = Path(__file__).parent / "data"
@@ -95,10 +99,14 @@ DEFAULT_TREASURY_META_PATH = DEFAULT_MARKET_CACHE_DIR / "treasury_real_yield.met
 TREASURY_TENORS = ("5", "7", "10", "20", "30")
 
 
-def _write_meta(meta_path: Path, *, now: datetime, source: str) -> None:
+def _write_meta(meta_path: Path, *, now: datetime, source: str, series_id: str) -> None:
     meta_path.write_text(
         json.dumps(
-            {"fetched_at": now.isoformat(), "source": source},
+            {
+                "fetched_at": now.isoformat(),
+                "source": source,
+                "series_id": series_id,
+            },
             indent=2,
             sort_keys=True,
         )
@@ -121,7 +129,7 @@ def write_sp500_cache(
         writer.writerow(["observation_date", "close"])
         for observed, close in sorted(pairs, key=lambda item: item[0]):
             writer.writerow([observed.isoformat(), str(close)])
-    _write_meta(meta_path, now=now, source=source)
+    _write_meta(meta_path, now=now, source=source, series_id=EOD_SP500_SYMBOL)
 
 
 def write_treasury_cache(
@@ -140,4 +148,4 @@ def write_treasury_cache(
             writer.writerow(
                 [observed.isoformat(), *(str(yields[t]) for t in TREASURY_TENORS)]
             )
-    _write_meta(meta_path, now=now, source=source)
+    _write_meta(meta_path, now=now, source=source, series_id=TREASURY_REAL_YIELD_TYPE)
