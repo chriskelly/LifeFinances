@@ -15,6 +15,10 @@ from urllib.request import Request, urlopen
 FRED_OBSERVATIONS_URL = "https://api.stlouisfed.org/fred/series/observations"
 FRED_T10YIE_SERIES_ID = "T10YIE"
 LOOKBACK_DAYS = 30
+# Treasury full-year CSV responses are often 8–10s; 10s default urllib timeouts flake.
+TREASURY_FETCH_TIMEOUT_SECONDS = 30.0
+TREASURY_VENDORED_REQUEST_DELAY_SECONDS = 0.25
+TREASURY_VENDORED_FETCH_ATTEMPTS = 2
 
 EodCloseFetcher = Callable[..., list[tuple[date, Decimal]]]
 TreasuryFetcher = Callable[..., list[tuple[date, dict[str, Decimal]]]]
@@ -233,7 +237,7 @@ def parse_treasury_real_yields(csv_text: str) -> list[tuple[date, dict[str, Deci
 def treasury_real_yield_curve(
     *,
     year: int,
-    timeout_seconds: float = 10.0,
+    timeout_seconds: float = TREASURY_FETCH_TIMEOUT_SECONDS,
     opener: UrlOpener = _default_opener,
 ) -> list[tuple[date, dict[str, Decimal]]]:
     params = {"type": TREASURY_REAL_YIELD_TYPE, "field_tdr_date_value": str(year)}
@@ -241,13 +245,9 @@ def treasury_real_yield_curve(
         f"{TREASURY_REAL_YIELD_URL}/{year}/all?{urlencode(params)}",
         headers={"Cache-Control": "no-cache"},
     )
-    try:
-        with opener(request, timeout_seconds) as response:
-            csv_text = response.read().decode("utf-8")
-        rows = parse_treasury_real_yields(csv_text)
-    except Exception as exc:
-        logger.error("Treasury real-yield fetch failed for %s: %s", year, exc)
-        raise
+    with opener(request, timeout_seconds) as response:
+        csv_text = response.read().decode("utf-8")
+    rows = parse_treasury_real_yields(csv_text)
 
     if not rows:
         logger.warning("Treasury real-yield fetch returned no usable rows for %s", year)

@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -72,6 +73,9 @@ from simulation.market_data.cache import (
 )
 from simulation.market_data.fetch import (
     LOOKBACK_DAYS,
+    TREASURY_FETCH_TIMEOUT_SECONDS,
+    TREASURY_VENDORED_FETCH_ATTEMPTS,
+    TREASURY_VENDORED_REQUEST_DELAY_SECONDS,
     EodCloseFetcher,
     TreasuryFetcher,
     eod_gspc_close,
@@ -200,16 +204,31 @@ def _warm_sp500(*, args, settings, now, fetcher, db_path: Path) -> int:
     return 0
 
 
+def _fetch_treasury_year(*, fetcher: TreasuryFetcher, year: int) -> list:
+    last_error: Exception | None = None
+    for attempt in range(TREASURY_VENDORED_FETCH_ATTEMPTS):
+        try:
+            return fetcher(year=year, timeout_seconds=TREASURY_FETCH_TIMEOUT_SECONDS)
+        except Exception as exc:
+            last_error = exc
+            if attempt + 1 < TREASURY_VENDORED_FETCH_ATTEMPTS:
+                time.sleep(1)
+    assert last_error is not None
+    raise last_error
+
+
 def _warm_treasury(*, args, now, fetcher) -> int:
     if args.update_vendored:
         fetched_rows = []
         failed_years: list[int] = []
         for year in range(TREASURY_VENDORED_START_YEAR, now.year + 1):
             try:
-                fetched_rows.extend(fetcher(year=year))
+                fetched_rows.extend(_fetch_treasury_year(fetcher=fetcher, year=year))
             except Exception as exc:
                 failed_years.append(year)
                 print(f"Treasury fetch failed for {year}: {exc}", file=sys.stderr)
+            else:
+                time.sleep(TREASURY_VENDORED_REQUEST_DELAY_SECONDS)
         if failed_years:
             failed = ", ".join(str(year) for year in failed_years)
             print(
@@ -220,7 +239,9 @@ def _warm_treasury(*, args, now, fetcher) -> int:
         rows = treasury_rows_with_all_tenors(fetched_rows)
     else:
         try:
-            rows = treasury_rows_with_all_tenors(fetcher(year=now.year))
+            rows = treasury_rows_with_all_tenors(
+                fetcher(year=now.year, timeout_seconds=TREASURY_FETCH_TIMEOUT_SECONDS)
+            )
         except Exception as exc:
             print(f"Treasury fetch failed: {exc}", file=sys.stderr)
             return 1

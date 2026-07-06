@@ -172,7 +172,10 @@ def test_vendored_snapshot_resolves_latest_committed_row() -> None:
     today = date(2026, 6, 30)
     with DEFAULT_SP500_VENDORED_PATH.open(newline="", encoding="utf-8-sig") as handle:
         rows = list(csv.DictReader(handle))
-    expected_row = max(rows, key=lambda row: row["observation_date"])
+    rows_at_or_before = [
+        row for row in rows if date.fromisoformat(row["observation_date"]) <= today
+    ]
+    expected_row = max(rows_at_or_before, key=lambda row: row["observation_date"])
     expected_close = float(expected_row["close"])
     expected_date = date.fromisoformat(expected_row["observation_date"])
 

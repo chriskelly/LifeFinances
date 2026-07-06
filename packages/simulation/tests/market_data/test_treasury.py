@@ -184,7 +184,10 @@ def test_vendored_snapshot_resolves_latest_committed_curve() -> None:
         newline="", encoding="utf-8-sig"
     ) as handle:
         rows = list(csv.DictReader(handle))
-    expected_row = max(rows, key=lambda row: row["observation_date"])
+    rows_at_or_before = [
+        row for row in rows if date.fromisoformat(row["observation_date"]) <= today
+    ]
+    expected_row = max(rows_at_or_before, key=lambda row: row["observation_date"])
     expected_twenty_yr = float(expected_row["20"])
     expected_date = date.fromisoformat(expected_row["observation_date"])
 
