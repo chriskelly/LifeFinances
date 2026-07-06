@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import csv
 import importlib
 import json
 import logging
-from datetime import date
+from collections.abc import Callable
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from types import TracebackType
 from typing import Protocol
@@ -13,6 +15,13 @@ from urllib.request import Request, urlopen
 FRED_OBSERVATIONS_URL = "https://api.stlouisfed.org/fred/series/observations"
 FRED_T10YIE_SERIES_ID = "T10YIE"
 LOOKBACK_DAYS = 30
+# Treasury full-year CSV responses are often 8–10s; 10s default urllib timeouts flake.
+TREASURY_FETCH_TIMEOUT_SECONDS = 30.0
+TREASURY_VENDORED_REQUEST_DELAY_SECONDS = 0.25
+TREASURY_VENDORED_FETCH_ATTEMPTS = 2
+
+EodCloseFetcher = Callable[..., list[tuple[date, Decimal]]]
+TreasuryFetcher = Callable[..., list[tuple[date, dict[str, Decimal]]]]
 
 logger = logging.getLogger(__name__)
 
@@ -102,10 +111,11 @@ def fred_observations(
         with opener(request, timeout_seconds) as response:
             payload = response.read().decode("utf-8")
         pairs = parse_fred_observations(payload)
-    except Exception:
-        logger.exception(
-            "FRED T10YIE fetch failed for series %s",
+    except Exception as exc:
+        logger.error(
+            "FRED T10YIE fetch failed for series %s: %s",
             FRED_T10YIE_SERIES_ID,
+            exc,
         )
         raise
 
@@ -116,3 +126,129 @@ def fred_observations(
         )
 
     return pairs
+
+
+EOD_BASE_URL = "https://eodhistoricaldata.com/api/eod"
+EOD_SP500_SYMBOL = "GSPC.INDX"
+
+
+def parse_eod_close(payload: str) -> list[tuple[date, Decimal]]:
+    try:
+        rows = json.loads(payload)
+    except json.JSONDecodeError:
+        logger.exception("EOD %s response was not valid JSON", EOD_SP500_SYMBOL)
+        raise
+
+    if not isinstance(rows, list):
+        logger.warning("EOD %s response was not a JSON array", EOD_SP500_SYMBOL)
+        return []
+
+    pairs: list[tuple[date, Decimal]] = []
+    for row in rows:
+        try:
+            observed = date.fromisoformat(row["date"])
+            close = Decimal(str(row["close"]))
+        except KeyError, TypeError, ValueError, InvalidOperation:
+            continue
+        pairs.append((observed, close))
+    return pairs
+
+
+def eod_gspc_close(
+    *,
+    api_key: str,
+    from_date: date,
+    timeout_seconds: float = 10.0,
+    opener: UrlOpener = _default_opener,
+) -> list[tuple[date, Decimal]]:
+    params = {
+        "api_token": api_key,
+        "fmt": "json",
+        "period": "d",
+        "order": "a",
+        "from": from_date.isoformat(),
+    }
+    request = Request(
+        f"{EOD_BASE_URL}/{EOD_SP500_SYMBOL}?{urlencode(params)}",
+        headers={"Cache-Control": "no-cache"},
+    )
+    try:
+        with opener(request, timeout_seconds) as response:
+            payload = response.read().decode("utf-8")
+        pairs = parse_eod_close(payload)
+    except Exception as exc:
+        logger.error("EOD %s fetch failed: %s", EOD_SP500_SYMBOL, exc)
+        raise
+
+    if not pairs:
+        logger.warning("EOD %s fetch returned no usable rows", EOD_SP500_SYMBOL)
+    return pairs
+
+
+TREASURY_REAL_YIELD_URL = (
+    "https://home.treasury.gov/resource-center/data-chart-center/"
+    "interest-rates/daily-treasury-rates.csv"
+)
+TREASURY_REAL_YIELD_TYPE = "daily_treasury_real_yield_curve"
+# Treasury CSV column label -> tenor key we expose.
+_TREASURY_COLUMNS = {
+    "5 YR": "5",
+    "7 YR": "7",
+    "10 YR": "10",
+    "20 YR": "20",
+    "30 YR": "30",
+}
+
+
+def parse_treasury_real_yields(csv_text: str) -> list[tuple[date, dict[str, Decimal]]]:
+    reader = csv.reader(csv_text.splitlines())
+    try:
+        header = next(reader)
+    except StopIteration:
+        return []
+
+    tenor_by_index = {
+        index: _TREASURY_COLUMNS[label]
+        for index, label in enumerate(header)
+        if label in _TREASURY_COLUMNS
+    }
+
+    rows: list[tuple[date, dict[str, Decimal]]] = []
+    for cols in reader:
+        if not cols:
+            continue
+        try:
+            observed = datetime.strptime(cols[0], "%m/%d/%Y").date()
+        except ValueError:
+            continue
+        yields: dict[str, Decimal] = {}
+        for index, tenor in tenor_by_index.items():
+            if index >= len(cols):
+                continue
+            try:
+                yields[tenor] = Decimal(cols[index]) / Decimal(100)
+            except InvalidOperation:
+                continue
+        if yields:
+            rows.append((observed, yields))
+    return rows
+
+
+def treasury_real_yield_curve(
+    *,
+    year: int,
+    timeout_seconds: float = TREASURY_FETCH_TIMEOUT_SECONDS,
+    opener: UrlOpener = _default_opener,
+) -> list[tuple[date, dict[str, Decimal]]]:
+    params = {"type": TREASURY_REAL_YIELD_TYPE, "field_tdr_date_value": str(year)}
+    request = Request(
+        f"{TREASURY_REAL_YIELD_URL}/{year}/all?{urlencode(params)}",
+        headers={"Cache-Control": "no-cache"},
+    )
+    with opener(request, timeout_seconds) as response:
+        csv_text = response.read().decode("utf-8")
+    rows = parse_treasury_real_yields(csv_text)
+
+    if not rows:
+        logger.warning("Treasury real-yield fetch returned no usable rows for %s", year)
+    return rows

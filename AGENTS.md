@@ -57,26 +57,39 @@ uv run python scripts/db_inspect.py --plan 1
 
 ## Market data refresh
 
-Manual FRED `T10YIE` fetch for suggested inflation. The FRED API key is read from
-`AppSettings` in the local SQLite DB (enter it in the app Settings UI, or use
-`--db-path` to point at another DB). No `.env` is consulted.
+Manual market-data fetch for suggested inflation (FRED `T10YIE`), S&P 500 close (EOD
+`GSPC.INDX`), and Treasury TIPS real yields. API keys are read from `AppSettings` in the
+local SQLite DB (enter them in the app Settings UI, or use `--db-path` to point at another
+DB). Treasury needs no key. No `.env` is consulted.
 
 ```bash
-# Warm the gitignored cache (30-day lookback)
+# Warm the gitignored T10YIE cache (30-day lookback) — default when no source flags
 uv run python scripts/refresh_market_data.py
+
+# Warm a single source
+uv run python scripts/refresh_market_data.py --only sp500
+uv run python scripts/refresh_market_data.py --only treasury
+
+# Warm every source
+uv run python scripts/refresh_market_data.py --all
 
 # Use a specific database
 uv run python scripts/refresh_market_data.py --db-path data/data.db
 
 # Maintainer: full-series fetch → rewrite committed vendored CSV
 uv run python scripts/refresh_market_data.py --update-vendored
+uv run python scripts/refresh_market_data.py --all --update-vendored
 ```
 
-Default cache output: `data/market_cache/t10yie_daily.csv` (+ sidecar metadata).
-`--update-vendored` writes `packages/simulation/simulation/market_data/data/t10yie_daily.csv`
-and reminds you to update `PROVENANCE.md` before committing.
+Treasury `--update-vendored` loops years from 2003 through the current year (the Treasury
+API is year-scoped). S&P `--update-vendored` uses a long `from` date (1990-01-01).
 
-Exit codes: `0` success, `1` no usable FRED observations, `2` FRED key not configured.
+Default cache output: `data/market_cache/t10yie_daily.csv` (+ sidecar metadata). S&P and
+Treasury caches live alongside it (`sp500_close.csv`, `treasury_real_yield.csv`). Vendored
+fallbacks are under `packages/simulation/simulation/market_data/data/`. Update
+`PROVENANCE.md` before committing vendored data changes.
+
+Exit codes: `0` success, `1` no usable observations, `2` required API key not configured in Settings.
 
 See also: `docs/superpowers/specs/2026-06-28-phase-3a-plus-networked-market-data-design.md` §5.
 
