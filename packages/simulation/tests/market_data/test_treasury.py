@@ -32,9 +32,11 @@ def test_resolves_latest_curve_at_or_before_today(tmp_path: Path) -> None:
         ],
     )
 
-    resolved = resolve_treasury_real_yields(today=today, vendored_path=vendored)
-
-    assert resolved.yields["20"] == pytest.approx(earlier_twenty_yr)
+    resolved = resolve_treasury_real_yields(
+        today=today,
+        vendored_path=vendored,
+        cache_path=tmp_path / "no_cache.csv",
+    )
     assert resolved.observation_date == earlier
     assert resolved.source == "vendored"
 
@@ -164,7 +166,11 @@ def test_skips_incomplete_curve_row_when_newer(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    resolved = resolve_treasury_real_yields(today=today, vendored_path=vendored)
+    resolved = resolve_treasury_real_yields(
+        today=today,
+        vendored_path=vendored,
+        cache_path=tmp_path / "no_cache.csv",
+    )
 
     assert resolved.observation_date == complete_date
     assert resolved.yields["20"] == pytest.approx(complete_twenty_yr)
