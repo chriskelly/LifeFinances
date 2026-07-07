@@ -8,6 +8,7 @@ from simulation.planning_returns import resolve_planning_returns
 from simulation.presets import (
     historical_annual_return,
     historical_bond_return,
+    round3,
     stock_estimates,
     stock_log_variance,
 )
@@ -15,6 +16,7 @@ from simulation.presets import (
 from .tpaw_preset_contract import SP500_CLOSE, TIPS_20YR
 
 TODAY = date(2026, 6, 1)
+ROUNDED_TIPS_20YR = round3(TIPS_20YR)
 
 
 def _spy_resolver(value):
@@ -73,7 +75,7 @@ def test_regression_preset_calls_resolvers_and_uses_preset_math():
     )
 
     assert result.annual_stocks == expected_stocks
-    assert result.annual_bonds == TIPS_20YR
+    assert result.annual_bonds == ROUNDED_TIPS_20YR
     assert sp_calls["count"] == 1
     assert tr_calls["count"] == 1
 
@@ -90,7 +92,7 @@ def test_conservative_estimate_preset_calls_resolvers_and_uses_preset_math():
     )
 
     assert result.annual_stocks == expected_stocks
-    assert result.annual_bonds == TIPS_20YR
+    assert result.annual_bonds == ROUNDED_TIPS_20YR
     assert sp_calls["count"] == 1
     assert tr_calls["count"] == 1
 
@@ -107,7 +109,7 @@ def test_one_over_cape_preset_calls_resolvers_and_uses_preset_math():
     )
 
     assert result.annual_stocks == expected_stocks
-    assert result.annual_bonds == TIPS_20YR
+    assert result.annual_bonds == ROUNDED_TIPS_20YR
     assert sp_calls["count"] == 1
     assert tr_calls["count"] == 1
 
@@ -142,8 +144,8 @@ def test_fixed_equity_premium_adds_configured_premium_to_tips():
         plan, today=TODAY, sp500_resolver=sp_resolver, treasury_resolver=tr_resolver
     )
 
-    assert result.annual_bonds == TIPS_20YR
-    assert result.annual_stocks == TIPS_20YR + float(premium)
+    assert result.annual_bonds == ROUNDED_TIPS_20YR
+    assert result.annual_stocks == ROUNDED_TIPS_20YR + float(premium)
     assert sp_calls["count"] == 0
 
 
@@ -167,7 +169,43 @@ def test_custom_applies_bases_and_deltas():
     )
 
     assert result.annual_stocks == expected_stocks_base + float(stocks_delta)
-    assert result.annual_bonds == TIPS_20YR + float(bonds_delta)
+    assert result.annual_bonds == ROUNDED_TIPS_20YR + float(bonds_delta)
+
+
+def test_non_fixed_preset_ignores_invalid_fixed_literals():
+    invalid_bond_return = Decimal("-1.5")
+    plan = default_plan()
+    plan.planning_returns.preset = "regression_prediction"
+    plan.planning_returns.expected_annual_return_bonds = invalid_bond_return
+    sp_resolver, _ = _spy_resolver(_SP500(SP500_CLOSE))
+    tr_resolver, _ = _spy_resolver(_Treasury(TIPS_20YR))
+
+    result = resolve_planning_returns(
+        plan,
+        today=TODAY,
+        sp500_resolver=sp_resolver,
+        treasury_resolver=tr_resolver,
+    )
+
+    assert result.annual_bonds == ROUNDED_TIPS_20YR
+
+
+def test_tips_20yr_is_rounded_to_three_decimals():
+    unrounded_yield = 0.02637
+    expected_bonds = round3(unrounded_yield)
+    plan = default_plan()
+    plan.planning_returns.preset = "regression_prediction"
+    tr_resolver, tr_calls = _spy_resolver(_Treasury(unrounded_yield))
+
+    result = resolve_planning_returns(
+        plan,
+        today=TODAY,
+        sp500_resolver=_spy_resolver(_SP500(SP500_CLOSE))[0],
+        treasury_resolver=tr_resolver,
+    )
+
+    assert result.annual_bonds == expected_bonds
+    assert tr_calls["count"] == 1
 
 
 def test_variance_uses_block_size_table_and_scale():

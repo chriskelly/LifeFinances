@@ -1,8 +1,8 @@
 # pinned: tpaw v7 preset outputs for sp500_close + Shiller earnings below.
-# regression_prediction/conservative_estimate/one_over_cape are round_p(3)'d by tpaw;
-# historical and tips_20yr are NOT rounded by tpaw (see
-# process_market_data_for_presets.rs / process_returns_stats_for_planning.rs), so their
-# expected values below are left at full precision. See plan reference table.
+# regression_prediction / conservative_estimate / one_over_cape / tips_20yr are
+# round_p(3)'d by tpaw before feeding presets; historical is NOT rounded (see
+# process_market_data_for_presets.rs / process_returns_stats_for_planning.rs).
+# See plan reference table.
 
 SP500_CLOSE = 7517.09
 TIPS_20YR = 0.026

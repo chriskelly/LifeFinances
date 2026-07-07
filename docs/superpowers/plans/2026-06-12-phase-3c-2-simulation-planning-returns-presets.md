@@ -42,14 +42,14 @@ annual_non_log(annual_log_mean) = exp((annual_log_mean/12 + correction) * 12) - 
 
 `rolling_12_sum` = overlapping windows of 12 consecutive monthly log returns (tpaw `periodize_log_returns`; output length = n − 11).
 
-**Preset definitions** (all rounded to 3 dp, half-away-from-zero, matching tpaw `round_p(3)`, EXCEPT the raw 20-yr TIPS yield):
+**Preset definitions** (rounded to 3 dp, half-away-from-zero, matching tpaw `round_p(3)`, EXCEPT historical which tpaw leaves unrounded):
 
 - `one_over_cape = shiller_10yr_real_earnings / sp500_close`; stock base = `round3(one_over_cape)`.
 - 8 regression predictions = `annual_non_log(slope·ln(1+one_over_cape)+intercept)` for each coeff.
 - `regression_prediction = round3(mean(8 regression predictions))`.
 - `conservative_estimate = round3(mean(4 lowest of [one_over_cape, *8 regression predictions]))`.
-- `historical_stocks = round3(annualized_non_log_stocks)`; `historical_bonds = round3(annualized_non_log_bonds)`.
-- `tips_yield_20_year` = raw 20-yr Treasury real yield (no rounding).
+- `historical_stocks` / `historical_bonds` = unrounded `annualized_non_log` (tpaw does not `round_p(3)` these).
+- `tips_yield_20_year` = `round3(20-yr Treasury real yield)` (tpaw rounds in `source_rounded.bond_rates`).
 
 **Planning variance (ALWAYS, every preset incl. `fixed`):**
 `annual_stock_log_variance = variance_by_block[sampling.block_size_months] * stock_volatility_scale**2`.
@@ -63,8 +63,8 @@ tpaw v7 table: block 1 → `0.019750483`, block 60 → `0.03222578`, block 1440 
 | `round3(one_over_cape)` | `0.023` |
 | `regression_prediction` | `0.05` |
 | `conservative_estimate` | `0.035` |
-| `historical_stocks` | `0.087` |
-| `historical_bonds` | `0.028` |
+| `historical_stocks` | `0.08714729363432962` (unrounded) |
+| `historical_bonds` | `0.0277107658439772` (unrounded) |
 | `monthly_log_mean` (v7 stocks) | `0.005697611027897666` |
 | `annualized_non_log` (v7 stocks) | `0.08714729363432962` |
 

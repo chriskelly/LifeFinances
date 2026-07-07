@@ -14,6 +14,7 @@ from simulation.market_data import (
     resolve_treasury_real_yields,
 )
 from simulation.presets import (
+    StockEstimates,
     historical_annual_return,
     historical_bond_return,
     round3,
@@ -106,7 +107,8 @@ def resolve_planning_returns(
 
     # Lazy + memoized: only hit the (cache/vendored) data once, and only for
     # presets that actually need it.
-    _stock_estimates_cache: list = []
+    _stock_estimates_cache: StockEstimates | None = None
+    _tips_20yr_cache: float | None = None
 
     def sp500_close() -> float:
         return sp500_resolver(
@@ -114,17 +116,22 @@ def resolve_planning_returns(
         ).close
 
     def tips_20yr() -> float:
+        nonlocal _tips_20yr_cache
+        if _tips_20yr_cache is not None:
+            return _tips_20yr_cache
         # tpaw rounds the 20yr TIPS yield to 3dp (source_rounded.bond_rates) before
         # it feeds any preset.
         raw = treasury_resolver(
             today=today, allow_refresh=allow_refresh, now=now
         ).yields[TWENTY_YEAR_TENOR]
-        return round3(raw)
+        _tips_20yr_cache = round3(raw)
+        return _tips_20yr_cache
 
-    def _cached_stock_estimates():
-        if not _stock_estimates_cache:
-            _stock_estimates_cache.append(stock_estimates(sp500_close=sp500_close()))
-        return _stock_estimates_cache[0]
+    def _cached_stock_estimates() -> StockEstimates:
+        nonlocal _stock_estimates_cache
+        if _stock_estimates_cache is None:
+            _stock_estimates_cache = stock_estimates(sp500_close=sp500_close())
+        return _stock_estimates_cache
 
     def stocks_from_base(base: str) -> float:
         if base == "historical":
