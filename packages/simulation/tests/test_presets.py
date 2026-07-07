@@ -62,10 +62,18 @@ def test_stock_presets_match_tpaw_contract(fn, expected):
 
 
 def test_historical_returns_match_tpaw_contract():
+    # tpaw does not round_p(3) the historical preset, so this pins full
+    # precision. np.mean/np.convolve summation order can differ by a ULP or
+    # two across platforms/BLAS backends, so compare with a tight relative
+    # tolerance rather than exact equality.
     returns = load_historical_returns()
 
-    assert historical_annual_return(returns.stocks_log) == EXPECTED_HISTORICAL_STOCKS
-    assert historical_annual_return(returns.bonds_log) == EXPECTED_HISTORICAL_BONDS
+    assert historical_annual_return(returns.stocks_log) == pytest.approx(
+        EXPECTED_HISTORICAL_STOCKS, rel=1e-12
+    )
+    assert historical_annual_return(returns.bonds_log) == pytest.approx(
+        EXPECTED_HISTORICAL_BONDS, rel=1e-12
+    )
 
 
 def test_stock_estimates_bundle_derives_from_same_inputs():
