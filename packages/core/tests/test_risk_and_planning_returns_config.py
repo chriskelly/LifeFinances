@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+import pytest
 from core.defaults import default_plan
 from core.models import (
     DEFAULT_ADDITIONAL_ANNUAL_SPENDING_TILT,
@@ -13,6 +14,7 @@ from core.models import (
     PlanningReturnsConfig,
     RiskConfig,
 )
+from pydantic import ValidationError
 
 
 def test_risk_config_defaults_match_constants():
@@ -43,3 +45,13 @@ def test_plan_has_tpaw_blocks_with_defaults():
     assert plan.extra_essential_spending == []
     assert plan.extra_discretionary_spending == []
     assert plan.legacy_target == expected_legacy_target
+
+
+def test_fixed_equity_premium_preset_requires_premium_field():
+    with pytest.raises(ValidationError, match="fixed_equity_premium"):
+        PlanningReturnsConfig(preset="fixed_equity_premium")
+
+
+def test_custom_preset_requires_both_bases():
+    with pytest.raises(ValidationError, match="custom"):
+        PlanningReturnsConfig(preset="custom", custom_stocks_base="historical")
