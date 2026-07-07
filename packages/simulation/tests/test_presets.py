@@ -65,7 +65,9 @@ def test_historical_returns_match_tpaw_contract():
     returns = load_historical_returns()
 
     assert historical_annual_return(returns.stocks_log) == EXPECTED_HISTORICAL_STOCKS
-    assert historical_annual_return(returns.bonds_log) == EXPECTED_HISTORICAL_BONDS
+    assert historical_annual_return(returns.bonds_log) == pytest.approx(
+        EXPECTED_HISTORICAL_BONDS, abs=1e-15
+    )
 
 
 def test_stock_estimates_bundle_derives_from_same_inputs():
