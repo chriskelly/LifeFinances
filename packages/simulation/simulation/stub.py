@@ -17,6 +17,7 @@ def run_simulation(
     today: date | None = None,
     ran_at: datetime | None = None,
     allow_refresh: bool = False,
+    now: datetime | None = None,
     fred_api_key: str | None = None,
     eod_api_key: str | None = None,
 ) -> SimulationResult:
@@ -24,10 +25,14 @@ def run_simulation(
     today = today or date.today()
     ran_at = ran_at or datetime.now()
 
+    # `now` (tz-aware, drives market-data cache staleness) is intentionally
+    # independent from `ran_at` (naive, only stamps the result) — the resolvers
+    # default `now` to `datetime.now(tz=UTC)` on their own when unset.
     processed = preprocess(
         plan,
         today=today,
         allow_refresh=allow_refresh,
+        now=now,
         fred_api_key=fred_api_key,
         eod_api_key=eod_api_key,
     )

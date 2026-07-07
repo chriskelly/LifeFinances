@@ -74,7 +74,9 @@ def conservative_estimate(one_over_cape_value: float) -> float:
 
 
 def historical_annual_return(log_returns: np.ndarray) -> float:
-    return round3(_annualized_non_log_mean(log_returns))
+    # tpaw does not round_p(3) the historical preset value (unlike regression/
+    # conservative/one_over_cape), so this is intentionally unrounded.
+    return _annualized_non_log_mean(log_returns)
 
 
 @dataclass(frozen=True)

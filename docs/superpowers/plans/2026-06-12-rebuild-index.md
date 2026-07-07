@@ -361,6 +361,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 - [ ] `scripts/import_legacy_yaml.py` with documented gaps
 - [ ] Investigate generated flat form DTOs from `core.models` (`create_model` + prefixed `model_fields`) if hand-written section forms become unwieldy
 - [ ] Launcher: `scripts/LifeFinances.command` — double-clickable launcher (no bundling; requires `uv` + repo checkout), `init_db`, ephemeral port, `open` browser, foreground uvicorn
+- [ ] Settings editor: add `eod_api_key` field (`AppSettingsForm` + `editor_settings.html`), mirroring the existing `fred_api_key` set/clear UI. `web.app`'s HOME/RESULTS routes already read+forward `settings.eod_api_key` with `allow_refresh=True` (Phase 3c-2); until this field is added, the key can only be set by writing directly to the DB, so S&P 500 live refresh is effectively CLI/DB-only.
 
 *May split into Phase 4a (editor) and Phase 4b (charts) if context requires.*
 

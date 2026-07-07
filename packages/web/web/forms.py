@@ -63,7 +63,14 @@ class PortfolioForm(BaseModel):
 
 
 class AppSettingsForm(BaseModel):
-    """Flat transport DTO for local app settings."""
+    """Flat transport DTO for local app settings.
+
+    Deferred to Phase 4: `eod_api_key` has no form field yet, even though
+    `AppSettings.eod_api_key` is already read and forwarded (with
+    `allow_refresh=True`) by web.app's HOME/RESULTS routes. Until this DTO and
+    editor_settings.html grow an EOD key input mirroring fred_api_key below,
+    the key can only be set by writing to the DB directly.
+    """
 
     fred_api_key: str | None = None
     clear_fred_api_key: bool = False

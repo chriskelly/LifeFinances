@@ -16,6 +16,7 @@ from simulation.market_data import (
 from simulation.presets import (
     historical_annual_return,
     historical_bond_return,
+    round3,
     stock_estimates,
     stock_log_variance,
 )
@@ -33,7 +34,13 @@ class PlanningReturns:
     annual_stock_log_variance: float
 
 
-def _validate_legacy_expected_literals(config: PlanningReturnsConfig) -> None:
+def _validate_fixed_preset_literals(config: PlanningReturnsConfig) -> None:
+    # These literals only drive returns under preset == "fixed"; validating them
+    # unconditionally would reject plans whose stale/unused fixed literals
+    # happen to be invalid while a different preset is actually active.
+    if config.preset != "fixed":
+        return
+
     expected_bonds = float(config.expected_annual_return_bonds)
     if 1.0 + expected_bonds <= 0.0:
         raise ValueError(
@@ -95,23 +102,34 @@ def resolve_planning_returns(
 ) -> PlanningReturns:
     config = plan.planning_returns
     today = today or date.today()
-    _validate_legacy_expected_literals(config)
+    _validate_fixed_preset_literals(config)
 
-    # Lazy resolvers: only hit the (cache/vendored) data for presets that need it.
+    # Lazy + memoized: only hit the (cache/vendored) data once, and only for
+    # presets that actually need it.
+    _stock_estimates_cache: list = []
+
     def sp500_close() -> float:
         return sp500_resolver(
             today=today, allow_refresh=allow_refresh, now=now, api_key=eod_api_key
         ).close
 
     def tips_20yr() -> float:
-        return treasury_resolver(
+        # tpaw rounds the 20yr TIPS yield to 3dp (source_rounded.bond_rates) before
+        # it feeds any preset.
+        raw = treasury_resolver(
             today=today, allow_refresh=allow_refresh, now=now
         ).yields[TWENTY_YEAR_TENOR]
+        return round3(raw)
+
+    def _cached_stock_estimates():
+        if not _stock_estimates_cache:
+            _stock_estimates_cache.append(stock_estimates(sp500_close=sp500_close()))
+        return _stock_estimates_cache[0]
 
     def stocks_from_base(base: str) -> float:
         if base == "historical":
             return historical_annual_return(load_historical_returns().stocks_log)
-        estimates = stock_estimates(sp500_close=sp500_close())
+        estimates = _cached_stock_estimates()
         return {
             "regression_prediction": estimates.regression_prediction,
             "conservative_estimate": estimates.conservative_estimate,

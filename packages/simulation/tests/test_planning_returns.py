@@ -78,6 +78,40 @@ def test_regression_preset_calls_resolvers_and_uses_preset_math():
     assert tr_calls["count"] == 1
 
 
+def test_conservative_estimate_preset_calls_resolvers_and_uses_preset_math():
+    plan = default_plan()
+    plan.planning_returns.preset = "conservative_estimate"
+    expected_stocks = stock_estimates(sp500_close=SP500_CLOSE).conservative_estimate
+    sp_resolver, sp_calls = _spy_resolver(_SP500(SP500_CLOSE))
+    tr_resolver, tr_calls = _spy_resolver(_Treasury(TIPS_20YR))
+
+    result = resolve_planning_returns(
+        plan, today=TODAY, sp500_resolver=sp_resolver, treasury_resolver=tr_resolver
+    )
+
+    assert result.annual_stocks == expected_stocks
+    assert result.annual_bonds == TIPS_20YR
+    assert sp_calls["count"] == 1
+    assert tr_calls["count"] == 1
+
+
+def test_one_over_cape_preset_calls_resolvers_and_uses_preset_math():
+    plan = default_plan()
+    plan.planning_returns.preset = "one_over_cape"
+    expected_stocks = stock_estimates(sp500_close=SP500_CLOSE).one_over_cape
+    sp_resolver, sp_calls = _spy_resolver(_SP500(SP500_CLOSE))
+    tr_resolver, tr_calls = _spy_resolver(_Treasury(TIPS_20YR))
+
+    result = resolve_planning_returns(
+        plan, today=TODAY, sp500_resolver=sp_resolver, treasury_resolver=tr_resolver
+    )
+
+    assert result.annual_stocks == expected_stocks
+    assert result.annual_bonds == TIPS_20YR
+    assert sp_calls["count"] == 1
+    assert tr_calls["count"] == 1
+
+
 def test_historical_preset_skips_resolvers():
     plan = default_plan()
     plan.planning_returns.preset = "historical"
