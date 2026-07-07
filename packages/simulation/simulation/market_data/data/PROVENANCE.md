@@ -55,3 +55,14 @@
   real S&P 500 earnings used to reconstruct `1/CAPE = earnings / price`.
 - **Use:** Phase 3c-2 `regression_prediction` / `conservative_estimate` / `1/CAPE` presets.
 - **Attribution:** TPAW by Ben Mathew (https://tpawplanner.com); earnings from Robert Shiller's dataset.
+
+## stock_log_variance_by_block.csv
+
+- **Source:** TPAW simulator-rust `v7_empirical_stats_by_block_size_stocks.rs`
+  (`annual_log_returns_variance` column; `annual_non_log_returns_mean` not vendored).
+- **Version:** v7 (effective 2026-01-15).
+- **Generation (upstream):** 500,000-run block-bootstrap, 600 months/run, staggered
+  starts, fixed seed — precomputed by tpaw, copied verbatim (index 0 dummy dropped).
+- **Columns:** `block_size` (1..1440 months), `annual_log_returns_variance`.
+- **Use:** Phase 3c-2 planning stock variance = `table[sampling.block_size_months] × stock_volatility_scale²`.
+- **Attribution:** TPAW by Ben Mathew (https://tpawplanner.com).
