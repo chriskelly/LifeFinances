@@ -112,7 +112,14 @@ def resolve_treasury_real_yields(
             except Exception:
                 pass
 
-    observed, yields = _latest_curve(today, read_path)
+    try:
+        observed, yields = _latest_curve(today, read_path)
+    except ValueError:
+        if read_path == vendored_path:
+            raise
+        read_path = vendored_path
+        refreshed_live = False
+        observed, yields = _latest_curve(today, read_path)
     source = _resolve_source(
         refreshed_live=refreshed_live,
         read_path=read_path,

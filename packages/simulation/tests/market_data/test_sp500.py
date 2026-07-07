@@ -164,6 +164,26 @@ def test_refresh_failure_falls_back_to_vendored(tmp_path: Path) -> None:
     assert resolved.close == pytest.approx(vendored_close)
 
 
+def test_falls_back_to_vendored_when_cache_lacks_in_range_row(tmp_path: Path) -> None:
+    today = date(2020, 6, 1)
+    expected_close = 3200.0
+    cache = tmp_path / "sp500_close.csv"
+    cache.write_text("observation_date,close\n2026-06-10,7000.0\n", encoding="utf-8")
+    vendored = tmp_path / "vendored.csv"
+    vendored.write_text(
+        f"observation_date,close\n2020-01-02,{expected_close}\n", encoding="utf-8"
+    )
+
+    result = resolve_latest_sp500_close(
+        today=today,
+        cache_path=cache,
+        vendored_path=vendored,
+    )
+
+    assert result.close == expected_close
+    assert result.source == "vendored"
+
+
 def test_vendored_snapshot_resolves_latest_committed_row() -> None:
     import csv
 

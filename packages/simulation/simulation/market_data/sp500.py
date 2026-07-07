@@ -98,7 +98,14 @@ def resolve_latest_sp500_close(
             except Exception:
                 pass
 
-    observed, close = _latest_close(today, read_path)
+    try:
+        observed, close = _latest_close(today, read_path)
+    except ValueError:
+        if read_path == vendored_path:
+            raise
+        read_path = vendored_path
+        refreshed_live = False
+        observed, close = _latest_close(today, read_path)
     source = _resolve_source(
         refreshed_live=refreshed_live,
         read_path=read_path,
