@@ -1,0 +1,11 @@
+# pinned: tpaw v7 preset outputs for sp500_close + Shiller earnings below (round_p(3) stocks;
+# raw tips_20yr). See plan reference table.
+
+SP500_CLOSE = 7517.09
+TIPS_20YR = 0.026
+
+EXPECTED_ONE_OVER_CAPE_ROUNDED = 0.023
+EXPECTED_REGRESSION_PREDICTION = 0.05
+EXPECTED_CONSERVATIVE_ESTIMATE = 0.035
+EXPECTED_HISTORICAL_STOCKS = 0.087
+EXPECTED_HISTORICAL_BONDS = 0.028
