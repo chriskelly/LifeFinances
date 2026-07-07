@@ -99,8 +99,10 @@ def test_cashflow_horizon_mismatch_raises_value_error(monkeypatch):
 
 
 def test_negative_planning_bond_return_raises_value_error():
+    invalid_return = Decimal("-1.5")
     plan = default_plan()
-    plan.planning_returns.expected_annual_return_bonds = Decimal("-1.5")
+    plan.planning_returns.preset = "fixed"
+    plan.planning_returns.expected_annual_return_bonds = invalid_return
     today = date(2026, 1, 1)
 
     with pytest.raises(ValueError, match="bond"):
@@ -108,8 +110,10 @@ def test_negative_planning_bond_return_raises_value_error():
 
 
 def test_negative_planning_stock_return_raises_value_error():
+    invalid_return = Decimal("-1.5")
     plan = default_plan()
-    plan.planning_returns.expected_annual_return_stocks = Decimal("-1.5")
+    plan.planning_returns.preset = "fixed"
+    plan.planning_returns.expected_annual_return_stocks = invalid_return
     today = date(2026, 1, 1)
 
     with pytest.raises(ValueError, match="stock"):
