@@ -96,7 +96,12 @@ def _register_home_route(web_app: FastAPI) -> None:
 
         _, plan = repo.get_or_create_default()
         settings = get_settings_repo(request).get()
-        result = run_simulation(plan)
+        result = run_simulation(
+            plan,
+            allow_refresh=True,
+            fred_api_key=settings.fred_api_key,
+            eod_api_key=settings.eod_api_key,
+        )
         return templates.TemplateResponse(
             request,
             "index.html",
@@ -207,7 +212,13 @@ def _register_results_route(web_app: FastAPI) -> None:
         repo: RepoDep,
     ) -> HTMLResponse:
         _, plan = repo.get_or_create_default()
-        result = run_simulation(plan)
+        settings = get_settings_repo(request).get()
+        result = run_simulation(
+            plan,
+            allow_refresh=True,
+            fred_api_key=settings.fred_api_key,
+            eod_api_key=settings.eod_api_key,
+        )
         return templates.TemplateResponse(
             request,
             "results_stub.html",
