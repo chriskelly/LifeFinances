@@ -30,6 +30,21 @@ RISK_TOLERANCE_END_RRA = 0.5
 
 DEFAULT_EXPECTED_ANNUAL_RETURN_STOCKS = Decimal("0.05")
 DEFAULT_EXPECTED_ANNUAL_RETURN_BONDS = Decimal("0.02")
+DEFAULT_PLANNING_PRESET = "regression_prediction"
+
+StockPresetBase = Literal[
+    "regression_prediction", "conservative_estimate", "one_over_cape", "historical"
+]
+BondPresetBase = Literal["twenty_year_tips_yield", "historical"]
+PlanningPreset = Literal[
+    "regression_prediction",
+    "conservative_estimate",
+    "one_over_cape",
+    "historical",
+    "fixed_equity_premium",
+    "custom",
+    "fixed",
+]
 
 
 class AppSettings(BaseModel):
@@ -72,8 +87,32 @@ class RiskConfig(BaseModel):
 
 
 class PlanningReturnsConfig(BaseModel):
+    preset: PlanningPreset = DEFAULT_PLANNING_PRESET
+
+    fixed_equity_premium: Decimal | None = None
+    custom_stocks_base: StockPresetBase | None = None
+    custom_bonds_base: BondPresetBase | None = None
+    custom_stocks_delta: Decimal = Decimal(0)
+    custom_bonds_delta: Decimal = Decimal(0)
+
     expected_annual_return_stocks: Decimal = DEFAULT_EXPECTED_ANNUAL_RETURN_STOCKS
     expected_annual_return_bonds: Decimal = DEFAULT_EXPECTED_ANNUAL_RETURN_BONDS
+
+    stock_volatility_scale: Decimal = Field(default=Decimal(1), gt=0)
+
+    @model_validator(mode="after")
+    def _require_mode_fields(self) -> PlanningReturnsConfig:
+        if self.preset == "fixed_equity_premium" and self.fixed_equity_premium is None:
+            raise ValueError(
+                "fixed_equity_premium is required when preset == 'fixed_equity_premium'"
+            )
+        if self.preset == "custom" and (
+            self.custom_stocks_base is None or self.custom_bonds_base is None
+        ):
+            raise ValueError(
+                "custom preset requires custom_stocks_base and custom_bonds_base"
+            )
+        return self
 
 
 def _validate_job_windows(job: Job, household: Household) -> None:

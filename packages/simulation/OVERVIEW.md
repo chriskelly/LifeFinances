@@ -17,7 +17,8 @@ numerical correctness without a runnable TPAW binary to diff against.
 | Vectorized forward monthly loop (wealth, pool carve, expected-run elasticity, contributions/withdrawals, allocation, rebalancing) | Ported (Phase 3b) | `simulation/engine.py` |
 | Raw per-run result arrays | Ported (Phase 3b) | `simulation/result.py` |
 | Percentile aggregation (10th/50th/90th, etc. reduction over raw arrays) | Deferred | Phase 3d |
-| Planning-returns presets (live CAPE/EOD-derived expected returns, empirical variance refinement, stock-allocation glide path) | Deferred — 3b uses fixed/manual scalar planning returns only | Phase 3c |
+| Planning-returns presets (live CAPE/EOD-derived expected returns, empirical variance refinement) | Ported (Phase 3c-2) | `simulation/market_data/presets.py`, `simulation/market_data/presets_data.py` |
+| S&P + Treasury 20-yr TIPS market feeds (cache + vendored fallback) | Ported (Phase 3c-1) | `simulation/market_data/` |
 | Bootstrapped/stochastic inflation (3b uses a single resolved scalar inflation rate for the whole horizon) | Deferred | Issue #186 |
 | Spending ceiling/floor constraints | Removed from scope | Not planned — this rebuild's product scope removed ceiling/floor |
 | Detailed tax-bucket modeling interactions with withdrawals (traditional vs. Roth vs. taxable sequencing) | Deferred | Later phase, unscheduled |
@@ -67,3 +68,14 @@ against, so correctness is validated in two layers:
 Together, these give confidence that each individual formula matches TPAW's
 own reference values, and that the assembled pipeline behaves sensibly, even
 though no full end-to-end numerical diff against TPAW is possible.
+
+## Phase 3c-2 — planning-returns presets
+
+Preset menu is at full tpaw parity: regression, conservative, 1/CAPE, historical,
+fixed-equity-premium, custom, and fixed. Expected returns come from vendored v7 CAPE
+regression + Shiller earnings, combined with live or vendored S&P 500 and 20-yr TIPS
+yields (Phase 3c-1 feeds). Variance uses the vendored block-size table scaled by
+`stock_volatility_scale²` — preset choice affects expected returns only, not variance
+(tpaw behavior). An expected-return glide path over the simulation horizon is
+intentionally absent: tpaw fixes planning returns at month 0; the RRA-based stock
+allocation glide shipped in Phase 3b.

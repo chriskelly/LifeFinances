@@ -34,9 +34,9 @@
 
 | Field             | Value                                                      |
 | ----------------- | ---------------------------------------------------------- |
-| **Current phase** | Phase 3b — execute                                         |
-| **Active plan**   | `2026-06-12-phase-3b-simulation-tpaw-withdrawals.md`        |
-| **Next action**   | Execute Phase 3b plan                                       |
+| **Current phase** | Phase 3d — plan                                            |
+| **Active plan**   | `2026-06-12-phase-3d-simulation-results.md` *(to write)*  |
+| **Next action**   | Write Phase 3d plan before coding                           |
 
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
@@ -308,15 +308,18 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 | **Caching** | Cache successful live fetches on disk with TTL; avoid hammering the API (tpaw uses ~30-day lookback, 3 symbols per refresh). |
 | **Free tier** | EODHD free tier (~20 calls/day) is sufficient for personal use with caching; paid tier (~$20/mo) only if limits are hit in practice. |
 
-**Exit criteria:**
+**Exit criteria (delivered across 3c-1 feeds + 3c-2 presets):**
 
-- [ ] CAPE / stock expected-return presets: live `GSPC.INDX` via `EOD_API_KEY` when available; vendored fallback otherwise, replacing 3b's fixed/manual `PlanningReturnsConfig` values
-- [ ] Empirical variance refinement for the live preset (vs. 3b's vendored-series variance)
-- [ ] Stock-allocation glide path derived from the live preset feed
-- [ ] (Optional) Live `VT.US` / `BND.US` daily returns for preset parity; same fallback pattern
-- [ ] `EOD_API_KEY` stored in `AppSettings` (reusing the 3a+ settings form/field); no key path tested in CI
+- [x] S&P (EOD `GSPC.INDX`) + Treasury 20-yr TIPS feeds with cache + vendored fallback (3c-1)
+- [x] CAPE / stock expected-return presets (regression, conservative, 1/CAPE, historical,
+      fixed-equity-premium, custom, fixed), replacing 3b's fixed/manual `PlanningReturnsConfig`
+- [x] Empirical variance-by-block-size table replaces the full-sample `var×12`
+- [x] Bonds via 20-yr TIPS yield (tpaw default); `VT.US`/`BND.US` dropped (never fed presets)
+- [x] `EOD_API_KEY` stored in `AppSettings` (3a+ form); injected at the web/CLI boundary; no key path in CI
+- [x] **Dropped:** "stock-allocation glide path from the live preset feed" — tpaw fixes
+      expected returns at month 0; the RRA allocation glide already shipped in 3b
 
-*(Stock allocation from RRA on total portfolio and PV of future income from domain cashflows were delivered in Phase 3b — 3c only replaces the planning-return/variance inputs those formulas consume.)*
+*(RRA-on-total-portfolio allocation and PV of future income were delivered in Phase 3b.)*
 
 ---
 
@@ -358,6 +361,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 - [ ] `scripts/import_legacy_yaml.py` with documented gaps
 - [ ] Investigate generated flat form DTOs from `core.models` (`create_model` + prefixed `model_fields`) if hand-written section forms become unwieldy
 - [ ] Launcher: `scripts/LifeFinances.command` — double-clickable launcher (no bundling; requires `uv` + repo checkout), `init_db`, ephemeral port, `open` browser, foreground uvicorn
+- [ ] Settings editor: add `eod_api_key` field (`AppSettingsForm` + `editor_settings.html`), mirroring the existing `fred_api_key` set/clear UI. `web.app`'s HOME/RESULTS routes already read+forward `settings.eod_api_key` with `allow_refresh=True` (Phase 3c-2); until this field is added, the key can only be set by writing directly to the DB, so S&P 500 live refresh is effectively CLI/DB-only.
 
 *May split into Phase 4a (editor) and Phase 4b (charts) if context requires.*
 
@@ -431,10 +435,12 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 | Phase 2d | `2026-06-12-phase-2d-domain-pension-taxes.md` | complete |
 | Phase 2e | `2026-06-12-phase-2e-domain-single-household.md` | complete |
 | Phase 3a | `2026-06-12-phase-3a-simulation-market-data.md` | complete |
+| Phase 3c-1 | `2026-06-12-phase-3c-1-simulation-market-feeds.md` | complete |
+| Phase 3c-2 | `2026-06-12-phase-3c-2-simulation-planning-returns-presets.md` | complete |
 
 
 ---
 
 ## Next step
 
-Write **Phase 3b plan** before coding. Phase 3a+ (networked market data) is optional and may run in parallel or after 3b.
+Write **Phase 3d plan** before coding.

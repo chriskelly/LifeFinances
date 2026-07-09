@@ -42,3 +42,27 @@
   (e.g. `0.0217` = 2.17%).
 - **Use:** latest curve at or before `today`; the 20-yr yield is the Phase 3c-2 bond preset.
 - **Refresh:** `scripts/refresh_market_data.py --update-vendored` (no API key required).
+
+## cape_regression_v7.json
+
+- **Source:** TPAW simulator-rust v7 historical-returns bundle:
+  `v7_annual_log_mean_from_one_over_cape_regression_info_stocks.rs` (8 slope/intercept
+  pairs) and `average_annual_real_earnings_for_sp500_for_10_years.rs` (latest entry,
+  `added_date_ms = 1768510800000`).
+- **Version:** v7 (effective 2026-01-15), the same release as `v7_real_monthly_returns.csv`.
+- **Contents:** OLS coefficients predicting annual log stock return from `ln(1 + 1/CAPE)`
+  for {full, restricted} × {5, 10, 20, 30}-year forward windows, plus the 10-year average
+  real S&P 500 earnings used to reconstruct `1/CAPE = earnings / price`.
+- **Use:** Phase 3c-2 `regression_prediction` / `conservative_estimate` / `1/CAPE` presets.
+- **Attribution:** TPAW by Ben Mathew (https://tpawplanner.com); earnings from Robert Shiller's dataset.
+
+## stock_log_variance_by_block.csv
+
+- **Source:** TPAW simulator-rust `v7_empirical_stats_by_block_size_stocks.rs`
+  (`annual_log_returns_variance` column; `annual_non_log_returns_mean` not vendored).
+- **Version:** v7 (effective 2026-01-15).
+- **Generation (upstream):** 500,000-run block-bootstrap, 600 months/run, staggered
+  starts, fixed seed — precomputed by tpaw, copied verbatim (index 0 dummy dropped).
+- **Columns:** `block_size` (1..1440 months), `annual_log_returns_variance`.
+- **Use:** Phase 3c-2 planning stock variance = `table[sampling.block_size_months] × stock_volatility_scale²`.
+- **Attribution:** TPAW by Ben Mathew (https://tpawplanner.com).

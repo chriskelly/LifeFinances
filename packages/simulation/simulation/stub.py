@@ -16,12 +16,26 @@ def run_simulation(
     percentiles: list[int] | None = None,
     today: date | None = None,
     ran_at: datetime | None = None,
+    allow_refresh: bool = False,
+    now: datetime | None = None,
+    fred_api_key: str | None = None,
+    eod_api_key: str | None = None,
 ) -> SimulationResult:
     _ = percentiles  # reserved for Phase 3d aggregation
     today = today or date.today()
     ran_at = ran_at or datetime.now()
 
-    processed = preprocess(plan, today=today)
+    # `now` (tz-aware, drives market-data cache staleness) is intentionally
+    # independent from `ran_at` (naive, only stamps the result) — the resolvers
+    # default `now` to `datetime.now(tz=UTC)` on their own when unset.
+    processed = preprocess(
+        plan,
+        today=today,
+        allow_refresh=allow_refresh,
+        now=now,
+        fred_api_key=fred_api_key,
+        eod_api_key=eod_api_key,
+    )
     paths = build_return_paths(plan, months_per_run=processed.months, today=today)
     return simulate_monthly(
         processed,

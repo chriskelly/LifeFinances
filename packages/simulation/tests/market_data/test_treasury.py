@@ -32,9 +32,11 @@ def test_resolves_latest_curve_at_or_before_today(tmp_path: Path) -> None:
         ],
     )
 
-    resolved = resolve_treasury_real_yields(today=today, vendored_path=vendored)
-
-    assert resolved.yields["20"] == pytest.approx(earlier_twenty_yr)
+    resolved = resolve_treasury_real_yields(
+        today=today,
+        vendored_path=vendored,
+        cache_path=tmp_path / "no_cache.csv",
+    )
     assert resolved.observation_date == earlier
     assert resolved.source == "vendored"
 
@@ -164,11 +166,37 @@ def test_skips_incomplete_curve_row_when_newer(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    resolved = resolve_treasury_real_yields(today=today, vendored_path=vendored)
+    resolved = resolve_treasury_real_yields(
+        today=today,
+        vendored_path=vendored,
+        cache_path=tmp_path / "no_cache.csv",
+    )
 
     assert resolved.observation_date == complete_date
     assert resolved.yields["20"] == pytest.approx(complete_twenty_yr)
     assert set(resolved.yields) == set(TREASURY_TENORS)
+
+
+def test_falls_back_to_vendored_when_cache_lacks_in_range_row(tmp_path: Path) -> None:
+    today = date(2020, 6, 1)
+    expected_yield_20 = 0.021
+    header = "observation_date,5,7,10,20,30\n"
+    cache = tmp_path / "treasury.csv"
+    cache.write_text(header + "2026-06-10,0.01,0.01,0.01,0.01,0.01\n", encoding="utf-8")
+    vendored = tmp_path / "vendored.csv"
+    vendored.write_text(
+        header + f"2020-01-02,0.02,0.02,0.02,{expected_yield_20},0.022\n",
+        encoding="utf-8",
+    )
+
+    result = resolve_treasury_real_yields(
+        today=today,
+        cache_path=cache,
+        vendored_path=vendored,
+    )
+
+    assert result.yields["20"] == expected_yield_20
+    assert result.source == "vendored"
 
 
 def test_vendored_snapshot_resolves_latest_committed_curve() -> None:

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 import numpy as np
 from core.models import PersonHousehold, Plan
@@ -58,7 +58,15 @@ def _current_age_months(person: PersonHousehold, today: date) -> int:
     return (today.year - person.birth_year) * 12 + (today.month - person.birth_month)
 
 
-def preprocess(plan: Plan, *, today: date | None = None) -> ProcessedPlan:
+def preprocess(
+    plan: Plan,
+    *,
+    today: date | None = None,
+    allow_refresh: bool = False,
+    now: datetime | None = None,
+    fred_api_key: str | None = None,
+    eod_api_key: str | None = None,
+) -> ProcessedPlan:
     today = today or date.today()
     timeline = Timeline(plan, today=today)
     months = timeline.horizon_months
@@ -69,8 +77,20 @@ def preprocess(plan: Plan, *, today: date | None = None) -> ProcessedPlan:
             "domain cashflow horizon must match core.timeline horizon: "
             f"got {len(cashflows.net_cashflow)}, expected {months}"
         )
-    inflation = resolve_inflation(plan, today=today)
-    planning = resolve_planning_returns(plan)
+    inflation = resolve_inflation(
+        plan,
+        today=today,
+        allow_refresh=allow_refresh,
+        now=now,
+        api_key=fred_api_key,
+    )
+    planning = resolve_planning_returns(
+        plan,
+        today=today,
+        allow_refresh=allow_refresh,
+        now=now,
+        eod_api_key=eod_api_key,
+    )
     if 1.0 + planning.annual_bonds <= 0.0:
         raise ValueError(
             f"planning annual bond return {planning.annual_bonds} implies "

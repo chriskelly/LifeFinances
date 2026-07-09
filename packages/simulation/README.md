@@ -12,14 +12,16 @@ of how a plan flows through the engine — read it before diving into the source
 domain.build_monthly_cashflows(plan)        # Decimal net income/taxes per month
         │  (→ float64 at the boundary)
         ▼
-preprocess(plan, cashflows)                 # NEW
+preprocess(plan)                            # NEW
   ├─ resolve_inflation(plan)                # Phase 3a (scalar monthly rate)
-  ├─ build_return_paths(plan, months)       # Phase 3a (per-run monthly returns)
+  ├─ resolve_planning_returns(plan)         # Phase 3c-2 (expected stock/bond returns)
   ├─ risk:    RRA-by-month + legacy RRA     # NEW  (risk.py)
   ├─ mertons: stock-alloc + spending-tilt   # NEW  (mertons.py)
   └─ npv:     backward PV pass + cumulative  # NEW  (npv.py, vectorized)
         ▼
-simulate_monthly(processed)                 # NEW vectorized forward loop (engine.py)
+build_return_paths(plan, months)          # Phase 3a (per-run monthly returns)
+        ▼
+simulate_monthly(processed, paths)          # NEW vectorized forward loop (engine.py)
         ▼
 SimulationResult  (raw per-run arrays)      # expanded result.py
 ```
@@ -48,6 +50,16 @@ monthly stock and bond returns for every simulated run, over the full horizon.
 These are the random inputs that make each run differ from the others; the rest
 of the pipeline is otherwise deterministic given a plan and a set of return
 paths.
+
+**Planning returns (expected).** Separate from the bootstrapped return paths,
+`resolve_planning_returns` (`planning_returns.py`) produces the *expected*
+annual stock and bond returns that drive Merton allocation, the backward NPV
+pass, and the "expected run" baseline in the forward loop. The default preset
+is TPAW's CAPE regression (`regression_prediction`); see
+[Planning returns and CAPE regression](#planning-returns-and-cape-regression).
+Bonds for most presets come from the vendored/live 20-year TIPS yield; stock
+log-variance always comes from a vendored block-size table (not from the
+preset choice).
 
 **Risk tolerance → RRA.** A person's risk tolerance is translated into a
 relative risk-aversion (RRA) coefficient per month — allowing an "age glide"
@@ -219,6 +231,104 @@ That cumulative factor amortizes the general pool into monthly withdrawal
 targets in the forward loop.
 
 Unit tests pin numeric outputs against TPAW doctests in `test_mertons.py`.
+
+## Planning returns and CAPE regression
+
+Implementation lives in `presets.py` (pure math) and `planning_returns.py`
+(dispatch + market-data injection). Vendored inputs are under
+`market_data/data/` — see `PROVENANCE.md` for sources.
+
+### Preset menu
+
+`Plan.planning_returns.preset` selects how expected returns are derived. The
+engine fixes these values at month 0 for the whole horizon (TPAW does not
+glide expected returns). Stock log-variance is always
+`variance_by_block[block_size_months] × stock_volatility_scale²`, independent
+of the preset.
+
+| Preset | Stocks | Bonds |
+| ------ | ------ | ----- |
+| `regression_prediction` | mean of 8 CAPE regressions (below) | round3(20-yr TIPS) |
+| `conservative_estimate` | mean of 4 lowest of [1/CAPE, *8 regressions] | round3(20-yr TIPS) |
+| `one_over_cape` | round3(1/CAPE) | round3(20-yr TIPS) |
+| `historical` | unrounded historical mean | unrounded historical mean |
+| `fixed_equity_premium` | round3(TIPS) + premium | round3(20-yr TIPS) |
+| `custom` | chosen stock base + delta | chosen bond base + delta |
+| `fixed` | `expected_annual_return_stocks` | `expected_annual_return_bonds` |
+
+`round3` matches TPAW `round_p(3)` (half away from zero to 3 decimal places).
+
+### Runtime: from market data to `regression_prediction`
+
+When the preset needs live valuation (all except `fixed` and `historical`):
+
+1. **1/CAPE** — `shiller_10yr_real_earnings / sp500_close`. Earnings are
+   vendored (v7 Shiller 10-year average real earnings); price is the latest
+   S&P close at or before `today` (cache → vendored → optional live EOD).
+2. **Regression input** — \(x = \ln(1 + 1/\text{CAPE})\).
+3. **Eight linear predictions** — for each `(slope, intercept)` in
+   `cape_regression_v7.json`: `annual_log = slope × x + intercept`.
+4. **Log → simple conversion** — each `annual_log` is converted to a simple
+   annual return via the shift correction (next subsection).
+5. **Aggregate** — `regression_prediction = round3(mean of all 8 simple returns)`.
+
+Bonds for these presets use `round3` of the 20-year TIPS real yield from the
+Treasury resolver (cache → vendored → optional live Treasury API).
+
+### Where the eight coefficients come from
+
+The JSON coefficients are **not** fitted at runtime. TPAW's maintainer CLI
+(`cli_process_historical_data_part_2_derive` in the `tpaw` repo) runs eight
+separate OLS regressions on Shiller history and bakes the results into Rust
+constants; LifeFinances copies the v7 set verbatim.
+
+For each fit:
+
+- **Predictor (X):** \(\ln(1 + 1/\text{CAPE})\) at the start of each overlapping
+  forward window.
+- **Response (Y):** realized forward **annualized log** stock return — the sum
+  of the next \(N \times 12\) monthly log returns, divided by \(N\).
+
+| | 5 yr | 10 yr | 20 yr | 30 yr |
+| --- | --- | --- | --- | --- |
+| **full** | from first month CAPE exists | … | … | … |
+| **restricted** | from Jan 1950 | … | … | … |
+
+- **full** — longest available Shiller sample (~1871 onward).
+- **restricted** — post-1950 subsample (TPAW treats pre-WWII as a different regime).
+
+Each cell is one `(slope, intercept)` pair. At runtime we evaluate all eight
+against today's \(x\) and average.
+
+### Why the shift correction exists
+
+The regressions predict **annual log returns**, but the preset menu and Merton
+math consume **simple annual returns** (e.g. `0.05` = 5%). You cannot naively
+apply `exp(annual_log) − 1` — log and simple returns relate nonlinearly, and
+TPAW defines "annual non-log return" empirically as the mean of overlapping
+12-month *simple* returns built from monthly log data.
+
+For the preset menu (`block_size = None`, `volatility_scale = 1.0`), the
+correction is:
+
+\[
+\text{correction}
+  = \frac{\ln(1 + \bar{r}_{\text{simple,annual}})}{12} - \bar{r}_{\text{log,monthly}}
+\]
+
+where the bars are computed from the vendored v7 historical stock series
+(`_shift_correction` in `presets.py`, mirroring TPAW `get_shift_correction`).
+Each regression output is then:
+
+\[
+r_{\text{simple,annual}} = \exp\!\left(\left(\frac{\text{annual\_log}}{12} + \text{correction}\right) \times 12\right) - 1
+\]
+
+The **historical** preset skips this path for stocks/bonds — it uses the
+unrounded empirical mean directly (TPAW does not `round_p(3)` historical).
+
+Golden outputs for a pinned input tuple (`sp500_close`, Shiller earnings,
+TIPS) live in `tests/tpaw_preset_contract.py`; `test_presets.py` asserts parity.
 
 ## What essential, discretionary, general, and legacy mean
 

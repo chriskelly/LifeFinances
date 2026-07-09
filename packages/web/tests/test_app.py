@@ -188,6 +188,36 @@ def test_patch_household_invalid_value_returns_422_without_persisting(
     assert after.household == original.household
 
 
+@pytest.mark.parametrize("route", [HOME, RESULTS])
+def test_real_run_passes_stored_keys_with_live_refresh_enabled(
+    client: TestClient, db_path, monkeypatch, route: str
+) -> None:
+    import sys
+
+    expected_fred_key = "fred-secret"
+    expected_eod_key = "eod-secret"
+    allow_live_refresh = True
+    SettingsRepository(db_path=db_path).save(
+        AppSettings(fred_api_key=expected_fred_key, eod_api_key=expected_eod_key)
+    )
+
+    app_module = sys.modules["web.app"]
+    real_run_simulation = app_module.run_simulation
+    captured: dict = {}
+
+    def spy_run_simulation(plan, **kwargs):
+        captured.update(kwargs)
+        return real_run_simulation(plan, **kwargs)
+
+    monkeypatch.setattr(app_module, "run_simulation", spy_run_simulation)
+
+    client.get(route)
+
+    assert captured.get("allow_refresh") is allow_live_refresh
+    assert captured.get("fred_api_key") == expected_fred_key
+    assert captured.get("eod_api_key") == expected_eod_key
+
+
 def test_results_echoes_updated_balance(client: TestClient) -> None:
     expected_balance = Decimal("750000")
     home_response: httpx.Response = client.get(HOME)
