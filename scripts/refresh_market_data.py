@@ -76,6 +76,7 @@ from simulation.market_data.fetch import (
     TREASURY_FETCH_TIMEOUT_SECONDS,
     TREASURY_VENDORED_FETCH_ATTEMPTS,
     TREASURY_VENDORED_REQUEST_DELAY_SECONDS,
+    TREASURY_VENDORED_RETRY_DELAY_SECONDS,
     EodCloseFetcher,
     TreasuryFetcher,
     eod_gspc_close,
@@ -204,7 +205,12 @@ def _warm_sp500(*, args, settings, now, fetcher, db_path: Path) -> int:
     return 0
 
 
-def _fetch_treasury_year(*, fetcher: TreasuryFetcher, year: int) -> list:
+def _fetch_treasury_year(
+    *,
+    fetcher: TreasuryFetcher,
+    year: int,
+    retry_delay_seconds: float,
+) -> list:
     last_error: Exception | None = None
     for attempt in range(TREASURY_VENDORED_FETCH_ATTEMPTS):
         try:
@@ -212,23 +218,36 @@ def _fetch_treasury_year(*, fetcher: TreasuryFetcher, year: int) -> list:
         except Exception as exc:
             last_error = exc
             if attempt + 1 < TREASURY_VENDORED_FETCH_ATTEMPTS:
-                time.sleep(1)
+                time.sleep(retry_delay_seconds)
     assert last_error is not None
     raise last_error
 
 
-def _warm_treasury(*, args, now, fetcher) -> int:
+def _warm_treasury(
+    *,
+    args,
+    now,
+    fetcher,
+    treasury_vendored_retry_delay_seconds: float,
+    treasury_vendored_request_delay_seconds: float,
+) -> int:
     if args.update_vendored:
         fetched_rows = []
         failed_years: list[int] = []
         for year in range(TREASURY_VENDORED_START_YEAR, now.year + 1):
             try:
-                fetched_rows.extend(_fetch_treasury_year(fetcher=fetcher, year=year))
+                fetched_rows.extend(
+                    _fetch_treasury_year(
+                        fetcher=fetcher,
+                        year=year,
+                        retry_delay_seconds=treasury_vendored_retry_delay_seconds,
+                    )
+                )
             except Exception as exc:
                 failed_years.append(year)
                 print(f"Treasury fetch failed for {year}: {exc}", file=sys.stderr)
             else:
-                time.sleep(TREASURY_VENDORED_REQUEST_DELAY_SECONDS)
+                time.sleep(treasury_vendored_request_delay_seconds)
         if failed_years:
             failed = ", ".join(str(year) for year in failed_years)
             print(
@@ -272,6 +291,8 @@ def main(
     fetcher: Fetcher = fred_observations,
     eod_fetcher: EodCloseFetcher = eod_gspc_close,
     treasury_fetcher: TreasuryFetcher = treasury_real_yield_curve,
+    treasury_vendored_retry_delay_seconds: float = TREASURY_VENDORED_RETRY_DELAY_SECONDS,
+    treasury_vendored_request_delay_seconds: float = TREASURY_VENDORED_REQUEST_DELAY_SECONDS,
 ) -> int:
     args = _parser().parse_args(argv)
     db_path = args.db_path or default_db_path()
@@ -304,7 +325,16 @@ def main(
             ),
         )
     if "treasury" in selected:
-        worst = max(worst, _warm_treasury(args=args, now=now, fetcher=treasury_fetcher))
+        worst = max(
+            worst,
+            _warm_treasury(
+                args=args,
+                now=now,
+                fetcher=treasury_fetcher,
+                treasury_vendored_retry_delay_seconds=treasury_vendored_retry_delay_seconds,
+                treasury_vendored_request_delay_seconds=treasury_vendored_request_delay_seconds,
+            ),
+        )
     return worst
 
 

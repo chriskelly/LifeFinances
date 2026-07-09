@@ -18,6 +18,7 @@ LOOKBACK_DAYS = 30
 # Treasury full-year CSV responses are often 8–10s; 10s default urllib timeouts flake.
 TREASURY_FETCH_TIMEOUT_SECONDS = 30.0
 TREASURY_VENDORED_REQUEST_DELAY_SECONDS = 0.25
+TREASURY_VENDORED_RETRY_DELAY_SECONDS = 1.0
 TREASURY_VENDORED_FETCH_ATTEMPTS = 2
 
 EodCloseFetcher = Callable[..., list[tuple[date, Decimal]]]

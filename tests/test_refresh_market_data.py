@@ -33,6 +33,7 @@ def test_treasury_vendored_fetch_failure_exits_without_traceback(
     def treasury_fetcher(**kwargs):
         raise TimeoutError("The read operation timed out")
 
+    no_retry_delay_seconds = 0.0
     exit_code = refresh_market_data.main(
         [
             "--db-path",
@@ -44,6 +45,7 @@ def test_treasury_vendored_fetch_failure_exits_without_traceback(
             str(vendored_path),
         ],
         treasury_fetcher=treasury_fetcher,
+        treasury_vendored_retry_delay_seconds=no_retry_delay_seconds,
     )
 
     captured = capsys.readouterr()
@@ -218,6 +220,7 @@ def test_refresh_update_vendored_treasury_fetches_multiple_years(
         live_yield = Decimal("0.02")
         return [(observed, {t: live_yield for t in TREASURY_TENORS})]
 
+    no_vendored_delay_seconds = 0.0
     exit_code = refresh_market_data.main(
         [
             "--db-path",
@@ -229,6 +232,8 @@ def test_refresh_update_vendored_treasury_fetches_multiple_years(
             str(vendored_path),
         ],
         treasury_fetcher=treasury_fetcher,
+        treasury_vendored_retry_delay_seconds=no_vendored_delay_seconds,
+        treasury_vendored_request_delay_seconds=no_vendored_delay_seconds,
     )
 
     assert exit_code == 0
