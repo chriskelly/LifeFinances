@@ -60,17 +60,27 @@ def _regression_predictions_raw(one_over_cape_value: float) -> list[float]:
     ]
 
 
-def regression_prediction(one_over_cape_value: float) -> float:
-    predictions = _regression_predictions_raw(one_over_cape_value)
+def _regression_prediction_from_raw(predictions: list[float]) -> float:
     return round3(sum(predictions) / len(predictions))
 
 
-def conservative_estimate(one_over_cape_value: float) -> float:
-    pool = sorted(
-        [one_over_cape_value, *_regression_predictions_raw(one_over_cape_value)]
-    )
+def _conservative_estimate_from_raw(
+    one_over_cape_value: float, predictions: list[float]
+) -> float:
+    pool = sorted([one_over_cape_value, *predictions])
     lowest_four = pool[:4]
     return round3(sum(lowest_four) / len(lowest_four))
+
+
+def regression_prediction(one_over_cape_value: float) -> float:
+    return _regression_prediction_from_raw(
+        _regression_predictions_raw(one_over_cape_value)
+    )
+
+
+def conservative_estimate(one_over_cape_value: float) -> float:
+    predictions = _regression_predictions_raw(one_over_cape_value)
+    return _conservative_estimate_from_raw(one_over_cape_value, predictions)
 
 
 def historical_annual_return(log_returns: np.ndarray) -> float:
@@ -93,10 +103,11 @@ def stock_estimates(*, sp500_close: float) -> StockEstimates:
         sp500_close=sp500_close,
         shiller_10yr_real_earnings=coeffs.shiller_10yr_real_earnings,
     )
+    predictions = _regression_predictions_raw(ooc)
     return StockEstimates(
         one_over_cape=round3(ooc),
-        regression_prediction=regression_prediction(ooc),
-        conservative_estimate=conservative_estimate(ooc),
+        regression_prediction=_regression_prediction_from_raw(predictions),
+        conservative_estimate=_conservative_estimate_from_raw(ooc, predictions),
         historical=historical_annual_return(load_historical_returns().stocks_log),
     )
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
+from typing import Protocol
 
 from core.models import Plan, PlanningReturnsConfig
 
@@ -24,8 +25,26 @@ from simulation.presets import (
 
 TWENTY_YEAR_TENOR = "20"
 
-SP500Resolver = Callable[..., SP500Resolved]
-TreasuryResolver = Callable[..., TreasuryYieldsResolved]
+
+class SP500Resolver(Protocol):
+    def __call__(
+        self,
+        *,
+        today: date | None = None,
+        allow_refresh: bool = False,
+        now: datetime | None = None,
+        api_key: str | None = None,
+    ) -> SP500Resolved: ...
+
+
+class TreasuryResolver(Protocol):
+    def __call__(
+        self,
+        *,
+        today: date | None = None,
+        allow_refresh: bool = False,
+        now: datetime | None = None,
+    ) -> TreasuryYieldsResolved: ...
 
 
 @dataclass(frozen=True)
