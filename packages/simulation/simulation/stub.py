@@ -2,14 +2,12 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-import numpy as np
 from core.models import Plan, normalize_percentiles
 
-from domain import build_monthly_cashflows
 from simulation.aggregate import build_public_result
 from simulation.composition import wealth_by_income_source
 from simulation.engine import simulate_monthly
-from simulation.market_data import build_return_paths, resolve_inflation
+from simulation.market_data import build_return_paths
 from simulation.preprocess import preprocess
 from simulation.result import SimulationResult
 
@@ -27,10 +25,15 @@ def run_simulation(
 ) -> SimulationResult:
     today = today or date.today()
     ran_at = ran_at or datetime.now()
-    resolved = normalize_percentiles(
-        percentiles if percentiles is not None else plan.advanced.percentiles
+    resolved = (
+        normalize_percentiles(percentiles)
+        if percentiles is not None
+        else plan.advanced.percentiles
     )
 
+    # `now` (tz-aware, drives market-data cache staleness) is intentionally
+    # independent from `ran_at` (naive, only stamps the result) — the resolvers
+    # default `now` to `datetime.now(tz=UTC)` on their own when unset.
     processed = preprocess(
         plan,
         today=today,
@@ -47,29 +50,13 @@ def run_simulation(
         ran_at=ran_at,
     )
 
-    cashflows = build_monthly_cashflows(plan, today=today)
-    inflation = resolve_inflation(
-        plan,
-        today=today,
-        allow_refresh=allow_refresh,
-        now=now,
-        api_key=fred_api_key,
-    )
     composition = wealth_by_income_source(
-        gross_job=np.array([float(v) for v in cashflows.gross_job], dtype=np.float64),
-        gross_social_security=np.array(
-            [float(v) for v in cashflows.gross_social_security], dtype=np.float64
-        ),
-        gross_pension=np.array(
-            [float(v) for v in cashflows.gross_pension], dtype=np.float64
-        ),
-        gross_manual=np.array(
-            [float(v) for v in cashflows.gross_manual], dtype=np.float64
-        ),
-        taxes=np.array(
-            [float(v) for v in cashflows.taxes.stored_total], dtype=np.float64
-        ),
-        monthly_inflation=inflation.monthly,
+        gross_job=processed.gross_job,
+        gross_social_security=processed.gross_social_security,
+        gross_pension=processed.gross_pension,
+        gross_manual=processed.gross_manual,
+        taxes=processed.taxes,
+        monthly_inflation=processed.monthly_inflation,
         monthly_bond_rate=processed.monthly_planning_bonds,
     )
 

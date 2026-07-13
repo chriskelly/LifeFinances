@@ -1,7 +1,8 @@
 from datetime import datetime
 
 import numpy as np
-from simulation.aggregate import aggregate_percentiles
+from simulation.aggregate import build_public_result
+from simulation.composition import WealthBySource
 from simulation.result import RawSimulationResult
 
 
@@ -23,22 +24,35 @@ def _raw(*, balance_start: np.ndarray) -> RawSimulationResult:
     )
 
 
-def test_aggregate_percentiles_reduces_each_array_field_along_runs():
+def test_build_public_result_reduces_each_array_field_along_runs():
     # Column 0 values [1, 2, 3]; column 1 [10, 20, 30]
     balance_start = np.array([[1.0, 10.0], [2.0, 20.0], [3.0, 30.0]], dtype=np.float64)
     percentiles = [0, 50, 100]
     raw = _raw(balance_start=balance_start)
+    months = raw.horizon_months
+    composition = WealthBySource(
+        job=np.zeros(months, dtype=np.float64),
+        social_security=np.zeros(months, dtype=np.float64),
+        pension=np.zeros(months, dtype=np.float64),
+        manual=np.zeros(months, dtype=np.float64),
+    )
 
-    reduced = aggregate_percentiles(raw, percentiles=percentiles)
+    result = build_public_result(
+        raw,
+        percentiles=percentiles,
+        composition=composition,
+        start_month=(2026, 1),
+    )
 
-    assert reduced.balance_start.shape == (len(percentiles), raw.horizon_months)
+    assert result.balance_start.shape == (len(percentiles), raw.horizon_months)
     np.testing.assert_allclose(
-        reduced.balance_start,
+        result.balance_start,
         np.percentile(raw.balance_start, percentiles, axis=0),
     )
     np.testing.assert_allclose(
-        reduced.withdrawals_total,
+        result.withdrawals_total,
         np.percentile(raw.withdrawals_total, percentiles, axis=0),
     )
-    assert reduced.percentiles == percentiles
-    assert reduced.num_runs == raw.num_runs
+    assert result.percentiles == percentiles
+    assert result.num_runs == raw.num_runs
+    assert result.start_month == (2026, 1)

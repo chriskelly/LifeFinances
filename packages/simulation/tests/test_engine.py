@@ -28,6 +28,12 @@ def _flat_processed(
         cumulative_1_plus_g_over_1_plus_r=np.arange(months, 0, -1, dtype=np.float64),
         monthly_planning_stocks=0.0,
         monthly_planning_bonds=0.0,
+        monthly_inflation=0.0,
+        gross_job=zeros.copy(),
+        gross_social_security=zeros.copy(),
+        gross_pension=zeros.copy(),
+        gross_manual=zeros.copy(),
+        taxes=zeros.copy(),
     )
 
 

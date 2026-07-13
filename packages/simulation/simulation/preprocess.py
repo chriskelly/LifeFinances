@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
+from decimal import Decimal
 
 import numpy as np
 from core.models import PersonHousehold, Plan
@@ -44,14 +45,24 @@ class ProcessedPlan:
     # "expected run" balance trajectory that establishes scheduled wealth.
     monthly_planning_stocks: float
     monthly_planning_bonds: float
+    # Composition inputs (nominal gross/tax series + inflation for wealth bands).
+    monthly_inflation: float
+    gross_job: np.ndarray
+    gross_social_security: np.ndarray
+    gross_pension: np.ndarray
+    gross_manual: np.ndarray
+    taxes: np.ndarray
+
+
+def _decimal_series_to_float64(series: Sequence[Decimal]) -> np.ndarray:
+    return np.array([float(value) for value in series], dtype=np.float64)
 
 
 def _sum_streams(streams: Sequence[TimedStream], timeline: Timeline) -> np.ndarray:
     months = timeline.horizon_months
     total = np.zeros(months, dtype=np.float64)
     for stream in streams:
-        series = project_stream(stream, timeline)
-        total += np.array([float(value) for value in series], dtype=np.float64)
+        total += _decimal_series_to_float64(project_stream(stream, timeline))
     return total
 
 
@@ -105,9 +116,7 @@ def preprocess(
 
     # Real conversion: divide month t nominal by (1 + monthly_inflation) ** t.
     deflator = (1.0 + inflation.monthly) ** np.arange(months, dtype=np.float64)
-    income_nominal = np.array(
-        [float(value) for value in cashflows.net_cashflow], dtype=np.float64
-    )
+    income_nominal = _decimal_series_to_float64(cashflows.net_cashflow)
     income_real = income_nominal / deflator
     essential_real = _sum_streams(plan.extra_essential_spending, timeline) / deflator
     discretionary_real = (
@@ -219,4 +228,12 @@ def preprocess(
         cumulative_1_plus_g_over_1_plus_r=cumulative,
         monthly_planning_stocks=monthly_stocks,
         monthly_planning_bonds=monthly_bonds,
+        monthly_inflation=inflation.monthly,
+        gross_job=_decimal_series_to_float64(cashflows.gross_job),
+        gross_social_security=_decimal_series_to_float64(
+            cashflows.gross_social_security
+        ),
+        gross_pension=_decimal_series_to_float64(cashflows.gross_pension),
+        gross_manual=_decimal_series_to_float64(cashflows.gross_manual),
+        taxes=_decimal_series_to_float64(cashflows.taxes.stored_total),
     )
