@@ -7,7 +7,7 @@ from core.models import Plan
 from simulation.engine import simulate_monthly
 from simulation.market_data import build_return_paths
 from simulation.preprocess import preprocess
-from simulation.result import SimulationResult
+from simulation.result import RawSimulationResult
 
 
 def run_simulation(
@@ -20,7 +20,7 @@ def run_simulation(
     now: datetime | None = None,
     fred_api_key: str | None = None,
     eod_api_key: str | None = None,
-) -> SimulationResult:
+) -> RawSimulationResult:
     _ = percentiles  # reserved for Phase 3d aggregation
     today = today or date.today()
     ran_at = ran_at or datetime.now()

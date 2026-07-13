@@ -1,15 +1,15 @@
 from datetime import datetime
 
 import numpy as np
-from simulation.result import SimulationResult
+from simulation.result import RawSimulationResult
 
 
-def test_simulation_result_holds_per_run_arrays():
+def test_raw_simulation_result_holds_per_run_arrays():
     num_runs, months = 3, 4
     expected_insufficient = 0
     zeros = np.zeros((num_runs, months), dtype=np.float64)
 
-    result = SimulationResult(
+    result = RawSimulationResult(
         ran_at=datetime(2026, 1, 1),
         horizon_months=months,
         num_runs=num_runs,
@@ -29,7 +29,7 @@ def test_simulation_result_holds_per_run_arrays():
 def _make_result(*, balance_start: np.ndarray, num_runs_insufficient: int = 0):
     num_runs, months = balance_start.shape
     other_zeros = np.zeros((num_runs, months), dtype=np.float64)
-    return SimulationResult(
+    return RawSimulationResult(
         ran_at=datetime(2026, 1, 1),
         horizon_months=months,
         num_runs=num_runs,

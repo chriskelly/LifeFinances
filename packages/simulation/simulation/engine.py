@@ -18,7 +18,7 @@ from simulation.npv import (
     target_general_withdrawal,
 )
 from simulation.preprocess import ProcessedPlan
-from simulation.result import SimulationResult
+from simulation.result import RawSimulationResult
 
 _SAVINGS_FLOOR = 1e-5  # tpaw _get_stock_allocation limit as savings balance → 0
 
@@ -140,7 +140,7 @@ def simulate_monthly(
     stocks_return: np.ndarray,
     bonds_return: np.ndarray,
     ran_at: datetime | None = None,
-) -> SimulationResult:
+) -> RawSimulationResult:
     ran_at = ran_at or datetime.now()
     num_runs, months = stocks_return.shape
 
@@ -228,7 +228,7 @@ def simulate_monthly(
         w_total[:, month] = drawn_essential + drawn_discretionary + drawn_general
         savings_alloc[:, month] = stock_fraction
 
-    return SimulationResult(
+    return RawSimulationResult(
         ran_at=ran_at,
         horizon_months=months,
         num_runs=num_runs,
