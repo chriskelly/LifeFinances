@@ -19,6 +19,7 @@ from core.timeline import Timeline, person_end_date, project_stream
 from domain import build_monthly_cashflows
 from simulation.market_data import resolve_inflation
 from simulation.mertons import effective_mertons
+from simulation.npv import backward_npv_including_current
 from simulation.planning_returns import resolve_planning_returns
 from simulation.risk import legacy_rra, rra_by_month
 
@@ -162,13 +163,17 @@ def preprocess(
     # Backward NPV pass: income/essential discounted at the bond rate;
     # discretionary and the amortization factor at the (month-specific)
     # total-portfolio rate implied by that month's Merton allocation.
-    npv_income = np.zeros(months, dtype=np.float64)
-    npv_essential = np.zeros(months, dtype=np.float64)
+    income_including = backward_npv_including_current(
+        income_real, one_over_1_plus_r=one_over_1p_bonds
+    )
+    essential_including = backward_npv_including_current(
+        essential_real, one_over_1_plus_r=one_over_1p_bonds
+    )
+    npv_income = income_including - income_real
+    npv_essential = essential_including - essential_real
     npv_discretionary = np.zeros(months, dtype=np.float64)
     cumulative = np.zeros(months, dtype=np.float64)
 
-    income_with_current = 0.0
-    essential_with_current = 0.0
     discretionary_with_current = 0.0
     cumulative_running = 0.0
     for month in range(months - 1, -1, -1):
@@ -177,12 +182,6 @@ def preprocess(
         )
         one_over_r_portfolio = 1.0 / one_plus_r_portfolio
 
-        income_with_current = (
-            income_with_current * one_over_1p_bonds + income_real[month]
-        )
-        essential_with_current = (
-            essential_with_current * one_over_1p_bonds + essential_real[month]
-        )
         discretionary_with_current = (
             discretionary_with_current * one_over_r_portfolio
             + discretionary_real[month]
@@ -192,8 +191,6 @@ def preprocess(
         cumulative_running = cumulative_running * one_plus_g_over_r + 1.0
         cumulative[month] = cumulative_running
 
-        npv_income[month] = income_with_current - income_real[month]
-        npv_essential[month] = essential_with_current - essential_real[month]
         npv_discretionary[month] = (
             discretionary_with_current - discretionary_real[month]
         )
