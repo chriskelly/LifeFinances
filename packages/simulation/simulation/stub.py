@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from core.models import Plan
+import numpy as np
+from core.models import Plan, normalize_percentiles
 
+from domain import build_monthly_cashflows
+from simulation.aggregate import build_public_result
+from simulation.composition import wealth_by_income_source
 from simulation.engine import simulate_monthly
-from simulation.market_data import build_return_paths
+from simulation.market_data import build_return_paths, resolve_inflation
 from simulation.preprocess import preprocess
-from simulation.result import RawSimulationResult
+from simulation.result import SimulationResult
 
 
 def run_simulation(
@@ -20,14 +24,13 @@ def run_simulation(
     now: datetime | None = None,
     fred_api_key: str | None = None,
     eod_api_key: str | None = None,
-) -> RawSimulationResult:
-    _ = percentiles  # reserved for Phase 3d aggregation
+) -> SimulationResult:
     today = today or date.today()
     ran_at = ran_at or datetime.now()
+    resolved = normalize_percentiles(
+        percentiles if percentiles is not None else plan.advanced.percentiles
+    )
 
-    # `now` (tz-aware, drives market-data cache staleness) is intentionally
-    # independent from `ran_at` (naive, only stamps the result) — the resolvers
-    # default `now` to `datetime.now(tz=UTC)` on their own when unset.
     processed = preprocess(
         plan,
         today=today,
@@ -37,9 +40,42 @@ def run_simulation(
         eod_api_key=eod_api_key,
     )
     paths = build_return_paths(plan, months_per_run=processed.months, today=today)
-    return simulate_monthly(
+    raw = simulate_monthly(
         processed,
         stocks_return=paths.stocks_log_to_simple(),
         bonds_return=paths.bonds_log_to_simple(),
         ran_at=ran_at,
+    )
+
+    cashflows = build_monthly_cashflows(plan, today=today)
+    inflation = resolve_inflation(
+        plan,
+        today=today,
+        allow_refresh=allow_refresh,
+        now=now,
+        api_key=fred_api_key,
+    )
+    composition = wealth_by_income_source(
+        gross_job=np.array([float(v) for v in cashflows.gross_job], dtype=np.float64),
+        gross_social_security=np.array(
+            [float(v) for v in cashflows.gross_social_security], dtype=np.float64
+        ),
+        gross_pension=np.array(
+            [float(v) for v in cashflows.gross_pension], dtype=np.float64
+        ),
+        gross_manual=np.array(
+            [float(v) for v in cashflows.gross_manual], dtype=np.float64
+        ),
+        taxes=np.array(
+            [float(v) for v in cashflows.taxes.stored_total], dtype=np.float64
+        ),
+        monthly_inflation=inflation.monthly,
+        monthly_bond_rate=processed.monthly_planning_bonds,
+    )
+
+    return build_public_result(
+        raw,
+        percentiles=resolved,
+        composition=composition,
+        start_month=(today.year, today.month),
     )
