@@ -16,6 +16,7 @@ DEFAULT_BLOCK_SIZE_MONTHS = 60  # tpaw blockSize.inMonths = 12 * 5
 DEFAULT_NUM_RUNS = 500  # tpaw numOfSimulationForMonteCarloSampling
 DEFAULT_STAGGER_RUN_STARTS = True  # tpaw staggerRunStarts
 DEFAULT_SAMPLING_SEED = 1_234_567  # LifeFinances default for reproducibility
+DEFAULT_PERCENTILES = [5, 50, 95]
 
 DEFAULT_RISK_TOLERANCE_AT_20 = Decimal(12)  # tpaw default test plan "Moderate"
 DEFAULT_DELTA_AT_MAX_AGE = Decimal(0)
@@ -58,6 +59,23 @@ class AppSettings(BaseModel):
             stripped = value.strip()
             return stripped or None
         return value
+
+
+def normalize_percentiles(value: list[int]) -> list[int]:
+    if not value:
+        raise ValueError("percentiles must be non-empty")
+    if any(p < 0 or p > 100 for p in value):
+        raise ValueError("each percentile must be in 0..100")
+    return sorted(value)
+
+
+class AdvancedConfig(BaseModel):
+    percentiles: list[int] = Field(default_factory=lambda: list(DEFAULT_PERCENTILES))
+
+    @field_validator("percentiles")
+    @classmethod
+    def _normalize_percentiles(cls, value: list[int]) -> list[int]:
+        return normalize_percentiles(value)
 
 
 class SamplingConfig(BaseModel):
@@ -191,6 +209,7 @@ class Plan(BaseModel):
     planning_returns: PlanningReturnsConfig = Field(
         default_factory=PlanningReturnsConfig
     )
+    advanced: AdvancedConfig = Field(default_factory=AdvancedConfig)
     extra_essential_spending: list[TimedStream] = Field(default_factory=list)
     extra_discretionary_spending: list[TimedStream] = Field(default_factory=list)
     # Interpreted as already-real (today's dollars) by the simulation engine —
