@@ -25,10 +25,8 @@ def run_simulation(
 ) -> SimulationResult:
     today = today or date.today()
     ran_at = ran_at or datetime.now()
-    resolved = (
-        normalize_percentiles(percentiles)
-        if percentiles is not None
-        else plan.advanced.percentiles
+    resolved = normalize_percentiles(
+        percentiles if percentiles is not None else plan.advanced.percentiles
     )
 
     # `now` (tz-aware, drives market-data cache staleness) is intentionally

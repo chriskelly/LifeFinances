@@ -70,3 +70,4 @@ def test_run_simulation_start_month_and_horizon_match_timeline():
 
     assert result.start_month == (today.year, today.month)
     assert result.horizon_months == timeline.horizon_months
+    assert result.percentiles == DEFAULT_PERCENTILES
