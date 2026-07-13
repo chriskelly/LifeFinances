@@ -1,5 +1,6 @@
 import numpy as np
-from simulation.composition import prorate_net_income_by_source
+from simulation.composition import prorate_net_income_by_source, wealth_by_income_source
+from simulation.npv import backward_npv_including_current
 
 
 def test_prorated_nets_sum_to_net_cashflow_when_gross_positive():
@@ -38,3 +39,41 @@ def test_proration_zero_gross_month_yields_zero_nets():
 
     for series in nets.values():
         np.testing.assert_allclose(series, zeros)
+
+
+def test_wealth_by_source_sums_to_combined_income_wealth():
+    months = 4
+    gross_job = np.array([100.0, 100.0, 0.0, 0.0], dtype=np.float64)
+    gross_ss = np.array([0.0, 0.0, 50.0, 50.0], dtype=np.float64)
+    zeros = np.zeros(months, dtype=np.float64)
+    taxes = np.array([-20.0, -20.0, -5.0, -5.0], dtype=np.float64)
+    monthly_inflation = 0.0
+    monthly_bond = 0.01
+    one_over = 1.0 / (1.0 + monthly_bond)
+
+    wealth = wealth_by_income_source(
+        gross_job=gross_job,
+        gross_social_security=gross_ss,
+        gross_pension=zeros,
+        gross_manual=zeros,
+        taxes=taxes,
+        monthly_inflation=monthly_inflation,
+        monthly_bond_rate=monthly_bond,
+    )
+
+    nets = prorate_net_income_by_source(
+        gross_job=gross_job,
+        gross_social_security=gross_ss,
+        gross_pension=zeros,
+        gross_manual=zeros,
+        taxes=taxes,
+    )
+    combined_nominal = sum(nets[k] for k in nets)
+    deflator = (1.0 + monthly_inflation) ** np.arange(months, dtype=np.float64)
+    combined_real = combined_nominal / deflator
+    expected_total = backward_npv_including_current(
+        combined_real, one_over_1_plus_r=one_over
+    )
+
+    actual_total = wealth.job + wealth.social_security + wealth.pension + wealth.manual
+    np.testing.assert_allclose(actual_total, expected_total)
