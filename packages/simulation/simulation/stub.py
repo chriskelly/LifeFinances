@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from core.models import Plan
+from core.models import Plan, normalize_percentiles
 
+from simulation.aggregate import build_public_result
+from simulation.composition import wealth_by_income_source
 from simulation.engine import simulate_monthly
 from simulation.market_data import build_return_paths
 from simulation.preprocess import preprocess
@@ -21,9 +23,11 @@ def run_simulation(
     fred_api_key: str | None = None,
     eod_api_key: str | None = None,
 ) -> SimulationResult:
-    _ = percentiles  # reserved for Phase 3d aggregation
     today = today or date.today()
     ran_at = ran_at or datetime.now()
+    resolved = normalize_percentiles(
+        percentiles if percentiles is not None else plan.advanced.percentiles
+    )
 
     # `now` (tz-aware, drives market-data cache staleness) is intentionally
     # independent from `ran_at` (naive, only stamps the result) — the resolvers
@@ -37,9 +41,26 @@ def run_simulation(
         eod_api_key=eod_api_key,
     )
     paths = build_return_paths(plan, months_per_run=processed.months, today=today)
-    return simulate_monthly(
+    raw = simulate_monthly(
         processed,
         stocks_return=paths.stocks_log_to_simple(),
         bonds_return=paths.bonds_log_to_simple(),
         ran_at=ran_at,
+    )
+
+    composition = wealth_by_income_source(
+        gross_job=processed.gross_job,
+        gross_social_security=processed.gross_social_security,
+        gross_pension=processed.gross_pension,
+        gross_manual=processed.gross_manual,
+        taxes=processed.taxes,
+        monthly_inflation=processed.monthly_inflation,
+        monthly_bond_rate=processed.monthly_planning_bonds,
+    )
+
+    return build_public_result(
+        raw,
+        percentiles=resolved,
+        composition=composition,
+        start_month=(today.year, today.month),
     )

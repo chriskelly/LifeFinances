@@ -26,6 +26,11 @@ def test_preprocess_shapes_and_basic_invariants():
     # Allocation is a fraction in [0, 1].
     assert np.all(processed.stock_allocation_total_portfolio >= 0.0)
     assert np.all(processed.stock_allocation_total_portfolio <= 1.0)
+    assert processed.gross_job.shape == (months,)
+    assert processed.gross_social_security.shape == (months,)
+    assert processed.gross_pension.shape == (months,)
+    assert processed.gross_manual.shape == (months,)
+    assert processed.taxes.shape == (months,)
 
 
 def test_legacy_npv_zero_when_no_legacy_target():

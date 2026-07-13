@@ -21,9 +21,13 @@ preprocess(plan)                            # NEW
         ▼
 build_return_paths(plan, months)          # Phase 3a (per-run monthly returns)
         ▼
-simulate_monthly(processed, paths)          # NEW vectorized forward loop (engine.py)
+simulate_monthly(processed, paths)          # vectorized forward loop (engine.py)
         ▼
-SimulationResult  (raw per-run arrays)      # expanded result.py
+RawSimulationResult  (engine-internal)      # per-run arrays in result.py
+        ▼
+aggregate + wealth composition            # aggregate.py, composition.py
+        ▼
+SimulationResult  (percentile-major)      # public return from run_simulation
 ```
 
 ## Stage by stage
@@ -134,12 +138,14 @@ vectorized across all simulated runs at once, which is what keeps the whole
 simulation fast (on the order of tens of milliseconds for hundreds of runs over
 multi-decade horizons).
 
-**Raw results.** The engine does not aggregate its output into percentiles or
-charts — that's Phase 3d's job. Instead it returns a `SimulationResult` holding
-the raw per-run, per-month arrays (starting balances, and the essential /
-discretionary / general / total withdrawals, plus the resulting stock
-allocation and a count of runs that ran out of money), so downstream code can
-choose how to summarize them.
+**Public results.** `run_simulation` returns a percentile-major `SimulationResult`:
+each chart series is reduced along the run axis (default percentiles from
+`plan.advanced.percentiles`, overridable via kwarg). The forward loop still
+emits a private `RawSimulationResult` (`num_runs × months`) internally; callers
+should treat raw arrays as an engine artifact, not the public API. Wealth
+composition bands (job, Social Security, pension, manual income — tax-prorated
+remaining NPV at each month) are attached for stacked total-portfolio charts in
+Phase 4.
 
 ## Merton's formula
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
+from decimal import Decimal
 
 import numpy as np
 from core.models import PersonHousehold, Plan
@@ -19,6 +20,7 @@ from core.timeline import Timeline, person_end_date, project_stream
 from domain import build_monthly_cashflows
 from simulation.market_data import resolve_inflation
 from simulation.mertons import effective_mertons
+from simulation.npv import backward_npv_including_current
 from simulation.planning_returns import resolve_planning_returns
 from simulation.risk import legacy_rra, rra_by_month
 
@@ -43,14 +45,24 @@ class ProcessedPlan:
     # "expected run" balance trajectory that establishes scheduled wealth.
     monthly_planning_stocks: float
     monthly_planning_bonds: float
+    # Composition inputs (nominal gross/tax series + inflation for wealth bands).
+    monthly_inflation: float
+    gross_job: np.ndarray
+    gross_social_security: np.ndarray
+    gross_pension: np.ndarray
+    gross_manual: np.ndarray
+    taxes: np.ndarray
+
+
+def _decimal_series_to_float64(series: Sequence[Decimal]) -> np.ndarray:
+    return np.array([float(value) for value in series], dtype=np.float64)
 
 
 def _sum_streams(streams: Sequence[TimedStream], timeline: Timeline) -> np.ndarray:
     months = timeline.horizon_months
     total = np.zeros(months, dtype=np.float64)
     for stream in streams:
-        series = project_stream(stream, timeline)
-        total += np.array([float(value) for value in series], dtype=np.float64)
+        total += _decimal_series_to_float64(project_stream(stream, timeline))
     return total
 
 
@@ -104,9 +116,7 @@ def preprocess(
 
     # Real conversion: divide month t nominal by (1 + monthly_inflation) ** t.
     deflator = (1.0 + inflation.monthly) ** np.arange(months, dtype=np.float64)
-    income_nominal = np.array(
-        [float(value) for value in cashflows.net_cashflow], dtype=np.float64
-    )
+    income_nominal = _decimal_series_to_float64(cashflows.net_cashflow)
     income_real = income_nominal / deflator
     essential_real = _sum_streams(plan.extra_essential_spending, timeline) / deflator
     discretionary_real = (
@@ -162,13 +172,17 @@ def preprocess(
     # Backward NPV pass: income/essential discounted at the bond rate;
     # discretionary and the amortization factor at the (month-specific)
     # total-portfolio rate implied by that month's Merton allocation.
-    npv_income = np.zeros(months, dtype=np.float64)
-    npv_essential = np.zeros(months, dtype=np.float64)
+    income_including = backward_npv_including_current(
+        income_real, one_over_1_plus_r=one_over_1p_bonds
+    )
+    essential_including = backward_npv_including_current(
+        essential_real, one_over_1_plus_r=one_over_1p_bonds
+    )
+    npv_income = income_including - income_real
+    npv_essential = essential_including - essential_real
     npv_discretionary = np.zeros(months, dtype=np.float64)
     cumulative = np.zeros(months, dtype=np.float64)
 
-    income_with_current = 0.0
-    essential_with_current = 0.0
     discretionary_with_current = 0.0
     cumulative_running = 0.0
     for month in range(months - 1, -1, -1):
@@ -177,12 +191,6 @@ def preprocess(
         )
         one_over_r_portfolio = 1.0 / one_plus_r_portfolio
 
-        income_with_current = (
-            income_with_current * one_over_1p_bonds + income_real[month]
-        )
-        essential_with_current = (
-            essential_with_current * one_over_1p_bonds + essential_real[month]
-        )
         discretionary_with_current = (
             discretionary_with_current * one_over_r_portfolio
             + discretionary_real[month]
@@ -192,8 +200,6 @@ def preprocess(
         cumulative_running = cumulative_running * one_plus_g_over_r + 1.0
         cumulative[month] = cumulative_running
 
-        npv_income[month] = income_with_current - income_real[month]
-        npv_essential[month] = essential_with_current - essential_real[month]
         npv_discretionary[month] = (
             discretionary_with_current - discretionary_real[month]
         )
@@ -222,4 +228,12 @@ def preprocess(
         cumulative_1_plus_g_over_1_plus_r=cumulative,
         monthly_planning_stocks=monthly_stocks,
         monthly_planning_bonds=monthly_bonds,
+        monthly_inflation=inflation.monthly,
+        gross_job=_decimal_series_to_float64(cashflows.gross_job),
+        gross_social_security=_decimal_series_to_float64(
+            cashflows.gross_social_security
+        ),
+        gross_pension=_decimal_series_to_float64(cashflows.gross_pension),
+        gross_manual=_decimal_series_to_float64(cashflows.gross_manual),
+        taxes=_decimal_series_to_float64(cashflows.taxes.stored_total),
     )

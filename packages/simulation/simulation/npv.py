@@ -7,6 +7,19 @@ import numpy as np
 FloatOrArray = float | np.ndarray
 
 
+def backward_npv_including_current(
+    real_series: np.ndarray, *, one_over_1_plus_r: float
+) -> np.ndarray:
+    """NPV of `real_series[m:]` including month `m`, discounting at a constant rate."""
+    months = real_series.shape[0]
+    out = np.empty(months, dtype=np.float64)
+    running = 0.0
+    for month in range(months - 1, -1, -1):
+        running = running * one_over_1_plus_r + float(real_series[month])
+        out[month] = running
+    return out
+
+
 @dataclass(frozen=True)
 class ExpensesScale:
     discretionary: FloatOrArray

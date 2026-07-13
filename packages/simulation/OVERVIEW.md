@@ -15,18 +15,26 @@ numerical correctness without a runnable TPAW binary to diff against.
 | Merton's formula (stock allocation + spending tilt, equity-premium/variance clamps, ∞-RRA case) | Ported (Phase 3b) | `simulation/mertons.py` |
 | Backward NPV precompute pass + `cumulative_1_plus_g_over_1_plus_r` amortization | Ported (Phase 3b) | `simulation/npv.py`, `simulation/preprocess.py` |
 | Vectorized forward monthly loop (wealth, pool carve, expected-run elasticity, contributions/withdrawals, allocation, rebalancing) | Ported (Phase 3b) | `simulation/engine.py` |
-| Raw per-run result arrays | Ported (Phase 3b) | `simulation/result.py` |
-| Percentile aggregation (10th/50th/90th, etc. reduction over raw arrays) | Deferred | Phase 3d |
+| Raw per-run result arrays (engine-internal) | Ported (Phase 3b) | `simulation/result.py` (`RawSimulationResult`) |
+| Percentile aggregation (10th/50th/90th, etc. reduction over raw arrays) | Ported (Phase 3d) | `simulation/aggregate.py` |
+| Wealth composition (tax-prorated NPV by income source: job / SS / pension / manual) | Ported (Phase 3d) | `simulation/composition.py` |
 | Planning-returns presets (live CAPE/EOD-derived expected returns, empirical variance refinement) | Ported (Phase 3c-2) | `simulation/market_data/presets.py`, `simulation/market_data/presets_data.py` |
 | S&P + Treasury 20-yr TIPS market feeds (cache + vendored fallback) | Ported (Phase 3c-1) | `simulation/market_data/` |
 | Bootstrapped/stochastic inflation (3b uses a single resolved scalar inflation rate for the whole horizon) | Deferred | Issue #186 |
 | Spending ceiling/floor constraints | Removed from scope | Not planned — this rebuild's product scope removed ceiling/floor |
 | Detailed tax-bucket modeling interactions with withdrawals (traditional vs. Roth vs. taxable sequencing) | Deferred | Later phase, unscheduled |
+| Withdrawal rate from savings | Deferred | Later / if Phase 4 needs it |
+| Total-portfolio stock allocation series | Deferred | Later |
+| Spending-tilt result series | Deferred | Later (tilt already drives engine) |
+| Ending-balance percentile scalars | Deferred | Later |
+| NPV balance-sheet approx blob | Deferred | Later / skip unless needed |
 
-`run_simulation`'s `percentiles: list[int] | None` parameter (see
-`simulation/stub.py`) is already accepted at the call site so downstream API
-shape doesn't need to change again in Phase 3d, but the value is currently
-unused (`_ = percentiles  # reserved for Phase 3d aggregation`).
+`run_simulation` returns a public, percentile-major `SimulationResult` (balance,
+withdrawals, savings stock allocation, plus wealth-composition bands). The engine
+still emits private `RawSimulationResult` (`num_runs × months`); aggregation
+happens in `aggregate.py` via `numpy.percentile` along the run axis. Percentiles
+default from `plan.advanced.percentiles` (`[5, 50, 95]`); the `percentiles`
+kwarg overrides. Chart UI wiring is Phase 4.
 
 ## Numerical parity caveat
 
