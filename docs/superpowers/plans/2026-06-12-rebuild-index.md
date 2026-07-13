@@ -34,9 +34,9 @@
 
 | Field             | Value                                                      |
 | ----------------- | ---------------------------------------------------------- |
-| **Current phase** | Phase 3d — plan                                            |
-| **Active plan**   | `2026-06-12-phase-3d-simulation-results.md` *(to write)*  |
-| **Next action**   | Write Phase 3d plan before coding                           |
+| **Current phase** | Phase 4 — plan                                             |
+| **Active plan**   | `2026-06-12-phase-4-web-ui.md` *(to write)*               |
+| **Next action**   | Write Phase 4 plan before coding                           |
 
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
@@ -325,19 +325,21 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 ### Phase 3d — Simulation: results data layer
 
-**Plan file:** `2026-06-12-phase-3d-simulation-results.md` *(to write)*
+**Plan file:** `2026-06-12-phase-3d-simulation-results.md`
 
-**Delivers:** `SimulationResult` structure covering all tpaw major chart data series; configurable percentiles; dated plan starts from today.
+**Delivers:** Public percentile-major `SimulationResult` (balance, withdrawals, savings allocation) plus tax-prorated wealth composition bands; configurable percentiles via `plan.advanced.percentiles`; `start_month` from today.
 
-**References:** tpaw `wire_simulate_api.proto`; design spec §6 items 5, 24, 30–31.
+**References:** tpaw `wire_simulate_api.proto`; design spec §6 items 5, 24, 30–31; `docs/superpowers/specs/2026-07-10-phase-3d-simulation-results-design.md`.
 
 **Entry criteria:** Phase 3c complete.
 
 **Exit criteria:**
 
-- [ ] Result types match chart requirements (balance, spending, withdrawals, allocation, …)
-- [ ] User-configurable percentile list
-- [ ] Per-person end age respected; simulation starts from today
+- [x] Public `SimulationResult` is percentile-major (balance, withdrawals, savings allocation)
+- [x] Aggregation via `numpy.percentile` along runs
+- [x] `plan.advanced.percentiles` default `[5, 50, 95]`; kwarg overrides
+- [x] Wealth composition (job/SS/pension/manual) tax-prorated NPV bands
+- [x] `start_month` + horizon match `Timeline` (items 30–31)
 
 **After Phase 3d:** Agent workspace may shrink to LifeFinances-only for most work.
 
@@ -437,10 +439,11 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 | Phase 3a | `2026-06-12-phase-3a-simulation-market-data.md` | complete |
 | Phase 3c-1 | `2026-06-12-phase-3c-1-simulation-market-feeds.md` | complete |
 | Phase 3c-2 | `2026-06-12-phase-3c-2-simulation-planning-returns-presets.md` | complete |
+| Phase 3d | `2026-06-12-phase-3d-simulation-results.md` | complete |
 
 
 ---
 
 ## Next step
 
-Write **Phase 3d plan** before coding.
+Write **Phase 4 plan** before coding.
