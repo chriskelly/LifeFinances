@@ -30,11 +30,13 @@ def _eq_ndarray_model(
     self: Any,
     other: Any,
     *,
-    expected_type: type[Any],
     array_fields: tuple[str, ...],
 ) -> bool:
-    if not isinstance(other, expected_type):
-        return NotImplemented
+    """Compare two same-typed models whose ndarray fields break Pydantic's `==`.
+
+    Callers guard the type check (returning `NotImplemented` on mismatch) so this
+    helper always compares two instances of the same model and returns a real bool.
+    """
     if not all(
         np.array_equal(getattr(self, field), getattr(other, field))
         for field in array_fields
@@ -62,12 +64,9 @@ class RawSimulationResult(BaseModel):
     def __eq__(self, other: Any) -> bool:
         # Pydantic's generated __eq__ compares fields with `==`, which raises
         # on np.ndarray fields ("truth value of an array is ambiguous").
-        return _eq_ndarray_model(
-            self,
-            other,
-            expected_type=RawSimulationResult,
-            array_fields=RAW_ARRAY_FIELDS,
-        )
+        if not isinstance(other, RawSimulationResult):
+            return NotImplemented
+        return _eq_ndarray_model(self, other, array_fields=RAW_ARRAY_FIELDS)
 
 
 class SimulationResult(BaseModel):
@@ -92,9 +91,6 @@ class SimulationResult(BaseModel):
     engine_version: str = ENGINE_VERSION
 
     def __eq__(self, other: Any) -> bool:
-        return _eq_ndarray_model(
-            self,
-            other,
-            expected_type=SimulationResult,
-            array_fields=_PUBLIC_ARRAY_FIELDS,
-        )
+        if not isinstance(other, SimulationResult):
+            return NotImplemented
+        return _eq_ndarray_model(self, other, array_fields=_PUBLIC_ARRAY_FIELDS)
