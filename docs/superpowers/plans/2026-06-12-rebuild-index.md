@@ -34,9 +34,9 @@
 
 | Field             | Value                                                      |
 | ----------------- | ---------------------------------------------------------- |
-| **Current phase** | Phase 4 — plan                                             |
-| **Active plan**   | `2026-06-12-phase-4-web-ui.md` *(to write)*               |
-| **Next action**   | Write Phase 4 plan before coding                           |
+| **Current phase** | Phase 4a — plan                                            |
+| **Active plan**   | `2026-06-12-phase-4a-plan-shell.md` *(to write)*          |
+| **Next action**   | Write Phase 4a plan before coding                          |
 
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
@@ -59,17 +59,24 @@ flowchart LR
   P3b[Phase 3b\nSim: TPAW core]
   P3c[Phase 3c\nSim: allocation + PV]
   P3d[Phase 3d\nSim: charts data layer]
-  P4[Phase 4\nUI completeness]
+  P4a[Phase 4a\nPlan shell]
+  P4b[Phase 4b\nCore charts]
+  P4c[Phase 4c\nIncome editor]
+  P4d[Phase 4d\nSim/spending editor]
+  P4e[Phase 4e\nExtended charts]
+  P4f[Phase 4f\nImport + launcher]
   P5[Phase 5\nTools]
 
   P0 --> P1 --> P2a --> P2b --> P2c --> P2d --> P2e
-  P2e --> P3a --> P3b --> P3c --> P3d --> P4 --> P5
+  P2e --> P3a --> P3b --> P3c --> P3d --> P4a --> P4b --> P4c --> P4d --> P4e --> P4f --> P5
   P3a -.->|optional| P3aPlus
 ```
 
 
 
 Phases 2b → 2c → 2d → 2e are sequential (job income before SS before pension/taxes before single-household). Phase 2a must land before 2b. Phases 3a–3d must be sequential. **Phase 3a+ is optional** — live market-data acquisition; does not block Phase 3b.
+
+Phases **4a → 4b → 4c → 4d → 4e → 4f** are the default merge order (one subphase = one PR). After 4a, **4b may overlap 4c** if parallel agents are used; **4e requires 4b and 4d** (per-stream charts need spending editors). **4f** (import + launcher) is last and does not block Phase 5's minimum bar (4a + 4c + 4d + thin 4b).
 
 ---
 
@@ -347,25 +354,145 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 ### Phase 4 — UI completeness
 
-**Plan file:** `2026-06-12-phase-4-web-ui.md` *(to write)*
-
-**Delivers:** All editor sections, full tpaw chart set in results panel, multiple named plans, legacy YAML import script, **Launcher** (double-click `.command` → `init_db` + uvicorn + browser).
+**Umbrella goal:** Full split-pane editor, tpaw-style results charts, named-plan management, legacy YAML import, and a double-click launcher.
 
 **References:** Design spec §4, §6 items 24–25, 28.
 
 **Entry criteria:** Phase 3d complete.
 
+**Exit criteria (delivered across 4a–4f):**
+
+- [ ] Plan create / switch / duplicate (4a)
+- [ ] `eod_api_key` in settings editor (4a)
+- [ ] Core tpaw charts in results panel (4b)
+- [ ] Editor: household income domains — jobs, SS, manual income, household tax fields (4c)
+- [ ] Editor: spending + simulation config — extra streams, legacy target, sampling, inflation, risk, planning returns, advanced percentiles (4d)
+- [ ] Extended charts — per-stream spending, funding-sources stacked chart, conditional chart menu (4e)
+- [ ] `scripts/import_legacy_yaml.py` with documented gaps (4f)
+- [ ] `scripts/LifeFinances.command` launcher (4f)
+- [ ] Form DTO strategy decided — hand-written vs `create_model` generation from `core.models` (spike in 4c Task 0)
+
+**Phase 5 minimum bar (before full 4e/4f):** 4a + 4c + 4d + thin 4b (replace results stub with at least balance / spending / withdrawal charts).
+
+---
+
+### Phase 4a — Web: plan shell & management
+
+**Plan file:** `2026-06-12-phase-4a-plan-shell.md` *(to write)*
+
+**Delivers:** Named-plan CRUD in the header (create / switch / duplicate), active plan resolution (URL or session), repository `list` / `create` / `duplicate`; `eod_api_key` field in `AppSettingsForm` + `editor_settings.html` (mirrors `fred_api_key` set/clear UI).
+
+**References:** Design spec §4 (routes `/plans`, header chrome); Phase 3c-2 `AppSettings.eod_api_key` (already forwarded by HOME/RESULTS routes).
+
+**Entry criteria:** Phase 3d complete.
+
 **Exit criteria:**
 
-- [ ] Split-pane editor sections for all plan domains
-- [ ] All major tpaw chart types rendering
-- [ ] Plan create/switch/duplicate
-- [ ] `scripts/import_legacy_yaml.py` with documented gaps
-- [ ] Investigate generated flat form DTOs from `core.models` (`create_model` + prefixed `model_fields`) if hand-written section forms become unwieldy
-- [ ] Launcher: `scripts/LifeFinances.command` — double-clickable launcher (no bundling; requires `uv` + repo checkout), `init_db`, ephemeral port, `open` browser, foreground uvicorn
-- [ ] Settings editor: add `eod_api_key` field (`AppSettingsForm` + `editor_settings.html`), mirroring the existing `fred_api_key` set/clear UI. `web.app`'s HOME/RESULTS routes already read+forward `settings.eod_api_key` with `allow_refresh=True` (Phase 3c-2); until this field is added, the key can only be set by writing directly to the DB, so S&P 500 live refresh is effectively CLI/DB-only.
+- [ ] Header shows active plan name with switcher; New and Duplicate actions work
+- [ ] `PlanRepository` supports list, create, duplicate; saves target the active plan id
+- [ ] `eod_api_key` set/clear in settings editor; live S&P refresh usable from the UI
+- [ ] `make` passes; app runs with multiple named plans
 
-*May split into Phase 4a (editor) and Phase 4b (charts) if context requires.*
+---
+
+### Phase 4b — Web: core charts
+
+**Plan file:** `2026-06-12-phase-4b-core-charts.md` *(to write)*
+
+**Delivers:** Replace `results_stub.html` with server-rendered charts (Plotly embed, Altair SVG, or similar per design spec §4); chart type selector; core tpaw chart types backed by `SimulationResult`: `portfolio`, `spending-total`, `withdrawal`, `asset-allocation-savings-portfolio`, `spending-total-funding-sources-{low,mid,high}` (wealth composition + savings allocation).
+
+**References:** Design spec §4, §6 item 24; `docs/superpowers/specs/2026-07-10-phase-3d-simulation-results-design.md`; tpaw `PlanResultsChartType`.
+
+**Entry criteria:** Phase 4a complete (recommended; charts work with default plan but multi-plan header should land first).
+
+**Exit criteria:**
+
+- [ ] Results partial renders at least portfolio, spending-total, and withdrawal charts
+- [ ] Chart type selector switches among shipped core types
+- [ ] X-axis uses `SimulationResult.start_month` + horizon months
+- [ ] Percentile bands use `result.percentiles` (default `[5, 50, 95]`)
+- [ ] `make` passes; debounced results refresh still works
+
+---
+
+### Phase 4c — Web: editor — household & income
+
+**Plan file:** `2026-06-12-phase-4c-editor-income.md` *(to write)*
+
+**Delivers:** Editor sections for income-side plan domains deferred from Phases 2–3: per-person jobs (incl. sabbaticals, formula pension on job), Social Security config, manual income `TimedStream` list, household tax fields (`filing_status`, `residence_state`, `ss_pension_taxable_fraction`, `social_security_trust_factor`). Task 0: spike form DTO strategy (hand-written vs `create_model` + prefixed `model_fields`).
+
+**References:** `packages/domain/OVERVIEW.md`; Phase 2b–2d design specs; `core.models.Household`, `core.job.Job`.
+
+**Entry criteria:** Phase 4a complete.
+
+**Exit criteria:**
+
+- [ ] Jobs editor: add/edit/remove jobs per person; sabbatical windows; optional `FormulaPension` on job
+- [ ] SS editor per person (`PersonSocialSecurityConfig`)
+- [ ] Manual income streams editor (`plan.manual_income_streams`)
+- [ ] Household tax fields editable; `filing_status` override honored
+- [ ] Each section: form DTO + PATCH route + template partial (Phase 1 pattern)
+- [ ] `make` passes
+
+*May split into 4c-1 (jobs + household tax) and 4c-2 (SS + manual income) if diff exceeds PR sizing guidance.*
+
+---
+
+### Phase 4d — Web: editor — spending & simulation config
+
+**Plan file:** `2026-06-12-phase-4d-editor-sim-config.md` *(to write)*
+
+**Delivers:** Editor sections for spending and simulation config deferred from Phases 3a–3d: `extra_essential_spending`, `extra_discretionary_spending`, `legacy_target`, `SamplingConfig`, `InflationConfig`, `RiskConfig`, `PlanningReturnsConfig` (full preset menu), `AdvancedConfig` (percentiles).
+
+**References:** Phase 3a/3c design specs; `core.models` config types; tpaw preset UX.
+
+**Entry criteria:** Phase 4c complete (or in parallel with 4c after 4a if agents are split — spending stream IDs are independent of income editors).
+
+**Exit criteria:**
+
+- [ ] Extra essential/discretionary timed-stream editors
+- [ ] Legacy target field
+- [ ] Sampling, inflation, risk, planning-returns, and advanced percentiles sections
+- [ ] Planning-returns preset UI covers all `PlanningPreset` values with conditional sub-fields
+- [ ] `make` passes
+
+---
+
+### Phase 4e — Web: extended charts
+
+**Plan file:** `2026-06-12-phase-4e-extended-charts.md` *(to write)*
+
+**Delivers:** Remaining tpaw chart types: `spending-general`, per-stream `spending-essential-{id}` / `spending-discretionary-{id}` (conditional on configured streams), and `asset-allocation-total-portfolio` if feasible from existing `SimulationResult` fields (otherwise document deferral or add a minimal simulation helper). Chart menu hides types with no backing data (tpaw parity).
+
+**References:** tpaw `PlanResultsChartType`, `WithPlanResultsChartData.tsx`; `simulation/OVERVIEW.md` deferred series.
+
+**Entry criteria:** Phase 4b and 4d complete (per-stream charts need spending editors).
+
+**Exit criteria:**
+
+- [ ] `spending-general` chart when extra spending streams exist
+- [ ] Per-stream essential/discretionary charts for each configured stream id
+- [ ] Chart selector filters unavailable types (tpaw-style)
+- [ ] Total-portfolio allocation chart shipped or explicitly deferred with issue/note
+- [ ] `make` passes
+
+---
+
+### Phase 4f — Import & launcher
+
+**Plan file:** `2026-06-12-phase-4f-import-launcher.md` *(to write)*
+
+**Delivers:** `scripts/import_legacy_yaml.py` (legacy `config.yml` → SQLite plan; documented field gaps); `scripts/LifeFinances.command` — double-clickable launcher (no bundling; requires `uv` + repo checkout), `init_db`, ephemeral port, `open` browser, foreground uvicorn.
+
+**References:** Design spec §6 item 28; legacy `config.yml` import path; `scripts/import_legacy_yaml.py` stub.
+
+**Entry criteria:** Phase 4a complete (import creates named plans).
+
+**Exit criteria:**
+
+- [ ] `import_legacy_yaml.py` imports a legacy YAML into a new SQLite plan; gaps documented in script help or README
+- [ ] `LifeFinances.command` starts the app locally with one double-click
+- [ ] `make` passes
 
 ---
 
@@ -377,7 +504,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 **References:** Legacy `standalone_tools/disability_insurance_calculator.ipynb`, design spec §5.
 
-**Entry criteria:** Phase 4 usable for plan editing and simulation.
+**Entry criteria:** Phase 4 minimum bar met (4a + 4c + 4d + thin 4b); full 4e/4f not required.
 
 **Exit criteria:**
 
@@ -392,11 +519,13 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 | Task                                               | Phase                          |
 | -------------------------------------------------- | ------------------------------ |
-| Legacy YAML import                                 | 4                              |
-| `import_legacy_yaml.py`                            | 4                              |
-| `scripts/LifeFinances.command` (Launcher)  | 4                              |
+| Legacy YAML import                                 | 4f                             |
+| `import_legacy_yaml.py`                            | 4f                             |
+| `scripts/LifeFinances.command` (Launcher)  | 4f                             |
 | `packages/simulation/OVERVIEW.md` parity checklist | 3b onward, updated per feature |
-| `FRED_API_KEY` / `EOD_API_KEY` via `AppSettings` DB row + settings form | 3a+ / 3c |
+| `FRED_API_KEY` via `AppSettings` + settings form   | 3a+                            |
+| `EOD_API_KEY` via `AppSettings` + settings form    | 4a (read path: 3c)             |
+| Form DTO generation spike (`create_model`)         | 4c Task 0                      |
 | Pre-commit / CI for Python-only monorepo           | 0–1                            |
 | Remove/archive old `docs/features/` to `archive/`  | 0                              |
 
@@ -446,4 +575,4 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 ## Next step
 
-Write **Phase 4 plan** before coding.
+Write **Phase 4a plan** (`2026-06-12-phase-4a-plan-shell.md`) before coding.
