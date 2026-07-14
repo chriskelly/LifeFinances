@@ -15,16 +15,8 @@ def get_repository(db_path: Path) -> PlanRepository:
 def resolve_default_plan_id(
     *, plan_repo: PlanRepository, settings_repo: SettingsRepository
 ) -> int:
-    plan_repo.ensure_bootstrap(settings_repo=settings_repo)
-    settings = settings_repo.get()
-    summaries = plan_repo.list()
-    ids = {summary.id for summary in summaries}
-    default_id = settings.default_plan_id
-    if default_id in ids:
-        return default_id
-    fallback = min(ids)
-    settings_repo.save(settings.model_copy(update={"default_plan_id": fallback}))
-    return fallback
+    default_plan_id, _ = plan_repo.ensure_bootstrap(settings_repo=settings_repo)
+    return default_plan_id
 
 
 def require_plan(plan_id: int, *, plan_repo: PlanRepository) -> tuple[int, Plan]:

@@ -65,6 +65,20 @@ class PortfolioForm(BaseModel):
         return plan.model_copy(update={"portfolio": portfolio})
 
 
+def _apply_api_key(
+    settings: AppSettings,
+    *,
+    field: str,
+    value: str | None,
+    clear: bool,
+) -> AppSettings:
+    if clear:
+        return settings.model_copy(update={field: None})
+    if value and value.strip():
+        return settings.model_copy(update={field: value.strip()})
+    return settings
+
+
 class AppSettingsForm(BaseModel):
     """Flat transport DTO for local app settings."""
 
@@ -74,17 +88,15 @@ class AppSettingsForm(BaseModel):
     clear_eod_api_key: bool = False
 
     def apply_to(self, settings: AppSettings) -> AppSettings:
-        updated = settings
-        if self.clear_fred_api_key:
-            updated = updated.model_copy(update={"fred_api_key": None})
-        elif self.fred_api_key and self.fred_api_key.strip():
-            updated = updated.model_copy(
-                update={"fred_api_key": self.fred_api_key.strip()}
-            )
-        if self.clear_eod_api_key:
-            updated = updated.model_copy(update={"eod_api_key": None})
-        elif self.eod_api_key and self.eod_api_key.strip():
-            updated = updated.model_copy(
-                update={"eod_api_key": self.eod_api_key.strip()}
-            )
-        return updated
+        updated = _apply_api_key(
+            settings,
+            field="fred_api_key",
+            value=self.fred_api_key,
+            clear=self.clear_fred_api_key,
+        )
+        return _apply_api_key(
+            updated,
+            field="eod_api_key",
+            value=self.eod_api_key,
+            clear=self.clear_eod_api_key,
+        )

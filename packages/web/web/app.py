@@ -78,6 +78,10 @@ RepoDep = Annotated[PlanRepository, Depends(get_repo)]
 SettingsRepoDep = Annotated[SettingsRepository, Depends(get_settings_repo)]
 
 
+def _redirect_to_plan(plan_id: int) -> RedirectResponse:
+    return RedirectResponse(url=f"{HOME}?plan={plan_id}", status_code=302)
+
+
 def _mount_static(web_app: FastAPI) -> None:
     web_app.mount(
         routes.STATIC,
@@ -106,9 +110,7 @@ def _register_home_route(web_app: FastAPI) -> None:
             default_plan_id = resolve_default_plan_id(
                 plan_repo=repo, settings_repo=settings_repo
             )
-            return RedirectResponse(
-                url=f"{HOME}?plan={default_plan_id}", status_code=302
-            )
+            return _redirect_to_plan(default_plan_id)
 
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         settings = settings_repo.get()
@@ -246,13 +248,13 @@ def _register_plan_management_routes(web_app: FastAPI) -> None:
     def create_plan(repo: RepoDep) -> Response:
         name = untitled_plan_name(existing=[s.name for s in repo.list()])
         new_id, _ = repo.create(name=name)
-        return RedirectResponse(url=f"{HOME}?plan={new_id}", status_code=302)
+        return _redirect_to_plan(new_id)
 
     @web_app.post(PLAN_DUPLICATE)
     def duplicate_plan(repo: RepoDep, plan_id: int) -> Response:
         require_plan(plan_id, plan_repo=repo)
         new_id, _ = repo.duplicate(plan_id)
-        return RedirectResponse(url=f"{HOME}?plan={new_id}", status_code=302)
+        return _redirect_to_plan(new_id)
 
     @web_app.post(PLAN_RENAME)
     def rename_plan(
@@ -265,7 +267,7 @@ def _register_plan_management_routes(web_app: FastAPI) -> None:
             repo.rename(plan_id, name=name)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return RedirectResponse(url=f"{HOME}?plan={plan_id}", status_code=302)
+        return _redirect_to_plan(plan_id)
 
     @web_app.post(PLAN_SET_DEFAULT)
     def set_default_plan(
@@ -274,7 +276,7 @@ def _register_plan_management_routes(web_app: FastAPI) -> None:
         require_plan(plan_id, plan_repo=repo)
         settings = settings_repo.get()
         settings_repo.save(settings.model_copy(update={"default_plan_id": plan_id}))
-        return RedirectResponse(url=f"{HOME}?plan={plan_id}", status_code=302)
+        return _redirect_to_plan(plan_id)
 
     @web_app.post(PLAN_DELETE)
     def delete_plan(
@@ -286,16 +288,8 @@ def _register_plan_management_routes(web_app: FastAPI) -> None:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        settings = settings_repo.get()
-        remaining_ids = [s.id for s in repo.list()]
-        if settings.default_plan_id in remaining_ids:
-            new_default_id = settings.default_plan_id
-        else:
-            new_default_id = min(remaining_ids)
-            settings_repo.save(
-                settings.model_copy(update={"default_plan_id": new_default_id})
-            )
-        return RedirectResponse(url=f"{HOME}?plan={new_default_id}", status_code=302)
+        new_default_id, _ = repo.ensure_bootstrap(settings_repo=settings_repo)
+        return _redirect_to_plan(new_default_id)
 
 
 def _register_results_route(web_app: FastAPI) -> None:
