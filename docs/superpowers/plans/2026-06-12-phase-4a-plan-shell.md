@@ -30,7 +30,8 @@
 | Modify: `packages/web/web/routes.py` | Plan query / management route constants |
 | Modify: `packages/web/web/dependencies.py` | `resolve_active_plan`, bootstrap helpers |
 | Modify: `packages/web/web/app.py` | Redirect `/`, thread `plan`, plan POST routes |
-| Modify: `packages/web/web/forms.py` | EOD key fields on `AppSettingsForm` |
+| Modify: `packages/web/web/forms.py` | EOD key fields + `PLAN_NAME` on forms |
+| Modify: `packages/web/web/sections.py` | EOD placeholder / clear-button label constants |
 | Modify: `packages/web/web/templates/index.html` | Plan menu header; pass `plan_id` into partials |
 | Create: `packages/web/web/templates/plan_menu.html` | Header menu partial |
 | Modify: `packages/web/web/templates/editor_*.html` | Carry `plan` on HTMX requests |
@@ -42,12 +43,17 @@
 
 ---
 
-## Testing policy (AGENTS.md)
+## Testing policy (AGENTS.md §108–139)
 
-1. Test **our** logic (resolution, CRUD rules, redirects, save targeting) — not Pydantic defaults alone.
-2. **Avoid fragile values** — bind shared literals once.
-3. **Pull constants from source** — `DEFAULT_PLAN_NAME`, route constants, form field names.
-4. **TDD:** failing test → scaffolding until **logical** failure → implement → green.
+Apply on **every** task that adds or changes tests:
+
+1. **Our logic only** — do **not** add tests that only exercise Pydantic field defaults, trivial getters, FastAPI/`Query`/`Form` binding, or HTMX attribute presence. In scope for 4a: settings persistence + column migrate, name-collision helpers, repository CRUD rules (last-plan delete, rename blank reject, duplicate deep-copy), URL default redirect / 404 / orphan default rewrite, PATCH save targeting the queried plan, plan-management redirects + default reassignment, EOD set/clear (same contract as FRED).
+2. **Avoid fragile values** — if a literal appears in both arrange/act and assert, bind it once (`expected_name = …`) and reference that variable.
+3. **Pull constants from source** — import `DEFAULT_PLAN_NAME`, `UNTITLED_PLAN_BASE`, `HOME`, `PLAN_*` routes, `EOD_API_KEY` / `CLEAR_EOD_API_KEY` / `PLAN_NAME`, and any UI placeholder/button label constants from production modules. Inline a literal only to pin an intentional contract; comment that it is pinned.
+4. **TDD flow** — write the failing test → add minimal scaffolding until the failure is **logical** (`AssertionError`, `NotImplementedError`, `ValueError`, `KeyError`, HTTP status assert) → implement → green. **Do not** checklist a separate “structural failure” (`ImportError` / `AttributeError`) pytest run as its own step; fix scaffolding in the same red cycle until the failure is logical.
+5. **Shape** — one logical behavior per test; name tests after behavior; keep arrange / act / assert visually distinct.
+
+**Out of scope as standalone tests:** `AppSettings.default_plan_id` defaulting to `None` via Pydantic alone; menu CSS; pure template rendering without a behavior under test.
 
 ---
 
@@ -106,11 +112,11 @@ def test_settings_repository_adds_default_plan_id_column_on_older_settings_table
 
 Update `test_settings_repository_round_trips_api_keys` to still pass with the new field defaulting to `None`.
 
-- [ ] **Step 2: Run tests — expect logical failure**
+- [ ] **Step 2: Run once — confirm logical failure**
 
-Run: `uv run pytest packages/core/tests/test_settings_repository.py -v`
+Run: `uv run pytest packages/core/tests/test_settings_repository.py::test_settings_repository_round_trips_default_plan_id packages/core/tests/test_settings_repository.py::test_settings_repository_adds_default_plan_id_column_on_older_settings_table -v`
 
-Expected: fail on missing `default_plan_id` (validation/TypeError/assert), not a silent pass.
+Expected: **logical** failure (e.g. `TypeError` / `ValidationError` / assert on missing field). If the failure is structural (`ImportError`, `AttributeError`), add minimal scaffolding (`default_plan_id: int | None = None` stub without persistence) and re-run in this same step until logical — do not treat structural as a separate checklist item.
 
 - [ ] **Step 3: Implement**
 
@@ -167,39 +173,65 @@ EOF
 - [ ] **Step 1: Write the failing tests**
 
 ```python
-from core.plan_names import next_available_name, untitled_plan_name, copy_plan_name
+from core.plan_names import (
+    UNTITLED_PLAN_BASE,
+    copy_plan_name,
+    next_available_name,
+    untitled_plan_name,
+)
 
 
 def test_next_available_name_returns_base_when_unused():
-    base = "Untitled Plan"
+    base = UNTITLED_PLAN_BASE
+
     assert next_available_name(base=base, existing=[]) == base
 
 
 def test_next_available_name_suffixes_on_collision():
-    base = "Untitled Plan"
+    base = UNTITLED_PLAN_BASE
     existing = [base, f"{base} 2"]
+
     assert next_available_name(base=base, existing=existing) == f"{base} 3"
 
 
 def test_copy_plan_name_uses_copy_suffix_then_numbers():
     original = "My Plan"
     first = copy_plan_name(original_name=original, existing=[original])
+
     assert first == f"{original} (copy)"
+
     second = copy_plan_name(
         original_name=original,
         existing=[original, first],
     )
+
     assert second == f"{original} (copy) 2"
 
 
 def test_untitled_plan_name_delegates_to_next_available():
-    existing = ["Untitled Plan"]
-    assert untitled_plan_name(existing=existing) == "Untitled Plan 2"
+    existing = [UNTITLED_PLAN_BASE]
+
+    assert untitled_plan_name(existing=existing) == f"{UNTITLED_PLAN_BASE} 2"
 ```
 
-- [ ] **Step 2: Run — logical failure**
+- [ ] **Step 2: Run once — confirm logical failure**
 
 Run: `uv run pytest packages/core/tests/test_plan_names.py -v`
+
+Expected: logical failure after scaffolding (`NotImplementedError` / assert). Do not checklist structural failure separately. Scaffold first if needed:
+
+```python
+UNTITLED_PLAN_BASE = "Untitled Plan"  # pinned: default New-plan label in design §5
+
+def next_available_name(*, base: str, existing: list[str]) -> str:
+    raise NotImplementedError
+
+def untitled_plan_name(*, existing: list[str]) -> str:
+    raise NotImplementedError
+
+def copy_plan_name(*, original_name: str, existing: list[str]) -> str:
+    raise NotImplementedError
+```
 
 - [ ] **Step 3: Implement `plan_names.py`**
 
@@ -259,7 +291,7 @@ Create `packages/core/tests/test_plan_lifecycle.py`:
 ```python
 from __future__ import annotations
 
-import pytest
+from core.defaults import DEFAULT_PLAN_NAME
 from core.models import AppSettings
 from core.plan_names import UNTITLED_PLAN_BASE
 from core.repository import PlanRepository, PlanSummary
@@ -267,8 +299,10 @@ from core.settings_repository import SettingsRepository
 
 
 def test_list_returns_summaries_ordered_by_id(repo: PlanRepository) -> None:
-    first_id, first = repo.create(name="Alpha")
-    second_id, second = repo.create(name="Beta")
+    first_name = "Alpha"
+    second_name = "Beta"
+    first_id, first = repo.create(name=first_name)
+    second_id, second = repo.create(name=second_name)
 
     summaries = repo.list()
 
@@ -276,6 +310,8 @@ def test_list_returns_summaries_ordered_by_id(repo: PlanRepository) -> None:
         PlanSummary(id=first_id, name=first.name),
         PlanSummary(id=second_id, name=second.name),
     ]
+    assert first.name == first_name
+    assert second.name == second_name
 
 
 def test_create_inserts_blank_default_plan_with_given_name(
@@ -301,7 +337,7 @@ def test_ensure_bootstrap_creates_plan_and_sets_default_when_empty(
     assert plan_id >= 1
     assert settings.get().default_plan_id == plan_id
     assert plans.get_by_id(plan_id) is not None
-    assert plan.name  # non-empty
+    assert plan.name == DEFAULT_PLAN_NAME
 
 
 def test_ensure_bootstrap_is_idempotent_when_plans_exist(db_path) -> None:
@@ -317,9 +353,11 @@ def test_ensure_bootstrap_is_idempotent_when_plans_exist(db_path) -> None:
 
 Keep `get_or_create_default` working for existing tests **or** update those tests in this task to call `ensure_bootstrap`. Prefer: implement `ensure_bootstrap` and make `get_or_create_default` call it with a `SettingsRepository(self.db_path)` for backward compatibility during the phase, then migrate call sites in web tasks.
 
-- [ ] **Step 2: Run — logical failure**
+- [ ] **Step 2: Run once — confirm logical failure**
 
 Run: `uv run pytest packages/core/tests/test_plan_lifecycle.py -v`
+
+Expected: logical failure after scaffolding (`NotImplementedError` / `AttributeError` fixed in-scaffold → assert). No separate structural checklist step.
 
 - [ ] **Step 3: Implement**
 
@@ -381,21 +419,25 @@ Append to `test_plan_lifecycle.py`:
 
 ```python
 from decimal import Decimal
+
+import pytest
 from core.plan_names import copy_plan_name
 
 
 def test_duplicate_copies_json_and_assigns_copy_name(repo: PlanRepository) -> None:
-    source_id, source = repo.create(name="Base")
+    source_name = "Base"
+    source_id, source = repo.create(name=source_name)
     expected_balance = Decimal("123456")
     source.portfolio.current_savings_balance = expected_balance
     repo.save(source_id, source)
+    expected_copy_name = copy_plan_name(
+        original_name=source_name, existing=[source_name]
+    )
 
     new_id, duplicated = repo.duplicate(source_id)
 
     assert new_id != source_id
-    assert duplicated.name == copy_plan_name(
-        original_name="Base", existing=["Base"]
-    )
+    assert duplicated.name == expected_copy_name
     assert duplicated.portfolio.current_savings_balance == expected_balance
     reloaded_source = repo.get_by_id(source_id)
     assert reloaded_source is not None
@@ -437,9 +479,11 @@ def test_delete_refuses_last_plan(repo: PlanRepository) -> None:
     assert len(repo.list()) == 1
 ```
 
-- [ ] **Step 2: Run — logical failure**
+- [ ] **Step 2: Run once — confirm logical failure**
 
 Run: `uv run pytest packages/core/tests/test_plan_lifecycle.py -v`
+
+Expected: logical failure (`AttributeError`/`NotImplementedError` after scaffolding → assert). No separate structural checklist step.
 
 - [ ] **Step 3: Implement**
 
@@ -549,9 +593,11 @@ def _bootstrap_plan(db_path) -> int:
 
 For tests that previously relied on `GET HOME` creating the plan, use `_bootstrap_plan` + `/?plan={id}` **or** `client.get(HOME)` with redirects followed.
 
-- [ ] **Step 2: Run — logical failure**
+- [ ] **Step 2: Run once — confirm logical failure**
 
 Run: `uv run pytest packages/web/tests/test_app.py::test_home_without_plan_redirects_to_default packages/web/tests/test_app.py::test_home_with_unknown_plan_returns_404 -v`
+
+Expected: logical failure (wrong status / missing redirect). Scaffold route stubs if structural; do not checklist structural separately.
 
 - [ ] **Step 3: Implement resolution**
 
@@ -657,9 +703,11 @@ def test_patch_portfolio_updates_only_queried_plan(
 
 Also require `plan` on PATCH/results (missing → 422 from FastAPI or explicit 404 — pick **422** for missing required query via `plan: Annotated[int, Query()]`).
 
-- [ ] **Step 2: Run — expect failure (still saving default/first plan)**
+- [ ] **Step 2: Run once — confirm logical failure**
 
 Run: `uv run pytest packages/web/tests/test_app.py::test_patch_portfolio_updates_only_queried_plan -v`
+
+Expected: assert failure (still saving the wrong plan) — logical, not structural.
 
 - [ ] **Step 3: Implement**
 
@@ -713,7 +761,9 @@ EOF
 - [ ] **Step 1: Write failing tests for management actions**
 
 ```python
+from web.forms import PLAN_NAME
 from web.routes import (
+    HOME,
     PLAN_CREATE,
     PLAN_DELETE,
     PLAN_DUPLICATE,
@@ -758,7 +808,7 @@ def test_rename_plan_updates_name(client: TestClient, db_path) -> None:
 
     response = client.post(
         PLAN_RENAME.format(plan_id=plan_id),
-        data={"name": expected_name},
+        data={PLAN_NAME: expected_name},
         follow_redirects=False,
     )
 
@@ -772,7 +822,8 @@ def test_set_default_updates_settings(client: TestClient, db_path) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
     first_id, _ = plans.ensure_bootstrap(settings_repo=settings)
-    second_id, _ = plans.create(name="Second")
+    second_name = "Second"
+    second_id, _ = plans.create(name=second_name)
 
     response = client.post(
         PLAN_SET_DEFAULT.format(plan_id=second_id),
@@ -790,7 +841,8 @@ def test_delete_plan_reassigns_default_when_needed(
     plans = PlanRepository(db_path=db_path)
     settings_repo = SettingsRepository(db_path=db_path)
     first_id, _ = plans.ensure_bootstrap(settings_repo=settings_repo)
-    second_id, _ = plans.create(name="Second")
+    second_name = "Second"
+    second_id, _ = plans.create(name=second_name)
     settings_repo.save(
         settings_repo.get().model_copy(update={"default_plan_id": second_id})
     )
@@ -817,9 +869,11 @@ def test_delete_last_plan_rejected(client: TestClient, db_path) -> None:
     assert len(plans.list()) == 1
 ```
 
-- [ ] **Step 2: Run — logical failure**
+- [ ] **Step 2: Run once — confirm logical failure**
 
 Run: `uv run pytest packages/web/tests/test_app.py -k "create_plan or duplicate_plan or rename_plan or set_default or delete_plan" -v`
+
+Expected: logical failure (404/assert). Scaffold `PLAN_NAME` + route constants if structural; same step.
 
 - [ ] **Step 3: Implement routes + handlers + menu**
 
@@ -835,7 +889,9 @@ PLAN_SET_DEFAULT = "/plans/{plan_id}/set-default"
 
 Handlers: POST → mutate → `RedirectResponse(f"{HOME}?plan=…")`.
 
-On delete of default: set `default_plan_id` to `min(remaining ids)` before redirect. On delete of active non-default: redirect to current default. Form for rename uses field name `name` (add `PLAN_NAME = "name"` constant in `forms.py` if desired).
+On delete of default: set `default_plan_id` to `min(remaining ids)` before redirect. On delete of active non-default: redirect to current default.
+
+In `forms.py` add `PLAN_NAME = "name"` and use it in the rename form `name="{{ forms.PLAN_NAME }}"`.
 
 `plan_menu.html` — `<details>` menu:
 - links to `/?plan={id}` for each summary
@@ -872,14 +928,26 @@ EOF
 
 **Files:**
 - Modify: `packages/web/web/forms.py`
+- Modify: `packages/web/web/sections.py` (EOD placeholder / clear-button label constants)
 - Modify: `packages/web/web/templates/editor_settings.html`
 - Modify: `packages/web/web/app.py` (`patch_settings` form params)
 - Modify: `packages/web/tests/test_app.py`
 
-- [ ] **Step 1: Write failing tests** (mirror FRED)
+- [ ] **Step 1: Write failing tests** (mirror FRED; pull UI strings from `sections`)
+
+Add to `sections.py` (used by template + tests):
+
+```python
+EOD_API_KEY_SET_PLACEHOLDER = "EOD API key is set"
+CLEAR_EOD_API_KEY_LABEL = "Clear stored EOD API key"
+```
+
+(Optionally add matching FRED constants in a follow-up; do not rewrite FRED tests in this task unless needed for consistency.)
 
 ```python
 from web.forms import CLEAR_EOD_API_KEY, EOD_API_KEY
+from web.routes import HOME, PLAN_SETTINGS
+from web.sections import CLEAR_EOD_API_KEY_LABEL, EOD_API_KEY_SET_PLACEHOLDER
 
 
 def test_patch_settings_persists_eod_api_key(client: TestClient, db_path) -> None:
@@ -898,7 +966,8 @@ def test_patch_settings_persists_eod_api_key(client: TestClient, db_path) -> Non
 def test_clear_eod_settings_patch_removes_existing_key(
     client: TestClient, db_path
 ) -> None:
-    SettingsRepository(db_path=db_path).save(AppSettings(eod_api_key="clear-me"))
+    key_to_clear = "clear-me"
+    SettingsRepository(db_path=db_path).save(AppSettings(eod_api_key=key_to_clear))
     plan_id = _bootstrap_plan(db_path)
 
     response = client.patch(
@@ -921,13 +990,15 @@ def test_settings_section_never_echoes_stored_eod_key(
 
     assert response.status_code == 200
     assert secret_key not in response.text
-    assert "EOD API key is set" in response.text
-    assert "Clear stored EOD API key" in response.text
+    assert EOD_API_KEY_SET_PLACEHOLDER in response.text
+    assert CLEAR_EOD_API_KEY_LABEL in response.text
 ```
 
-- [ ] **Step 2: Run — logical failure**
+- [ ] **Step 2: Run once — confirm logical failure**
 
 Run: `uv run pytest packages/web/tests/test_app.py -k eod -v`
+
+Expected: logical failure (key not persisted / placeholder missing). Scaffold form/section constants if structural; same step.
 
 - [ ] **Step 3: Implement**
 
@@ -960,7 +1031,7 @@ class AppSettingsForm(BaseModel):
         return updated
 ```
 
-Mirror FRED markup for EOD in `editor_settings.html`. Wire `patch_settings` Form params.
+Mirror FRED markup for EOD in `editor_settings.html`, using `{{ sections.EOD_API_KEY_SET_PLACEHOLDER }}` and `{{ sections.CLEAR_EOD_API_KEY_LABEL }}`. Wire `patch_settings` Form params.
 
 Remove the “Deferred to Phase 4” comment on `AppSettingsForm`.
 
@@ -971,7 +1042,8 @@ Run: `uv run pytest packages/web/tests/test_app.py -v`
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/web/web/forms.py packages/web/web/templates/editor_settings.html \
+git add packages/web/web/forms.py packages/web/web/sections.py \
+  packages/web/web/templates/editor_settings.html \
   packages/web/web/app.py packages/web/tests/test_app.py
 git commit -m "$(cat <<'EOF'
 feat(web): add EOD API key set/clear in settings editor
