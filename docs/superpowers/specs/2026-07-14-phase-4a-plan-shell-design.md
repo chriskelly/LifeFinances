@@ -5,7 +5,7 @@
 
 **Parent:** [2026-06-12-life-finances-rebuild-design.md](./2026-06-12-life-finances-rebuild-design.md)  
 **Builds on:** Phase 1 core loop (split-pane shell, `get_or_create_default`), Phase 3a+ / 3c settings (`AppSettings`, FRED key form; `eod_api_key` already read by HOME/RESULTS)  
-**Phase plan:** `docs/superpowers/plans/2026-06-12-phase-4a-plan-shell.md` *(to write after spec approval)*  
+**Phase plan:** [`docs/superpowers/plans/2026-06-12-phase-4a-plan-shell.md`](../plans/2026-06-12-phase-4a-plan-shell.md) *(complete)*  
 **Index:** Phase 4a in [2026-06-12-rebuild-index.md](../plans/2026-06-12-rebuild-index.md)
 
 ---
@@ -199,11 +199,11 @@ web  →  core (PlanRepository, SettingsRepository, AppSettings, Plan)
 
 ## 10. Exit criteria (index alignment)
 
-- [ ] Header shows active plan name with switcher; New and Duplicate (and rename / delete / set-default) work
-- [ ] `PlanRepository` supports list, create, duplicate (plus rename/delete as above); saves target the active plan id from `?plan=`
-- [ ] User-marked default; `/` redirects to it
-- [ ] `eod_api_key` set/clear in settings editor; live S&P refresh usable from the UI once keyed
-- [ ] `make` passes; app runs with multiple named plans
+- [x] Header shows active plan name with switcher; New and Duplicate (and rename / delete / set-default) work
+- [x] `PlanRepository` supports list, create, duplicate (plus rename/delete as above); saves target the active plan id from `?plan=`
+- [x] User-marked default; `/` redirects to it
+- [x] `eod_api_key` set/clear in settings editor; live S&P refresh usable from the UI once keyed
+- [x] `make` passes; app runs with multiple named plans
 
 ---
 

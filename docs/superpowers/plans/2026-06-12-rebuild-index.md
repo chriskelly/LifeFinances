@@ -34,10 +34,10 @@
 
 | Field             | Value                                                      |
 | ----------------- | ---------------------------------------------------------- |
-| **Current phase** | Phase 4a — Plan shell & management                         |
-| **Active plan**   | [`2026-06-12-phase-4a-plan-shell.md`](2026-06-12-phase-4a-plan-shell.md) |
-| **Design spec**   | [`2026-07-14-phase-4a-plan-shell-design.md`](../specs/2026-07-14-phase-4a-plan-shell-design.md) |
-| **Next action**   | Execute Phase 4a plan                                      |
+| **Current phase** | Phase 4b — Core charts                                     |
+| **Active plan**   | `2026-06-12-phase-4b-core-charts.md` *(to write)*         |
+| **Design spec**   | Design spec §4, §6 item 24; [Phase 3d results spec](../specs/2026-07-10-phase-3d-simulation-results-design.md) |
+| **Next action**   | Write Phase 4b plan, then execute                          |
 
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
@@ -363,8 +363,8 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 **Exit criteria (delivered across 4a–4f):**
 
-- [ ] Plan create / switch / duplicate (4a)
-- [ ] `eod_api_key` in settings editor (4a)
+- [x] Plan create / switch / duplicate (4a)
+- [x] `eod_api_key` in settings editor (4a)
 - [ ] Core tpaw charts in results panel (4b)
 - [ ] Editor: household income domains — jobs, SS, manual income, household tax fields (4c)
 - [ ] Editor: spending + simulation config — extra streams, legacy target, sampling, inflation, risk, planning returns, advanced percentiles (4d)
@@ -391,10 +391,10 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 **Exit criteria:**
 
-- [ ] Header shows active plan name with switcher; New and Duplicate actions work
-- [ ] `PlanRepository` supports list, create, duplicate; saves target the active plan id
-- [ ] `eod_api_key` set/clear in settings editor; live S&P refresh usable from the UI
-- [ ] `make` passes; app runs with multiple named plans
+- [x] Header shows active plan name with switcher; New and Duplicate actions work
+- [x] `PlanRepository` supports list, create, duplicate; saves target the active plan id
+- [x] `eod_api_key` set/clear in settings editor; live S&P refresh usable from the UI
+- [x] `make` passes; app runs with multiple named plans
 
 ---
 
@@ -572,10 +572,11 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 | Phase 3c-1 | `2026-06-12-phase-3c-1-simulation-market-feeds.md` | complete |
 | Phase 3c-2 | `2026-06-12-phase-3c-2-simulation-planning-returns-presets.md` | complete |
 | Phase 3d | `2026-06-12-phase-3d-simulation-results.md` | complete |
+| Phase 4a | `2026-06-12-phase-4a-plan-shell.md` | complete |
 
 
 ---
 
 ## Next step
 
-Execute **Phase 4a** ([plan](2026-06-12-phase-4a-plan-shell.md), [design](../specs/2026-07-14-phase-4a-plan-shell-design.md)).
+Write and execute **Phase 4b** (core results charts). Phase 4a is complete ([plan](2026-06-12-phase-4a-plan-shell.md), [design](../specs/2026-07-14-phase-4a-plan-shell-design.md)).
