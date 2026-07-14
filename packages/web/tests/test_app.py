@@ -24,6 +24,13 @@ from web.routes import HOME, PLAN_HOUSEHOLD, PLAN_PORTFOLIO, PLAN_SETTINGS, RESU
 from web.sections import HOUSEHOLD_TITLE, PORTFOLIO_TITLE, SETTINGS_TITLE
 
 
+def _bootstrap_plan(db_path) -> int:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    plan_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+    return plan_id
+
+
 def _household_form_data() -> dict[str, str]:
     plan = default_plan()
     p1 = plan.household.person1
@@ -66,6 +73,38 @@ def test_home_auto_creates_default_plan(
 
     assert plan is not None
     assert plan.name == DEFAULT_PLAN_NAME
+
+
+def test_home_without_plan_redirects_to_default(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    plan_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+
+    response: httpx.Response = client.get(HOME, follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{HOME}?plan={plan_id}"
+
+
+def test_home_with_unknown_plan_returns_404(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    plans.ensure_bootstrap(settings_repo=settings)
+
+    response: httpx.Response = client.get(f"{HOME}?plan=999999")
+
+    assert response.status_code == 404
+
+
+def test_home_with_plan_serves_shell(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    plan_id, plan = plans.ensure_bootstrap(settings_repo=settings)
+
+    response: httpx.Response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert plan.name in response.text
 
 
 def test_patch_portfolio_persists_balance_change(

@@ -542,7 +542,7 @@ EOF
 - Modify: `packages/web/web/app.py`
 - Modify: `packages/web/tests/test_app.py`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Add to `test_app.py` (use `follow_redirects=False` where asserting redirect):
 
@@ -593,13 +593,13 @@ def _bootstrap_plan(db_path) -> int:
 
 For tests that previously relied on `GET HOME` creating the plan, use `_bootstrap_plan` + `/?plan={id}` **or** `client.get(HOME)` with redirects followed.
 
-- [ ] **Step 2: Run once — confirm logical failure**
+- [x] **Step 2: Run once — confirm logical failure**
 
 Run: `uv run pytest packages/web/tests/test_app.py::test_home_without_plan_redirects_to_default packages/web/tests/test_app.py::test_home_with_unknown_plan_returns_404 -v`
 
 Expected: logical failure (wrong status / missing redirect). Scaffold route stubs if structural; do not checklist structural separately.
 
-- [ ] **Step 3: Implement resolution**
+- [x] **Step 3: Implement resolution**
 
 `routes.py` — keep `HOME = "/"`; add helpers later for management paths.
 
@@ -647,11 +647,11 @@ def home(request: Request, repo: RepoDep, plan: Annotated[int | None, Query()] =
     # run_simulation + TemplateResponse with plan_id, plan, settings, summaries=repo.list()
 ```
 
-- [ ] **Step 4: Fix / update existing home tests; all targeted tests pass**
+- [x] **Step 4: Fix / update existing home tests; all targeted tests pass**
 
 Run: `uv run pytest packages/web/tests/test_app.py -v`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/web/web/routes.py packages/web/web/dependencies.py \

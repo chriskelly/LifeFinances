@@ -7,15 +7,15 @@ from typing import Annotated
 from core.paths import default_db_path
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
-from fastapi import Depends, FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi import Depends, FastAPI, Form, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from simulation.stub import run_simulation
 
 from web import forms, routes, sections
-from web.dependencies import get_repository
+from web.dependencies import get_repository, require_plan, resolve_default_plan_id
 from web.forms import AppSettingsForm, HouseholdForm, PortfolioForm
 from web.routes import (
     EDITOR_HOUSEHOLD,
@@ -85,7 +85,8 @@ def _register_home_route(web_app: FastAPI) -> None:
     def home(
         request: Request,
         repo: RepoDep,
-    ) -> HTMLResponse:
+        plan: Annotated[int | None, Query()] = None,
+    ) -> Response:
         resolved_db_path = _resolve_db_path(request.app)
         if not resolved_db_path.exists():
             return templates.TemplateResponse(
@@ -94,10 +95,19 @@ def _register_home_route(web_app: FastAPI) -> None:
                 {"message": _INIT_DB_MESSAGE},
             )
 
-        _, plan = repo.get_or_create_default()
-        settings = get_settings_repo(request).get()
+        settings_repo = get_settings_repo(request)
+        if plan is None:
+            default_plan_id = resolve_default_plan_id(
+                plan_repo=repo, settings_repo=settings_repo
+            )
+            return RedirectResponse(
+                url=f"{HOME}?plan={default_plan_id}", status_code=302
+            )
+
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        settings = settings_repo.get()
         result = run_simulation(
-            plan,
+            plan_model,
             allow_refresh=True,
             fred_api_key=settings.fred_api_key,
             eod_api_key=settings.eod_api_key,
@@ -105,7 +115,13 @@ def _register_home_route(web_app: FastAPI) -> None:
         return templates.TemplateResponse(
             request,
             "index.html",
-            {"plan": plan, "result": result, "settings": settings},
+            {
+                "plan_id": plan_id,
+                "plan": plan_model,
+                "result": result,
+                "settings": settings,
+                "summaries": repo.list(),
+            },
         )
 
 
