@@ -16,6 +16,7 @@ HAS_PARTNER = "has_partner"
 CURRENT_SAVINGS_BALANCE = "current_savings_balance"
 FRED_API_KEY = "fred_api_key"
 CLEAR_FRED_API_KEY = "clear_fred_api_key"
+PLAN_NAME = "name"
 
 
 class HouseholdForm(BaseModel):

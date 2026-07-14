@@ -26,9 +26,72 @@ body {
   font-size: 1.25rem;
 }
 
-.plan-label {
-  color: #555;
+.plan-menu {
+  position: relative;
   font-size: 0.95rem;
+}
+
+.plan-menu summary {
+  cursor: pointer;
+  color: #333;
+  list-style: none;
+}
+
+.plan-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.plan-menu summary::after {
+  content: "▾";
+  margin-left: 0.35rem;
+  color: #888;
+}
+
+.plan-menu-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 10;
+  min-width: 16rem;
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.plan-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.5rem;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.plan-menu-list a {
+  color: #1a1a1a;
+  text-decoration: none;
+}
+
+.plan-menu-item-active a {
+  font-weight: 600;
+}
+
+.plan-menu-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.plan-menu-rename input {
+  flex: 1;
+  padding: 0.3rem 0.4rem;
 }
 
 .layout {

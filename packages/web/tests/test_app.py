@@ -19,8 +19,20 @@ from web.forms import (
     PERSON2_BIRTH_MONTH,
     PERSON2_BIRTH_YEAR,
     PERSON2_MAX_AGE_YEARS,
+    PLAN_NAME,
 )
-from web.routes import HOME, PLAN_HOUSEHOLD, PLAN_PORTFOLIO, PLAN_SETTINGS, RESULTS
+from web.routes import (
+    HOME,
+    PLAN_CREATE,
+    PLAN_DELETE,
+    PLAN_DUPLICATE,
+    PLAN_HOUSEHOLD,
+    PLAN_PORTFOLIO,
+    PLAN_RENAME,
+    PLAN_SET_DEFAULT,
+    PLAN_SETTINGS,
+    RESULTS,
+)
 from web.sections import HOUSEHOLD_TITLE, PORTFOLIO_TITLE, SETTINGS_TITLE
 
 
@@ -303,3 +315,98 @@ def test_results_echoes_updated_balance(client: TestClient, db_path) -> None:
     match = re.search(r"Starting balance: ([\d.eE+-]+)", response.text)
     assert match is not None, response.text
     assert float(match.group(1)) == pytest.approx(float(expected_balance))
+
+
+def test_create_plan_redirects_to_new_plan(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    plans.ensure_bootstrap(settings_repo=settings)
+
+    response = client.post(PLAN_CREATE, follow_redirects=False)
+
+    assert response.status_code == 302
+    new_summaries = plans.list()
+    assert len(new_summaries) == 2
+    new_id = max(s.id for s in new_summaries)
+    assert response.headers["location"] == f"{HOME}?plan={new_id}"
+
+
+def test_duplicate_plan_redirects_to_copy(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    source_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+
+    response = client.post(
+        PLAN_DUPLICATE.format(plan_id=source_id),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert len(plans.list()) == 2
+
+
+def test_rename_plan_updates_name(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    plan_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+    expected_name = "Renamed"
+
+    response = client.post(
+        PLAN_RENAME.format(plan_id=plan_id),
+        data={PLAN_NAME: expected_name},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    loaded = plans.get_by_id(plan_id)
+    assert loaded is not None
+    assert loaded.name == expected_name
+
+
+def test_set_default_updates_settings(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    first_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+    second_name = "Second"
+    second_id, _ = plans.create(name=second_name)
+
+    response = client.post(
+        PLAN_SET_DEFAULT.format(plan_id=second_id),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert settings.get().default_plan_id == second_id
+    assert first_id != second_id
+
+
+def test_delete_plan_reassigns_default_when_needed(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings_repo = SettingsRepository(db_path=db_path)
+    first_id, _ = plans.ensure_bootstrap(settings_repo=settings_repo)
+    second_name = "Second"
+    second_id, _ = plans.create(name=second_name)
+    settings_repo.save(
+        settings_repo.get().model_copy(update={"default_plan_id": second_id})
+    )
+
+    response = client.post(
+        PLAN_DELETE.format(plan_id=second_id),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert plans.get_by_id(second_id) is None
+    assert settings_repo.get().default_plan_id == first_id
+    assert response.headers["location"] == f"{HOME}?plan={first_id}"
+
+
+def test_delete_last_plan_rejected(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    only_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+
+    response = client.post(PLAN_DELETE.format(plan_id=only_id))
+
+    assert response.status_code == 400
+    assert len(plans.list()) == 1
