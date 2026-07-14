@@ -28,6 +28,7 @@ body {
 
 .plan-menu {
   position: relative;
+  margin-left: auto;
   font-size: 0.95rem;
 }
 
@@ -50,9 +51,11 @@ body {
 .plan-menu-panel {
   position: absolute;
   top: calc(100% + 0.5rem);
-  left: 0;
+  right: 0;
+  left: auto;
   z-index: 10;
   min-width: 16rem;
+  max-width: min(22rem, calc(100vw - 2rem));
   padding: 0.75rem;
   background: #fff;
   border: 1px solid #ddd;
@@ -73,9 +76,39 @@ body {
   gap: 0.25rem;
 }
 
+.plan-menu-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .plan-menu-list a {
+  flex: 1;
   color: #1a1a1a;
   text-decoration: none;
+}
+
+.plan-menu-row-delete {
+  margin: 0;
+}
+
+.plan-menu-row-delete button {
+  padding: 0.1rem 0.4rem;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+}
+
+.plan-menu-row-delete button:hover:not(:disabled) {
+  color: #a00;
+  border-color: #ddd;
+}
+
+.plan-menu-row-delete button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .plan-menu-item-active a {

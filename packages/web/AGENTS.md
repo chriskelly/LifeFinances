@@ -44,11 +44,11 @@ Route constants for plan management live in `web/routes.py` (`PLAN_CREATE`, `PLA
 | Duplicate | `POST /plans/{id}/duplicate` | Deep copy; redirect to new id |
 | Rename | `POST /plans/{id}/rename` | `forms.PLAN_NAME`; redirect to same id |
 | Set default | `POST /plans/{id}/set-default` | Updates `AppSettings.default_plan_id` |
-| Delete | `POST /plans/{id}/delete` | Blocked when only one plan remains; reassigns default if needed |
+| Delete | `POST /plans/{id}/delete` | Confirm in UI; blocked when only one plan remains; works by row id (no Plan JSON load); reassigns default if needed |
 
 ### Settings (API keys)
 
-`fred_api_key` and `eod_api_key` live on **`AppSettings`** (singleton DB row), edited via `editor_settings.html` / `SettingsForm`. They are injected at the web boundary into `run_simulation(..., allow_refresh=True)`. **Never** store keys in plan JSON, plan export, or git.
+`fred_api_key` and `eod_api_key` live on **`AppSettings`** (singleton DB row), edited via `editor_settings.html` / `AppSettingsForm`. They are injected at the web boundary into `run_simulation(..., allow_refresh=True)`. **Never** store keys in plan JSON, plan export, or git.
 
 ## Template layout conventions
 

@@ -9,6 +9,20 @@
         <a href="{{ routes.HOME }}?plan={{ summary.id }}">
           {{ summary.name }}{% if summary.id == settings.default_plan_id %} (default){% endif %}
         </a>
+        <form
+          method="post"
+          action="{{ routes.PLAN_DELETE.format(plan_id=summary.id) }}"
+          class="plan-menu-row-delete"
+          onsubmit="return confirm('Delete this plan? This cannot be undone.');"
+        >
+          <button
+            type="submit"
+            aria-label="Delete {{ summary.name }}"
+            {% if summaries|length <= 1 %}disabled{% endif %}
+          >
+            ×
+          </button>
+        </form>
       </li>
       {% endfor %}
     </ul>
@@ -58,6 +72,7 @@
       method="post"
       action="{{ routes.PLAN_DELETE.format(plan_id=plan_id) }}"
       class="plan-menu-action"
+      onsubmit="return confirm('Delete this plan? This cannot be undone.');"
     >
       <button
         type="submit"

@@ -1,10 +1,12 @@
 import re
+import sqlite3
 from decimal import Decimal
 
 import httpx2 as httpx
 import pytest
 from core.defaults import DEFAULT_PLAN_NAME, default_plan
 from core.models import AppSettings
+from core.plan_names import copy_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
 from fastapi.testclient import TestClient
@@ -205,6 +207,21 @@ def test_blank_settings_patch_keeps_existing_key(client: TestClient, db_path) ->
     assert SettingsRepository(db_path=db_path).get().fred_api_key == expected_key
 
 
+def test_blank_eod_settings_patch_keeps_existing_key(
+    client: TestClient, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    expected_key = "keep-existing-eod-key"
+    SettingsRepository(db_path=db_path).save(AppSettings(eod_api_key=expected_key))
+
+    response: httpx.Response = client.patch(
+        f"{PLAN_SETTINGS}?plan={plan_id}", data={EOD_API_KEY: ""}
+    )
+
+    assert response.status_code == 200
+    assert SettingsRepository(db_path=db_path).get().eod_api_key == expected_key
+
+
 def test_clear_settings_patch_removes_existing_key(client: TestClient, db_path) -> None:
     plan_id = _bootstrap_plan(db_path)
     SettingsRepository(db_path=db_path).save(AppSettings(fred_api_key="clear-me"))
@@ -380,10 +397,32 @@ def test_create_plan_redirects_to_new_plan(client: TestClient, db_path) -> None:
     assert response.headers["location"] == f"{HOME}?plan={new_id}"
 
 
+def test_create_plan_sets_default_when_unset(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    assert plans.list() == []
+    assert settings.get().default_plan_id is None
+
+    response = client.post(PLAN_CREATE, follow_redirects=False)
+
+    assert response.status_code == 302
+    summaries = plans.list()
+    assert len(summaries) == 1
+    new_id = summaries[0].id
+    assert settings.get().default_plan_id == new_id
+    assert response.headers["location"] == f"{HOME}?plan={new_id}"
+
+
 def test_duplicate_plan_redirects_to_copy(client: TestClient, db_path) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
-    source_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+    source_id, source = plans.ensure_bootstrap(settings_repo=settings)
+    expected_balance = Decimal("123456")
+    source.portfolio.current_savings_balance = expected_balance
+    plans.save(source_id, source)
+    expected_copy_name = copy_plan_name(
+        original_name=source.name, existing=[source.name]
+    )
 
     response = client.post(
         PLAN_DUPLICATE.format(plan_id=source_id),
@@ -391,7 +430,13 @@ def test_duplicate_plan_redirects_to_copy(client: TestClient, db_path) -> None:
     )
 
     assert response.status_code == 302
-    assert len(plans.list()) == 2
+    new_id = max(s.id for s in plans.list())
+    assert new_id != source_id
+    assert response.headers["location"] == f"{HOME}?plan={new_id}"
+    copied = plans.get_by_id(new_id)
+    assert copied is not None
+    assert copied.name == expected_copy_name
+    assert copied.portfolio.current_savings_balance == expected_balance
 
 
 def test_rename_plan_updates_name(client: TestClient, db_path) -> None:
@@ -499,3 +544,44 @@ def test_delete_last_plan_rejected(client: TestClient, db_path) -> None:
 
     assert response.status_code == 400
     assert len(plans.list()) == 1
+
+
+def test_delete_unparseable_plan_succeeds_without_loading_json(
+    client: TestClient, db_path
+) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    good_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.execute(
+            "INSERT INTO plans (name, data) VALUES (?, ?)",
+            ("Corrupt", "{not-valid-plan-json"),
+        )
+        conn.commit()
+        corrupt_id = cur.lastrowid
+    finally:
+        conn.close()
+    assert corrupt_id is not None
+
+    response = client.post(
+        PLAN_DELETE.format(plan_id=corrupt_id),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert plans.get_by_id(corrupt_id) is None
+    assert plans.exists(good_id)
+    assert response.headers["location"] == f"{HOME}?plan={good_id}"
+
+
+def test_home_delete_form_requires_confirm(client: TestClient, db_path) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    plans = PlanRepository(db_path=db_path)
+    plans.create(name="Second")
+
+    response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert 'onsubmit="return confirm(' in response.text
+    assert PLAN_DELETE.format(plan_id=plan_id) in response.text

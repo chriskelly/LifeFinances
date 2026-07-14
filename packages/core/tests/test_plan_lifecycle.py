@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from decimal import Decimal
 
 import pytest
@@ -7,6 +8,21 @@ from core.defaults import DEFAULT_PLAN_NAME
 from core.plan_names import UNTITLED_PLAN_BASE, copy_plan_name
 from core.repository import PlanRepository, PlanSummary
 from core.settings_repository import SettingsRepository
+
+
+def _insert_corrupt_plan(*, db_path, name: str) -> int:
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.execute(
+            "INSERT INTO plans (name, data) VALUES (?, ?)",
+            (name, "{not-valid-plan-json"),
+        )
+        conn.commit()
+        plan_id = cur.lastrowid
+    finally:
+        conn.close()
+    assert plan_id is not None
+    return plan_id
 
 
 def test_list_returns_summaries_ordered_by_id(repo: PlanRepository) -> None:
@@ -146,3 +162,52 @@ def test_delete_refuses_last_plan(repo: PlanRepository) -> None:
     with pytest.raises(ValueError, match="last"):
         repo.delete(only_id)
     assert len(repo.list()) == 1
+
+
+def test_delete_missing_plan_raises(repo: PlanRepository) -> None:
+    keep_id, _ = repo.create(name="Keep")
+    missing_id = keep_id + 999
+
+    with pytest.raises(ValueError, match="does not exist"):
+        repo.delete(missing_id)
+
+    assert [s.id for s in repo.list()] == [keep_id]
+
+
+def test_delete_removes_unparseable_plan_by_id(db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    keep_id, _ = plans.create(name="Keep")
+    corrupt_id = _insert_corrupt_plan(db_path=db_path, name="Corrupt")
+
+    plans.delete(corrupt_id)
+
+    assert plans.get_by_id(corrupt_id) is None
+    assert [s.id for s in plans.list()] == [keep_id]
+
+
+def test_ensure_bootstrap_skips_unparseable_default(db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    good_id, _ = plans.create(name="Good")
+    corrupt_id = _insert_corrupt_plan(db_path=db_path, name="Corrupt")
+    settings.save(settings.get().model_copy(update={"default_plan_id": corrupt_id}))
+
+    resolved_id, plan = plans.ensure_bootstrap(settings_repo=settings)
+
+    assert resolved_id == good_id
+    assert plan.name == "Good"
+    assert settings.get().default_plan_id == good_id
+
+
+def test_ensure_bootstrap_creates_when_only_unparseable_plans_remain(db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    corrupt_id = _insert_corrupt_plan(db_path=db_path, name="Corrupt")
+    settings.save(settings.get().model_copy(update={"default_plan_id": corrupt_id}))
+
+    resolved_id, plan = plans.ensure_bootstrap(settings_repo=settings)
+
+    assert resolved_id != corrupt_id
+    assert plan.name == DEFAULT_PLAN_NAME
+    assert settings.get().default_plan_id == resolved_id
+    assert plans.get_by_id(resolved_id) is not None

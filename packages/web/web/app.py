@@ -245,9 +245,10 @@ def _register_patch_routes(web_app: FastAPI) -> None:
 
 def _register_plan_management_routes(web_app: FastAPI) -> None:
     @web_app.post(PLAN_CREATE)
-    def create_plan(repo: RepoDep) -> Response:
+    def create_plan(repo: RepoDep, settings_repo: SettingsRepoDep) -> Response:
         name = untitled_plan_name(existing=[s.name for s in repo.list()])
         new_id, _ = repo.create(name=name)
+        repo.ensure_bootstrap(settings_repo=settings_repo)
         return _redirect_to_plan(new_id)
 
     @web_app.post(PLAN_DUPLICATE)
@@ -282,7 +283,8 @@ def _register_plan_management_routes(web_app: FastAPI) -> None:
     def delete_plan(
         repo: RepoDep, settings_repo: SettingsRepoDep, plan_id: int
     ) -> Response:
-        require_plan(plan_id, plan_repo=repo)
+        if not repo.exists(plan_id):
+            raise HTTPException(status_code=404, detail="Plan not found")
         try:
             repo.delete(plan_id)
         except ValueError as exc:

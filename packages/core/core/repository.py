@@ -68,6 +68,16 @@ class PlanRepository:
             conn.close()
         return [PlanSummary(id=row[0], name=row[1]) for row in rows]
 
+    def exists(self, plan_id: int) -> bool:
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT 1 FROM plans WHERE id = ?", (plan_id,)
+            ).fetchone()
+        finally:
+            conn.close()
+        return row is not None
+
     def create(self, *, name: str) -> tuple[int, Plan]:
         plan = default_plan().model_copy(update={"name": name})
         return self._insert(plan), plan
@@ -93,6 +103,8 @@ class PlanRepository:
         return renamed
 
     def delete(self, plan_id: int) -> None:
+        if not self.exists(plan_id):
+            raise ValueError(f"Plan {plan_id} does not exist")
         if len(self.list()) <= 1:
             raise ValueError("cannot delete the last plan")
         conn = self._connect()
@@ -135,15 +147,26 @@ class PlanRepository:
         settings = settings_repo.get()
         default_plan_id = settings.default_plan_id
         valid_ids = {summary.id for summary in summaries}
-        if default_plan_id is None or default_plan_id not in valid_ids:
-            default_plan_id = summaries[0].id
-            settings.default_plan_id = default_plan_id
-            settings_repo.save(settings)
+        preferred_ids: list[int] = []
+        if default_plan_id is not None and default_plan_id in valid_ids:
+            preferred_ids.append(default_plan_id)
+        preferred_ids.extend(
+            summary.id for summary in summaries if summary.id not in preferred_ids
+        )
 
-        plan = self.get_by_id(default_plan_id)
-        if plan is None:
-            raise RuntimeError(f"Default plan {default_plan_id} could not be loaded")
-        return default_plan_id, plan
+        for candidate_id in preferred_ids:
+            plan = self.get_by_id(candidate_id)
+            if plan is None:
+                continue
+            if settings.default_plan_id != candidate_id:
+                settings.default_plan_id = candidate_id
+                settings_repo.save(settings)
+            return candidate_id, plan
+
+        plan_id, plan = self.create(name=DEFAULT_PLAN_NAME)
+        settings.default_plan_id = plan_id
+        settings_repo.save(settings)
+        return plan_id, plan
 
     def get_or_create_default(self) -> tuple[int, Plan]:
         return self.ensure_bootstrap(settings_repo=SettingsRepository(self.db_path))
