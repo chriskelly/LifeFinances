@@ -10,6 +10,7 @@ docs/ideas/
 docs/backlog/
 docs/active/
 docs/features/*/Research/
+.superpowers/
 
 # Node / frontend (removed in rebuild; keep node_modules ignore for safety)
 node_modules/
