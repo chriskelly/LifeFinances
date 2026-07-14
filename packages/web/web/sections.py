@@ -1,3 +1,5 @@
 HOUSEHOLD_TITLE = "Household"
 PORTFOLIO_TITLE = "Current Savings Portfolio"
 SETTINGS_TITLE = "Settings"
+EOD_API_KEY_SET_PLACEHOLDER = "EOD API key is set"
+CLEAR_EOD_API_KEY_LABEL = "Clear stored EOD API key"

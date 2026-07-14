@@ -9,8 +9,10 @@ from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
 from fastapi.testclient import TestClient
 from web.forms import (
+    CLEAR_EOD_API_KEY,
     CLEAR_FRED_API_KEY,
     CURRENT_SAVINGS_BALANCE,
+    EOD_API_KEY,
     FRED_API_KEY,
     HAS_PARTNER,
     PERSON1_BIRTH_MONTH,
@@ -33,7 +35,13 @@ from web.routes import (
     PLAN_SETTINGS,
     RESULTS,
 )
-from web.sections import HOUSEHOLD_TITLE, PORTFOLIO_TITLE, SETTINGS_TITLE
+from web.sections import (
+    CLEAR_EOD_API_KEY_LABEL,
+    EOD_API_KEY_SET_PLACEHOLDER,
+    HOUSEHOLD_TITLE,
+    PORTFOLIO_TITLE,
+    SETTINGS_TITLE,
+)
 
 
 def _bootstrap_plan(db_path) -> int:
@@ -208,6 +216,47 @@ def test_clear_settings_patch_removes_existing_key(client: TestClient, db_path) 
 
     assert response.status_code == 200
     assert SettingsRepository(db_path=db_path).get().fred_api_key is None
+
+
+def test_patch_settings_persists_eod_api_key(client: TestClient, db_path) -> None:
+    expected_key = "eod-ui-key"
+    plan_id = _bootstrap_plan(db_path)
+    response: httpx.Response = client.patch(
+        f"{PLAN_SETTINGS}?plan={plan_id}",
+        data={EOD_API_KEY: expected_key},
+    )
+
+    assert response.status_code == 200
+    assert SettingsRepository(db_path=db_path).get().eod_api_key == expected_key
+
+
+def test_clear_eod_settings_patch_removes_existing_key(
+    client: TestClient, db_path
+) -> None:
+    key_to_clear = "clear-me"
+    SettingsRepository(db_path=db_path).save(AppSettings(eod_api_key=key_to_clear))
+    plan_id = _bootstrap_plan(db_path)
+    response: httpx.Response = client.patch(
+        f"{PLAN_SETTINGS}?plan={plan_id}",
+        data={CLEAR_EOD_API_KEY: "true"},
+    )
+
+    assert response.status_code == 200
+    assert SettingsRepository(db_path=db_path).get().eod_api_key is None
+
+
+def test_settings_section_never_echoes_stored_eod_key(
+    client: TestClient, db_path
+) -> None:
+    secret_key = "eod-secret-value"
+    SettingsRepository(db_path=db_path).save(AppSettings(eod_api_key=secret_key))
+    plan_id = _bootstrap_plan(db_path)
+    response: httpx.Response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert secret_key not in response.text
+    assert EOD_API_KEY_SET_PLACEHOLDER in response.text
+    assert CLEAR_EOD_API_KEY_LABEL in response.text
 
 
 def test_patch_household_without_partner_saves_single_person(

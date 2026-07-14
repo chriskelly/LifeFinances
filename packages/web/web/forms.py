@@ -16,6 +16,8 @@ HAS_PARTNER = "has_partner"
 CURRENT_SAVINGS_BALANCE = "current_savings_balance"
 FRED_API_KEY = "fred_api_key"
 CLEAR_FRED_API_KEY = "clear_fred_api_key"
+EOD_API_KEY = "eod_api_key"
+CLEAR_EOD_API_KEY = "clear_eod_api_key"
 PLAN_NAME = "name"
 
 
@@ -64,23 +66,25 @@ class PortfolioForm(BaseModel):
 
 
 class AppSettingsForm(BaseModel):
-    """Flat transport DTO for local app settings.
-
-    Deferred to Phase 4: `eod_api_key` has no form field yet, even though
-    `AppSettings.eod_api_key` is already read and forwarded (with
-    `allow_refresh=True`) by web.app's HOME/RESULTS routes. Until this DTO and
-    editor_settings.html grow an EOD key input mirroring fred_api_key below,
-    the key can only be set by writing to the DB directly.
-    """
+    """Flat transport DTO for local app settings."""
 
     fred_api_key: str | None = None
     clear_fred_api_key: bool = False
+    eod_api_key: str | None = None
+    clear_eod_api_key: bool = False
 
     def apply_to(self, settings: AppSettings) -> AppSettings:
+        updated = settings
         if self.clear_fred_api_key:
-            return settings.model_copy(update={"fred_api_key": None})
-
-        key = self.fred_api_key.strip() if self.fred_api_key else ""
-        if key:
-            return settings.model_copy(update={"fred_api_key": key})
-        return settings
+            updated = updated.model_copy(update={"fred_api_key": None})
+        elif self.fred_api_key and self.fred_api_key.strip():
+            updated = updated.model_copy(
+                update={"fred_api_key": self.fred_api_key.strip()}
+            )
+        if self.clear_eod_api_key:
+            updated = updated.model_copy(update={"eod_api_key": None})
+        elif self.eod_api_key and self.eod_api_key.strip():
+            updated = updated.model_copy(
+                update={"eod_api_key": self.eod_api_key.strip()}
+            )
+        return updated

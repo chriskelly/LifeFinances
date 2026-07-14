@@ -226,12 +226,16 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         plan: Annotated[int, Query()],
         fred_api_key: Annotated[str | None, Form()] = None,
         clear_fred_api_key: Annotated[bool, Form()] = False,
+        eod_api_key: Annotated[str | None, Form()] = None,
+        clear_eod_api_key: Annotated[bool, Form()] = False,
     ) -> Response:
         require_plan(plan, plan_repo=repo)
         current = settings_repo.get()
         updated = AppSettingsForm(
             fred_api_key=fred_api_key,
             clear_fred_api_key=clear_fred_api_key,
+            eod_api_key=eod_api_key,
+            clear_eod_api_key=clear_eod_api_key,
         ).apply_to(current)
         settings_repo.save(updated)
         return Response(status_code=200)
