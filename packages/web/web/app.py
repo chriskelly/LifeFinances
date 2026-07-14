@@ -130,36 +130,41 @@ def _register_editor_routes(web_app: FastAPI) -> None:
     def editor_household(
         request: Request,
         repo: RepoDep,
+        plan: Annotated[int, Query()],
     ) -> HTMLResponse:
-        _, plan = repo.get_or_create_default()
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         return templates.TemplateResponse(
             request,
             "editor_household.html",
-            {"plan": plan},
+            {"plan_id": plan_id, "plan": plan_model},
         )
 
     @web_app.get(EDITOR_PORTFOLIO, response_class=HTMLResponse)
     def editor_portfolio(
         request: Request,
         repo: RepoDep,
+        plan: Annotated[int, Query()],
     ) -> HTMLResponse:
-        _, plan = repo.get_or_create_default()
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         return templates.TemplateResponse(
             request,
             "editor_portfolio.html",
-            {"plan": plan},
+            {"plan_id": plan_id, "plan": plan_model},
         )
 
     @web_app.get(EDITOR_SETTINGS, response_class=HTMLResponse)
     def editor_settings(
         request: Request,
+        repo: RepoDep,
         settings_repo: SettingsRepoDep,
+        plan: Annotated[int, Query()],
     ) -> HTMLResponse:
+        plan_id, _ = require_plan(plan, plan_repo=repo)
         settings = settings_repo.get()
         return templates.TemplateResponse(
             request,
             "editor_settings.html",
-            {"settings": settings},
+            {"plan_id": plan_id, "settings": settings},
         )
 
 
@@ -170,12 +175,13 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         person1_birth_year: Annotated[int, Form()],
         person1_max_age_years: Annotated[int, Form()],
         repo: RepoDep,
+        plan: Annotated[int, Query()],
         has_partner: Annotated[bool, Form()] = False,
         person2_birth_month: Annotated[int | None, Form()] = None,
         person2_birth_year: Annotated[int | None, Form()] = None,
         person2_max_age_years: Annotated[int | None, Form()] = None,
     ) -> Response:
-        plan_id, plan = repo.get_or_create_default()
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
             updated = HouseholdForm(
                 person1_birth_month=person1_birth_month,
@@ -185,7 +191,7 @@ def _register_patch_routes(web_app: FastAPI) -> None:
                 person2_birth_month=person2_birth_month,
                 person2_birth_year=person2_birth_year,
                 person2_max_age_years=person2_max_age_years,
-            ).apply_to(plan)
+            ).apply_to(plan_model)
         except ValidationError as exc:
             return HTMLResponse(_validation_message(exc), status_code=422)
         repo.save(plan_id, updated)
@@ -195,12 +201,13 @@ def _register_patch_routes(web_app: FastAPI) -> None:
     def patch_portfolio(
         current_savings_balance: Annotated[Decimal, Form()],
         repo: RepoDep,
+        plan: Annotated[int, Query()],
     ) -> Response:
-        plan_id, plan = repo.get_or_create_default()
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
             updated = PortfolioForm(
                 current_savings_balance=current_savings_balance,
-            ).apply_to(plan)
+            ).apply_to(plan_model)
         except ValidationError as exc:
             return HTMLResponse(_validation_message(exc), status_code=422)
         repo.save(plan_id, updated)
@@ -208,10 +215,13 @@ def _register_patch_routes(web_app: FastAPI) -> None:
 
     @web_app.patch(PLAN_SETTINGS)
     def patch_settings(
+        repo: RepoDep,
         settings_repo: SettingsRepoDep,
+        plan: Annotated[int, Query()],
         fred_api_key: Annotated[str | None, Form()] = None,
         clear_fred_api_key: Annotated[bool, Form()] = False,
     ) -> Response:
+        require_plan(plan, plan_repo=repo)
         current = settings_repo.get()
         updated = AppSettingsForm(
             fred_api_key=fred_api_key,
@@ -226,11 +236,12 @@ def _register_results_route(web_app: FastAPI) -> None:
     def results(
         request: Request,
         repo: RepoDep,
+        plan: Annotated[int, Query()],
     ) -> HTMLResponse:
-        _, plan = repo.get_or_create_default()
+        _, plan_model = require_plan(plan, plan_repo=repo)
         settings = get_settings_repo(request).get()
         result = run_simulation(
-            plan,
+            plan_model,
             allow_refresh=True,
             fred_api_key=settings.fred_api_key,
             eod_api_key=settings.eod_api_key,
