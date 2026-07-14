@@ -57,3 +57,34 @@ def test_ensure_bootstrap_is_idempotent_when_plans_exist(db_path) -> None:
 
     assert second_id == first_id
     assert len(plans.list()) == 1
+
+
+def test_ensure_bootstrap_repairs_orphan_default_plan_id(db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    first_id, _ = plans.create(name="Alpha")
+    plans.create(name="Beta")
+    stale_default_id = 999_999
+
+    settings.save(
+        settings.get().model_copy(update={"default_plan_id": stale_default_id})
+    )
+
+    resolved_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+
+    assert resolved_id == first_id
+    assert settings.get().default_plan_id == first_id
+
+
+def test_ensure_bootstrap_honors_valid_multi_plan_default(db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    plans.create(name="Alpha")
+    second_id, _ = plans.create(name="Beta")
+
+    settings.save(settings.get().model_copy(update={"default_plan_id": second_id}))
+
+    resolved_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+
+    assert resolved_id == second_id
+    assert settings.get().default_plan_id == second_id

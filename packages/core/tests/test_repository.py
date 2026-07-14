@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from core.defaults import DEFAULT_PLAN_NAME, DEFAULT_SAVINGS_BALANCE
 from core.repository import PlanRepository
+from core.settings_repository import SettingsRepository
 
 
 def test_get_or_create_default_inserts_when_no_plans(repo: PlanRepository) -> None:
@@ -13,6 +14,7 @@ def test_get_or_create_default_inserts_when_no_plans(repo: PlanRepository) -> No
     assert plan_id == 1
     assert plan.name == DEFAULT_PLAN_NAME
     assert plan.portfolio.current_savings_balance == DEFAULT_SAVINGS_BALANCE
+    assert SettingsRepository(db_path=repo.db_path).get().default_plan_id == plan_id
 
 
 def test_save_and_get_by_id_round_trip_preserves_balance(repo: PlanRepository) -> None:
