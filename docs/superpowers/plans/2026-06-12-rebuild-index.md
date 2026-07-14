@@ -34,9 +34,10 @@
 
 | Field             | Value                                                      |
 | ----------------- | ---------------------------------------------------------- |
-| **Current phase** | Phase 4a — plan                                            |
-| **Active plan**   | `2026-06-12-phase-4a-plan-shell.md` *(to write)*          |
-| **Next action**   | Write Phase 4a plan before coding                          |
+| **Current phase** | Phase 4a — Plan shell & management                         |
+| **Active plan**   | [`2026-06-12-phase-4a-plan-shell.md`](2026-06-12-phase-4a-plan-shell.md) |
+| **Design spec**   | [`2026-07-14-phase-4a-plan-shell-design.md`](../specs/2026-07-14-phase-4a-plan-shell-design.md) |
+| **Next action**   | Execute Phase 4a plan                                      |
 
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
@@ -378,11 +379,13 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 ### Phase 4a — Web: plan shell & management
 
-**Plan file:** `2026-06-12-phase-4a-plan-shell.md` *(to write)*
+**Plan file:** [`2026-06-12-phase-4a-plan-shell.md`](2026-06-12-phase-4a-plan-shell.md)
 
-**Delivers:** Named-plan CRUD in the header (create / switch / duplicate), active plan resolution (URL or session), repository `list` / `create` / `duplicate`; `eod_api_key` field in `AppSettingsForm` + `editor_settings.html` (mirrors `fred_api_key` set/clear UI).
+**Design spec:** [`2026-07-14-phase-4a-plan-shell-design.md`](../specs/2026-07-14-phase-4a-plan-shell-design.md)
 
-**References:** Design spec §4 (routes `/plans`, header chrome); Phase 3c-2 `AppSettings.eod_api_key` (already forwarded by HOME/RESULTS routes).
+**Delivers:** Named-plan CRUD in the header (create / switch / duplicate / rename / delete / set default), active plan via `?plan=` with user-marked default for `/`, repository `list` / `create` / `duplicate` / `rename` / `delete`; `eod_api_key` field in `AppSettingsForm` + `editor_settings.html` (mirrors `fred_api_key` set/clear UI).
+
+**References:** Design spec §4 (routes `/plans`, header chrome); Phase 4a design; Phase 3c-2 `AppSettings.eod_api_key` (already forwarded by HOME/RESULTS routes).
 
 **Entry criteria:** Phase 3d complete.
 
@@ -575,4 +578,4 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 ## Next step
 
-Write **Phase 4a plan** (`2026-06-12-phase-4a-plan-shell.md`) before coding.
+Execute **Phase 4a** ([plan](2026-06-12-phase-4a-plan-shell.md), [design](../specs/2026-07-14-phase-4a-plan-shell-design.md)).

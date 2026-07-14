@@ -1,7 +1,7 @@
 # Phase 4a — Web: Plan Shell & Management Design
 
 **Date:** 2026-07-14  
-**Status:** Pending review  
+**Status:** Approved  
 
 **Parent:** [2026-06-12-life-finances-rebuild-design.md](./2026-06-12-life-finances-rebuild-design.md)  
 **Builds on:** Phase 1 core loop (split-pane shell, `get_or_create_default`), Phase 3a+ / 3c settings (`AppSettings`, FRED key form; `eod_api_key` already read by HOME/RESULTS)  
