@@ -6,9 +6,16 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from core.defaults import default_plan
+from core.defaults import DEFAULT_PLAN_NAME, default_plan
 from core.models import Plan
 from core.paths import default_db_path
+from core.settings_repository import SettingsRepository
+
+
+@dataclass(frozen=True)
+class PlanSummary:
+    id: int
+    name: str
 
 
 @dataclass
@@ -52,17 +59,19 @@ class PlanRepository:
         finally:
             conn.close()
 
-    def get_or_create_default(self) -> tuple[int, Plan]:
+    def list(self) -> list[PlanSummary]:
         conn = self._connect()
         try:
-            row = conn.execute(
-                "SELECT id, data FROM plans ORDER BY id LIMIT 1"
-            ).fetchone()
-            if row is not None:
-                plan = Plan.model_validate_json(row[1])
-                return row[0], plan
-            plan = default_plan()
-            payload = plan.model_dump_json()
+            rows = conn.execute("SELECT id, name FROM plans ORDER BY id").fetchall()
+        finally:
+            conn.close()
+        return [PlanSummary(id=row[0], name=row[1]) for row in rows]
+
+    def create(self, *, name: str) -> tuple[int, Plan]:
+        plan = default_plan().model_copy(update={"name": name})
+        payload = plan.model_dump_json()
+        conn = self._connect()
+        try:
             cur = conn.execute(
                 """
                 INSERT INTO plans (name, data)
@@ -77,3 +86,30 @@ class PlanRepository:
             return plan_id, plan
         finally:
             conn.close()
+
+    def ensure_bootstrap(
+        self, *, settings_repo: SettingsRepository
+    ) -> tuple[int, Plan]:
+        summaries = self.list()
+        if not summaries:
+            plan_id, plan = self.create(name=DEFAULT_PLAN_NAME)
+            settings = settings_repo.get()
+            settings.default_plan_id = plan_id
+            settings_repo.save(settings)
+            return plan_id, plan
+
+        settings = settings_repo.get()
+        default_plan_id = settings.default_plan_id
+        valid_ids = {summary.id for summary in summaries}
+        if default_plan_id is None or default_plan_id not in valid_ids:
+            default_plan_id = summaries[0].id
+            settings.default_plan_id = default_plan_id
+            settings_repo.save(settings)
+
+        plan = self.get_by_id(default_plan_id)
+        if plan is None:
+            raise RuntimeError(f"Default plan {default_plan_id} could not be loaded")
+        return default_plan_id, plan
+
+    def get_or_create_default(self) -> tuple[int, Plan]:
+        return self.ensure_bootstrap(settings_repo=SettingsRepository(self.db_path))
