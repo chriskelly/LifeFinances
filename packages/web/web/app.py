@@ -261,7 +261,10 @@ def _register_plan_management_routes(web_app: FastAPI) -> None:
         name: Annotated[str, Form()],
     ) -> Response:
         require_plan(plan_id, plan_repo=repo)
-        repo.rename(plan_id, name=name)
+        try:
+            repo.rename(plan_id, name=name)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         return RedirectResponse(url=f"{HOME}?plan={plan_id}", status_code=302)
 
     @web_app.post(PLAN_SET_DEFAULT)
@@ -285,13 +288,13 @@ def _register_plan_management_routes(web_app: FastAPI) -> None:
 
         settings = settings_repo.get()
         remaining_ids = [s.id for s in repo.list()]
-        if settings.default_plan_id == plan_id:
+        if settings.default_plan_id in remaining_ids:
+            new_default_id = settings.default_plan_id
+        else:
             new_default_id = min(remaining_ids)
             settings_repo.save(
                 settings.model_copy(update={"default_plan_id": new_default_id})
             )
-        else:
-            new_default_id = settings.default_plan_id
         return RedirectResponse(url=f"{HOME}?plan={new_default_id}", status_code=302)
 
 

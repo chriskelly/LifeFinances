@@ -412,6 +412,25 @@ def test_rename_plan_updates_name(client: TestClient, db_path) -> None:
     assert loaded.name == expected_name
 
 
+def test_rename_plan_with_blank_name_returns_400(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    plan_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+    original_plan = plans.get_by_id(plan_id)
+    assert original_plan is not None
+    original_name = original_plan.name
+
+    response = client.post(
+        PLAN_RENAME.format(plan_id=plan_id),
+        data={PLAN_NAME: "   "},
+    )
+
+    assert response.status_code == 400
+    loaded = plans.get_by_id(plan_id)
+    assert loaded is not None
+    assert loaded.name == original_name
+
+
 def test_set_default_updates_settings(client: TestClient, db_path) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
@@ -438,6 +457,27 @@ def test_delete_plan_reassigns_default_when_needed(client: TestClient, db_path) 
     settings_repo.save(
         settings_repo.get().model_copy(update={"default_plan_id": second_id})
     )
+
+    response = client.post(
+        PLAN_DELETE.format(plan_id=second_id),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert plans.get_by_id(second_id) is None
+    assert settings_repo.get().default_plan_id == first_id
+    assert response.headers["location"] == f"{HOME}?plan={first_id}"
+
+
+def test_delete_plan_redirects_to_real_id_when_default_is_none(
+    client: TestClient, db_path
+) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings_repo = SettingsRepository(db_path=db_path)
+    first_id, _ = plans.ensure_bootstrap(settings_repo=settings_repo)
+    second_name = "Second"
+    second_id, _ = plans.create(name=second_name)
+    settings_repo.save(settings_repo.get().model_copy(update={"default_plan_id": None}))
 
     response = client.post(
         PLAN_DELETE.format(plan_id=second_id),
