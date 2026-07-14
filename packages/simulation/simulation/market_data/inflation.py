@@ -137,6 +137,7 @@ def resolve_inflation(
         annual = float(rate)
         source: Literal["suggested", "manual"] = "manual"
     else:
+        vendored_path = t10yie_path or _DEFAULT_T10YIE_CSV
         path = _resolve_t10yie_path(
             t10yie_path=t10yie_path,
             allow_refresh=allow_refresh,
@@ -146,7 +147,12 @@ def resolve_inflation(
             t10yie_cache_path=t10yie_cache_path,
             t10yie_meta_path=t10yie_meta_path,
         )
-        annual = _suggested_annual(today, path)
+        try:
+            annual = _suggested_annual(today, path)
+        except ValueError:
+            if path == vendored_path:
+                raise
+            annual = _suggested_annual(today, vendored_path)
         source = "suggested"
     return InflationResolved(
         annual=annual, monthly=annual_to_monthly(annual), source=source

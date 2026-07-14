@@ -159,6 +159,26 @@ def test_refresh_failure_falls_back_to_vendored(tmp_path: Path) -> None:
     assert resolved.annual == pytest.approx(0.020)
 
 
+def test_falls_back_to_vendored_when_cache_lacks_in_range_row(tmp_path: Path) -> None:
+    today = date(2020, 6, 1)
+    plan = _suggested_plan()
+    expected = resolve_inflation(
+        plan,
+        today=today,
+        t10yie_cache_path=tmp_path / "missing.csv",
+    )
+    sparse_cache = _write_t10yie(tmp_path / "cache.csv", ["2026-06-10,9.0"])
+
+    resolved = resolve_inflation(
+        plan,
+        today=today,
+        t10yie_cache_path=sparse_cache,
+    )
+
+    assert resolved.annual == expected.annual
+    assert resolved.source == "suggested"
+
+
 def test_suggested_rounds_to_three_decimal_places(tmp_path: Path) -> None:
     # 2.37% -> 0.0237 -> round half-away to 3 dp -> 0.024
     csv = _write_t10yie(tmp_path / "t.csv", ["2026-01-01,2.37"])
