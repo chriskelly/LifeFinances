@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
+import pytest
 from core.defaults import DEFAULT_PLAN_NAME
-from core.plan_names import UNTITLED_PLAN_BASE
+from core.plan_names import UNTITLED_PLAN_BASE, copy_plan_name
 from core.repository import PlanRepository, PlanSummary
 from core.settings_repository import SettingsRepository
 
@@ -88,3 +91,58 @@ def test_ensure_bootstrap_honors_valid_multi_plan_default(db_path) -> None:
 
     assert resolved_id == second_id
     assert settings.get().default_plan_id == second_id
+
+
+def test_duplicate_copies_json_and_assigns_copy_name(repo: PlanRepository) -> None:
+    source_name = "Base"
+    source_id, source = repo.create(name=source_name)
+    expected_balance = Decimal("123456")
+    source.portfolio.current_savings_balance = expected_balance
+    repo.save(source_id, source)
+    expected_copy_name = copy_plan_name(
+        original_name=source_name, existing=[source_name]
+    )
+
+    new_id, duplicated = repo.duplicate(source_id)
+
+    assert new_id != source_id
+    assert duplicated.name == expected_copy_name
+    assert duplicated.portfolio.current_savings_balance == expected_balance
+    reloaded_source = repo.get_by_id(source_id)
+    assert reloaded_source is not None
+    assert reloaded_source.portfolio.current_savings_balance == expected_balance
+
+
+def test_rename_updates_column_and_json(repo: PlanRepository) -> None:
+    plan_id, _ = repo.create(name="Old")
+    expected_name = "New Name"
+
+    repo.rename(plan_id, name=expected_name)
+
+    loaded = repo.get_by_id(plan_id)
+    assert loaded is not None
+    assert loaded.name == expected_name
+    assert repo.list()[0].name == expected_name
+
+
+def test_rename_rejects_blank_name(repo: PlanRepository) -> None:
+    plan_id, _ = repo.create(name="Keep")
+    with pytest.raises(ValueError, match="name"):
+        repo.rename(plan_id, name="   ")
+
+
+def test_delete_removes_plan(repo: PlanRepository) -> None:
+    keep_id, _ = repo.create(name="Keep")
+    drop_id, _ = repo.create(name="Drop")
+
+    repo.delete(drop_id)
+
+    assert repo.get_by_id(drop_id) is None
+    assert [s.id for s in repo.list()] == [keep_id]
+
+
+def test_delete_refuses_last_plan(repo: PlanRepository) -> None:
+    only_id, _ = repo.create(name="Only")
+    with pytest.raises(ValueError, match="last"):
+        repo.delete(only_id)
+    assert len(repo.list()) == 1

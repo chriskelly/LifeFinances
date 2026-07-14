@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from core.defaults import DEFAULT_PLAN_NAME, default_plan
 from core.models import Plan
 from core.paths import default_db_path
+from core.plan_names import copy_plan_name
 from core.settings_repository import SettingsRepository
 
 
@@ -69,6 +70,39 @@ class PlanRepository:
 
     def create(self, *, name: str) -> tuple[int, Plan]:
         plan = default_plan().model_copy(update={"name": name})
+        return self._insert(plan), plan
+
+    def duplicate(self, plan_id: int) -> tuple[int, Plan]:
+        source = self.get_by_id(plan_id)
+        if source is None:
+            raise ValueError(f"Plan {plan_id} does not exist")
+        existing_names = [summary.name for summary in self.list()]
+        copy_name = copy_plan_name(original_name=source.name, existing=existing_names)
+        duplicated = source.model_copy(deep=True, update={"name": copy_name})
+        return self._insert(duplicated), duplicated
+
+    def rename(self, plan_id: int, *, name: str) -> Plan:
+        stripped_name = name.strip()
+        if not stripped_name:
+            raise ValueError("name must be non-empty")
+        plan = self.get_by_id(plan_id)
+        if plan is None:
+            raise ValueError(f"Plan {plan_id} does not exist")
+        renamed = plan.model_copy(update={"name": stripped_name})
+        self.save(plan_id, renamed)
+        return renamed
+
+    def delete(self, plan_id: int) -> None:
+        if len(self.list()) <= 1:
+            raise ValueError("cannot delete the last plan")
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM plans WHERE id = ?", (plan_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _insert(self, plan: Plan) -> int:
         payload = plan.model_dump_json()
         conn = self._connect()
         try:
@@ -83,7 +117,7 @@ class PlanRepository:
             plan_id = cur.lastrowid
             if plan_id is None:
                 raise RuntimeError("INSERT into plans did not return a row id")
-            return plan_id, plan
+            return plan_id
         finally:
             conn.close()
 
