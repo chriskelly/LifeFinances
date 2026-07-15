@@ -131,6 +131,17 @@ def test_home_with_plan_serves_shell(client: TestClient, db_path) -> None:
     assert plan.name in response.text
 
 
+def test_home_loads_plotly_and_results_partial(client: TestClient, db_path) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response: httpx.Response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert "plotly" in response.text.lower()
+    assert 'id="results-chart"' in response.text
+    assert "results-stub" not in response.text
+
+
 def test_patch_portfolio_persists_balance_change(
     client: TestClient, repo: PlanRepository, db_path
 ) -> None:

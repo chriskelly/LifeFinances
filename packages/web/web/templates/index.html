@@ -15,7 +15,7 @@
   </div>
   <div
     id="results-panel"
-    hx-get="{{ routes.RESULTS }}?plan={{ plan_id }}"
+    hx-get="{{ routes.RESULTS }}?plan={{ plan_id }}&chart={{ chart_type }}"
     hx-trigger="planUpdated from:body"
     hx-swap="innerHTML"
   >
@@ -53,6 +53,30 @@
     if (isPlanForm && event.detail.successful) {
       clearFormError();
       document.body.dispatchEvent(new CustomEvent("planUpdated"));
+    }
+  });
+
+  const resultsPanel = document.getElementById("results-panel");
+
+  function renderResultsChart() {
+    const config = document.getElementById("chart-config");
+    const meta = document.getElementById("results-meta");
+    if (!config || !meta || typeof Plotly === "undefined") return;
+    const figure = JSON.parse(config.textContent);
+    Plotly.react("results-chart", figure.data, figure.layout, { responsive: true });
+    const chart = meta.getAttribute("data-chart");
+    resultsPanel.setAttribute(
+      "hx-get",
+      "{{ routes.RESULTS }}?plan={{ plan_id }}&chart=" + encodeURIComponent(chart)
+    );
+    htmx.process(resultsPanel);
+  }
+
+  document.addEventListener("DOMContentLoaded", renderResultsChart);
+
+  document.body.addEventListener("htmx:afterSwap", function (event) {
+    if (event.detail.target && event.detail.target.id === "results-panel") {
+      renderResultsChart();
     }
   });
 </script>
