@@ -137,7 +137,8 @@ def test_home_loads_plotly_and_results_partial(client: TestClient, db_path) -> N
     response: httpx.Response = client.get(f"{HOME}?plan={plan_id}")
 
     assert response.status_code == 200
-    assert "plotly" in response.text.lower()
+    assert 'id="plotly-cdn"' in response.text
+    assert "whenPlotlyReady" in response.text
     assert 'id="results-chart"' in response.text
     assert "results-stub" not in response.text
 

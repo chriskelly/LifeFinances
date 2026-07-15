@@ -5,7 +5,7 @@
 
 **Parent:** [2026-06-12-life-finances-rebuild-design.md](./2026-06-12-life-finances-rebuild-design.md)  
 **Builds on:** [Phase 3d results data layer](./2026-07-10-phase-3d-simulation-results-design.md); [Phase 4a plan shell](./2026-07-14-phase-4a-plan-shell-design.md)  
-**Phase plan:** `docs/superpowers/plans/2026-06-12-phase-4b-core-charts.md` *(to write after spec approval)*  
+**Phase plan:** [`2026-06-12-phase-4b-core-charts.md`](../plans/2026-06-12-phase-4b-core-charts.md)  
 **Index:** Phase 4b in [2026-06-12-rebuild-index.md](../plans/2026-06-12-rebuild-index.md)
 
 ---
@@ -187,12 +187,12 @@ web  →  simulation (run_simulation, SimulationResult)
 
 ## 10. Exit criteria
 
-- [ ] Results panel renders Plotly charts for portfolio, spending-total, savings allocation, and wealth-composition (low/mid/high)
-- [ ] Chart selector switches via `?chart=`; selection survives `planUpdated` refresh
-- [ ] X-axis uses `SimulationResult.start_month` + horizon
-- [ ] Percentile bands use `result.percentiles` (default `[5, 50, 95]`)
-- [ ] Rebuild index / AGENTS wording corrected for wealth-composition vs funding-sources
-- [ ] `make` passes; debounced results refresh still works
+- [x] Results panel renders Plotly charts for portfolio, spending-total, savings allocation, and wealth-composition (low/mid/high)
+- [x] Chart selector switches via `?chart=`; selection survives `planUpdated` refresh
+- [x] X-axis uses `SimulationResult.start_month` + horizon
+- [x] Percentile bands use `result.percentiles` (default `[5, 50, 95]`)
+- [x] Rebuild index / AGENTS wording corrected for wealth-composition vs funding-sources
+- [x] `make` passes; debounced results refresh still works
 
 ---
 

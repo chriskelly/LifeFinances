@@ -57,19 +57,48 @@
   });
 
   const resultsPanel = document.getElementById("results-panel");
+  const plotlyReadyQueue = [];
+  let plotlyReadyHooked = false;
 
-  function renderResultsChart() {
-    const config = document.getElementById("chart-config");
+  function flushPlotlyReady() {
+    if (typeof Plotly === "undefined") return;
+    const queue = plotlyReadyQueue.splice(0);
+    queue.forEach((callback) => callback());
+  }
+
+  function whenPlotlyReady(callback) {
+    if (typeof Plotly !== "undefined") {
+      callback();
+      return;
+    }
+    plotlyReadyQueue.push(callback);
+    if (plotlyReadyHooked) return;
+    plotlyReadyHooked = true;
+    const plotlyScript = document.getElementById("plotly-cdn");
+    if (plotlyScript) {
+      plotlyScript.addEventListener("load", flushPlotlyReady, { once: true });
+    }
+  }
+
+  function syncResultsPanelHxGet() {
     const meta = document.getElementById("results-meta");
-    if (!config || !meta || typeof Plotly === "undefined") return;
-    const figure = JSON.parse(config.textContent);
-    Plotly.react("results-chart", figure.data, figure.layout, { responsive: true });
+    if (!meta) return;
     const chart = meta.getAttribute("data-chart");
     resultsPanel.setAttribute(
       "hx-get",
       "{{ routes.RESULTS }}?plan={{ plan_id }}&chart=" + encodeURIComponent(chart)
     );
     htmx.process(resultsPanel);
+  }
+
+  function renderResultsChart() {
+    syncResultsPanelHxGet();
+    whenPlotlyReady(function () {
+      const config = document.getElementById("chart-config");
+      if (!config) return;
+      const figure = JSON.parse(config.textContent);
+      Plotly.react("results-chart", figure.data, figure.layout, { responsive: true });
+    });
   }
 
   document.addEventListener("DOMContentLoaded", renderResultsChart);

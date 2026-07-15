@@ -57,7 +57,7 @@ Route constants for plan management live in `web/routes.py` (`PLAN_CREATE`, `PLA
 - **Validation:** form DTOs are flat transport shapes only (no `Field` constraints). Domain validation lives on `core.models`; `apply_to()` constructs core models and Pydantic validates there. Do not duplicate `ge`/`le`/defaults on form DTOs.
 - **Future (Phase 4c+):** when many editor sections exist, investigate generating flat form DTO fields from `core.models` via `create_model` + `model_fields` introspection so prefixes and constraints stay in sync automatically. See rebuild index Phase 4 notes.
 - **Section-scoped forms:** each editor partial (`editor_household.html`, `editor_portfolio.html`, `editor_settings.html`) is a self-contained `<form>` that `PATCH`es its own route with **`?plan={{ plan_id }}`** on the HTMX URL so saves target the active plan. FastAPI binds flat `Form()` parameters to the matching DTO; the DTO's `apply_to(plan)` merges into the full `Plan` before `repo.save`.
-- **Partials:** `index.html` includes both editor sections and the initial results stub. Section GET routes return individual partials for HTMX swaps if needed later.
+- **Partials:** `index.html` includes both editor sections and the live `results.html` charts partial. Section GET routes return individual partials for HTMX swaps if needed later.
 
 ### Results charts
 

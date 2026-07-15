@@ -400,7 +400,9 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 ### Phase 4b — Web: core charts
 
-**Plan file:** `2026-06-12-phase-4b-core-charts.md` *(to write)*
+**Plan file:** [`2026-06-12-phase-4b-core-charts.md`](2026-06-12-phase-4b-core-charts.md)
+
+**Design spec:** [`2026-07-15-phase-4b-core-charts-design.md`](../specs/2026-07-15-phase-4b-core-charts-design.md)
 
 **Delivers:** Replace `results_stub.html` with server-rendered Plotly charts (CDN plotly.js + `Plotly.react` after HTMX swaps); chart-type selector via `?chart=`; core chart types backed by `SimulationResult`: `portfolio`, `spending-total`, `asset-allocation-savings-portfolio`, and `wealth-composition-{low,mid,high}` (savings percentile band + deterministic tax-prorated income-source NPV layers). tpaw-style spending funding-sources / per-stream charts remain deferred to 4e.
 
