@@ -148,3 +148,25 @@ def test_wealth_composition_traces_share_one_stackgroup():
 
     stackgroups = {trace["stackgroup"] for trace in figure["data"]}
     assert len(stackgroups) == 1
+
+
+def test_chart_options_cover_all_chart_types_in_order():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
+
+    values = [value for value, _label in charts.chart_options(result)]
+
+    assert values == list(charts.CHART_TYPES)
+
+
+def test_chart_options_wealth_labels_use_actual_percentiles():
+    percentiles = [5, 50, 95]
+    result = _make_result(percentiles=percentiles, horizon_months=2)
+
+    options = dict(charts.chart_options(result))
+
+    low_idx = charts.wealth_percentile_index(
+        charts.WEALTH_COMPOSITION_LOW, len(percentiles)
+    )
+    assert (
+        options[charts.WEALTH_COMPOSITION_LOW] == f"Wealth · {percentiles[low_idx]}th"
+    )

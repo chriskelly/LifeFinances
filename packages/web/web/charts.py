@@ -47,6 +47,25 @@ _WEALTH_POSITION = {
 }
 
 
+_STATIC_LABELS = {
+    PORTFOLIO: "Portfolio balance",
+    SPENDING_TOTAL: "Total spending",
+    ASSET_ALLOCATION_SAVINGS: "Savings allocation",
+}
+
+
+def chart_options(result: SimulationResult) -> list[tuple[str, str]]:
+    options: list[tuple[str, str]] = []
+    for value in CHART_TYPES:
+        static = _STATIC_LABELS.get(value)
+        if static is not None:
+            options.append((value, static))
+            continue
+        idx = wealth_percentile_index(value, len(result.percentiles))
+        options.append((value, f"Wealth · {result.percentiles[idx]}th"))
+    return options
+
+
 def wealth_percentile_index(chart_type: str, num_percentiles: int) -> int:
     position = _WEALTH_POSITION.get(chart_type)
     if position is None:
