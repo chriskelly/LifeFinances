@@ -35,3 +35,21 @@ def month_labels(start_month: tuple[int, int], horizon_months: int) -> list[str]
             month = 1
             year += 1
     return labels
+
+
+_WEALTH_POSITION = {
+    WEALTH_COMPOSITION_LOW: "low",
+    WEALTH_COMPOSITION_MID: "mid",
+    WEALTH_COMPOSITION_HIGH: "high",
+}
+
+
+def wealth_percentile_index(chart_type: str, num_percentiles: int) -> int:
+    position = _WEALTH_POSITION.get(chart_type)
+    if position is None:
+        raise ValueError(f"not a wealth-composition chart: {chart_type!r}")
+    if position == "low":
+        return 0
+    if position == "high":
+        return num_percentiles - 1
+    return num_percentiles // 2

@@ -32,3 +32,22 @@ def test_month_labels_start_and_year_rollover():
     start_year, start_month = 2026, 11
     labels = charts.month_labels((start_year, start_month), 3)
     assert labels == ["2026-11", "2026-12", "2027-01"]
+
+
+def test_wealth_index_three_percentiles_maps_low_mid_high():
+    n = 3
+    assert charts.wealth_percentile_index(charts.WEALTH_COMPOSITION_LOW, n) == 0
+    assert charts.wealth_percentile_index(charts.WEALTH_COMPOSITION_MID, n) == 1
+    assert charts.wealth_percentile_index(charts.WEALTH_COMPOSITION_HIGH, n) == 2
+
+
+def test_wealth_index_other_lengths_use_first_middle_last():
+    n = 5
+    assert charts.wealth_percentile_index(charts.WEALTH_COMPOSITION_LOW, n) == 0
+    assert charts.wealth_percentile_index(charts.WEALTH_COMPOSITION_MID, n) == n // 2
+    assert charts.wealth_percentile_index(charts.WEALTH_COMPOSITION_HIGH, n) == n - 1
+
+
+def test_wealth_index_rejects_non_wealth_chart():
+    with pytest.raises(ValueError):
+        charts.wealth_percentile_index(charts.PORTFOLIO, 3)
