@@ -1,7 +1,7 @@
 # Phase 4b — Web: Core Charts Design
 
 **Date:** 2026-07-15  
-**Status:** Draft (awaiting plan approval before commit)
+**Status:** Approved
 
 **Parent:** [2026-06-12-life-finances-rebuild-design.md](./2026-06-12-life-finances-rebuild-design.md)  
 **Builds on:** [Phase 3d results data layer](./2026-07-10-phase-3d-simulation-results-design.md); [Phase 4a plan shell](./2026-07-14-phase-4a-plan-shell-design.md)  

@@ -59,6 +59,10 @@ Route constants for plan management live in `web/routes.py` (`PLAN_CREATE`, `PLA
 - **Section-scoped forms:** each editor partial (`editor_household.html`, `editor_portfolio.html`, `editor_settings.html`) is a self-contained `<form>` that `PATCH`es its own route with **`?plan={{ plan_id }}`** on the HTMX URL so saves target the active plan. FastAPI binds flat `Form()` parameters to the matching DTO; the DTO's `apply_to(plan)` merges into the full `Plan` before `repo.save`.
 - **Partials:** `index.html` includes both editor sections and the initial results stub. Section GET routes return individual partials for HTMX swaps if needed later.
 
+### Results charts
+
+`GET /results?plan={id}&chart={type}` renders `results.html`. Valid `chart` values are the constants in `web/charts.py` (`CHART_TYPES`); unknown values fall back to `DEFAULT_CHART` (`spending-total`). Figures are built server-side as Plotly JSON (`web.charts.build_figure`); plotly.js loads once from CDN in `base.html`. The shell calls `Plotly.react` on load and on every `htmx:afterSwap` targeting `#results-panel`, and mirrors the selected chart onto the panel's `hx-get` so `planUpdated` refreshes keep the selection.
+
 ## HTMX debounce pattern
 
 Editor forms auto-save on change with a 750ms debounce:
