@@ -51,6 +51,7 @@ PlanningPreset = Literal[
 class AppSettings(BaseModel):
     fred_api_key: str | None = None
     eod_api_key: str | None = None
+    default_plan_id: int | None = None
 
     @field_validator("fred_api_key", "eod_api_key", mode="before")
     @classmethod

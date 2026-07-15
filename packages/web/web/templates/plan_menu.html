@@ -1,0 +1,93 @@
+<details class="plan-menu">
+  <summary>
+    {{ plan.name }}{% if plan_id == settings.default_plan_id %} (default){% endif %}
+  </summary>
+  <div class="plan-menu-panel">
+    <ul class="plan-menu-list">
+      {% for summary in summaries %}
+      <li class="{% if summary.id == plan_id %}plan-menu-item-active{% endif %}">
+        {% if summary.id in loadable_ids %}
+        <a href="{{ routes.HOME }}?plan={{ summary.id }}">
+          {{ summary.name }}{% if summary.id == settings.default_plan_id %} (default){% endif %}
+        </a>
+        {% else %}
+        <span class="plan-menu-unreadable">
+          {{ summary.name }} (unreadable)
+        </span>
+        {% endif %}
+        <form
+          method="post"
+          action="{{ routes.PLAN_DELETE.format(plan_id=summary.id) }}"
+          class="plan-menu-row-delete"
+          onsubmit="return confirm('Delete this plan? This cannot be undone.');"
+        >
+          <input type="hidden" name="{{ forms.RETURN_PLAN }}" value="{{ plan_id }}">
+          <button
+            type="submit"
+            aria-label="Delete {{ summary.name }}"
+            {% if summary.id in loadable_ids and loadable_count <= 1 %}disabled{% endif %}
+          >
+            ×
+          </button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <form method="post" action="{{ routes.PLAN_CREATE }}" class="plan-menu-action">
+      <button type="submit">New plan</button>
+    </form>
+
+    <form
+      method="post"
+      action="{{ routes.PLAN_DUPLICATE.format(plan_id=plan_id) }}"
+      class="plan-menu-action"
+    >
+      <button type="submit">Duplicate</button>
+    </form>
+
+    <form
+      method="post"
+      action="{{ routes.PLAN_RENAME.format(plan_id=plan_id) }}"
+      class="plan-menu-action plan-menu-rename"
+    >
+      <label for="plan-menu-rename-input">Rename to</label>
+      <input
+        id="plan-menu-rename-input"
+        type="text"
+        name="{{ forms.PLAN_NAME }}"
+        value="{{ plan.name }}"
+        required
+      >
+      <button type="submit">Rename</button>
+    </form>
+
+    <form
+      method="post"
+      action="{{ routes.PLAN_SET_DEFAULT.format(plan_id=plan_id) }}"
+      class="plan-menu-action"
+    >
+      <button
+        type="submit"
+        {% if plan_id == settings.default_plan_id %}disabled{% endif %}
+      >
+        Set as default
+      </button>
+    </form>
+
+    <form
+      method="post"
+      action="{{ routes.PLAN_DELETE.format(plan_id=plan_id) }}"
+      class="plan-menu-action"
+      onsubmit="return confirm('Delete this plan? This cannot be undone.');"
+    >
+      <input type="hidden" name="{{ forms.RETURN_PLAN }}" value="{{ plan_id }}">
+      <button
+        type="submit"
+        {% if loadable_count <= 1 %}disabled{% endif %}
+      >
+        Delete
+      </button>
+    </form>
+  </div>
+</details>

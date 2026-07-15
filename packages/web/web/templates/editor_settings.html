@@ -1,7 +1,7 @@
 <section class="editor-section">
   <h2>{{ sections.SETTINGS_TITLE }}</h2>
   <form
-    hx-patch="{{ routes.PLAN_SETTINGS }}"
+    hx-patch="{{ routes.PLAN_SETTINGS }}?plan={{ plan_id }}"
     hx-trigger="input changed delay:750ms"
     hx-swap="none"
   >
@@ -22,12 +22,38 @@
   </form>
   {% if settings.fred_api_key %}
   <form
-    hx-patch="{{ routes.PLAN_SETTINGS }}"
+    hx-patch="{{ routes.PLAN_SETTINGS }}?plan={{ plan_id }}"
     hx-trigger="submit"
     hx-swap="none"
   >
     <input type="hidden" name="{{ forms.CLEAR_FRED_API_KEY }}" value="true">
     <button type="submit">Clear stored FRED API key</button>
+  </form>
+  {% endif %}
+  <form
+    hx-patch="{{ routes.PLAN_SETTINGS }}?plan={{ plan_id }}"
+    hx-trigger="input changed delay:750ms"
+    hx-swap="none"
+  >
+    <label>
+      EOD API key
+      <input
+        type="password"
+        name="{{ forms.EOD_API_KEY }}"
+        value=""
+        placeholder="{% if settings.eod_api_key %}{{ sections.EOD_API_KEY_SET_PLACEHOLDER }}{% else %}Paste EOD API key{% endif %}"
+        autocomplete="off"
+      >
+    </label>
+  </form>
+  {% if settings.eod_api_key %}
+  <form
+    hx-patch="{{ routes.PLAN_SETTINGS }}?plan={{ plan_id }}"
+    hx-trigger="submit"
+    hx-swap="none"
+  >
+    <input type="hidden" name="{{ forms.CLEAR_EOD_API_KEY }}" value="true">
+    <button type="submit">{{ sections.CLEAR_EOD_API_KEY_LABEL }}</button>
   </form>
   {% endif %}
 </section>

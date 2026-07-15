@@ -1,7 +1,7 @@
 <section class="editor-section">
   <h2>{{ sections.HOUSEHOLD_TITLE }}</h2>
   <form
-    hx-patch="{{ routes.PLAN_HOUSEHOLD }}"
+    hx-patch="{{ routes.PLAN_HOUSEHOLD }}?plan={{ plan_id }}"
     hx-trigger="input changed delay:750ms"
     hx-swap="none"
   >

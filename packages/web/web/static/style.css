@@ -26,9 +26,111 @@ body {
   font-size: 1.25rem;
 }
 
-.plan-label {
-  color: #555;
+.plan-menu {
+  position: relative;
+  margin-left: auto;
   font-size: 0.95rem;
+}
+
+.plan-menu summary {
+  cursor: pointer;
+  color: #333;
+  list-style: none;
+}
+
+.plan-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.plan-menu summary::after {
+  content: "▾";
+  margin-left: 0.35rem;
+  color: #888;
+}
+
+.plan-menu-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  left: auto;
+  z-index: 10;
+  min-width: 16rem;
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.plan-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.5rem;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.plan-menu-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.plan-menu-list a {
+  flex: 1;
+  color: #1a1a1a;
+  text-decoration: none;
+}
+
+.plan-menu-unreadable {
+  flex: 1;
+  color: #888;
+  font-style: italic;
+}
+
+.plan-menu-row-delete {
+  margin: 0;
+}
+
+.plan-menu-row-delete button {
+  padding: 0.1rem 0.4rem;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+}
+
+.plan-menu-row-delete button:hover:not(:disabled) {
+  color: #a00;
+  border-color: #ddd;
+}
+
+.plan-menu-row-delete button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.plan-menu-item-active a {
+  font-weight: 600;
+}
+
+.plan-menu-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.plan-menu-rename input {
+  flex: 1;
+  padding: 0.3rem 0.4rem;
 }
 
 .layout {

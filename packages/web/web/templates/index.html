@@ -3,7 +3,7 @@
 {% block body %}
 <header class="app-header">
   <h1>LifeFinances</h1>
-  <span class="plan-label">Default Plan</span>
+  {% include "plan_menu.html" %}
 </header>
 
 <div class="layout">
@@ -15,7 +15,7 @@
   </div>
   <div
     id="results-panel"
-    hx-get="{{ routes.RESULTS }}"
+    hx-get="{{ routes.RESULTS }}?plan={{ plan_id }}"
     hx-trigger="planUpdated from:body"
     hx-swap="innerHTML"
   >
@@ -46,9 +46,10 @@
     const patchTarget = form.getAttribute && form.getAttribute("hx-patch");
     const isPlanForm =
       form.tagName === "FORM" &&
-      (patchTarget === "{{ routes.PLAN_HOUSEHOLD }}" ||
-        patchTarget === "{{ routes.PLAN_PORTFOLIO }}" ||
-        patchTarget === "{{ routes.PLAN_SETTINGS }}");
+      patchTarget &&
+      (patchTarget.startsWith("{{ routes.PLAN_HOUSEHOLD }}") ||
+        patchTarget.startsWith("{{ routes.PLAN_PORTFOLIO }}") ||
+        patchTarget.startsWith("{{ routes.PLAN_SETTINGS }}"));
     if (isPlanForm && event.detail.successful) {
       clearFormError();
       document.body.dispatchEvent(new CustomEvent("planUpdated"));

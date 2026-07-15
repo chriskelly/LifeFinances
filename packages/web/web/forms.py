@@ -16,6 +16,10 @@ HAS_PARTNER = "has_partner"
 CURRENT_SAVINGS_BALANCE = "current_savings_balance"
 FRED_API_KEY = "fred_api_key"
 CLEAR_FRED_API_KEY = "clear_fred_api_key"
+EOD_API_KEY = "eod_api_key"
+CLEAR_EOD_API_KEY = "clear_eod_api_key"
+PLAN_NAME = "name"
+RETURN_PLAN = "return_plan"
 
 
 class HouseholdForm(BaseModel):
@@ -62,24 +66,38 @@ class PortfolioForm(BaseModel):
         return plan.model_copy(update={"portfolio": portfolio})
 
 
-class AppSettingsForm(BaseModel):
-    """Flat transport DTO for local app settings.
+def _apply_api_key(
+    settings: AppSettings,
+    *,
+    field: str,
+    value: str | None,
+    clear: bool,
+) -> AppSettings:
+    if clear:
+        return settings.model_copy(update={field: None})
+    if value and value.strip():
+        return settings.model_copy(update={field: value.strip()})
+    return settings
 
-    Deferred to Phase 4: `eod_api_key` has no form field yet, even though
-    `AppSettings.eod_api_key` is already read and forwarded (with
-    `allow_refresh=True`) by web.app's HOME/RESULTS routes. Until this DTO and
-    editor_settings.html grow an EOD key input mirroring fred_api_key below,
-    the key can only be set by writing to the DB directly.
-    """
+
+class AppSettingsForm(BaseModel):
+    """Flat transport DTO for local app settings."""
 
     fred_api_key: str | None = None
     clear_fred_api_key: bool = False
+    eod_api_key: str | None = None
+    clear_eod_api_key: bool = False
 
     def apply_to(self, settings: AppSettings) -> AppSettings:
-        if self.clear_fred_api_key:
-            return settings.model_copy(update={"fred_api_key": None})
-
-        key = self.fred_api_key.strip() if self.fred_api_key else ""
-        if key:
-            return settings.model_copy(update={"fred_api_key": key})
-        return settings
+        updated = _apply_api_key(
+            settings,
+            field="fred_api_key",
+            value=self.fred_api_key,
+            clear=self.clear_fred_api_key,
+        )
+        return _apply_api_key(
+            updated,
+            field="eod_api_key",
+            value=self.eod_api_key,
+            clear=self.clear_eod_api_key,
+        )

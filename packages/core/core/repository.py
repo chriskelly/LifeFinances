@@ -6,9 +6,17 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from core.defaults import default_plan
+from core.defaults import DEFAULT_PLAN_NAME, default_plan
 from core.models import Plan
 from core.paths import default_db_path
+from core.plan_names import copy_plan_name
+from core.settings_repository import SettingsRepository
+
+
+@dataclass(frozen=True)
+class PlanSummary:
+    id: int
+    name: str
 
 
 @dataclass
@@ -52,17 +60,72 @@ class PlanRepository:
         finally:
             conn.close()
 
-    def get_or_create_default(self) -> tuple[int, Plan]:
+    def list(self) -> list[PlanSummary]:
+        conn = self._connect()
+        try:
+            rows = conn.execute("SELECT id, name FROM plans ORDER BY id").fetchall()
+        finally:
+            conn.close()
+        return [PlanSummary(id=row[0], name=row[1]) for row in rows]
+
+    def exists(self, plan_id: int) -> bool:
         conn = self._connect()
         try:
             row = conn.execute(
-                "SELECT id, data FROM plans ORDER BY id LIMIT 1"
+                "SELECT 1 FROM plans WHERE id = ?", (plan_id,)
             ).fetchone()
-            if row is not None:
-                plan = Plan.model_validate_json(row[1])
-                return row[0], plan
-            plan = default_plan()
-            payload = plan.model_dump_json()
+        finally:
+            conn.close()
+        return row is not None
+
+    def loadable_ids(self) -> set[int]:
+        return {
+            summary.id
+            for summary in self.list()
+            if self.get_by_id(summary.id) is not None
+        }
+
+    def create(self, *, name: str) -> tuple[int, Plan]:
+        plan = default_plan().model_copy(update={"name": name})
+        return self._insert(plan), plan
+
+    def duplicate(self, plan_id: int) -> tuple[int, Plan]:
+        source = self.get_by_id(plan_id)
+        if source is None:
+            raise ValueError(f"Plan {plan_id} does not exist")
+        existing_names = [summary.name for summary in self.list()]
+        copy_name = copy_plan_name(original_name=source.name, existing=existing_names)
+        duplicated = source.model_copy(deep=True, update={"name": copy_name})
+        return self._insert(duplicated), duplicated
+
+    def rename(self, plan_id: int, *, name: str) -> Plan:
+        stripped_name = name.strip()
+        if not stripped_name:
+            raise ValueError("name must be non-empty")
+        plan = self.get_by_id(plan_id)
+        if plan is None:
+            raise ValueError(f"Plan {plan_id} does not exist")
+        renamed = plan.model_copy(update={"name": stripped_name})
+        self.save(plan_id, renamed)
+        return renamed
+
+    def delete(self, plan_id: int) -> None:
+        if not self.exists(plan_id):
+            raise ValueError(f"Plan {plan_id} does not exist")
+        loadable = self.loadable_ids()
+        if plan_id in loadable and len(loadable) <= 1:
+            raise ValueError("cannot delete the last plan")
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM plans WHERE id = ?", (plan_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _insert(self, plan: Plan) -> int:
+        payload = plan.model_dump_json()
+        conn = self._connect()
+        try:
             cur = conn.execute(
                 """
                 INSERT INTO plans (name, data)
@@ -74,6 +137,44 @@ class PlanRepository:
             plan_id = cur.lastrowid
             if plan_id is None:
                 raise RuntimeError("INSERT into plans did not return a row id")
-            return plan_id, plan
+            return plan_id
         finally:
             conn.close()
+
+    def ensure_bootstrap(
+        self, *, settings_repo: SettingsRepository
+    ) -> tuple[int, Plan]:
+        summaries = self.list()
+        if not summaries:
+            plan_id, plan = self.create(name=DEFAULT_PLAN_NAME)
+            settings = settings_repo.get()
+            settings.default_plan_id = plan_id
+            settings_repo.save(settings)
+            return plan_id, plan
+
+        settings = settings_repo.get()
+        default_plan_id = settings.default_plan_id
+        valid_ids = {summary.id for summary in summaries}
+        preferred_ids: list[int] = []
+        if default_plan_id is not None and default_plan_id in valid_ids:
+            preferred_ids.append(default_plan_id)
+        preferred_ids.extend(
+            summary.id for summary in summaries if summary.id not in preferred_ids
+        )
+
+        for candidate_id in preferred_ids:
+            plan = self.get_by_id(candidate_id)
+            if plan is None:
+                continue
+            if settings.default_plan_id != candidate_id:
+                settings.default_plan_id = candidate_id
+                settings_repo.save(settings)
+            return candidate_id, plan
+
+        plan_id, plan = self.create(name=DEFAULT_PLAN_NAME)
+        settings.default_plan_id = plan_id
+        settings_repo.save(settings)
+        return plan_id, plan
+
+    def get_or_create_default(self) -> tuple[int, Plan]:
+        return self.ensure_bootstrap(settings_repo=SettingsRepository(self.db_path))
