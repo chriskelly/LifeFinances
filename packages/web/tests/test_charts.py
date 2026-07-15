@@ -113,3 +113,38 @@ def test_band_chart_y_comes_from_matching_source_row():
     figure = charts.build_figure(result, charts.SPENDING_TOTAL)
 
     assert list(figure["data"][1]["y"]) == [111.0, 222.0]
+
+
+def test_wealth_composition_has_savings_plus_four_income_layers():
+    percentiles = [5, 50, 95]
+    result = _make_result(percentiles=percentiles, horizon_months=3)
+
+    figure = charts.build_figure(result, charts.WEALTH_COMPOSITION_MID)
+
+    expected_names = ["Savings", "Job", "Social Security", "Pension", "Manual"]
+    assert [trace["name"] for trace in figure["data"]] == expected_names
+
+
+def test_wealth_composition_savings_trace_uses_selected_percentile_row():
+    percentiles = [5, 50, 95]
+    horizon = 2
+    result = _make_result(percentiles=percentiles, horizon_months=horizon)
+    high_index = charts.wealth_percentile_index(
+        charts.WEALTH_COMPOSITION_HIGH, len(percentiles)
+    )
+    result.balance_start[high_index, :] = np.array([10.0, 20.0])
+
+    figure = charts.build_figure(result, charts.WEALTH_COMPOSITION_HIGH)
+
+    savings_trace = figure["data"][0]
+    assert savings_trace["name"] == "Savings"
+    assert list(savings_trace["y"]) == [10.0, 20.0]
+
+
+def test_wealth_composition_traces_share_one_stackgroup():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=3)
+
+    figure = charts.build_figure(result, charts.WEALTH_COMPOSITION_LOW)
+
+    stackgroups = {trace["stackgroup"] for trace in figure["data"]}
+    assert len(stackgroups) == 1

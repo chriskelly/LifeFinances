@@ -64,6 +64,15 @@ _BAND_SOURCE = {
     ASSET_ALLOCATION_SAVINGS: "savings_stock_allocation",
 }
 
+_WEALTH_INCOME_LAYERS = (
+    ("Job", "wealth_job"),
+    ("Social Security", "wealth_social_security"),
+    ("Pension", "wealth_pension"),
+    ("Manual", "wealth_manual"),
+)
+
+_WEALTH_STACKGROUP = "wealth"
+
 
 def _band_figure(result: SimulationResult, source_field: str) -> go.Figure:
     x = month_labels(result.start_month, result.horizon_months)
@@ -81,8 +90,36 @@ def _band_figure(result: SimulationResult, source_field: str) -> go.Figure:
     return figure
 
 
+def _wealth_composition_figure(result: SimulationResult, chart_type: str) -> go.Figure:
+    x = month_labels(result.start_month, result.horizon_months)
+    row = wealth_percentile_index(chart_type, len(result.percentiles))
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=x,
+            y=result.balance_start[row, :].tolist(),
+            mode="lines",
+            name="Savings",
+            stackgroup=_WEALTH_STACKGROUP,
+        )
+    )
+    for label, field in _WEALTH_INCOME_LAYERS:
+        figure.add_trace(
+            go.Scatter(
+                x=x,
+                y=getattr(result, field).tolist(),
+                mode="lines",
+                name=label,
+                stackgroup=_WEALTH_STACKGROUP,
+            )
+        )
+    return figure
+
+
 def build_figure(result: SimulationResult, chart_type: str) -> dict:
     source_field = _BAND_SOURCE.get(chart_type)
     if source_field is not None:
         return _band_figure(result, source_field).to_plotly_json()
+    if chart_type in _WEALTH_POSITION:
+        return _wealth_composition_figure(result, chart_type).to_plotly_json()
     raise ValueError(f"unsupported chart type: {chart_type!r}")
