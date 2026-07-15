@@ -23,3 +23,15 @@ def resolve_chart_type(raw: str | None) -> str:
     if raw in CHART_TYPES:
         return raw  # type: ignore[return-value]
     return DEFAULT_CHART
+
+
+def month_labels(start_month: tuple[int, int], horizon_months: int) -> list[str]:
+    year, month = start_month
+    labels: list[str] = []
+    for _ in range(horizon_months):
+        labels.append(f"{year:04d}-{month:02d}")
+        month += 1
+        if month > 12:
+            month = 1
+            year += 1
+    return labels
