@@ -1,0 +1,28 @@
+<div class="results">
+  <form class="chart-selector">
+    <label for="chart-select">Chart</label>
+    <select
+      id="chart-select"
+      name="chart"
+      hx-get="{{ routes.RESULTS }}?plan={{ plan_id }}"
+      hx-target="#results-panel"
+      hx-swap="innerHTML"
+      hx-trigger="change"
+    >
+      {% for value, label in chart_options %}
+      <option value="{{ value }}" {% if value == chart_type %}selected{% endif %}>
+        {{ label }}
+      </option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <div id="results-chart"></div>
+  <script type="application/json" id="chart-config">{{ chart_figure_json | safe }}</script>
+  <div id="results-meta" data-chart="{{ chart_type }}" hidden></div>
+
+  <p class="results-summary">
+    {{ result.num_runs_insufficient }} of {{ result.num_runs }} runs ran out of money
+    · updated {{ result.ran_at.strftime("%Y-%m-%d %H:%M:%S") }}
+  </p>
+</div>

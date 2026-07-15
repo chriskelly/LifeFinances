@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
@@ -15,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from simulation.stub import run_simulation
 
-from web import forms, routes, sections
+from web import charts, forms, routes, sections
 from web.dependencies import get_repository, require_plan, resolve_default_plan_id
 from web.forms import AppSettingsForm, HouseholdForm, PortfolioForm
 from web.routes import (
@@ -150,6 +151,11 @@ def _register_home_route(web_app: FastAPI) -> None:
                 "summaries": summaries,
                 "loadable_ids": loadable_ids,
                 "loadable_count": len(loadable_ids),
+                "chart_type": charts.DEFAULT_CHART,
+                "chart_options": charts.chart_options(result),
+                "chart_figure_json": json.dumps(
+                    charts.build_figure(result, charts.DEFAULT_CHART)
+                ),
             },
         )
 
@@ -330,8 +336,9 @@ def _register_results_route(web_app: FastAPI) -> None:
         request: Request,
         repo: RepoDep,
         plan: Annotated[int | None, Query()] = None,
+        chart: Annotated[str | None, Query()] = None,
     ) -> HTMLResponse:
-        _, plan_model = require_plan(plan, plan_repo=repo)
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         settings = get_settings_repo(request).get()
         result = run_simulation(
             plan_model,
@@ -339,10 +346,18 @@ def _register_results_route(web_app: FastAPI) -> None:
             fred_api_key=settings.fred_api_key,
             eod_api_key=settings.eod_api_key,
         )
+        chart_type = charts.resolve_chart_type(chart)
+        figure = charts.build_figure(result, chart_type)
         return templates.TemplateResponse(
             request,
-            "results_stub.html",
-            {"result": result},
+            "results.html",
+            {
+                "plan_id": plan_id,
+                "result": result,
+                "chart_type": chart_type,
+                "chart_options": charts.chart_options(result),
+                "chart_figure_json": json.dumps(figure),
+            },
         )
 
 

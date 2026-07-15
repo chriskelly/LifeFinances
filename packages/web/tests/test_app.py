@@ -1,4 +1,3 @@
-import re
 import sqlite3
 from decimal import Decimal
 
@@ -45,6 +44,8 @@ from web.sections import (
     PORTFOLIO_TITLE,
     SETTINGS_TITLE,
 )
+
+from web import charts as web_charts
 
 
 def _bootstrap_plan(db_path) -> int:
@@ -367,7 +368,9 @@ def test_real_run_passes_stored_keys_with_live_refresh_enabled(
     assert captured.get("eod_api_key") == expected_eod_key
 
 
-def test_results_echoes_updated_balance(client: TestClient, db_path) -> None:
+def test_results_returns_chart_after_balance_update(
+    client: TestClient, db_path
+) -> None:
     plan_id = _bootstrap_plan(db_path)
     expected_balance = Decimal("750000")
     patch_response: httpx.Response = client.patch(
@@ -379,9 +382,38 @@ def test_results_echoes_updated_balance(client: TestClient, db_path) -> None:
     response: httpx.Response = client.get(f"{RESULTS}?plan={plan_id}")
 
     assert response.status_code == 200
-    match = re.search(r"Starting balance: ([\d.eE+-]+)", response.text)
-    assert match is not None, response.text
-    assert float(match.group(1)) == pytest.approx(float(expected_balance))
+    assert 'id="chart-config"' in response.text
+
+
+def test_results_renders_default_chart_selected(client: TestClient, db_path) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert 'id="results-chart"' in response.text
+    assert f'data-chart="{web_charts.DEFAULT_CHART}"' in response.text
+
+
+def test_results_invalid_chart_falls_back_to_default(
+    client: TestClient, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{RESULTS}?plan={plan_id}&chart=bogus")
+
+    assert response.status_code == 200
+    assert f'data-chart="{web_charts.DEFAULT_CHART}"' in response.text
+
+
+def test_results_honors_valid_chart(client: TestClient, db_path) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    chosen = web_charts.PORTFOLIO
+
+    response = client.get(f"{RESULTS}?plan={plan_id}&chart={chosen}")
+
+    assert response.status_code == 200
+    assert f'data-chart="{chosen}"' in response.text
 
 
 def test_create_plan_redirects_to_new_plan(client: TestClient, db_path) -> None:
