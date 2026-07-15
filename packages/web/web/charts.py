@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import plotly.graph_objects as go
+from simulation.result import SimulationResult
+
 PORTFOLIO = "portfolio"
 SPENDING_TOTAL = "spending-total"
 ASSET_ALLOCATION_SAVINGS = "asset-allocation-savings-portfolio"
@@ -53,3 +56,33 @@ def wealth_percentile_index(chart_type: str, num_percentiles: int) -> int:
     if position == "high":
         return num_percentiles - 1
     return num_percentiles // 2
+
+
+_BAND_SOURCE = {
+    PORTFOLIO: "balance_start",
+    SPENDING_TOTAL: "withdrawals_total",
+    ASSET_ALLOCATION_SAVINGS: "savings_stock_allocation",
+}
+
+
+def _band_figure(result: SimulationResult, source_field: str) -> go.Figure:
+    x = month_labels(result.start_month, result.horizon_months)
+    series = getattr(result, source_field)
+    figure = go.Figure()
+    for row, percentile in enumerate(result.percentiles):
+        figure.add_trace(
+            go.Scatter(
+                x=x,
+                y=series[row, :].tolist(),
+                mode="lines",
+                name=f"{percentile}th",
+            )
+        )
+    return figure
+
+
+def build_figure(result: SimulationResult, chart_type: str) -> dict:
+    source_field = _BAND_SOURCE.get(chart_type)
+    if source_field is not None:
+        return _band_figure(result, source_field).to_plotly_json()
+    raise ValueError(f"unsupported chart type: {chart_type!r}")
