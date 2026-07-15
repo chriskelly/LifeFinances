@@ -24,6 +24,7 @@ from web.forms import (
     PERSON2_BIRTH_YEAR,
     PERSON2_MAX_AGE_YEARS,
     PLAN_NAME,
+    RETURN_PLAN,
 )
 from web.routes import (
     HOME,
@@ -544,6 +545,79 @@ def test_delete_last_plan_rejected(client: TestClient, db_path) -> None:
 
     assert response.status_code == 400
     assert len(plans.list()) == 1
+
+
+def test_delete_last_loadable_rejected_when_corrupt_sibling_exists(
+    client: TestClient, db_path
+) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    good_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            "INSERT INTO plans (name, data) VALUES (?, ?)",
+            ("Corrupt", "{not-valid-plan-json"),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    response = client.post(PLAN_DELETE.format(plan_id=good_id))
+
+    assert response.status_code == 400
+    assert plans.get_by_id(good_id) is not None
+    assert len(plans.list()) == 2
+
+
+def test_delete_sibling_keeps_active_plan(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    active_id, _ = plans.ensure_bootstrap(settings_repo=settings)
+    sibling_id, _ = plans.create(name="Sibling")
+    other_id, _ = plans.create(name="Other")
+    settings.save(settings.get().model_copy(update={"default_plan_id": other_id}))
+
+    response = client.post(
+        PLAN_DELETE.format(plan_id=sibling_id),
+        data={RETURN_PLAN: str(active_id)},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert plans.get_by_id(sibling_id) is None
+    assert response.headers["location"] == f"{HOME}?plan={active_id}"
+
+
+def test_delete_unknown_plan_returns_404(client: TestClient, db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    settings = SettingsRepository(db_path=db_path)
+    plans.ensure_bootstrap(settings_repo=settings)
+    before = plans.list()
+
+    response = client.post(PLAN_DELETE.format(plan_id=999_999))
+
+    assert response.status_code == 404
+    assert plans.list() == before
+
+
+def test_results_without_plan_returns_404(client: TestClient, db_path) -> None:
+    _bootstrap_plan(db_path)
+
+    response = client.get(RESULTS)
+
+    assert response.status_code == 404
+
+
+def test_patch_portfolio_without_plan_returns_404(client: TestClient, db_path) -> None:
+    _bootstrap_plan(db_path)
+
+    response = client.patch(
+        PLAN_PORTFOLIO,
+        data={CURRENT_SAVINGS_BALANCE: "1000"},
+    )
+
+    assert response.status_code == 404
 
 
 def test_delete_unparseable_plan_succeeds_without_loading_json(

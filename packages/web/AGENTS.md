@@ -44,7 +44,7 @@ Route constants for plan management live in `web/routes.py` (`PLAN_CREATE`, `PLA
 | Duplicate | `POST /plans/{id}/duplicate` | Deep copy; redirect to new id |
 | Rename | `POST /plans/{id}/rename` | `forms.PLAN_NAME`; redirect to same id |
 | Set default | `POST /plans/{id}/set-default` | Updates `AppSettings.default_plan_id` |
-| Delete | `POST /plans/{id}/delete` | Confirm in UI; blocked when only one plan remains; works by row id (no Plan JSON load); reassigns default if needed |
+| Delete | `POST /plans/{id}/delete` | Confirm in UI; optional `forms.RETURN_PLAN` keeps active plan when deleting a sibling; blocked when only one *loadable* plan remains; works by row id (no Plan JSON load); falls back to default when active was deleted |
 
 ### Settings (API keys)
 

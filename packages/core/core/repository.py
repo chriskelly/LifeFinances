@@ -78,6 +78,13 @@ class PlanRepository:
             conn.close()
         return row is not None
 
+    def loadable_ids(self) -> set[int]:
+        return {
+            summary.id
+            for summary in self.list()
+            if self.get_by_id(summary.id) is not None
+        }
+
     def create(self, *, name: str) -> tuple[int, Plan]:
         plan = default_plan().model_copy(update={"name": name})
         return self._insert(plan), plan
@@ -105,7 +112,8 @@ class PlanRepository:
     def delete(self, plan_id: int) -> None:
         if not self.exists(plan_id):
             raise ValueError(f"Plan {plan_id} does not exist")
-        if len(self.list()) <= 1:
+        loadable = self.loadable_ids()
+        if plan_id in loadable and len(loadable) <= 1:
             raise ValueError("cannot delete the last plan")
         conn = self._connect()
         try:

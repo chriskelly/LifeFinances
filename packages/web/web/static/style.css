@@ -88,6 +88,12 @@ body {
   text-decoration: none;
 }
 
+.plan-menu-unreadable {
+  flex: 1;
+  color: #888;
+  font-style: italic;
+}
+
 .plan-menu-row-delete {
   margin: 0;
 }

@@ -19,7 +19,9 @@ def resolve_default_plan_id(
     return default_plan_id
 
 
-def require_plan(plan_id: int, *, plan_repo: PlanRepository) -> tuple[int, Plan]:
+def require_plan(plan_id: int | None, *, plan_repo: PlanRepository) -> tuple[int, Plan]:
+    if plan_id is None:
+        raise HTTPException(status_code=404, detail="Plan not found")
     plan = plan_repo.get_by_id(plan_id)
     if plan is None:
         raise HTTPException(status_code=404, detail="Plan not found")

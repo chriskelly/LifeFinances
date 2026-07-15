@@ -164,6 +164,18 @@ def test_delete_refuses_last_plan(repo: PlanRepository) -> None:
     assert len(repo.list()) == 1
 
 
+def test_delete_refuses_last_loadable_when_corrupt_sibling_exists(db_path) -> None:
+    plans = PlanRepository(db_path=db_path)
+    good_id, _ = plans.create(name="Good")
+    _insert_corrupt_plan(db_path=db_path, name="Corrupt")
+
+    with pytest.raises(ValueError, match="last"):
+        plans.delete(good_id)
+
+    assert plans.get_by_id(good_id) is not None
+    assert len(plans.list()) == 2
+
+
 def test_delete_missing_plan_raises(repo: PlanRepository) -> None:
     keep_id, _ = repo.create(name="Keep")
     missing_id = keep_id + 999

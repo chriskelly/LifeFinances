@@ -82,6 +82,23 @@ def _redirect_to_plan(plan_id: int) -> RedirectResponse:
     return RedirectResponse(url=f"{HOME}?plan={plan_id}", status_code=302)
 
 
+def _redirect_after_plan_delete(
+    *,
+    repo: PlanRepository,
+    settings_repo: SettingsRepository,
+    deleted_id: int,
+    return_plan: int | None,
+) -> RedirectResponse:
+    if (
+        return_plan is not None
+        and return_plan != deleted_id
+        and return_plan in repo.loadable_ids()
+    ):
+        return _redirect_to_plan(return_plan)
+    new_default_id, _ = repo.ensure_bootstrap(settings_repo=settings_repo)
+    return _redirect_to_plan(new_default_id)
+
+
 def _mount_static(web_app: FastAPI) -> None:
     web_app.mount(
         routes.STATIC,
@@ -120,6 +137,8 @@ def _register_home_route(web_app: FastAPI) -> None:
             fred_api_key=settings.fred_api_key,
             eod_api_key=settings.eod_api_key,
         )
+        summaries = repo.list()
+        loadable_ids = repo.loadable_ids()
         return templates.TemplateResponse(
             request,
             "index.html",
@@ -128,7 +147,9 @@ def _register_home_route(web_app: FastAPI) -> None:
                 "plan": plan_model,
                 "result": result,
                 "settings": settings,
-                "summaries": repo.list(),
+                "summaries": summaries,
+                "loadable_ids": loadable_ids,
+                "loadable_count": len(loadable_ids),
             },
         )
 
@@ -138,7 +159,7 @@ def _register_editor_routes(web_app: FastAPI) -> None:
     def editor_household(
         request: Request,
         repo: RepoDep,
-        plan: Annotated[int, Query()],
+        plan: Annotated[int | None, Query()] = None,
     ) -> HTMLResponse:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         return templates.TemplateResponse(
@@ -151,7 +172,7 @@ def _register_editor_routes(web_app: FastAPI) -> None:
     def editor_portfolio(
         request: Request,
         repo: RepoDep,
-        plan: Annotated[int, Query()],
+        plan: Annotated[int | None, Query()] = None,
     ) -> HTMLResponse:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         return templates.TemplateResponse(
@@ -165,7 +186,7 @@ def _register_editor_routes(web_app: FastAPI) -> None:
         request: Request,
         repo: RepoDep,
         settings_repo: SettingsRepoDep,
-        plan: Annotated[int, Query()],
+        plan: Annotated[int | None, Query()] = None,
     ) -> HTMLResponse:
         plan_id, _ = require_plan(plan, plan_repo=repo)
         settings = settings_repo.get()
@@ -183,7 +204,7 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         person1_birth_year: Annotated[int, Form()],
         person1_max_age_years: Annotated[int, Form()],
         repo: RepoDep,
-        plan: Annotated[int, Query()],
+        plan: Annotated[int | None, Query()] = None,
         has_partner: Annotated[bool, Form()] = False,
         person2_birth_month: Annotated[int | None, Form()] = None,
         person2_birth_year: Annotated[int | None, Form()] = None,
@@ -209,7 +230,7 @@ def _register_patch_routes(web_app: FastAPI) -> None:
     def patch_portfolio(
         current_savings_balance: Annotated[Decimal, Form()],
         repo: RepoDep,
-        plan: Annotated[int, Query()],
+        plan: Annotated[int | None, Query()] = None,
     ) -> Response:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
@@ -225,7 +246,7 @@ def _register_patch_routes(web_app: FastAPI) -> None:
     def patch_settings(
         repo: RepoDep,
         settings_repo: SettingsRepoDep,
-        plan: Annotated[int, Query()],
+        plan: Annotated[int | None, Query()] = None,
         fred_api_key: Annotated[str | None, Form()] = None,
         clear_fred_api_key: Annotated[bool, Form()] = False,
         eod_api_key: Annotated[str | None, Form()] = None,
@@ -248,7 +269,9 @@ def _register_plan_management_routes(web_app: FastAPI) -> None:
     def create_plan(repo: RepoDep, settings_repo: SettingsRepoDep) -> Response:
         name = untitled_plan_name(existing=[s.name for s in repo.list()])
         new_id, _ = repo.create(name=name)
-        repo.ensure_bootstrap(settings_repo=settings_repo)
+        settings = settings_repo.get()
+        if settings.default_plan_id is None:
+            settings_repo.save(settings.model_copy(update={"default_plan_id": new_id}))
         return _redirect_to_plan(new_id)
 
     @web_app.post(PLAN_DUPLICATE)
@@ -281,7 +304,10 @@ def _register_plan_management_routes(web_app: FastAPI) -> None:
 
     @web_app.post(PLAN_DELETE)
     def delete_plan(
-        repo: RepoDep, settings_repo: SettingsRepoDep, plan_id: int
+        repo: RepoDep,
+        settings_repo: SettingsRepoDep,
+        plan_id: int,
+        return_plan: Annotated[int | None, Form()] = None,
     ) -> Response:
         if not repo.exists(plan_id):
             raise HTTPException(status_code=404, detail="Plan not found")
@@ -290,8 +316,12 @@ def _register_plan_management_routes(web_app: FastAPI) -> None:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        new_default_id, _ = repo.ensure_bootstrap(settings_repo=settings_repo)
-        return _redirect_to_plan(new_default_id)
+        return _redirect_after_plan_delete(
+            repo=repo,
+            settings_repo=settings_repo,
+            deleted_id=plan_id,
+            return_plan=return_plan,
+        )
 
 
 def _register_results_route(web_app: FastAPI) -> None:
@@ -299,7 +329,7 @@ def _register_results_route(web_app: FastAPI) -> None:
     def results(
         request: Request,
         repo: RepoDep,
-        plan: Annotated[int, Query()],
+        plan: Annotated[int | None, Query()] = None,
     ) -> HTMLResponse:
         _, plan_model = require_plan(plan, plan_repo=repo)
         settings = get_settings_repo(request).get()

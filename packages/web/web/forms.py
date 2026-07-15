@@ -19,6 +19,7 @@ CLEAR_FRED_API_KEY = "clear_fred_api_key"
 EOD_API_KEY = "eod_api_key"
 CLEAR_EOD_API_KEY = "clear_eod_api_key"
 PLAN_NAME = "name"
+RETURN_PLAN = "return_plan"
 
 
 class HouseholdForm(BaseModel):
