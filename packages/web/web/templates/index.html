@@ -103,7 +103,11 @@
 
   document.addEventListener("DOMContentLoaded", renderResultsChart);
 
-  document.body.addEventListener("htmx:afterSwap", function (event) {
+  // Render after htmx settling completes, not afterSwap: settling re-applies
+  // server-sent attributes to id-matched elements, which strips the
+  // js-plotly-plot class (and the absolute positioning it carries) that
+  // Plotly adds when rendering during afterSwap, breaking hover tooltips.
+  document.body.addEventListener("htmx:afterSettle", function (event) {
     if (event.detail.target && event.detail.target.id === "results-panel") {
       renderResultsChart();
     }
