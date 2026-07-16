@@ -170,3 +170,44 @@ def test_chart_options_wealth_labels_use_actual_percentiles():
     assert (
         options[charts.WEALTH_COMPOSITION_LOW] == f"Wealth · {percentiles[low_idx]}th"
     )
+
+
+@pytest.mark.parametrize(
+    "chart_type",
+    [
+        charts.PORTFOLIO,
+        charts.SPENDING_TOTAL,
+        charts.ASSET_ALLOCATION_SAVINGS,
+        charts.WEALTH_COMPOSITION_LOW,
+        charts.WEALTH_COMPOSITION_MID,
+        charts.WEALTH_COMPOSITION_HIGH,
+    ],
+)
+def test_build_figure_uses_unified_x_hovermode_for_stable_tooltips(chart_type):
+    """Default Plotly hovermode ("closest") only shows a tooltip when the
+    cursor is within pixel distance of a line, and flips between traces as
+    the cursor's y drifts relative to line-only ("mode=lines") traces. Pinning
+    hovermode to "x unified" shows every trace at the hovered x regardless of
+    cursor y, so the tooltip is stable across the whole plot area."""
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=3)
+
+    figure = charts.build_figure(result, chart_type)
+
+    assert figure["layout"]["hovermode"] == "x unified"
+
+
+def test_band_chart_hover_lists_lowest_percentile_last():
+    """Traces are added in ascending percentile order (lowest first) so the
+    legend and line z-order stay stable, but "x unified" hover otherwise
+    lists them top-to-bottom in that same (ascending) order, showing the
+    lowest percentile at the top. Reversing legend.traceorder flips only the
+    hover listing so the lowest percentile appears at the bottom."""
+    percentiles = [5, 50, 95]
+    result = _make_result(percentiles=percentiles, horizon_months=2)
+
+    figure = charts.build_figure(result, charts.SPENDING_TOTAL)
+
+    assert figure["layout"]["legend"]["traceorder"] == "reversed"
+    assert [trace["name"] for trace in figure["data"]] == [
+        f"{p}th" for p in percentiles
+    ]

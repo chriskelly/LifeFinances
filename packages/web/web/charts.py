@@ -92,6 +92,13 @@ _WEALTH_INCOME_LAYERS = (
 
 _WEALTH_STACKGROUP = "wealth"
 
+# Plotly's default hovermode ("closest") only shows a tooltip when the
+# cursor is within pixel distance of a line's rendered point, and it flips
+# between traces as the cursor's y drifts relative to line-only traces.
+# "x unified" instead matches purely on the hovered x and shows every trace
+# at that x, so the tooltip stays stable across the whole plot area.
+_HOVERMODE = "x unified"
+
 
 def _band_figure(result: SimulationResult, source_field: str) -> go.Figure:
     x = month_labels(result.start_month, result.horizon_months)
@@ -106,6 +113,7 @@ def _band_figure(result: SimulationResult, source_field: str) -> go.Figure:
                 name=f"{percentile}th",
             )
         )
+    figure.update_layout(hovermode=_HOVERMODE, legend={"traceorder": "reversed"})
     return figure
 
 
@@ -132,6 +140,7 @@ def _wealth_composition_figure(result: SimulationResult, chart_type: str) -> go.
                 stackgroup=_WEALTH_STACKGROUP,
             )
         )
+    figure.update_layout(hovermode=_HOVERMODE)
     return figure
 
 
