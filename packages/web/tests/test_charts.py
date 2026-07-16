@@ -150,6 +150,19 @@ def test_wealth_composition_traces_share_one_stackgroup():
     assert len(stackgroups) == 1
 
 
+def test_wealth_composition_traces_hover_on_points_not_fills():
+    """Plotly's default fill hit-catcher for stackgroup traces sits above the
+    drag layer but doesn't reliably trigger "x unified" hover (a known
+    plotly.js limitation: https://github.com/plotly/plotly.js/issues/6325).
+    Forcing hoveron="points" removes the fill hit-catcher's pointer capture
+    so the mouse always reaches the drag layer underneath."""
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=3)
+
+    figure = charts.build_figure(result, charts.WEALTH_COMPOSITION_LOW)
+
+    assert all(trace["hoveron"] == "points" for trace in figure["data"])
+
+
 def test_chart_options_cover_all_chart_types_in_order():
     result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
 

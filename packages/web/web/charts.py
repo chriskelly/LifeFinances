@@ -128,6 +128,7 @@ def _wealth_composition_figure(result: SimulationResult, chart_type: str) -> go.
             mode="lines",
             name="Savings",
             stackgroup=_WEALTH_STACKGROUP,
+            hoveron="points",
         )
     )
     for label, field in _WEALTH_INCOME_LAYERS:
@@ -138,6 +139,7 @@ def _wealth_composition_figure(result: SimulationResult, chart_type: str) -> go.
                 mode="lines",
                 name=label,
                 stackgroup=_WEALTH_STACKGROUP,
+                hoveron="points",
             )
         )
     figure.update_layout(hovermode=_HOVERMODE)
