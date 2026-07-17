@@ -250,3 +250,16 @@ def test_savings_allocation_formats_hover_as_percent_one_decimal():
     figure = charts.build_figure(result, charts.ASSET_ALLOCATION_SAVINGS)
 
     assert figure["layout"]["yaxis"]["hoverformat"] == charts.HOVERFORMAT_PERCENT
+
+
+def test_savings_allocation_y_axis_spans_zero_to_one_hundred_percent():
+    """Allocation is a 0–1 fraction; locking range to [0, 1] with percent
+    tick labels keeps the axis at 0–100% even when series stay in a narrow
+    band."""
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
+
+    figure = charts.build_figure(result, charts.ASSET_ALLOCATION_SAVINGS)
+
+    yaxis = figure["layout"]["yaxis"]
+    assert yaxis["range"] == list(charts.PERCENT_Y_RANGE)
+    assert yaxis["tickformat"] == charts.TICKFORMAT_PERCENT

@@ -104,10 +104,17 @@ _HOVERMODE = "x unified"
 # is a 0–1 fraction; ".1%" multiplies by 100 and shows one decimal place.
 HOVERFORMAT_DOLLAR = "$,.0f"
 HOVERFORMAT_PERCENT = ".1%"
+TICKFORMAT_PERCENT = ".0%"
+PERCENT_Y_RANGE = (0.0, 1.0)
 
 
 def _band_figure(
-    result: SimulationResult, source_field: str, *, hoverformat: str
+    result: SimulationResult,
+    source_field: str,
+    *,
+    hoverformat: str,
+    y_range: tuple[float, float] | None = None,
+    tickformat: str | None = None,
 ) -> go.Figure:
     x = month_labels(result.start_month, result.horizon_months)
     series = getattr(result, source_field)
@@ -121,10 +128,15 @@ def _band_figure(
                 name=f"{percentile}th",
             )
         )
+    yaxis: dict = {"hoverformat": hoverformat}
+    if y_range is not None:
+        yaxis["range"] = list(y_range)
+    if tickformat is not None:
+        yaxis["tickformat"] = tickformat
     figure.update_layout(
         hovermode=_HOVERMODE,
         legend={"traceorder": "reversed"},
-        yaxis={"hoverformat": hoverformat},
+        yaxis=yaxis,
     )
     return figure
 
@@ -163,13 +175,16 @@ def _wealth_composition_figure(result: SimulationResult, chart_type: str) -> go.
 def build_figure(result: SimulationResult, chart_type: str) -> dict:
     source_field = _BAND_SOURCE.get(chart_type)
     if source_field is not None:
-        hoverformat = (
-            HOVERFORMAT_PERCENT
-            if chart_type == ASSET_ALLOCATION_SAVINGS
-            else HOVERFORMAT_DOLLAR
-        )
+        if chart_type == ASSET_ALLOCATION_SAVINGS:
+            return _band_figure(
+                result,
+                source_field,
+                hoverformat=HOVERFORMAT_PERCENT,
+                y_range=PERCENT_Y_RANGE,
+                tickformat=TICKFORMAT_PERCENT,
+            ).to_plotly_json()
         return _band_figure(
-            result, source_field, hoverformat=hoverformat
+            result, source_field, hoverformat=HOVERFORMAT_DOLLAR
         ).to_plotly_json()
     if chart_type in _WEALTH_POSITION:
         return _wealth_composition_figure(result, chart_type).to_plotly_json()
