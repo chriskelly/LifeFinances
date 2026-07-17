@@ -23,8 +23,9 @@ CHART_TYPES: tuple[str, ...] = (
 
 
 def resolve_chart_type(raw: str | None) -> str:
-    if raw in CHART_TYPES:
-        return raw  # type: ignore[return-value]
+    for chart_type in CHART_TYPES:
+        if raw == chart_type:
+            return chart_type
     return DEFAULT_CHART
 
 
@@ -40,11 +41,13 @@ def month_labels(start_month: tuple[int, int], horizon_months: int) -> list[str]
     return labels
 
 
-_WEALTH_POSITION = {
-    WEALTH_COMPOSITION_LOW: "low",
-    WEALTH_COMPOSITION_MID: "mid",
-    WEALTH_COMPOSITION_HIGH: "high",
-}
+_WEALTH_CHART_TYPES = frozenset(
+    {
+        WEALTH_COMPOSITION_LOW,
+        WEALTH_COMPOSITION_MID,
+        WEALTH_COMPOSITION_HIGH,
+    }
+)
 
 
 _STATIC_LABELS = {
@@ -67,14 +70,13 @@ def chart_options(result: SimulationResult) -> list[tuple[str, str]]:
 
 
 def wealth_percentile_index(chart_type: str, num_percentiles: int) -> int:
-    position = _WEALTH_POSITION.get(chart_type)
-    if position is None:
-        raise ValueError(f"not a wealth-composition chart: {chart_type!r}")
-    if position == "low":
+    if chart_type == WEALTH_COMPOSITION_LOW:
         return 0
-    if position == "high":
+    if chart_type == WEALTH_COMPOSITION_HIGH:
         return num_percentiles - 1
-    return num_percentiles // 2
+    if chart_type == WEALTH_COMPOSITION_MID:
+        return num_percentiles // 2
+    raise ValueError(f"not a wealth-composition chart: {chart_type!r}")
 
 
 _BAND_SOURCE = {
@@ -92,16 +94,12 @@ _WEALTH_INCOME_LAYERS = (
 
 _WEALTH_STACKGROUP = "wealth"
 
-# Plotly's default hovermode ("closest") only shows a tooltip when the
-# cursor is within pixel distance of a line's rendered point, and it flips
-# between traces as the cursor's y drifts relative to line-only traces.
-# "x unified" instead matches purely on the hovered x and shows every trace
-# at that x, so the tooltip stays stable across the whole plot area.
+# "x unified" matches on hovered x and shows every trace, so tooltips stay
+# stable across the plot (unlike default "closest", which flips between lines).
 _HOVERMODE = "x unified"
 
-# d3-format strings applied via yaxis.hoverformat (used by "x unified").
-# Dollar charts: whole dollars with thousands separators. Savings allocation
-# is a 0–1 fraction; ".1%" multiplies by 100 and shows one decimal place.
+# d3-format via yaxis.hoverformat. Allocation is a 0–1 fraction (".1%" → one
+# decimal percent). lock_percent_axis also pins range to PERCENT_Y_RANGE.
 HOVERFORMAT_DOLLAR = "$,.0f"
 HOVERFORMAT_PERCENT = ".1%"
 TICKFORMAT_PERCENT = ".0%"
@@ -113,8 +111,7 @@ def _band_figure(
     source_field: str,
     *,
     hoverformat: str,
-    y_range: tuple[float, float] | None = None,
-    tickformat: str | None = None,
+    lock_percent_axis: bool = False,
 ) -> go.Figure:
     x = month_labels(result.start_month, result.horizon_months)
     series = getattr(result, source_field)
@@ -128,11 +125,10 @@ def _band_figure(
                 name=f"{percentile}th",
             )
         )
-    yaxis: dict = {"hoverformat": hoverformat}
-    if y_range is not None:
-        yaxis["range"] = list(y_range)
-    if tickformat is not None:
-        yaxis["tickformat"] = tickformat
+    yaxis: dict[str, object] = {"hoverformat": hoverformat}
+    if lock_percent_axis:
+        yaxis["range"] = list(PERCENT_Y_RANGE)
+        yaxis["tickformat"] = TICKFORMAT_PERCENT
     figure.update_layout(
         hovermode=_HOVERMODE,
         legend={"traceorder": "reversed"},
@@ -175,17 +171,13 @@ def _wealth_composition_figure(result: SimulationResult, chart_type: str) -> go.
 def build_figure(result: SimulationResult, chart_type: str) -> dict:
     source_field = _BAND_SOURCE.get(chart_type)
     if source_field is not None:
-        if chart_type == ASSET_ALLOCATION_SAVINGS:
-            return _band_figure(
-                result,
-                source_field,
-                hoverformat=HOVERFORMAT_PERCENT,
-                y_range=PERCENT_Y_RANGE,
-                tickformat=TICKFORMAT_PERCENT,
-            ).to_plotly_json()
+        is_alloc = chart_type == ASSET_ALLOCATION_SAVINGS
         return _band_figure(
-            result, source_field, hoverformat=HOVERFORMAT_DOLLAR
+            result,
+            source_field,
+            hoverformat=HOVERFORMAT_PERCENT if is_alloc else HOVERFORMAT_DOLLAR,
+            lock_percent_axis=is_alloc,
         ).to_plotly_json()
-    if chart_type in _WEALTH_POSITION:
+    if chart_type in _WEALTH_CHART_TYPES:
         return _wealth_composition_figure(result, chart_type).to_plotly_json()
     raise ValueError(f"unsupported chart type: {chart_type!r}")
