@@ -224,3 +224,29 @@ def test_band_chart_hover_lists_lowest_percentile_last():
     assert [trace["name"] for trace in figure["data"]] == [
         f"{p}th" for p in percentiles
     ]
+
+
+@pytest.mark.parametrize(
+    "chart_type",
+    [
+        charts.PORTFOLIO,
+        charts.SPENDING_TOTAL,
+        charts.WEALTH_COMPOSITION_LOW,
+        charts.WEALTH_COMPOSITION_MID,
+        charts.WEALTH_COMPOSITION_HIGH,
+    ],
+)
+def test_dollar_charts_format_hover_as_whole_dollars(chart_type):
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
+
+    figure = charts.build_figure(result, chart_type)
+
+    assert figure["layout"]["yaxis"]["hoverformat"] == charts.HOVERFORMAT_DOLLAR
+
+
+def test_savings_allocation_formats_hover_as_percent_one_decimal():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
+
+    figure = charts.build_figure(result, charts.ASSET_ALLOCATION_SAVINGS)
+
+    assert figure["layout"]["yaxis"]["hoverformat"] == charts.HOVERFORMAT_PERCENT

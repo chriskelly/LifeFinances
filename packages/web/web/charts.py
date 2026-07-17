@@ -99,8 +99,16 @@ _WEALTH_STACKGROUP = "wealth"
 # at that x, so the tooltip stays stable across the whole plot area.
 _HOVERMODE = "x unified"
 
+# d3-format strings applied via yaxis.hoverformat (used by "x unified").
+# Dollar charts: whole dollars with thousands separators. Savings allocation
+# is a 0–1 fraction; ".1%" multiplies by 100 and shows one decimal place.
+HOVERFORMAT_DOLLAR = "$,.0f"
+HOVERFORMAT_PERCENT = ".1%"
 
-def _band_figure(result: SimulationResult, source_field: str) -> go.Figure:
+
+def _band_figure(
+    result: SimulationResult, source_field: str, *, hoverformat: str
+) -> go.Figure:
     x = month_labels(result.start_month, result.horizon_months)
     series = getattr(result, source_field)
     figure = go.Figure()
@@ -113,7 +121,11 @@ def _band_figure(result: SimulationResult, source_field: str) -> go.Figure:
                 name=f"{percentile}th",
             )
         )
-    figure.update_layout(hovermode=_HOVERMODE, legend={"traceorder": "reversed"})
+    figure.update_layout(
+        hovermode=_HOVERMODE,
+        legend={"traceorder": "reversed"},
+        yaxis={"hoverformat": hoverformat},
+    )
     return figure
 
 
@@ -142,14 +154,23 @@ def _wealth_composition_figure(result: SimulationResult, chart_type: str) -> go.
                 hoveron="points",
             )
         )
-    figure.update_layout(hovermode=_HOVERMODE)
+    figure.update_layout(
+        hovermode=_HOVERMODE, yaxis={"hoverformat": HOVERFORMAT_DOLLAR}
+    )
     return figure
 
 
 def build_figure(result: SimulationResult, chart_type: str) -> dict:
     source_field = _BAND_SOURCE.get(chart_type)
     if source_field is not None:
-        return _band_figure(result, source_field).to_plotly_json()
+        hoverformat = (
+            HOVERFORMAT_PERCENT
+            if chart_type == ASSET_ALLOCATION_SAVINGS
+            else HOVERFORMAT_DOLLAR
+        )
+        return _band_figure(
+            result, source_field, hoverformat=hoverformat
+        ).to_plotly_json()
     if chart_type in _WEALTH_POSITION:
         return _wealth_composition_figure(result, chart_type).to_plotly_json()
     raise ValueError(f"unsupported chart type: {chart_type!r}")
