@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from core.models import AppSettings, Household, PersonHousehold, Plan
+from core.models import AppSettings, Household, PersonHousehold, Plan, Portfolio
 from pydantic import BaseModel
 
 # Field-name constants for templates/tests — must match DTO field names
@@ -60,9 +60,9 @@ class PortfolioForm(BaseModel):
     current_savings_balance: Decimal
 
     def apply_to(self, plan: Plan) -> Plan:
-        portfolio = plan.portfolio.model_copy(
-            update={"current_savings_balance": self.current_savings_balance}
-        )
+        data = plan.portfolio.model_dump()
+        data["current_savings_balance"] = self.current_savings_balance
+        portfolio = Portfolio.model_validate(data)
         return plan.model_copy(update={"portfolio": portfolio})
 
 

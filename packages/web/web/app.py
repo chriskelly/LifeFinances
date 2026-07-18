@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import json
+import logging
 from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
 
+from core.models import AppSettings, Plan
 from core.paths import default_db_path
 from core.plan_names import untitled_plan_name
 from core.repository import PlanRepository
@@ -13,9 +16,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
+from simulation.result import SimulationResult
 from simulation.stub import run_simulation
 
-from web import forms, routes, sections
+from web import charts, forms, routes, sections
 from web.dependencies import get_repository, require_plan, resolve_default_plan_id
 from web.forms import AppSettingsForm, HouseholdForm, PortfolioForm
 from web.routes import (
@@ -33,6 +37,9 @@ from web.routes import (
     PLAN_SETTINGS,
     RESULTS,
 )
+from web.simulation_cache import get_or_run_simulation
+
+logger = logging.getLogger(__name__)
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(_PACKAGE_DIR / "templates"))
@@ -41,6 +48,7 @@ templates.env.globals["sections"] = sections
 templates.env.globals["forms"] = forms
 
 _INIT_DB_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
+_SIMULATION_FAILURE_MESSAGE = "Simulation failed. Check plan inputs and try again."
 
 _FIELD_LABELS = {
     "birth_month": "Birth month",
@@ -57,6 +65,35 @@ def _validation_message(exc: ValidationError) -> str:
         label = _FIELD_LABELS.get(field, field or "Value")
         parts.append(f"{label}: {err['msg']}")
     return "; ".join(parts)
+
+
+def _figure_json(figure: dict) -> str:
+    # Escape "<" so user-influenced labels cannot break out of </script>.
+    return json.dumps(figure).replace("<", "\\u003c")
+
+
+def _load_simulation(
+    request: Request,
+    *,
+    plan_id: int,
+    plan_model: Plan,
+    settings: AppSettings,
+) -> tuple[SimulationResult | None, str | None]:
+    try:
+        return (
+            get_or_run_simulation(
+                request.app,
+                plan_id=plan_id,
+                plan=plan_model,
+                fred_api_key=settings.fred_api_key,
+                eod_api_key=settings.eod_api_key,
+                run=run_simulation,
+            ),
+            None,
+        )
+    except Exception:
+        logger.exception("Simulation failed for plan_id=%s", plan_id)
+        return None, _SIMULATION_FAILURE_MESSAGE
 
 
 def _resolve_db_path(app: FastAPI) -> Path:
@@ -131,26 +168,36 @@ def _register_home_route(web_app: FastAPI) -> None:
 
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         settings = settings_repo.get()
-        result = run_simulation(
-            plan_model,
-            allow_refresh=True,
-            fred_api_key=settings.fred_api_key,
-            eod_api_key=settings.eod_api_key,
+        result, simulation_error = _load_simulation(
+            request,
+            plan_id=plan_id,
+            plan_model=plan_model,
+            settings=settings,
         )
         summaries = repo.list()
         loadable_ids = repo.loadable_ids()
+        chart_type = charts.DEFAULT_CHART
+        context = {
+            "plan_id": plan_id,
+            "plan": plan_model,
+            "result": result,
+            "settings": settings,
+            "summaries": summaries,
+            "loadable_ids": loadable_ids,
+            "loadable_count": len(loadable_ids),
+            "chart_type": chart_type,
+            "simulation_error": simulation_error,
+            "chart_options": charts.chart_options(result) if result is not None else [],
+            "chart_figure_json": (
+                _figure_json(charts.build_figure(result, chart_type))
+                if result is not None
+                else None
+            ),
+        }
         return templates.TemplateResponse(
             request,
             "index.html",
-            {
-                "plan_id": plan_id,
-                "plan": plan_model,
-                "result": result,
-                "settings": settings,
-                "summaries": summaries,
-                "loadable_ids": loadable_ids,
-                "loadable_count": len(loadable_ids),
-            },
+            context,
         )
 
 
@@ -330,19 +377,42 @@ def _register_results_route(web_app: FastAPI) -> None:
         request: Request,
         repo: RepoDep,
         plan: Annotated[int | None, Query()] = None,
+        chart: Annotated[str | None, Query()] = None,
     ) -> HTMLResponse:
-        _, plan_model = require_plan(plan, plan_repo=repo)
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         settings = get_settings_repo(request).get()
-        result = run_simulation(
-            plan_model,
-            allow_refresh=True,
-            fred_api_key=settings.fred_api_key,
-            eod_api_key=settings.eod_api_key,
+        result, simulation_error = _load_simulation(
+            request,
+            plan_id=plan_id,
+            plan_model=plan_model,
+            settings=settings,
         )
+        chart_type = charts.resolve_chart_type(chart)
+        if result is None:
+            return templates.TemplateResponse(
+                request,
+                "results.html",
+                {
+                    "plan_id": plan_id,
+                    "result": None,
+                    "chart_type": chart_type,
+                    "chart_options": [],
+                    "chart_figure_json": None,
+                    "simulation_error": simulation_error or _SIMULATION_FAILURE_MESSAGE,
+                },
+            )
+        figure = charts.build_figure(result, chart_type)
         return templates.TemplateResponse(
             request,
-            "results_stub.html",
-            {"result": result},
+            "results.html",
+            {
+                "plan_id": plan_id,
+                "result": result,
+                "chart_type": chart_type,
+                "chart_options": charts.chart_options(result),
+                "chart_figure_json": _figure_json(figure),
+                "simulation_error": None,
+            },
         )
 
 

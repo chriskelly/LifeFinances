@@ -57,7 +57,17 @@ Route constants for plan management live in `web/routes.py` (`PLAN_CREATE`, `PLA
 - **Validation:** form DTOs are flat transport shapes only (no `Field` constraints). Domain validation lives on `core.models`; `apply_to()` constructs core models and Pydantic validates there. Do not duplicate `ge`/`le`/defaults on form DTOs.
 - **Future (Phase 4c+):** when many editor sections exist, investigate generating flat form DTO fields from `core.models` via `create_model` + `model_fields` introspection so prefixes and constraints stay in sync automatically. See rebuild index Phase 4 notes.
 - **Section-scoped forms:** each editor partial (`editor_household.html`, `editor_portfolio.html`, `editor_settings.html`) is a self-contained `<form>` that `PATCH`es its own route with **`?plan={{ plan_id }}`** on the HTMX URL so saves target the active plan. FastAPI binds flat `Form()` parameters to the matching DTO; the DTO's `apply_to(plan)` merges into the full `Plan` before `repo.save`.
-- **Partials:** `index.html` includes both editor sections and the initial results stub. Section GET routes return individual partials for HTMX swaps if needed later.
+- **Partials:** `index.html` includes both editor sections and the live `results.html` charts partial. Section GET routes return individual partials for HTMX swaps if needed later.
+
+### Results charts
+
+`GET /results?plan={id}&chart={type}` renders `results.html`. Valid `chart` values are the constants in `web/charts.py` (`CHART_TYPES`); unknown values fall back to `DEFAULT_CHART` (`spending-total`). Home and results both go through `web.simulation_cache.get_or_run_simulation` (process-local LRU on `app.state`, keyed by plan id + plan JSON hash excluding `name` + API keys + calendar date) so chart switches reuse the same `SimulationResult` until the plan economics, settings keys, or day change. Cache hits skip `allow_refresh` until the next miss — mid-day market-data updates are invisible until then. The cache is single-process and not thread-safe (fine for typical single-worker local use). If the simulation raises, the results panel shows a generic `Simulation failed…` alert (exception is logged server-side with stack trace; raw exception text is not shown), keeps a hidden `#chart-select` so `planUpdated` can preserve the chart query, and omits the Plotly mount (`#chart-config` / `#results-chart`). Figures are built server-side as Plotly JSON (`web.charts.build_figure`); band charts with ≥2 percentiles include a translucent fill between the outer percentile rows. Figure JSON escapes `<` before `| safe` injection into the config script tag. plotly.js loads once from CDN in `base.html`. The shell calls `Plotly.react` on load and on every `htmx:afterSettle` targeting `#results-panel`. The panel’s `hx-vals` reads `#chart-select` at request time so `planUpdated` refreshes keep the selection.
+
+Chart figures use `hovermode="x unified"` and `legend.traceorder="reversed"` so unified hover lists all series with the lowest percentile last. Wealth-composition traces set `hoveron="points"` because unified hover does not reliably hit filled areas.
+
+**Gotcha:** render charts on `htmx:afterSettle`, not `afterSwap`. Settle re-applies server attributes to id-matched elements and strips Plotly's `js-plotly-plot` class, which breaks absolute SVG positioning and pushes tooltips off-screen. Always re-render after settle for HTMX-swapped Plotly divs.
+
+**Gotcha:** `#results-chart` has a CSS `min-height` (`static/style.css`) matching Plotly's default figure height. Without it the empty chart div collapses during the HTMX swap (before `Plotly.react` runs on settle), so the summary line jumps up and back down — a flicker on every chart change. Keep the `min-height` in sync if you set an explicit figure height in `build_figure`.
 
 ## HTMX debounce pattern
 
@@ -73,11 +83,12 @@ After a successful section `PATCH`, `index.html` listens for `htmx:afterRequest`
 
 ```html
 hx-get="{{ routes.RESULTS }}?plan={{ plan_id }}"
+hx-vals="js:{chart: document.getElementById('chart-select')?.value}"
 hx-trigger="planUpdated from:body"
 hx-swap="innerHTML"
 ```
 
-This decouples save (debounced per form) from results refresh (once per successful save).
+This decouples save (debounced per form) from results refresh (once per successful save). The panel reads the current chart from `#chart-select` via `hx-vals` so the selection survives the refresh.
 
 ## Tests
 

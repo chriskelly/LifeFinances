@@ -34,10 +34,10 @@
 
 | Field             | Value                                                      |
 | ----------------- | ---------------------------------------------------------- |
-| **Current phase** | Phase 4b — Core charts                                     |
-| **Active plan**   | `2026-06-12-phase-4b-core-charts.md` *(to write)*         |
-| **Design spec**   | Design spec §4, §6 item 24; [Phase 3d results spec](../specs/2026-07-10-phase-3d-simulation-results-design.md) |
-| **Next action**   | Write Phase 4b plan, then execute                          |
+| **Current phase** | Phase 4c — Editor — household & income                   |
+| **Active plan**   | `2026-06-12-phase-4c-editor-income.md` *(to write)*       |
+| **Design spec**   | `packages/domain/OVERVIEW.md`; Phase 2b–2d design specs   |
+| **Next action**   | Write Phase 4c plan, then execute                          |
 
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
@@ -365,7 +365,7 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 - [x] Plan create / switch / duplicate (4a)
 - [x] `eod_api_key` in settings editor (4a)
-- [ ] Core tpaw charts in results panel (4b)
+- [x] Core charts in results panel (4b)
 - [ ] Editor: household income domains — jobs, SS, manual income, household tax fields (4c)
 - [ ] Editor: spending + simulation config — extra streams, legacy target, sampling, inflation, risk, planning returns, advanced percentiles (4d)
 - [ ] Extended charts — per-stream spending, funding-sources stacked chart, conditional chart menu (4e)
@@ -400,9 +400,11 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 ### Phase 4b — Web: core charts
 
-**Plan file:** `2026-06-12-phase-4b-core-charts.md` *(to write)*
+**Plan file:** [`2026-06-12-phase-4b-core-charts.md`](2026-06-12-phase-4b-core-charts.md)
 
-**Delivers:** Replace `results_stub.html` with server-rendered charts (Plotly embed, Altair SVG, or similar per design spec §4); chart type selector; core tpaw chart types backed by `SimulationResult`: `portfolio`, `spending-total`, `withdrawal`, `asset-allocation-savings-portfolio`, `spending-total-funding-sources-{low,mid,high}` (wealth composition + savings allocation).
+**Design spec:** [`2026-07-15-phase-4b-core-charts-design.md`](../specs/2026-07-15-phase-4b-core-charts-design.md)
+
+**Delivers:** Replace `results_stub.html` with server-rendered Plotly charts (CDN plotly.js + `Plotly.react` after HTMX swaps); chart-type selector via `?chart=`; core chart types backed by `SimulationResult`: `portfolio`, `spending-total`, `asset-allocation-savings-portfolio`, and `wealth-composition-{low,mid,high}` (savings percentile band + deterministic tax-prorated income-source NPV layers). tpaw-style spending funding-sources / per-stream charts remain deferred to 4e.
 
 **References:** Design spec §4, §6 item 24; `docs/superpowers/specs/2026-07-10-phase-3d-simulation-results-design.md`; tpaw `PlanResultsChartType`.
 
@@ -410,11 +412,11 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 **Exit criteria:**
 
-- [ ] Results partial renders at least portfolio, spending-total, and withdrawal charts
-- [ ] Chart type selector switches among shipped core types
-- [ ] X-axis uses `SimulationResult.start_month` + horizon months
-- [ ] Percentile bands use `result.percentiles` (default `[5, 50, 95]`)
-- [ ] `make` passes; debounced results refresh still works
+- [x] Results partial renders portfolio, spending-total, savings-allocation, and wealth-composition charts
+- [x] Chart type selector switches among shipped core types via `?chart=`; selection survives `planUpdated` refresh
+- [x] X-axis uses `SimulationResult.start_month` + horizon months
+- [x] Percentile bands use `result.percentiles` (default `[5, 50, 95]`)
+- [x] `make` passes; debounced results refresh still works
 
 ---
 
@@ -573,10 +575,11 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 | Phase 3c-2 | `2026-06-12-phase-3c-2-simulation-planning-returns-presets.md` | complete |
 | Phase 3d | `2026-06-12-phase-3d-simulation-results.md` | complete |
 | Phase 4a | `2026-06-12-phase-4a-plan-shell.md` | complete |
+| Phase 4b | `2026-06-12-phase-4b-core-charts.md` | complete |
 
 
 ---
 
 ## Next step
 
-Write and execute **Phase 4b** (core results charts). Phase 4a is complete ([plan](2026-06-12-phase-4a-plan-shell.md), [design](../specs/2026-07-14-phase-4a-plan-shell-design.md)).
+Write and execute **Phase 4c** (household & income editors). Phase 4b is complete ([plan](2026-06-12-phase-4b-core-charts.md), [design](../specs/2026-07-15-phase-4b-core-charts-design.md)).

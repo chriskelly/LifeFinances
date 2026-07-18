@@ -1,4 +1,3 @@
-import re
 import sqlite3
 from decimal import Decimal
 
@@ -10,6 +9,7 @@ from core.plan_names import copy_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
 from fastapi.testclient import TestClient
+from web.app import _SIMULATION_FAILURE_MESSAGE, _figure_json
 from web.forms import (
     CLEAR_EOD_API_KEY,
     CLEAR_FRED_API_KEY,
@@ -45,6 +45,17 @@ from web.sections import (
     PORTFOLIO_TITLE,
     SETTINGS_TITLE,
 )
+
+from web import charts as web_charts
+
+
+def test_figure_json_escapes_script_breakout_sequences() -> None:
+    figure = {"data": [{"name": "</script><img onerror=alert(1)>"}]}
+
+    dumped = _figure_json(figure)
+
+    assert "</script>" not in dumped
+    assert "\\u003c/script>" in dumped
 
 
 def _bootstrap_plan(db_path) -> int:
@@ -130,6 +141,18 @@ def test_home_with_plan_serves_shell(client: TestClient, db_path) -> None:
     assert plan.name in response.text
 
 
+def test_home_loads_plotly_and_results_partial(client: TestClient, db_path) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response: httpx.Response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert 'id="plotly-cdn"' in response.text
+    assert "renderResultsChart" in response.text
+    assert 'id="results-chart"' in response.text
+    assert "results-stub" not in response.text
+
+
 def test_patch_portfolio_persists_balance_change(
     client: TestClient, repo: PlanRepository, db_path
 ) -> None:
@@ -145,6 +168,28 @@ def test_patch_portfolio_persists_balance_change(
     plan = repo.get_by_id(plan_id)
     assert plan is not None
     assert plan.portfolio.current_savings_balance == expected_balance
+
+
+def test_patch_portfolio_negative_balance_returns_422_without_persisting(
+    client: TestClient, repo: PlanRepository, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    original = repo.get_by_id(plan_id)
+    assert original is not None
+    invalid_balance = Decimal("-1")
+
+    response: httpx.Response = client.patch(
+        f"{PLAN_PORTFOLIO}?plan={plan_id}",
+        data={CURRENT_SAVINGS_BALANCE: str(invalid_balance)},
+    )
+
+    assert response.status_code == 422
+    assert response.text
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.portfolio.current_savings_balance == (
+        original.portfolio.current_savings_balance
+    )
 
 
 def test_patch_portfolio_updates_only_queried_plan(client, db_path) -> None:
@@ -367,7 +412,9 @@ def test_real_run_passes_stored_keys_with_live_refresh_enabled(
     assert captured.get("eod_api_key") == expected_eod_key
 
 
-def test_results_echoes_updated_balance(client: TestClient, db_path) -> None:
+def test_results_returns_chart_after_balance_update(
+    client: TestClient, db_path
+) -> None:
     plan_id = _bootstrap_plan(db_path)
     expected_balance = Decimal("750000")
     patch_response: httpx.Response = client.patch(
@@ -379,9 +426,206 @@ def test_results_echoes_updated_balance(client: TestClient, db_path) -> None:
     response: httpx.Response = client.get(f"{RESULTS}?plan={plan_id}")
 
     assert response.status_code == 200
-    match = re.search(r"Starting balance: ([\d.eE+-]+)", response.text)
-    assert match is not None, response.text
-    assert float(match.group(1)) == pytest.approx(float(expected_balance))
+    assert 'id="chart-config"' in response.text
+
+
+def test_results_renders_default_chart_selected(client: TestClient, db_path) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert 'id="results-chart"' in response.text
+    assert f'value="{web_charts.DEFAULT_CHART}" selected' in response.text
+
+
+def test_results_invalid_chart_falls_back_to_default(
+    client: TestClient, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{RESULTS}?plan={plan_id}&chart=bogus")
+
+    assert response.status_code == 200
+    assert f'value="{web_charts.DEFAULT_CHART}" selected' in response.text
+
+
+def test_results_honors_valid_chart(client: TestClient, db_path) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    chosen = web_charts.PORTFOLIO
+
+    response = client.get(f"{RESULTS}?plan={plan_id}&chart={chosen}")
+
+    assert response.status_code == 200
+    assert f'value="{chosen}" selected' in response.text
+
+
+def test_results_caches_simulation_until_plan_changes(
+    client: TestClient, db_path, monkeypatch
+) -> None:
+    import sys
+
+    plan_id = _bootstrap_plan(db_path)
+    app_module = sys.modules["web.app"]
+    real_run_simulation = app_module.run_simulation
+    call_count = {"n": 0}
+
+    def spy_run_simulation(plan, **kwargs):
+        call_count["n"] += 1
+        return real_run_simulation(plan, **kwargs)
+
+    monkeypatch.setattr(app_module, "run_simulation", spy_run_simulation)
+
+    first = client.get(f"{RESULTS}?plan={plan_id}&chart={web_charts.DEFAULT_CHART}")
+    second = client.get(f"{RESULTS}?plan={plan_id}&chart={web_charts.PORTFOLIO}")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert call_count["n"] == 1
+    assert first.text != second.text
+    assert f'value="{web_charts.DEFAULT_CHART}" selected' in first.text
+    assert f'value="{web_charts.PORTFOLIO}" selected' in second.text
+
+    updated_balance = Decimal("750000")
+    patch_response = client.patch(
+        f"{PLAN_PORTFOLIO}?plan={plan_id}",
+        data={CURRENT_SAVINGS_BALANCE: str(updated_balance)},
+    )
+    assert patch_response.status_code == 200
+
+    after_edit = client.get(f"{RESULTS}?plan={plan_id}")
+    assert after_edit.status_code == 200
+    assert call_count["n"] == 2
+
+
+def test_results_reruns_simulation_after_settings_key_change(
+    client: TestClient, db_path, monkeypatch
+) -> None:
+    import sys
+
+    plan_id = _bootstrap_plan(db_path)
+    app_module = sys.modules["web.app"]
+    real_run_simulation = app_module.run_simulation
+    call_count = {"n": 0}
+
+    def spy_run_simulation(plan, **kwargs):
+        call_count["n"] += 1
+        return real_run_simulation(plan, **kwargs)
+
+    monkeypatch.setattr(app_module, "run_simulation", spy_run_simulation)
+
+    warm = client.get(f"{RESULTS}?plan={plan_id}")
+    assert warm.status_code == 200
+    assert call_count["n"] == 1
+
+    new_fred_key = "fred-after-cache-warm"
+    patch_response = client.patch(
+        f"{PLAN_SETTINGS}?plan={plan_id}",
+        data={FRED_API_KEY: new_fred_key},
+    )
+    assert patch_response.status_code == 200
+
+    after_key_change = client.get(f"{RESULTS}?plan={plan_id}")
+    assert after_key_change.status_code == 200
+    assert call_count["n"] == 2
+
+    same_key_again = client.get(
+        f"{RESULTS}?plan={plan_id}&chart={web_charts.PORTFOLIO}"
+    )
+    assert same_key_again.status_code == 200
+    assert call_count["n"] == 2
+
+
+def test_home_and_results_share_simulation_cache(
+    client: TestClient, db_path, monkeypatch
+) -> None:
+    import sys
+
+    plan_id = _bootstrap_plan(db_path)
+    app_module = sys.modules["web.app"]
+    real_run_simulation = app_module.run_simulation
+    call_count = {"n": 0}
+
+    def spy_run_simulation(plan, **kwargs):
+        call_count["n"] += 1
+        return real_run_simulation(plan, **kwargs)
+
+    monkeypatch.setattr(app_module, "run_simulation", spy_run_simulation)
+
+    home = client.get(f"{HOME}?plan={plan_id}")
+    results = client.get(f"{RESULTS}?plan={plan_id}&chart={web_charts.PORTFOLIO}")
+
+    assert home.status_code == 200
+    assert results.status_code == 200
+    assert call_count["n"] == 1
+
+
+def test_results_shows_message_when_simulation_fails(
+    client: TestClient, db_path, monkeypatch, caplog
+) -> None:
+    import logging
+    import sys
+
+    plan_id = _bootstrap_plan(db_path)
+    app_module = sys.modules["web.app"]
+    failure_detail = "engine exploded"
+
+    def boom_run_simulation(plan, **kwargs):
+        raise RuntimeError(failure_detail)
+
+    monkeypatch.setattr(app_module, "run_simulation", boom_run_simulation)
+
+    with caplog.at_level(logging.ERROR, logger="web.app"):
+        response = client.get(f"{RESULTS}?plan={plan_id}&chart={web_charts.PORTFOLIO}")
+
+    assert response.status_code == 200
+    assert _SIMULATION_FAILURE_MESSAGE in response.text
+    assert failure_detail not in response.text
+    assert 'id="chart-config"' not in response.text
+    assert 'id="results-chart"' not in response.text
+    assert 'id="chart-select"' in response.text
+    assert f'value="{web_charts.PORTFOLIO}" selected' in response.text
+    assert any(
+        record.exc_info is not None and "plan_id" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+def test_home_shows_simulation_failure_in_results_panel(
+    client: TestClient, db_path, monkeypatch
+) -> None:
+    import sys
+
+    plan_id = _bootstrap_plan(db_path)
+    app_module = sys.modules["web.app"]
+    failure_detail = "preprocess broke"
+
+    def boom_run_simulation(plan, **kwargs):
+        raise RuntimeError(failure_detail)
+
+    monkeypatch.setattr(app_module, "run_simulation", boom_run_simulation)
+
+    response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert HOUSEHOLD_TITLE in response.text
+    assert _SIMULATION_FAILURE_MESSAGE in response.text
+    assert failure_detail not in response.text
+    assert 'id="chart-config"' not in response.text
+
+
+def test_home_results_panel_reads_chart_from_select(
+    client: TestClient, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert 'id="results-panel"' in response.text
+    assert "hx-vals=" in response.text
+    assert "chart-select" in response.text
+    assert "results-meta" not in response.text
 
 
 def test_create_plan_redirects_to_new_plan(client: TestClient, db_path) -> None:

@@ -9,6 +9,7 @@ dependencies = [
     "life-finances-core",
     "life-finances-domain",
     "life-finances-simulation",
+    "plotly>=6.9.0",
     "python-multipart>=0.0.32",
     "uvicorn>=0.49.0",
 ]
