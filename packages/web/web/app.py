@@ -34,6 +34,7 @@ from web.routes import (
     PLAN_SETTINGS,
     RESULTS,
 )
+from web.simulation_cache import get_or_run_simulation
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(_PACKAGE_DIR / "templates"))
@@ -132,11 +133,13 @@ def _register_home_route(web_app: FastAPI) -> None:
 
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         settings = settings_repo.get()
-        result = run_simulation(
-            plan_model,
-            allow_refresh=True,
+        result = get_or_run_simulation(
+            request.app,
+            plan_id=plan_id,
+            plan=plan_model,
             fred_api_key=settings.fred_api_key,
             eod_api_key=settings.eod_api_key,
+            run=run_simulation,
         )
         summaries = repo.list()
         loadable_ids = repo.loadable_ids()
@@ -340,11 +343,13 @@ def _register_results_route(web_app: FastAPI) -> None:
     ) -> HTMLResponse:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         settings = get_settings_repo(request).get()
-        result = run_simulation(
-            plan_model,
-            allow_refresh=True,
+        result = get_or_run_simulation(
+            request.app,
+            plan_id=plan_id,
+            plan=plan_model,
             fred_api_key=settings.fred_api_key,
             eod_api_key=settings.eod_api_key,
+            run=run_simulation,
         )
         chart_type = charts.resolve_chart_type(chart)
         figure = charts.build_figure(result, chart_type)

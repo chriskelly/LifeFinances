@@ -61,7 +61,7 @@ Route constants for plan management live in `web/routes.py` (`PLAN_CREATE`, `PLA
 
 ### Results charts
 
-`GET /results?plan={id}&chart={type}` renders `results.html`. Valid `chart` values are the constants in `web/charts.py` (`CHART_TYPES`); unknown values fall back to `DEFAULT_CHART` (`spending-total`). Figures are built server-side as Plotly JSON (`web.charts.build_figure`); plotly.js loads once from CDN in `base.html`. The shell calls `Plotly.react` on load and on every `htmx:afterSettle` targeting `#results-panel`, and mirrors the selected chart onto the panel's `hx-get` so `planUpdated` refreshes keep the selection.
+`GET /results?plan={id}&chart={type}` renders `results.html`. Valid `chart` values are the constants in `web/charts.py` (`CHART_TYPES`); unknown values fall back to `DEFAULT_CHART` (`spending-total`). Home and results both go through `web.simulation_cache.get_or_run_simulation` (process-local LRU on `app.state`, keyed by plan id + plan JSON hash + API keys + calendar date) so chart switches reuse the same `SimulationResult` until the plan, settings keys, or day change. Figures are built server-side as Plotly JSON (`web.charts.build_figure`); plotly.js loads once from CDN in `base.html`. The shell calls `Plotly.react` on load and on every `htmx:afterSettle` targeting `#results-panel`. The panel’s `hx-vals` reads `#chart-select` at request time so `planUpdated` refreshes keep the selection.
 
 Chart figures use `hovermode="x unified"` and `legend.traceorder="reversed"` so unified hover lists all series with the lowest percentile last. Wealth-composition traces set `hoveron="points"` because unified hover does not reliably hit filled areas.
 
@@ -81,11 +81,12 @@ After a successful section `PATCH`, `index.html` listens for `htmx:afterRequest`
 
 ```html
 hx-get="{{ routes.RESULTS }}?plan={{ plan_id }}"
+hx-vals="js:{chart: document.getElementById('chart-select')?.value}"
 hx-trigger="planUpdated from:body"
 hx-swap="innerHTML"
 ```
 
-This decouples save (debounced per form) from results refresh (once per successful save).
+This decouples save (debounced per form) from results refresh (once per successful save). The panel reads the current chart from `#chart-select` via `hx-vals` so the selection survives the refresh.
 
 ## Tests
 

@@ -138,7 +138,7 @@ def test_home_loads_plotly_and_results_partial(client: TestClient, db_path) -> N
 
     assert response.status_code == 200
     assert 'id="plotly-cdn"' in response.text
-    assert "whenPlotlyReady" in response.text
+    assert "renderResultsChart" in response.text
     assert 'id="results-chart"' in response.text
     assert "results-stub" not in response.text
 
@@ -158,6 +158,28 @@ def test_patch_portfolio_persists_balance_change(
     plan = repo.get_by_id(plan_id)
     assert plan is not None
     assert plan.portfolio.current_savings_balance == expected_balance
+
+
+def test_patch_portfolio_negative_balance_returns_422_without_persisting(
+    client: TestClient, repo: PlanRepository, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    original = repo.get_by_id(plan_id)
+    assert original is not None
+    invalid_balance = Decimal("-1")
+
+    response: httpx.Response = client.patch(
+        f"{PLAN_PORTFOLIO}?plan={plan_id}",
+        data={CURRENT_SAVINGS_BALANCE: str(invalid_balance)},
+    )
+
+    assert response.status_code == 422
+    assert response.text
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.portfolio.current_savings_balance == (
+        original.portfolio.current_savings_balance
+    )
 
 
 def test_patch_portfolio_updates_only_queried_plan(client, db_path) -> None:
@@ -404,7 +426,7 @@ def test_results_renders_default_chart_selected(client: TestClient, db_path) -> 
 
     assert response.status_code == 200
     assert 'id="results-chart"' in response.text
-    assert f'data-chart="{web_charts.DEFAULT_CHART}"' in response.text
+    assert f'value="{web_charts.DEFAULT_CHART}" selected' in response.text
 
 
 def test_results_invalid_chart_falls_back_to_default(
@@ -415,7 +437,7 @@ def test_results_invalid_chart_falls_back_to_default(
     response = client.get(f"{RESULTS}?plan={plan_id}&chart=bogus")
 
     assert response.status_code == 200
-    assert f'data-chart="{web_charts.DEFAULT_CHART}"' in response.text
+    assert f'value="{web_charts.DEFAULT_CHART}" selected' in response.text
 
 
 def test_results_honors_valid_chart(client: TestClient, db_path) -> None:
@@ -425,7 +447,59 @@ def test_results_honors_valid_chart(client: TestClient, db_path) -> None:
     response = client.get(f"{RESULTS}?plan={plan_id}&chart={chosen}")
 
     assert response.status_code == 200
-    assert f'data-chart="{chosen}"' in response.text
+    assert f'value="{chosen}" selected' in response.text
+
+
+def test_results_caches_simulation_until_plan_changes(
+    client: TestClient, db_path, monkeypatch
+) -> None:
+    import sys
+
+    plan_id = _bootstrap_plan(db_path)
+    app_module = sys.modules["web.app"]
+    real_run_simulation = app_module.run_simulation
+    call_count = {"n": 0}
+
+    def spy_run_simulation(plan, **kwargs):
+        call_count["n"] += 1
+        return real_run_simulation(plan, **kwargs)
+
+    monkeypatch.setattr(app_module, "run_simulation", spy_run_simulation)
+
+    first = client.get(f"{RESULTS}?plan={plan_id}&chart={web_charts.DEFAULT_CHART}")
+    second = client.get(f"{RESULTS}?plan={plan_id}&chart={web_charts.PORTFOLIO}")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert call_count["n"] == 1
+    assert first.text != second.text
+    assert f'value="{web_charts.DEFAULT_CHART}" selected' in first.text
+    assert f'value="{web_charts.PORTFOLIO}" selected' in second.text
+
+    updated_balance = Decimal("750000")
+    patch_response = client.patch(
+        f"{PLAN_PORTFOLIO}?plan={plan_id}",
+        data={CURRENT_SAVINGS_BALANCE: str(updated_balance)},
+    )
+    assert patch_response.status_code == 200
+
+    after_edit = client.get(f"{RESULTS}?plan={plan_id}")
+    assert after_edit.status_code == 200
+    assert call_count["n"] == 2
+
+
+def test_home_results_panel_reads_chart_from_select(
+    client: TestClient, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert 'id="results-panel"' in response.text
+    assert "hx-vals=" in response.text
+    assert "chart-select" in response.text
+    assert "results-meta" not in response.text
 
 
 def test_create_plan_redirects_to_new_plan(client: TestClient, db_path) -> None:
