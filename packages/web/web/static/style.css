@@ -4,8 +4,16 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
   color: #1a1a1a;
@@ -138,13 +146,16 @@ body {
   grid-template-columns: 2fr 3fr;
   gap: 1.5rem;
   padding: 1.5rem;
-  min-height: calc(100vh - 4rem);
+  flex: 1;
+  min-height: 0;
 }
 
 .editor-pane {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .editor-section {
@@ -203,6 +214,8 @@ select {
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 4px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* Reserve Plotly's default figure height so the empty chart div does not
