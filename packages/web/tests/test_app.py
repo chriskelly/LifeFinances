@@ -9,6 +9,7 @@ from core.plan_names import copy_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
 from fastapi.testclient import TestClient
+from web.app import _SIMULATION_FAILURE_MESSAGE, _figure_json
 from web.forms import (
     CLEAR_EOD_API_KEY,
     CLEAR_FRED_API_KEY,
@@ -46,6 +47,15 @@ from web.sections import (
 )
 
 from web import charts as web_charts
+
+
+def test_figure_json_escapes_script_breakout_sequences() -> None:
+    figure = {"data": [{"name": "</script><img onerror=alert(1)>"}]}
+
+    dumped = _figure_json(figure)
+
+    assert "</script>" not in dumped
+    assert "\\u003c/script>" in dumped
 
 
 def _bootstrap_plan(db_path) -> int:
@@ -551,8 +561,9 @@ def test_home_and_results_share_simulation_cache(
 
 
 def test_results_shows_message_when_simulation_fails(
-    client: TestClient, db_path, monkeypatch
+    client: TestClient, db_path, monkeypatch, caplog
 ) -> None:
+    import logging
     import sys
 
     plan_id = _bootstrap_plan(db_path)
@@ -564,13 +575,20 @@ def test_results_shows_message_when_simulation_fails(
 
     monkeypatch.setattr(app_module, "run_simulation", boom_run_simulation)
 
-    response = client.get(f"{RESULTS}?plan={plan_id}")
+    with caplog.at_level(logging.ERROR, logger="web.app"):
+        response = client.get(f"{RESULTS}?plan={plan_id}&chart={web_charts.PORTFOLIO}")
 
     assert response.status_code == 200
-    assert "Simulation failed" in response.text
-    assert failure_detail in response.text
+    assert _SIMULATION_FAILURE_MESSAGE in response.text
+    assert failure_detail not in response.text
     assert 'id="chart-config"' not in response.text
     assert 'id="results-chart"' not in response.text
+    assert 'id="chart-select"' in response.text
+    assert f'value="{web_charts.PORTFOLIO}" selected' in response.text
+    assert any(
+        record.exc_info is not None and "plan_id" in record.getMessage()
+        for record in caplog.records
+    )
 
 
 def test_home_shows_simulation_failure_in_results_panel(
@@ -591,8 +609,8 @@ def test_home_shows_simulation_failure_in_results_panel(
 
     assert response.status_code == 200
     assert HOUSEHOLD_TITLE in response.text
-    assert "Simulation failed" in response.text
-    assert failure_detail in response.text
+    assert _SIMULATION_FAILURE_MESSAGE in response.text
+    assert failure_detail not in response.text
     assert 'id="chart-config"' not in response.text
 
 

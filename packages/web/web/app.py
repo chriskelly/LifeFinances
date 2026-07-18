@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
@@ -38,6 +39,8 @@ from web.routes import (
 )
 from web.simulation_cache import get_or_run_simulation
 
+logger = logging.getLogger(__name__)
+
 _PACKAGE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(_PACKAGE_DIR / "templates"))
 templates.env.globals["routes"] = routes
@@ -45,7 +48,7 @@ templates.env.globals["sections"] = sections
 templates.env.globals["forms"] = forms
 
 _INIT_DB_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
-_SIMULATION_FAILURE_PREFIX = "Simulation failed"
+_SIMULATION_FAILURE_MESSAGE = "Simulation failed. Check plan inputs and try again."
 
 _FIELD_LABELS = {
     "birth_month": "Birth month",
@@ -64,8 +67,9 @@ def _validation_message(exc: ValidationError) -> str:
     return "; ".join(parts)
 
 
-def _simulation_error_message(exc: Exception) -> str:
-    return f"{_SIMULATION_FAILURE_PREFIX}: {exc}"
+def _figure_json(figure: dict) -> str:
+    # Escape "<" so user-influenced labels cannot break out of </script>.
+    return json.dumps(figure).replace("<", "\\u003c")
 
 
 def _load_simulation(
@@ -87,8 +91,9 @@ def _load_simulation(
             ),
             None,
         )
-    except Exception as exc:
-        return None, _simulation_error_message(exc)
+    except Exception:
+        logger.exception("Simulation failed for plan_id=%s", plan_id)
+        return None, _SIMULATION_FAILURE_MESSAGE
 
 
 def _resolve_db_path(app: FastAPI) -> Path:
@@ -184,7 +189,7 @@ def _register_home_route(web_app: FastAPI) -> None:
             "simulation_error": simulation_error,
             "chart_options": charts.chart_options(result) if result is not None else [],
             "chart_figure_json": (
-                json.dumps(charts.build_figure(result, chart_type))
+                _figure_json(charts.build_figure(result, chart_type))
                 if result is not None
                 else None
             ),
@@ -383,7 +388,7 @@ def _register_results_route(web_app: FastAPI) -> None:
             settings=settings,
         )
         chart_type = charts.resolve_chart_type(chart)
-        if simulation_error is not None:
+        if result is None:
             return templates.TemplateResponse(
                 request,
                 "results.html",
@@ -393,10 +398,9 @@ def _register_results_route(web_app: FastAPI) -> None:
                     "chart_type": chart_type,
                     "chart_options": [],
                     "chart_figure_json": None,
-                    "simulation_error": simulation_error,
+                    "simulation_error": simulation_error or _SIMULATION_FAILURE_MESSAGE,
                 },
             )
-        assert result is not None
         figure = charts.build_figure(result, chart_type)
         return templates.TemplateResponse(
             request,
@@ -406,7 +410,7 @@ def _register_results_route(web_app: FastAPI) -> None:
                 "result": result,
                 "chart_type": chart_type,
                 "chart_options": charts.chart_options(result),
-                "chart_figure_json": json.dumps(figure),
+                "chart_figure_json": _figure_json(figure),
                 "simulation_error": None,
             },
         )

@@ -1,6 +1,10 @@
 <div class="results">
   {% if simulation_error %}
   <p class="results-error" role="alert">{{ simulation_error }}</p>
+  {# Keep #chart-select so planUpdated hx-vals can preserve the selection. #}
+  <select id="chart-select" name="chart" hidden>
+    <option value="{{ chart_type }}" selected>{{ chart_type }}</option>
+  </select>
   {% else %}
   <form class="chart-selector">
     <label for="chart-select">Chart</label>

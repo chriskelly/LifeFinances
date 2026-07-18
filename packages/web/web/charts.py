@@ -23,9 +23,8 @@ CHART_TYPES: tuple[str, ...] = (
 
 
 def resolve_chart_type(raw: str | None) -> str:
-    for chart_type in CHART_TYPES:
-        if raw == chart_type:
-            return chart_type
+    if raw in CHART_TYPES:
+        return raw
     return DEFAULT_CHART
 
 
