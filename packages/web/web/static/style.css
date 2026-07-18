@@ -205,6 +205,13 @@ select {
   border-radius: 4px;
 }
 
+/* Reserve Plotly's default figure height so the empty chart div does not
+   collapse between the HTMX swap and Plotly.react on htmx:afterSettle,
+   which otherwise makes the summary jump up and back down (flicker). */
+#results-chart {
+  min-height: 450px;
+}
+
 .results-stub p {
   margin: 0 0 0.75rem;
 }

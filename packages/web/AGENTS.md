@@ -67,6 +67,8 @@ Chart figures use `hovermode="x unified"` and `legend.traceorder="reversed"` so 
 
 **Gotcha:** render charts on `htmx:afterSettle`, not `afterSwap`. Settle re-applies server attributes to id-matched elements and strips Plotly's `js-plotly-plot` class, which breaks absolute SVG positioning and pushes tooltips off-screen. Always re-render after settle for HTMX-swapped Plotly divs.
 
+**Gotcha:** `#results-chart` has a CSS `min-height` (`static/style.css`) matching Plotly's default figure height. Without it the empty chart div collapses during the HTMX swap (before `Plotly.react` runs on settle), so the summary line jumps up and back down — a flicker on every chart change. Keep the `min-height` in sync if you set an explicit figure height in `build_figure`.
+
 ## HTMX debounce pattern
 
 Editor forms auto-save on change with a 750ms debounce:
