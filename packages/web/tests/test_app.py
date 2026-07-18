@@ -550,6 +550,52 @@ def test_home_and_results_share_simulation_cache(
     assert call_count["n"] == 1
 
 
+def test_results_shows_message_when_simulation_fails(
+    client: TestClient, db_path, monkeypatch
+) -> None:
+    import sys
+
+    plan_id = _bootstrap_plan(db_path)
+    app_module = sys.modules["web.app"]
+    failure_detail = "engine exploded"
+
+    def boom_run_simulation(plan, **kwargs):
+        raise RuntimeError(failure_detail)
+
+    monkeypatch.setattr(app_module, "run_simulation", boom_run_simulation)
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert "Simulation failed" in response.text
+    assert failure_detail in response.text
+    assert 'id="chart-config"' not in response.text
+    assert 'id="results-chart"' not in response.text
+
+
+def test_home_shows_simulation_failure_in_results_panel(
+    client: TestClient, db_path, monkeypatch
+) -> None:
+    import sys
+
+    plan_id = _bootstrap_plan(db_path)
+    app_module = sys.modules["web.app"]
+    failure_detail = "preprocess broke"
+
+    def boom_run_simulation(plan, **kwargs):
+        raise RuntimeError(failure_detail)
+
+    monkeypatch.setattr(app_module, "run_simulation", boom_run_simulation)
+
+    response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert HOUSEHOLD_TITLE in response.text
+    assert "Simulation failed" in response.text
+    assert failure_detail in response.text
+    assert 'id="chart-config"' not in response.text
+
+
 def test_home_results_panel_reads_chart_from_select(
     client: TestClient, db_path
 ) -> None:

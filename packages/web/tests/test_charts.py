@@ -88,9 +88,13 @@ def test_portfolio_has_one_trace_per_percentile_named_by_percentile():
 
     figure = charts.build_figure(result, charts.PORTFOLIO)
 
-    traces = figure["data"]
-    assert len(traces) == len(percentiles)
-    assert [trace["name"] for trace in traces] == [f"{p}th" for p in percentiles]
+    percentile_traces = [
+        trace for trace in figure["data"] if trace.get("showlegend") is not False
+    ]
+    assert len(percentile_traces) == len(percentiles)
+    assert [trace["name"] for trace in percentile_traces] == [
+        f"{p}th" for p in percentiles
+    ]
 
 
 def test_band_chart_x_axis_uses_start_month_labels():
@@ -108,11 +112,13 @@ def test_band_chart_y_comes_from_matching_source_row():
     percentiles = [5, 95]
     horizon = 2
     result = _make_result(percentiles=percentiles, horizon_months=horizon)
-    result.withdrawals_total[1, :] = np.array([111.0, 222.0])
+    high_values = [111.0, 222.0]
+    result.withdrawals_total[1, :] = np.array(high_values)
 
     figure = charts.build_figure(result, charts.SPENDING_TOTAL)
 
-    assert list(figure["data"][1]["y"]) == [111.0, 222.0]
+    high_trace = next(trace for trace in figure["data"] if trace["name"] == "95th")
+    assert list(high_trace["y"]) == high_values
 
 
 def test_wealth_composition_has_savings_plus_four_income_layers():
@@ -221,9 +227,40 @@ def test_band_chart_hover_lists_lowest_percentile_last():
     figure = charts.build_figure(result, charts.SPENDING_TOTAL)
 
     assert figure["layout"]["legend"]["traceorder"] == "reversed"
-    assert [trace["name"] for trace in figure["data"]] == [
-        f"{p}th" for p in percentiles
+    line_names = [
+        trace["name"]
+        for trace in figure["data"]
+        if trace.get("showlegend") is not False
     ]
+    assert line_names == [f"{p}th" for p in percentiles]
+
+
+def test_band_chart_adds_translucent_fill_between_outer_percentiles():
+    percentiles = [5, 50, 95]
+    horizon_months = 3
+    result = _make_result(percentiles=percentiles, horizon_months=horizon_months)
+    low_row = 0
+    high_row = -1
+    result.balance_start[low_row, :] = 10.0
+    result.balance_start[high_row, :] = 90.0
+
+    figure = charts.build_figure(result, charts.PORTFOLIO)
+
+    fill_traces = [trace for trace in figure["data"] if trace.get("fill") == "tonexty"]
+    assert len(fill_traces) == 1
+    fill = fill_traces[0]
+    assert fill["y"] == [10.0] * horizon_months
+    assert "rgba" in fill["fillcolor"]
+    assert fill.get("hoverinfo") == "skip"
+    assert fill.get("showlegend") is False
+
+
+def test_band_chart_omits_fill_for_single_percentile():
+    result = _make_result(percentiles=[50], horizon_months=2)
+
+    figure = charts.build_figure(result, charts.SPENDING_TOTAL)
+
+    assert all(trace.get("fill") in (None, "none") for trace in figure["data"])
 
 
 def test_wealth_composition_legend_traceorder_is_reversed():

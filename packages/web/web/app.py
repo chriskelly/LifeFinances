@@ -5,6 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
 
+from core.models import AppSettings, Plan
 from core.paths import default_db_path
 from core.plan_names import untitled_plan_name
 from core.repository import PlanRepository
@@ -14,6 +15,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
+from simulation.result import SimulationResult
 from simulation.stub import run_simulation
 
 from web import charts, forms, routes, sections
@@ -43,6 +45,7 @@ templates.env.globals["sections"] = sections
 templates.env.globals["forms"] = forms
 
 _INIT_DB_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
+_SIMULATION_FAILURE_PREFIX = "Simulation failed"
 
 _FIELD_LABELS = {
     "birth_month": "Birth month",
@@ -59,6 +62,33 @@ def _validation_message(exc: ValidationError) -> str:
         label = _FIELD_LABELS.get(field, field or "Value")
         parts.append(f"{label}: {err['msg']}")
     return "; ".join(parts)
+
+
+def _simulation_error_message(exc: Exception) -> str:
+    return f"{_SIMULATION_FAILURE_PREFIX}: {exc}"
+
+
+def _load_simulation(
+    request: Request,
+    *,
+    plan_id: int,
+    plan_model: Plan,
+    settings: AppSettings,
+) -> tuple[SimulationResult | None, str | None]:
+    try:
+        return (
+            get_or_run_simulation(
+                request.app,
+                plan_id=plan_id,
+                plan=plan_model,
+                fred_api_key=settings.fred_api_key,
+                eod_api_key=settings.eod_api_key,
+                run=run_simulation,
+            ),
+            None,
+        )
+    except Exception as exc:
+        return None, _simulation_error_message(exc)
 
 
 def _resolve_db_path(app: FastAPI) -> Path:
@@ -133,33 +163,36 @@ def _register_home_route(web_app: FastAPI) -> None:
 
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         settings = settings_repo.get()
-        result = get_or_run_simulation(
-            request.app,
+        result, simulation_error = _load_simulation(
+            request,
             plan_id=plan_id,
-            plan=plan_model,
-            fred_api_key=settings.fred_api_key,
-            eod_api_key=settings.eod_api_key,
-            run=run_simulation,
+            plan_model=plan_model,
+            settings=settings,
         )
         summaries = repo.list()
         loadable_ids = repo.loadable_ids()
+        chart_type = charts.DEFAULT_CHART
+        context = {
+            "plan_id": plan_id,
+            "plan": plan_model,
+            "result": result,
+            "settings": settings,
+            "summaries": summaries,
+            "loadable_ids": loadable_ids,
+            "loadable_count": len(loadable_ids),
+            "chart_type": chart_type,
+            "simulation_error": simulation_error,
+            "chart_options": charts.chart_options(result) if result is not None else [],
+            "chart_figure_json": (
+                json.dumps(charts.build_figure(result, chart_type))
+                if result is not None
+                else None
+            ),
+        }
         return templates.TemplateResponse(
             request,
             "index.html",
-            {
-                "plan_id": plan_id,
-                "plan": plan_model,
-                "result": result,
-                "settings": settings,
-                "summaries": summaries,
-                "loadable_ids": loadable_ids,
-                "loadable_count": len(loadable_ids),
-                "chart_type": charts.DEFAULT_CHART,
-                "chart_options": charts.chart_options(result),
-                "chart_figure_json": json.dumps(
-                    charts.build_figure(result, charts.DEFAULT_CHART)
-                ),
-            },
+            context,
         )
 
 
@@ -343,15 +376,27 @@ def _register_results_route(web_app: FastAPI) -> None:
     ) -> HTMLResponse:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         settings = get_settings_repo(request).get()
-        result = get_or_run_simulation(
-            request.app,
+        result, simulation_error = _load_simulation(
+            request,
             plan_id=plan_id,
-            plan=plan_model,
-            fred_api_key=settings.fred_api_key,
-            eod_api_key=settings.eod_api_key,
-            run=run_simulation,
+            plan_model=plan_model,
+            settings=settings,
         )
         chart_type = charts.resolve_chart_type(chart)
+        if simulation_error is not None:
+            return templates.TemplateResponse(
+                request,
+                "results.html",
+                {
+                    "plan_id": plan_id,
+                    "result": None,
+                    "chart_type": chart_type,
+                    "chart_options": [],
+                    "chart_figure_json": None,
+                    "simulation_error": simulation_error,
+                },
+            )
+        assert result is not None
         figure = charts.build_figure(result, chart_type)
         return templates.TemplateResponse(
             request,
@@ -362,6 +407,7 @@ def _register_results_route(web_app: FastAPI) -> None:
                 "chart_type": chart_type,
                 "chart_options": charts.chart_options(result),
                 "chart_figure_json": json.dumps(figure),
+                "simulation_error": None,
             },
         )
 
