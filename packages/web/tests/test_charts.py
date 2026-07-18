@@ -226,6 +226,14 @@ def test_band_chart_hover_lists_lowest_percentile_last():
     ]
 
 
+def test_wealth_composition_legend_traceorder_is_reversed():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
+
+    figure = charts.build_figure(result, charts.WEALTH_COMPOSITION_MID)
+
+    assert figure["layout"]["legend"]["traceorder"] == "reversed"
+
+
 @pytest.mark.parametrize(
     "chart_type",
     [

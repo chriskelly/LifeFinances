@@ -163,7 +163,9 @@ def _wealth_composition_figure(result: SimulationResult, chart_type: str) -> go.
             )
         )
     figure.update_layout(
-        hovermode=_HOVERMODE, yaxis={"hoverformat": HOVERFORMAT_DOLLAR}
+        hovermode=_HOVERMODE,
+        legend={"traceorder": "reversed"},
+        yaxis={"hoverformat": HOVERFORMAT_DOLLAR},
     )
     return figure
 

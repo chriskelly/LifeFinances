@@ -488,6 +488,68 @@ def test_results_caches_simulation_until_plan_changes(
     assert call_count["n"] == 2
 
 
+def test_results_reruns_simulation_after_settings_key_change(
+    client: TestClient, db_path, monkeypatch
+) -> None:
+    import sys
+
+    plan_id = _bootstrap_plan(db_path)
+    app_module = sys.modules["web.app"]
+    real_run_simulation = app_module.run_simulation
+    call_count = {"n": 0}
+
+    def spy_run_simulation(plan, **kwargs):
+        call_count["n"] += 1
+        return real_run_simulation(plan, **kwargs)
+
+    monkeypatch.setattr(app_module, "run_simulation", spy_run_simulation)
+
+    warm = client.get(f"{RESULTS}?plan={plan_id}")
+    assert warm.status_code == 200
+    assert call_count["n"] == 1
+
+    new_fred_key = "fred-after-cache-warm"
+    patch_response = client.patch(
+        f"{PLAN_SETTINGS}?plan={plan_id}",
+        data={FRED_API_KEY: new_fred_key},
+    )
+    assert patch_response.status_code == 200
+
+    after_key_change = client.get(f"{RESULTS}?plan={plan_id}")
+    assert after_key_change.status_code == 200
+    assert call_count["n"] == 2
+
+    same_key_again = client.get(
+        f"{RESULTS}?plan={plan_id}&chart={web_charts.PORTFOLIO}"
+    )
+    assert same_key_again.status_code == 200
+    assert call_count["n"] == 2
+
+
+def test_home_and_results_share_simulation_cache(
+    client: TestClient, db_path, monkeypatch
+) -> None:
+    import sys
+
+    plan_id = _bootstrap_plan(db_path)
+    app_module = sys.modules["web.app"]
+    real_run_simulation = app_module.run_simulation
+    call_count = {"n": 0}
+
+    def spy_run_simulation(plan, **kwargs):
+        call_count["n"] += 1
+        return real_run_simulation(plan, **kwargs)
+
+    monkeypatch.setattr(app_module, "run_simulation", spy_run_simulation)
+
+    home = client.get(f"{HOME}?plan={plan_id}")
+    results = client.get(f"{RESULTS}?plan={plan_id}&chart={web_charts.PORTFOLIO}")
+
+    assert home.status_code == 200
+    assert results.status_code == 200
+    assert call_count["n"] == 1
+
+
 def test_home_results_panel_reads_chart_from_select(
     client: TestClient, db_path
 ) -> None:

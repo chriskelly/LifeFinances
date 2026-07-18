@@ -17,7 +17,9 @@ RunSimulation = Callable[..., SimulationResult]
 
 
 def fingerprint_plan(plan: Plan) -> str:
-    return hashlib.sha256(plan.model_dump_json().encode("utf-8")).hexdigest()
+    # Name is display-only; renaming must not bust the sim cache.
+    payload = plan.model_dump_json(exclude={"name"})
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _cache_for(app: FastAPI) -> OrderedDict[CacheKey, SimulationResult]:
