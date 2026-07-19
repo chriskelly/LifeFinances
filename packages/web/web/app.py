@@ -19,7 +19,7 @@ from pydantic import ValidationError
 from simulation.result import SimulationResult
 from simulation.stub import run_simulation
 
-from web import charts, forms, routes, sections
+from web import boundaries, charts, forms, routes, sections
 from web.dependencies import get_repository, require_plan, resolve_default_plan_id
 from web.forms import AppSettingsForm, HouseholdForm, PortfolioForm
 from web.routes import (
@@ -46,6 +46,7 @@ templates = Jinja2Templates(directory=str(_PACKAGE_DIR / "templates"))
 templates.env.globals["routes"] = routes
 templates.env.globals["sections"] = sections
 templates.env.globals["forms"] = forms
+templates.env.globals["boundaries"] = boundaries
 
 _INIT_DB_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
 _SIMULATION_FAILURE_MESSAGE = "Simulation failed. Check plan inputs and try again."
