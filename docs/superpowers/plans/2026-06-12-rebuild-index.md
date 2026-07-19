@@ -434,13 +434,13 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 **Exit criteria:**
 
-- [ ] Jobs editor: add/edit/remove jobs per person; sabbatical windows; optional CalSTRS `FormulaPension` on job ([#197](https://github.com/chriskelly/LifeFinances/issues/197) for richer pension UI)
-- [ ] SS editor per person: claim age + ss.gov XML upload → `earnings_record` (read-only summary)
-- [ ] Manual income streams editor (`plan.manual_income_streams`)
-- [ ] Household tax fields editable; `filing_status` always explicit Single/MFJ on save
-- [ ] `PersonMaxAgeBoundary` + shared boundary control (Now stamps calendar month; max-age symbolic)
-- [ ] Each section: form DTO + PATCH route + template partial (Phase 1 pattern)
-- [ ] `make` passes
+- [x] Jobs editor: add/edit/remove jobs per person; sabbatical windows; optional CalSTRS `FormulaPension` on job ([#197](https://github.com/chriskelly/LifeFinances/issues/197) for richer pension UI)
+- [x] SS editor per person: claim age + ss.gov XML upload → `earnings_record` (read-only summary)
+- [x] Manual income streams editor (`plan.manual_income_streams`)
+- [x] Household tax fields editable; `filing_status` always explicit Single/MFJ on save
+- [x] `PersonMaxAgeBoundary` + shared boundary control (Now stamps calendar month; max-age symbolic)
+- [x] Each section: form DTO + PATCH route + template partial (Phase 1 pattern)
+- [x] `make` passes
 
 *May split into 4c-1 (boundary + household tax + jobs) and 4c-2 (SS + manual income) if diff exceeds PR sizing guidance.*
 

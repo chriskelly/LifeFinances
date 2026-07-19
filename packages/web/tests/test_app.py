@@ -45,8 +45,11 @@ from web.sections import (
     CLEAR_EOD_API_KEY_LABEL,
     EOD_API_KEY_SET_PLACEHOLDER,
     HOUSEHOLD_TITLE,
+    JOBS_TITLE,
+    MANUAL_INCOME_TITLE,
     PORTFOLIO_TITLE,
     SETTINGS_TITLE,
+    SOCIAL_SECURITY_TITLE,
 )
 
 from web import charts as web_charts
@@ -97,6 +100,17 @@ def test_home_shows_settings_section(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert SETTINGS_TITLE in response.text
+
+
+def test_home_shows_all_income_sections(client: TestClient, db_path) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert JOBS_TITLE in response.text
+    assert SOCIAL_SECURITY_TITLE in response.text
+    assert MANUAL_INCOME_TITLE in response.text
 
 
 def test_home_auto_creates_default_plan(

@@ -255,3 +255,15 @@ select {
   border-radius: 4px;
   color: #a00;
 }
+
+.boundary-part[hidden] {
+  display: none;
+}
+
+.pension-fields {
+  display: none;
+}
+
+.job-row:has(input[name$=".pension_enabled"]:checked) .pension-fields {
+  display: block;
+}
