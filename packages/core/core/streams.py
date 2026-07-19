@@ -20,8 +20,13 @@ class PersonAgeBoundary(BaseModel):
     age_months: int = Field(ge=0)
 
 
+class PersonMaxAgeBoundary(BaseModel):
+    kind: Literal["person_max_age"] = "person_max_age"
+    person: PersonId
+
+
 Boundary = Annotated[
-    CalendarMonthBoundary | PersonAgeBoundary,
+    CalendarMonthBoundary | PersonAgeBoundary | PersonMaxAgeBoundary,
     Field(discriminator="kind"),
 ]
 
