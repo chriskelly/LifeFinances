@@ -4,10 +4,12 @@ from decimal import Decimal
 import httpx2 as httpx
 import pytest
 from core.defaults import DEFAULT_PLAN_NAME, default_plan
+from core.job import Job
 from core.models import AppSettings
 from core.plan_names import copy_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
+from core.social_security import AnnualEarnings
 from fastapi.testclient import TestClient
 from web.app import _SIMULATION_FAILURE_MESSAGE, _figure_json
 from web.forms import (
@@ -15,6 +17,7 @@ from web.forms import (
     CLEAR_FRED_API_KEY,
     CURRENT_SAVINGS_BALANCE,
     EOD_API_KEY,
+    FILING_STATUS,
     FRED_API_KEY,
     HAS_PARTNER,
     PERSON1_BIRTH_MONTH,
@@ -42,8 +45,11 @@ from web.sections import (
     CLEAR_EOD_API_KEY_LABEL,
     EOD_API_KEY_SET_PLACEHOLDER,
     HOUSEHOLD_TITLE,
+    JOBS_TITLE,
+    MANUAL_INCOME_TITLE,
     PORTFOLIO_TITLE,
     SETTINGS_TITLE,
+    SOCIAL_SECURITY_TITLE,
 )
 
 from web import charts as web_charts
@@ -74,6 +80,7 @@ def _household_form_data() -> dict[str, str]:
         PERSON1_BIRTH_MONTH: str(p1.birth_month),
         PERSON1_BIRTH_YEAR: str(p1.birth_year),
         PERSON1_MAX_AGE_YEARS: str(p1.max_age_years),
+        FILING_STATUS: plan.household.resolved_filing_status,
         PERSON2_BIRTH_MONTH: str(p2.birth_month),
         PERSON2_BIRTH_YEAR: str(p2.birth_year),
         PERSON2_MAX_AGE_YEARS: str(p2.max_age_years),
@@ -93,6 +100,17 @@ def test_home_shows_settings_section(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert SETTINGS_TITLE in response.text
+
+
+def test_home_shows_all_income_sections(client: TestClient, db_path) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert JOBS_TITLE in response.text
+    assert SOCIAL_SECURITY_TITLE in response.text
+    assert MANUAL_INCOME_TITLE in response.text
 
 
 def test_home_auto_creates_default_plan(
@@ -330,6 +348,7 @@ def test_patch_household_without_partner_saves_single_person(
     del form_data[PERSON2_BIRTH_MONTH]
     del form_data[PERSON2_BIRTH_YEAR]
     del form_data[PERSON2_MAX_AGE_YEARS]
+    form_data[FILING_STATUS] = "single"
 
     response: httpx.Response = client.patch(
         f"{PLAN_HOUSEHOLD}?plan={plan_id}", data=form_data
@@ -358,6 +377,59 @@ def test_patch_household_with_partner_saves_two_people(
     assert loaded is not None
     assert loaded.household.person2 is not None
     assert loaded.household.resolved_filing_status == "married_filing_jointly"
+
+
+def test_patch_household_preserves_jobs_ss_and_tax_fields(
+    client: TestClient, repo: PlanRepository, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    expected_job_label = "Engineer"
+    expected_year = 2022
+    expected_state = "CA"
+    seeded.household.person1.jobs = [
+        Job(label=expected_job_label, annual_income=Decimal("120000"))
+    ]
+    seeded.household.person1.social_security.earnings_record = [
+        AnnualEarnings(year=expected_year, fica_earnings=Decimal("100000"))
+    ]
+    seeded.household.residence_state = expected_state
+    repo.save(plan_id, seeded)
+
+    form_data = _household_form_data()
+    del form_data[PERSON2_BIRTH_MONTH]
+    del form_data[PERSON2_BIRTH_YEAR]
+    del form_data[PERSON2_MAX_AGE_YEARS]
+    form_data[FILING_STATUS] = "single"
+
+    response = client.patch(f"{PLAN_HOUSEHOLD}?plan={plan_id}", data=form_data)
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert [j.label for j in after.household.person1.jobs] == [expected_job_label]
+    assert after.household.person1.social_security.earnings_record[0].year == (
+        expected_year
+    )
+    assert after.household.residence_state == expected_state
+
+
+def test_patch_household_writes_explicit_filing_status(
+    client: TestClient, repo: PlanRepository, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    chosen_status = "single"
+    form_data = _household_form_data()
+    form_data[HAS_PARTNER] = "on"  # partner present, but user forces single
+    form_data[FILING_STATUS] = chosen_status
+
+    response = client.patch(f"{PLAN_HOUSEHOLD}?plan={plan_id}", data=form_data)
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.filing_status == chosen_status
 
 
 def test_patch_household_invalid_value_returns_422_without_persisting(

@@ -2,16 +2,26 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
 
-from core.models import AppSettings, Plan
+from core.models import AppSettings, Household, Plan
 from core.paths import default_db_path
 from core.plan_names import untitled_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
-from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request
+from domain.social_security.earnings import parse_social_security_statement_xml
+from fastapi import (
+    Depends,
+    FastAPI,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -19,22 +29,36 @@ from pydantic import ValidationError
 from simulation.result import SimulationResult
 from simulation.stub import run_simulation
 
-from web import charts, forms, routes, sections
+from web import boundaries, charts, forms, routes, sections
 from web.dependencies import get_repository, require_plan, resolve_default_plan_id
-from web.forms import AppSettingsForm, HouseholdForm, PortfolioForm
+from web.forms import (
+    AppSettingsForm,
+    HouseholdForm,
+    JobsForm,
+    ManualIncomeForm,
+    PortfolioForm,
+    SocialSecurityForm,
+)
 from web.routes import (
     EDITOR_HOUSEHOLD,
+    EDITOR_JOBS,
+    EDITOR_MANUAL_INCOME,
     EDITOR_PORTFOLIO,
     EDITOR_SETTINGS,
+    EDITOR_SOCIAL_SECURITY,
     HOME,
     PLAN_CREATE,
     PLAN_DELETE,
     PLAN_DUPLICATE,
     PLAN_HOUSEHOLD,
+    PLAN_JOBS,
+    PLAN_MANUAL_INCOME,
     PLAN_PORTFOLIO,
     PLAN_RENAME,
     PLAN_SET_DEFAULT,
     PLAN_SETTINGS,
+    PLAN_SOCIAL_SECURITY,
+    PLAN_SS_EARNINGS,
     RESULTS,
 )
 from web.simulation_cache import get_or_run_simulation
@@ -46,6 +70,7 @@ templates = Jinja2Templates(directory=str(_PACKAGE_DIR / "templates"))
 templates.env.globals["routes"] = routes
 templates.env.globals["sections"] = sections
 templates.env.globals["forms"] = forms
+templates.env.globals["boundaries"] = boundaries
 
 _INIT_DB_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
 _SIMULATION_FAILURE_MESSAGE = "Simulation failed. Check plan inputs and try again."
@@ -65,6 +90,30 @@ def _validation_message(exc: ValidationError) -> str:
         label = _FIELD_LABELS.get(field, field or "Value")
         parts.append(f"{label}: {err['msg']}")
     return "; ".join(parts)
+
+
+def _error_message(exc: Exception) -> str:
+    if isinstance(exc, ValidationError):
+        return _validation_message(exc)
+    return str(exc)
+
+
+def _ss_partial(
+    request: Request,
+    *,
+    plan_id: int,
+    plan_model: Plan,
+    error: str | None = None,
+    status_code: int = 200,
+    headers: dict[str, str] | None = None,
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "editor_social_security.html",
+        {"plan_id": plan_id, "plan": plan_model, "ss_error": error},
+        status_code=status_code,
+        headers=headers,
+    )
 
 
 def _figure_json(figure: dict) -> str:
@@ -243,6 +292,99 @@ def _register_editor_routes(web_app: FastAPI) -> None:
             {"plan_id": plan_id, "settings": settings},
         )
 
+    @web_app.get(EDITOR_JOBS, response_class=HTMLResponse)
+    def editor_jobs(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> HTMLResponse:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        return templates.TemplateResponse(
+            request,
+            "editor_jobs.html",
+            {"plan_id": plan_id, "plan": plan_model},
+        )
+
+    @web_app.get(EDITOR_MANUAL_INCOME, response_class=HTMLResponse)
+    def editor_manual_income(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> HTMLResponse:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        return templates.TemplateResponse(
+            request,
+            "editor_manual_income.html",
+            {"plan_id": plan_id, "plan": plan_model},
+        )
+
+
+def _register_social_security_routes(web_app: FastAPI) -> None:
+    @web_app.get(EDITOR_SOCIAL_SECURITY, response_class=HTMLResponse)
+    def editor_social_security(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> HTMLResponse:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        return _ss_partial(request, plan_id=plan_id, plan_model=plan_model)
+
+    @web_app.patch(PLAN_SOCIAL_SECURITY)
+    def patch_social_security(
+        repo: RepoDep,
+        claim_age_years: Annotated[int, Form()],
+        plan: Annotated[int | None, Query()] = None,
+        person: Annotated[str, Query()] = "person1",
+        claim_age_months: Annotated[int, Form()] = 0,
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        try:
+            updated = SocialSecurityForm(
+                person=person,  # type: ignore[arg-type]
+                claim_age_years=claim_age_years,
+                claim_age_months=claim_age_months,
+            ).apply_to(plan_model)
+        except (ValidationError, ValueError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        repo.save(plan_id, updated)
+        return Response(status_code=200)
+
+    @web_app.post(PLAN_SS_EARNINGS)
+    async def upload_ss_earnings(
+        request: Request,
+        repo: RepoDep,
+        statement: UploadFile,
+        plan: Annotated[int | None, Query()] = None,
+        person: Annotated[str, Query()] = "person1",
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        raw = (await statement.read()).decode("utf-8", errors="replace")
+        try:
+            earnings = parse_social_security_statement_xml(raw)
+            data = plan_model.household.model_dump()
+            if data.get(person) is None:
+                raise ValueError("No partner on the plan for this upload")
+            data[person]["social_security"]["earnings_record"] = [
+                e.model_dump() for e in earnings
+            ]
+            household = Household.model_validate(data)
+            updated = plan_model.model_copy(update={"household": household})
+        except (ValidationError, ValueError) as exc:
+            return _ss_partial(
+                request,
+                plan_id=plan_id,
+                plan_model=plan_model,
+                error=_error_message(exc),
+                status_code=422,
+            )
+        repo.save(plan_id, updated)
+        return _ss_partial(
+            request,
+            plan_id=plan_id,
+            plan_model=updated,
+            headers={"HX-Trigger": "planUpdated"},
+        )
+
 
 def _register_patch_routes(web_app: FastAPI) -> None:
     @web_app.patch(PLAN_HOUSEHOLD)
@@ -250,8 +392,12 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         person1_birth_month: Annotated[int, Form()],
         person1_birth_year: Annotated[int, Form()],
         person1_max_age_years: Annotated[int, Form()],
+        filing_status: Annotated[str, Form()],
         repo: RepoDep,
         plan: Annotated[int | None, Query()] = None,
+        residence_state: Annotated[str | None, Form()] = None,
+        ss_pension_taxable_fraction: Annotated[Decimal, Form()] = Decimal("0.80"),
+        social_security_trust_factor: Annotated[Decimal, Form()] = Decimal(1),
         has_partner: Annotated[bool, Form()] = False,
         person2_birth_month: Annotated[int | None, Form()] = None,
         person2_birth_year: Annotated[int | None, Form()] = None,
@@ -263,13 +409,17 @@ def _register_patch_routes(web_app: FastAPI) -> None:
                 person1_birth_month=person1_birth_month,
                 person1_birth_year=person1_birth_year,
                 person1_max_age_years=person1_max_age_years,
+                filing_status=filing_status,  # type: ignore[arg-type]
+                residence_state=residence_state,
+                ss_pension_taxable_fraction=ss_pension_taxable_fraction,
+                social_security_trust_factor=social_security_trust_factor,
                 has_partner=has_partner,
                 person2_birth_month=person2_birth_month,
                 person2_birth_year=person2_birth_year,
                 person2_max_age_years=person2_max_age_years,
             ).apply_to(plan_model)
-        except ValidationError as exc:
-            return HTMLResponse(_validation_message(exc), status_code=422)
+        except (ValidationError, ValueError, ArithmeticError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
         repo.save(plan_id, updated)
         return Response(status_code=200)
 
@@ -308,6 +458,43 @@ def _register_patch_routes(web_app: FastAPI) -> None:
             clear_eod_api_key=clear_eod_api_key,
         ).apply_to(current)
         settings_repo.save(updated)
+        return Response(status_code=200)
+
+    @web_app.patch(PLAN_JOBS)
+    async def patch_jobs(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+        person: Annotated[str, Query()] = "person1",
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        form = await request.form()
+        try:
+            updated = JobsForm.from_form(
+                form,
+                person=person,  # type: ignore[arg-type]
+                today=date.today(),
+            ).apply_to(plan_model)
+        except (ValidationError, ValueError, ArithmeticError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        repo.save(plan_id, updated)
+        return Response(status_code=200)
+
+    @web_app.patch(PLAN_MANUAL_INCOME)
+    async def patch_manual_income(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        form = await request.form()
+        try:
+            updated = ManualIncomeForm.from_form(form, today=date.today()).apply_to(
+                plan_model
+            )
+        except (ValidationError, ValueError, ArithmeticError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        repo.save(plan_id, updated)
         return Response(status_code=200)
 
 
@@ -423,6 +610,7 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
     _mount_static(web_app)
     _register_home_route(web_app)
     _register_editor_routes(web_app)
+    _register_social_security_routes(web_app)
     _register_patch_routes(web_app)
     _register_plan_management_routes(web_app)
     _register_results_route(web_app)

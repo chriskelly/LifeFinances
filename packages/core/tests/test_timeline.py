@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import date
 
 from core.defaults import default_plan
-from core.streams import CalendarMonthBoundary, PersonAgeBoundary
+from core.models import Household, PersonHousehold
+from core.streams import CalendarMonthBoundary, PersonAgeBoundary, PersonMaxAgeBoundary
 from core.timeline import (
     Timeline,
     boundary_to_year_month,
@@ -84,6 +85,23 @@ def test_boundary_to_year_month_person_age_uses_birth_plus_age() -> None:
     )
 
     assert result == (person.birth_year + age_months // 12, person.birth_month)
+
+
+def test_person_max_age_boundary_resolves_to_birth_month_at_max_age() -> None:
+    birth_month = 3
+    birth_year = 1990
+    max_age_years = 95
+    household = Household(
+        person1=PersonHousehold(
+            birth_month=birth_month, birth_year=birth_year, max_age_years=max_age_years
+        )
+    )
+
+    year, month = boundary_to_year_month(
+        PersonMaxAgeBoundary(person="person1"), household
+    )
+
+    assert (year, month) == (birth_year + max_age_years, birth_month)
 
 
 def test_month_boundary_is_inverse_of_index_of() -> None:

@@ -1,0 +1,38 @@
+{% set people = [("person1", "You", plan.household.person1)] %}
+{% if plan.household.person2 %}{% set people = people + [("person2", "Partner", plan.household.person2)] %}{% endif %}
+<section class="editor-section" id="editor-social-security">
+  <h2>{{ sections.SOCIAL_SECURITY_TITLE }}</h2>
+  {% if ss_error %}<div class="form-error" role="alert">{{ ss_error }}</div>{% endif %}
+  {% for pid, plabel, person in people %}
+  <div class="ss-person">
+    <h3>{{ plabel }}</h3>
+    <form
+      hx-patch="{{ routes.PLAN_SOCIAL_SECURITY }}?plan={{ plan_id }}&person={{ pid }}"
+      hx-trigger="input changed delay:750ms"
+      hx-swap="none"
+    >
+      <label>Claim age (years)
+        <input type="number" name="{{ forms.CLAIM_AGE_YEARS }}" value="{{ person.social_security.claim_age_months // 12 }}">
+      </label>
+      <label>+ months
+        <input type="number" min="0" max="11" name="{{ forms.CLAIM_AGE_MONTHS }}" value="{{ person.social_security.claim_age_months % 12 }}">
+      </label>
+    </form>
+    <form
+      hx-post="{{ routes.PLAN_SS_EARNINGS }}?plan={{ plan_id }}&person={{ pid }}"
+      hx-target="#editor-social-security"
+      hx-swap="outerHTML"
+      hx-encoding="multipart/form-data"
+    >
+      <label>Upload ss.gov statement XML
+        <input type="file" name="{{ forms.SS_EARNINGS_FILE }}" accept=".xml,text/xml,application/xml">
+      </label>
+      <button type="submit">Import earnings</button>
+    </form>
+    {% set record = person.social_security.earnings_record %}
+    <p class="ss-earnings-summary">
+      {% if record %}{{ record | length }} years imported ({{ record[0].year }}–{{ record[-1].year }}){% else %}No earnings imported yet{% endif %}
+    </p>
+  </div>
+  {% endfor %}
+</section>

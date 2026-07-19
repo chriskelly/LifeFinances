@@ -10,6 +10,7 @@ from core.streams import (
     Boundary,
     CalendarMonthBoundary,
     PersonAgeBoundary,
+    PersonMaxAgeBoundary,
     TimedStream,
 )
 
@@ -27,6 +28,9 @@ def boundary_to_year_month(boundary: Boundary, household: Household) -> tuple[in
     if isinstance(boundary, PersonAgeBoundary):
         person = getattr(household, boundary.person)
         return add_months(person.birth_year, person.birth_month, boundary.age_months)
+    if isinstance(boundary, PersonMaxAgeBoundary):
+        person = getattr(household, boundary.person)
+        return person.birth_year + person.max_age_years, person.birth_month
     raise TypeError(f"Unknown boundary: {boundary!r}")
 
 

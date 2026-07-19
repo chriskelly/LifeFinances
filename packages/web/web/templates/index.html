@@ -10,6 +10,9 @@
   <div class="editor-pane">
     <div id="form-error" class="form-error" role="alert" hidden></div>
     {% include "editor_household.html" %}
+    {% include "editor_jobs.html" %}
+    {% include "editor_social_security.html" %}
+    {% include "editor_manual_income.html" %}
     {% include "editor_portfolio.html" %}
     {% include "editor_settings.html" %}
   </div>
@@ -40,9 +43,7 @@
     const isPlanForm =
       form.tagName === "FORM" &&
       patchTarget &&
-      (patchTarget.startsWith("{{ routes.PLAN_HOUSEHOLD }}") ||
-        patchTarget.startsWith("{{ routes.PLAN_PORTFOLIO }}") ||
-        patchTarget.startsWith("{{ routes.PLAN_SETTINGS }}"));
+      patchTarget.startsWith("/plan/");
     if (isPlanForm && event.detail.successful) {
       formError.textContent = "";
       formError.hidden = true;
@@ -81,4 +82,5 @@
     }
   });
 </script>
+<script src="{{ routes.STATIC }}/editor_lists.js"></script>
 {% endblock %}

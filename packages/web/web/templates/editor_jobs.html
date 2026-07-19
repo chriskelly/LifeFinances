@@ -1,0 +1,59 @@
+{% import "_boundary.html" as boundary %}
+{% set people = [("person1", "You", plan.household.person1)] %}
+{% if plan.household.person2 %}{% set people = people + [("person2", "Partner", plan.household.person2)] %}{% endif %}
+
+{% macro sabbatical_row(prefix, sab, choices) %}
+<fieldset class="row sabbatical-row">
+  <button type="button" data-remove-row>Remove sabbatical</button>
+  <div class="boundary-field">Start {{ boundary.boundary_control(prefix ~ ".start", boundaries.to_form(sab.start) if sab else {"kind": boundaries.KIND_CALENDAR}, choices) }}</div>
+  <div class="boundary-field">End {{ boundary.boundary_control(prefix ~ ".end", boundaries.to_form(sab.end) if sab else {"kind": boundaries.KIND_CALENDAR}, choices) }}</div>
+  <label>Remaining fraction
+    <input type="number" step="0.01" min="0" max="1" name="{{ prefix }}.remaining_fraction" value="{{ sab.remaining_fraction if sab else '0' }}">
+  </label>
+</fieldset>
+{% endmacro %}
+
+{% macro job_row(index, job, choices) %}
+<fieldset class="row job-row">
+  <button type="button" data-remove-row>Remove job</button>
+  <label>Label <input type="text" name="jobs[{{ index }}].label" value="{{ (job.label or '') if job else '' }}"></label>
+  <label>Annual income <input type="number" step="0.01" name="jobs[{{ index }}].annual_income" value="{{ job.annual_income if job else '0' }}"></label>
+  <label>Annual tax-deferred <input type="number" step="0.01" name="jobs[{{ index }}].annual_tax_deferred" value="{{ job.annual_tax_deferred if job else '0' }}"></label>
+  <label>Annual raise <input type="number" step="0.001" name="jobs[{{ index }}].annual_raise" value="{{ job.annual_raise if job else '0' }}"></label>
+  <label><input type="checkbox" name="jobs[{{ index }}].social_security_eligible" value="on"{% if (not job) or job.social_security_eligible %} checked{% endif %}> Social Security eligible</label>
+  <div class="boundary-field">Start {{ boundary.boundary_control("jobs[" ~ index ~ "].start", boundaries.to_form(job.start) if job else {"kind": boundaries.KIND_NOW}, choices, allow_now=True, allow_none=True, none_label="Plan start") }}</div>
+  <div class="boundary-field">End {{ boundary.boundary_control("jobs[" ~ index ~ "].end", boundaries.to_form(job.end) if job else {"kind": boundaries.KIND_NONE}, choices, allow_max_age=True, allow_none=True, none_label="Plan horizon") }}</div>
+  <div class="rows" data-prefix="sabbaticals">
+    {% if job %}{% for sab in job.sabbaticals %}{{ sabbatical_row("jobs[" ~ index ~ "].sabbaticals[" ~ loop.index0 ~ "]", sab, choices) }}{% endfor %}{% endif %}
+    <template class="row-template">{{ sabbatical_row("jobs[" ~ index ~ "].sabbaticals[0]", none, choices) }}</template>
+    <button type="button" data-add-row>Add sabbatical</button>
+  </div>
+  <label><input type="checkbox" name="jobs[{{ index }}].pension_enabled" value="on"{% if job and job.pension %} checked{% endif %}> CalSTRS 2% at 62 pension</label>
+  <a href="https://github.com/chriskelly/LifeFinances/issues/197" target="_blank" rel="noopener" title="Vote for a richer pension editor">More pension options (#197)</a>
+  <div class="pension-fields">
+    <div class="boundary-field">Service start {{ boundary.boundary_control("jobs[" ~ index ~ "].pension_service_start", boundaries.to_form(job.pension.service_start) if (job and job.pension) else {"kind": boundaries.KIND_CALENDAR}, choices, allow_max_age=True) }}</div>
+    <div class="boundary-field">Claim {{ boundary.boundary_control("jobs[" ~ index ~ "].pension_claim", boundaries.to_form(job.pension.claim) if (job and job.pension) else {"kind": boundaries.KIND_PERSON_AGE}, choices, allow_max_age=True) }}</div>
+    <label>Averaging months <input type="number" name="jobs[{{ index }}].pension_averaging_months" value="{{ job.pension.final_comp_averaging_months if (job and job.pension) else '36' }}"></label>
+    <label>Trust factor <input type="number" step="0.01" name="jobs[{{ index }}].pension_trust_factor" value="{{ job.pension.trust_factor if (job and job.pension) else '1' }}"></label>
+    <label>Benefit real growth <input type="number" step="0.001" name="jobs[{{ index }}].pension_growth" value="{{ job.pension.benefit_real_growth_rate if (job and job.pension) else '0' }}"></label>
+  </div>
+</fieldset>
+{% endmacro %}
+
+<section class="editor-section">
+  <h2>{{ sections.JOBS_TITLE }}</h2>
+  {% for pid, plabel, person in people %}
+  <form
+    hx-patch="{{ routes.PLAN_JOBS }}?plan={{ plan_id }}&person={{ pid }}"
+    hx-trigger="input changed delay:750ms, change delay:750ms"
+    hx-swap="none"
+  >
+    <h3>{{ plabel }}</h3>
+    <div class="rows" data-prefix="jobs">
+      {% for job in person.jobs %}{{ job_row(loop.index0, job, people) }}{% endfor %}
+      <template class="row-template">{{ job_row(0, none, people) }}</template>
+      <button type="button" data-add-row>Add job</button>
+    </div>
+  </form>
+  {% endfor %}
+</section>

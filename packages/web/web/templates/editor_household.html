@@ -70,5 +70,44 @@
         >
       </label>
     </fieldset>
+    <fieldset class="tax-fields">
+      <legend>Taxes</legend>
+      <label>
+        Filing status
+        <select name="{{ forms.FILING_STATUS }}">
+          {% for status in forms.FILING_STATUSES %}
+          <option value="{{ status }}"{% if plan.household.resolved_filing_status == status %} selected{% endif %}>{{ forms.FILING_STATUS_LABELS[status] }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Residence state
+        <input
+          type="text"
+          name="{{ forms.RESIDENCE_STATE }}"
+          value="{{ plan.household.residence_state or '' }}"
+          maxlength="2"
+          placeholder="e.g. CA"
+        >
+      </label>
+      <label>
+        SS &amp; pension taxable fraction
+        <input
+          type="number"
+          step="0.01"
+          name="{{ forms.SS_PENSION_TAXABLE_FRACTION }}"
+          value="{{ plan.household.ss_pension_taxable_fraction }}"
+        >
+      </label>
+      <label>
+        Social Security trust factor
+        <input
+          type="number"
+          step="0.01"
+          name="{{ forms.SOCIAL_SECURITY_TRUST_FACTOR }}"
+          value="{{ plan.household.social_security_trust_factor }}"
+        >
+      </label>
+    </fieldset>
   </form>
 </section>

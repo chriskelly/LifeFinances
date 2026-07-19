@@ -1,0 +1,26 @@
+{% macro boundary_control(name_prefix, current, people, allow_none=False, allow_now=False, allow_max_age=False, none_label="—") -%}
+<span class="boundary-control" data-prefix="{{ name_prefix }}">
+  <select name="{{ name_prefix }}_kind" class="boundary-kind">
+    {% if allow_none %}<option value="none"{% if current.kind == 'none' %} selected{% endif %}>{{ none_label }}</option>{% endif %}
+    {% if allow_now %}<option value="now"{% if current.kind == 'now' %} selected{% endif %}>Now</option>{% endif %}
+    <option value="calendar_month"{% if current.kind == 'calendar_month' %} selected{% endif %}>Calendar date</option>
+    <option value="person_age"{% if current.kind == 'person_age' %} selected{% endif %}>At age</option>
+    {% if allow_max_age %}<option value="person_max_age"{% if current.kind == 'person_max_age' %} selected{% endif %}>Max age</option>{% endif %}
+  </select>
+  <span class="boundary-part" data-kinds="calendar_month">
+    <input type="number" name="{{ name_prefix }}_year" value="{{ current.year if current.kind == 'calendar_month' else '' }}" placeholder="Year">
+    <input type="number" name="{{ name_prefix }}_month" min="1" max="12" value="{{ current.month if current.kind == 'calendar_month' else '' }}" placeholder="Month">
+  </span>
+  <span class="boundary-part" data-kinds="person_age person_max_age">
+    <select name="{{ name_prefix }}_person">
+      {% for person in people %}
+      <option value="{{ person[0] }}"{% if current.person == person[0] %} selected{% endif %}>{{ person[1] }}</option>
+      {% endfor %}
+    </select>
+  </span>
+  <span class="boundary-part" data-kinds="person_age">
+    <input type="number" name="{{ name_prefix }}_age_years" value="{{ current.age_years if current.kind == 'person_age' else '' }}" placeholder="Years">
+    <input type="number" name="{{ name_prefix }}_age_months" min="0" max="11" value="{{ current.age_months if current.kind == 'person_age' else '' }}" placeholder="Months">
+  </span>
+</span>
+{%- endmacro %}
