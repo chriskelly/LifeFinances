@@ -93,9 +93,13 @@ def test_upload_invalid_xml_returns_422_without_changing_earnings(
     client: TestClient, repo: PlanRepository, db_path
 ) -> None:
     plan_id = _bootstrap_plan(db_path)
-    original = repo.get_by_id(plan_id)
-    assert original is not None
-    original_record = original.household.person1.social_security.earnings_record
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    kept_year = 2019
+    seeded_fica = Decimal("40000")
+    seeded_record = [AnnualEarnings(year=kept_year, fica_earnings=seeded_fica)]
+    seeded.household.person1.social_security.earnings_record = seeded_record
+    repo.save(plan_id, seeded)
 
     response = client.post(
         f"{PLAN_SS_EARNINGS}?plan={plan_id}&person=person1",
@@ -103,9 +107,11 @@ def test_upload_invalid_xml_returns_422_without_changing_earnings(
     )
 
     assert response.status_code == 422
+    assert 'class="form-error"' in response.text
+    assert 'role="alert"' in response.text
     after = repo.get_by_id(plan_id)
     assert after is not None
-    assert after.household.person1.social_security.earnings_record == original_record
+    assert after.household.person1.social_security.earnings_record == seeded_record
 
 
 def test_editor_social_security_get_renders_section(
