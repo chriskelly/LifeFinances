@@ -1,0 +1,30 @@
+{% import "_boundary.html" as boundary %}
+{% set people = [("person1", "You")] %}
+{% if plan.household.person2 %}{% set people = people + [("person2", "Partner")] %}{% endif %}
+
+{% macro stream_row(index, stream, choices) %}
+<fieldset class="row stream-row">
+  <button type="button" data-remove-row>Remove</button>
+  <label>Label <input type="text" name="streams[{{ index }}].label" value="{{ (stream.label or '') if stream else '' }}"></label>
+  <label>Monthly amount <input type="number" step="0.01" name="streams[{{ index }}].monthly_amount" value="{{ stream.monthly_amount if stream else '0' }}"></label>
+  <label><input type="checkbox" name="streams[{{ index }}].is_nominal" value="on"{% if stream and stream.is_nominal %} checked{% endif %}> Nominal (not inflation-adjusted)</label>
+  <label>Annual growth <input type="number" step="0.001" name="streams[{{ index }}].annual_growth_rate" value="{{ stream.annual_growth_rate if stream else '0' }}"></label>
+  <div class="boundary-field">Start {{ boundary.boundary_control("streams[" ~ index ~ "].start", boundaries.to_form(stream.start) if stream else {"kind": boundaries.KIND_NONE}, choices, allow_now=True, allow_none=True, allow_max_age=True, none_label="Plan start") }}</div>
+  <div class="boundary-field">End {{ boundary.boundary_control("streams[" ~ index ~ "].end", boundaries.to_form(stream.end) if stream else {"kind": boundaries.KIND_NONE}, choices, allow_now=True, allow_none=True, allow_max_age=True, none_label="Plan horizon") }}</div>
+</fieldset>
+{% endmacro %}
+
+<section class="editor-section">
+  <h2>{{ sections.MANUAL_INCOME_TITLE }}</h2>
+  <form
+    hx-patch="{{ routes.PLAN_MANUAL_INCOME }}?plan={{ plan_id }}"
+    hx-trigger="input changed delay:750ms, change delay:750ms"
+    hx-swap="none"
+  >
+    <div class="rows" data-prefix="streams">
+      {% for stream in plan.manual_income_streams %}{{ stream_row(loop.index0, stream, people) }}{% endfor %}
+      <template class="row-template">{{ stream_row(0, none, people) }}</template>
+      <button type="button" data-add-row>Add income stream</button>
+    </div>
+  </form>
+</section>

@@ -13,7 +13,7 @@ from core.models import (
     Plan,
     Portfolio,
 )
-from core.streams import PersonId
+from core.streams import PersonId, TimedStream
 from domain.statutory.pension import (
     CALSTRS_2_AT_62_AGE_FACTORS,
     age_factors_from_statutory,
@@ -24,6 +24,7 @@ from starlette.datastructures import FormData
 from web import boundaries
 
 JOBS_PREFIX = "jobs"
+STREAMS_PREFIX = "streams"
 _TRUE = {"on", "true", "1"}
 
 # Field-name constants for templates/tests — must match DTO field names
@@ -224,6 +225,36 @@ class JobsForm:
         data[self.person]["jobs"] = [job.model_dump() for job in self.jobs]
         household = Household.model_validate(data)
         return plan.model_copy(update={"household": household})
+
+
+def _stream_from_row(row: list[tuple[str, str]], *, today: date) -> TimedStream:
+    return TimedStream.model_validate(
+        {
+            "label": boundaries.row_scalar(row, "label") or None,
+            "monthly_amount": Decimal(
+                boundaries.row_scalar(row, "monthly_amount", "0")
+            ),
+            "start": boundaries.row_boundary(row, "start", today=today),
+            "end": boundaries.row_boundary(row, "end", today=today),
+            "is_nominal": boundaries.row_scalar(row, "is_nominal") in _TRUE,
+            "annual_growth_rate": Decimal(
+                boundaries.row_scalar(row, "annual_growth_rate", "0")
+            ),
+        }
+    )
+
+
+class ManualIncomeForm:
+    def __init__(self, *, streams: list[TimedStream]) -> None:
+        self.streams = streams
+
+    @classmethod
+    def from_form(cls, form: FormData, *, today: date) -> ManualIncomeForm:
+        rows = boundaries.collect_indexed_rows(form, STREAMS_PREFIX)
+        return cls(streams=[_stream_from_row(row, today=today) for row in rows])
+
+    def apply_to(self, plan: Plan) -> Plan:
+        return plan.model_copy(update={"manual_income_streams": self.streams})
 
 
 class SocialSecurityForm(BaseModel):

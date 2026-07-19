@@ -35,12 +35,14 @@ from web.forms import (
     AppSettingsForm,
     HouseholdForm,
     JobsForm,
+    ManualIncomeForm,
     PortfolioForm,
     SocialSecurityForm,
 )
 from web.routes import (
     EDITOR_HOUSEHOLD,
     EDITOR_JOBS,
+    EDITOR_MANUAL_INCOME,
     EDITOR_PORTFOLIO,
     EDITOR_SETTINGS,
     EDITOR_SOCIAL_SECURITY,
@@ -50,6 +52,7 @@ from web.routes import (
     PLAN_DUPLICATE,
     PLAN_HOUSEHOLD,
     PLAN_JOBS,
+    PLAN_MANUAL_INCOME,
     PLAN_PORTFOLIO,
     PLAN_RENAME,
     PLAN_SET_DEFAULT,
@@ -302,6 +305,19 @@ def _register_editor_routes(web_app: FastAPI) -> None:
             {"plan_id": plan_id, "plan": plan_model},
         )
 
+    @web_app.get(EDITOR_MANUAL_INCOME, response_class=HTMLResponse)
+    def editor_manual_income(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> HTMLResponse:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        return templates.TemplateResponse(
+            request,
+            "editor_manual_income.html",
+            {"plan_id": plan_id, "plan": plan_model},
+        )
+
 
 def _register_social_security_routes(web_app: FastAPI) -> None:
     @web_app.get(EDITOR_SOCIAL_SECURITY, response_class=HTMLResponse)
@@ -459,6 +475,23 @@ def _register_patch_routes(web_app: FastAPI) -> None:
                 person=person,  # type: ignore[arg-type]
                 today=date.today(),
             ).apply_to(plan_model)
+        except (ValidationError, ValueError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        repo.save(plan_id, updated)
+        return Response(status_code=200)
+
+    @web_app.patch(PLAN_MANUAL_INCOME)
+    async def patch_manual_income(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        form = await request.form()
+        try:
+            updated = ManualIncomeForm.from_form(form, today=date.today()).apply_to(
+                plan_model
+            )
         except (ValidationError, ValueError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
         repo.save(plan_id, updated)
