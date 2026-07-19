@@ -39,6 +39,37 @@ def test_patch_manual_income_adds_stream(
     assert streams[0].monthly_amount == Decimal(expected_amount)
 
 
+def test_patch_manual_income_blank_monthly_amount_returns_422(
+    client: TestClient, repo: PlanRepository, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    expected_label = "Rental"
+    expected_amount = Decimal("2500")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.manual_income_streams = [
+        TimedStream(label=expected_label, monthly_amount=expected_amount)
+    ]
+    repo.save(plan_id, seeded)
+    invalid_amount = ""
+
+    response = client.patch(
+        f"{PLAN_MANUAL_INCOME}?plan={plan_id}",
+        data={
+            "streams[0].label": expected_label,
+            "streams[0].monthly_amount": invalid_amount,
+            "streams[0].annual_growth_rate": "0",
+            "streams[0].start_kind": "now",
+            "streams[0].end_kind": "none",
+        },
+    )
+
+    assert response.status_code == 422
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.manual_income_streams[0].monthly_amount == expected_amount
+
+
 def test_patch_manual_income_empty_clears_streams(
     client: TestClient, repo: PlanRepository, db_path
 ) -> None:

@@ -45,6 +45,32 @@ def test_patch_jobs_adds_job_to_person1(
     assert jobs[0].annual_income == Decimal(expected_income)
 
 
+def test_patch_jobs_blank_annual_income_returns_422(
+    client: TestClient, repo: PlanRepository, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    expected_income = Decimal("150000")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [Job(annual_income=expected_income)]
+    repo.save(plan_id, seeded)
+    invalid_income = ""
+
+    response = client.patch(
+        f"{PLAN_JOBS}?plan={plan_id}&person=person1",
+        data={
+            "jobs[0].annual_income": invalid_income,
+            "jobs[0].start_kind": "now",
+            "jobs[0].end_kind": "none",
+        },
+    )
+
+    assert response.status_code == 422
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.person1.jobs[0].annual_income == expected_income
+
+
 def test_patch_jobs_empty_form_clears_jobs(
     client: TestClient, repo: PlanRepository, db_path
 ) -> None:

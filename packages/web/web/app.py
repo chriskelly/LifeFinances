@@ -418,8 +418,8 @@ def _register_patch_routes(web_app: FastAPI) -> None:
                 person2_birth_year=person2_birth_year,
                 person2_max_age_years=person2_max_age_years,
             ).apply_to(plan_model)
-        except ValidationError as exc:
-            return HTMLResponse(_validation_message(exc), status_code=422)
+        except (ValidationError, ValueError, ArithmeticError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
         repo.save(plan_id, updated)
         return Response(status_code=200)
 
@@ -475,7 +475,7 @@ def _register_patch_routes(web_app: FastAPI) -> None:
                 person=person,  # type: ignore[arg-type]
                 today=date.today(),
             ).apply_to(plan_model)
-        except (ValidationError, ValueError) as exc:
+        except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
         repo.save(plan_id, updated)
         return Response(status_code=200)
@@ -492,7 +492,7 @@ def _register_patch_routes(web_app: FastAPI) -> None:
             updated = ManualIncomeForm.from_form(form, today=date.today()).apply_to(
                 plan_model
             )
-        except (ValidationError, ValueError) as exc:
+        except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
         repo.save(plan_id, updated)
         return Response(status_code=200)
