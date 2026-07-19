@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
@@ -21,9 +22,10 @@ from simulation.stub import run_simulation
 
 from web import boundaries, charts, forms, routes, sections
 from web.dependencies import get_repository, require_plan, resolve_default_plan_id
-from web.forms import AppSettingsForm, HouseholdForm, PortfolioForm
+from web.forms import AppSettingsForm, HouseholdForm, JobsForm, PortfolioForm
 from web.routes import (
     EDITOR_HOUSEHOLD,
+    EDITOR_JOBS,
     EDITOR_PORTFOLIO,
     EDITOR_SETTINGS,
     HOME,
@@ -31,6 +33,7 @@ from web.routes import (
     PLAN_DELETE,
     PLAN_DUPLICATE,
     PLAN_HOUSEHOLD,
+    PLAN_JOBS,
     PLAN_PORTFOLIO,
     PLAN_RENAME,
     PLAN_SET_DEFAULT,
@@ -66,6 +69,12 @@ def _validation_message(exc: ValidationError) -> str:
         label = _FIELD_LABELS.get(field, field or "Value")
         parts.append(f"{label}: {err['msg']}")
     return "; ".join(parts)
+
+
+def _error_message(exc: Exception) -> str:
+    if isinstance(exc, ValidationError):
+        return _validation_message(exc)
+    return str(exc)
 
 
 def _figure_json(figure: dict) -> str:
@@ -244,6 +253,19 @@ def _register_editor_routes(web_app: FastAPI) -> None:
             {"plan_id": plan_id, "settings": settings},
         )
 
+    @web_app.get(EDITOR_JOBS, response_class=HTMLResponse)
+    def editor_jobs(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> HTMLResponse:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        return templates.TemplateResponse(
+            request,
+            "editor_jobs.html",
+            {"plan_id": plan_id, "plan": plan_model},
+        )
+
 
 def _register_patch_routes(web_app: FastAPI) -> None:
     @web_app.patch(PLAN_HOUSEHOLD)
@@ -317,6 +339,26 @@ def _register_patch_routes(web_app: FastAPI) -> None:
             clear_eod_api_key=clear_eod_api_key,
         ).apply_to(current)
         settings_repo.save(updated)
+        return Response(status_code=200)
+
+    @web_app.patch(PLAN_JOBS)
+    async def patch_jobs(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+        person: Annotated[str, Query()] = "person1",
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        form = await request.form()
+        try:
+            updated = JobsForm.from_form(
+                form,
+                person=person,  # type: ignore[arg-type]
+                today=date.today(),
+            ).apply_to(plan_model)
+        except (ValidationError, ValueError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        repo.save(plan_id, updated)
         return Response(status_code=200)
 
 
