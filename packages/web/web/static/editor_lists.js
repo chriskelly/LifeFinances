@@ -17,8 +17,14 @@
     const prefix = container.dataset.prefix;
     const pattern = new RegExp(prefix + "\\[\\d+\\]");
     rowChildren(container).forEach(function (row, index) {
+      const replacement = prefix + "[" + index + "]";
       row.querySelectorAll("[name]").forEach(function (field) {
-        field.name = field.name.replace(pattern, prefix + "[" + index + "]");
+        field.name = field.name.replace(pattern, replacement);
+      });
+      row.querySelectorAll("template").forEach(function (tpl) {
+        tpl.content.querySelectorAll("[name]").forEach(function (field) {
+          field.name = field.name.replace(pattern, replacement);
+        });
       });
       row.querySelectorAll(".rows").forEach(reindex);
     });
