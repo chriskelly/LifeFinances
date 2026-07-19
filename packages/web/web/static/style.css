@@ -248,6 +248,15 @@ select {
   font-size: 0.9rem;
 }
 
+/* Pin the global save-error banner to the top of the scrollable editor pane
+   so it stays visible no matter how far down the user has scrolled. */
+#form-error {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
 .results-error {
   padding: 0.75rem 1rem;
   background: #fdecea;
