@@ -40,9 +40,7 @@
     const isPlanForm =
       form.tagName === "FORM" &&
       patchTarget &&
-      (patchTarget.startsWith("{{ routes.PLAN_HOUSEHOLD }}") ||
-        patchTarget.startsWith("{{ routes.PLAN_PORTFOLIO }}") ||
-        patchTarget.startsWith("{{ routes.PLAN_SETTINGS }}"));
+      patchTarget.startsWith("/plan/");
     if (isPlanForm && event.detail.successful) {
       formError.textContent = "";
       formError.hidden = true;
