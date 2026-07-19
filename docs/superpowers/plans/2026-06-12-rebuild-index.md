@@ -36,7 +36,7 @@
 | ----------------- | ---------------------------------------------------------- |
 | **Current phase** | Phase 4c — Editor — household & income                   |
 | **Active plan**   | `2026-06-12-phase-4c-editor-income.md` *(to write)*       |
-| **Design spec**   | `packages/domain/OVERVIEW.md`; Phase 2b–2d design specs   |
+| **Design spec**   | [`2026-07-19-phase-4c-editor-income-design.md`](../specs/2026-07-19-phase-4c-editor-income-design.md) |
 | **Next action**   | Write Phase 4c plan, then execute                          |
 
 
@@ -424,22 +424,25 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 **Plan file:** `2026-06-12-phase-4c-editor-income.md` *(to write)*
 
-**Delivers:** Editor sections for income-side plan domains deferred from Phases 2–3: per-person jobs (incl. sabbaticals, formula pension on job), Social Security config, manual income `TimedStream` list, household tax fields (`filing_status`, `residence_state`, `ss_pension_taxable_fraction`, `social_security_trust_factor`). Task 0: spike form DTO strategy (hand-written vs `create_model` + prefixed `model_fields`).
+**Design spec:** [`2026-07-19-phase-4c-editor-income-design.md`](../specs/2026-07-19-phase-4c-editor-income-design.md)
 
-**References:** `packages/domain/OVERVIEW.md`; Phase 2b–2d design specs; `core.models.Household`, `core.job.Job`.
+**Delivers:** Editor sections for income-side plan domains deferred from Phases 2–3: per-person jobs (incl. sabbaticals, CalSTRS formula-pension preset on job), Social Security config (claim age + ss.gov XML earnings upload), manual income `TimedStream` list, household tax fields (`filing_status`, `residence_state`, `ss_pension_taxable_fraction`, `social_security_trust_factor`); `PersonMaxAgeBoundary` for living max-age terminals. Task 0: spike form DTO strategy (hand-written vs `create_model` + prefixed `model_fields`).
+
+**References:** [Phase 4c design](../specs/2026-07-19-phase-4c-editor-income-design.md); `packages/domain/OVERVIEW.md`; Phase 2b–2d design specs; `core.models.Household`, `core.job.Job`.
 
 **Entry criteria:** Phase 4a complete.
 
 **Exit criteria:**
 
-- [ ] Jobs editor: add/edit/remove jobs per person; sabbatical windows; optional `FormulaPension` on job
-- [ ] SS editor per person (`PersonSocialSecurityConfig`)
+- [ ] Jobs editor: add/edit/remove jobs per person; sabbatical windows; optional CalSTRS `FormulaPension` on job ([#197](https://github.com/chriskelly/LifeFinances/issues/197) for richer pension UI)
+- [ ] SS editor per person: claim age + ss.gov XML upload → `earnings_record` (read-only summary)
 - [ ] Manual income streams editor (`plan.manual_income_streams`)
-- [ ] Household tax fields editable; `filing_status` override honored
+- [ ] Household tax fields editable; `filing_status` always explicit Single/MFJ on save
+- [ ] `PersonMaxAgeBoundary` + shared boundary control (Now stamps calendar month; max-age symbolic)
 - [ ] Each section: form DTO + PATCH route + template partial (Phase 1 pattern)
 - [ ] `make` passes
 
-*May split into 4c-1 (jobs + household tax) and 4c-2 (SS + manual income) if diff exceeds PR sizing guidance.*
+*May split into 4c-1 (boundary + household tax + jobs) and 4c-2 (SS + manual income) if diff exceeds PR sizing guidance.*
 
 ---
 
