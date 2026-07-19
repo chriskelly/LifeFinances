@@ -7,12 +7,21 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
 
-from core.models import AppSettings, Plan
+from core.models import AppSettings, Household, Plan
 from core.paths import default_db_path
 from core.plan_names import untitled_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
-from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request
+from domain.social_security.earnings import parse_social_security_statement_xml
+from fastapi import (
+    Depends,
+    FastAPI,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -22,12 +31,19 @@ from simulation.stub import run_simulation
 
 from web import boundaries, charts, forms, routes, sections
 from web.dependencies import get_repository, require_plan, resolve_default_plan_id
-from web.forms import AppSettingsForm, HouseholdForm, JobsForm, PortfolioForm
+from web.forms import (
+    AppSettingsForm,
+    HouseholdForm,
+    JobsForm,
+    PortfolioForm,
+    SocialSecurityForm,
+)
 from web.routes import (
     EDITOR_HOUSEHOLD,
     EDITOR_JOBS,
     EDITOR_PORTFOLIO,
     EDITOR_SETTINGS,
+    EDITOR_SOCIAL_SECURITY,
     HOME,
     PLAN_CREATE,
     PLAN_DELETE,
@@ -38,6 +54,8 @@ from web.routes import (
     PLAN_RENAME,
     PLAN_SET_DEFAULT,
     PLAN_SETTINGS,
+    PLAN_SOCIAL_SECURITY,
+    PLAN_SS_EARNINGS,
     RESULTS,
 )
 from web.simulation_cache import get_or_run_simulation
@@ -75,6 +93,24 @@ def _error_message(exc: Exception) -> str:
     if isinstance(exc, ValidationError):
         return _validation_message(exc)
     return str(exc)
+
+
+def _ss_partial(
+    request: Request,
+    *,
+    plan_id: int,
+    plan_model: Plan,
+    error: str | None = None,
+    status_code: int = 200,
+    headers: dict[str, str] | None = None,
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "editor_social_security.html",
+        {"plan_id": plan_id, "plan": plan_model, "ss_error": error},
+        status_code=status_code,
+        headers=headers,
+    )
 
 
 def _figure_json(figure: dict) -> str:
@@ -264,6 +300,73 @@ def _register_editor_routes(web_app: FastAPI) -> None:
             request,
             "editor_jobs.html",
             {"plan_id": plan_id, "plan": plan_model},
+        )
+
+
+def _register_social_security_routes(web_app: FastAPI) -> None:
+    @web_app.get(EDITOR_SOCIAL_SECURITY, response_class=HTMLResponse)
+    def editor_social_security(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> HTMLResponse:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        return _ss_partial(request, plan_id=plan_id, plan_model=plan_model)
+
+    @web_app.patch(PLAN_SOCIAL_SECURITY)
+    def patch_social_security(
+        repo: RepoDep,
+        claim_age_years: Annotated[int, Form()],
+        plan: Annotated[int | None, Query()] = None,
+        person: Annotated[str, Query()] = "person1",
+        claim_age_months: Annotated[int, Form()] = 0,
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        try:
+            updated = SocialSecurityForm(
+                person=person,  # type: ignore[arg-type]
+                claim_age_years=claim_age_years,
+                claim_age_months=claim_age_months,
+            ).apply_to(plan_model)
+        except (ValidationError, ValueError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        repo.save(plan_id, updated)
+        return Response(status_code=200)
+
+    @web_app.post(PLAN_SS_EARNINGS)
+    async def upload_ss_earnings(
+        request: Request,
+        repo: RepoDep,
+        statement: UploadFile,
+        plan: Annotated[int | None, Query()] = None,
+        person: Annotated[str, Query()] = "person1",
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        raw = (await statement.read()).decode("utf-8", errors="replace")
+        try:
+            earnings = parse_social_security_statement_xml(raw)
+            data = plan_model.household.model_dump()
+            if data.get(person) is None:
+                raise ValueError("No partner on the plan for this upload")
+            data[person]["social_security"]["earnings_record"] = [
+                e.model_dump() for e in earnings
+            ]
+            household = Household.model_validate(data)
+            updated = plan_model.model_copy(update={"household": household})
+        except (ValidationError, ValueError) as exc:
+            return _ss_partial(
+                request,
+                plan_id=plan_id,
+                plan_model=plan_model,
+                error=_error_message(exc),
+                status_code=422,
+            )
+        repo.save(plan_id, updated)
+        return _ss_partial(
+            request,
+            plan_id=plan_id,
+            plan_model=updated,
+            headers={"HX-Trigger": "planUpdated"},
         )
 
 
@@ -474,6 +577,7 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
     _mount_static(web_app)
     _register_home_route(web_app)
     _register_editor_routes(web_app)
+    _register_social_security_routes(web_app)
     _register_patch_routes(web_app)
     _register_plan_management_routes(web_app)
     _register_results_route(web_app)

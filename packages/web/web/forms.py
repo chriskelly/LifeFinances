@@ -51,6 +51,9 @@ EOD_API_KEY = "eod_api_key"
 CLEAR_EOD_API_KEY = "clear_eod_api_key"
 PLAN_NAME = "name"
 RETURN_PLAN = "return_plan"
+CLAIM_AGE_YEARS = "claim_age_years"
+CLAIM_AGE_MONTHS = "claim_age_months"
+SS_EARNINGS_FILE = "statement"
 
 
 class HouseholdForm(BaseModel):
@@ -219,5 +222,25 @@ class JobsForm:
         if data.get(self.person) is None:
             raise ValueError("Cannot edit jobs for a partner who is not on the plan")
         data[self.person]["jobs"] = [job.model_dump() for job in self.jobs]
+        household = Household.model_validate(data)
+        return plan.model_copy(update={"household": household})
+
+
+class SocialSecurityForm(BaseModel):
+    """Flat transport DTO. Bounds live on core.social_security."""
+
+    person: PersonId
+    claim_age_years: int
+    claim_age_months: int = 0
+
+    def apply_to(self, plan: Plan) -> Plan:
+        data = plan.household.model_dump()
+        if data.get(self.person) is None:
+            raise ValueError(
+                "Cannot edit Social Security for a partner who is not on the plan"
+            )
+        data[self.person]["social_security"]["claim_age_months"] = (
+            self.claim_age_years * 12 + self.claim_age_months
+        )
         household = Household.model_validate(data)
         return plan.model_copy(update={"household": household})

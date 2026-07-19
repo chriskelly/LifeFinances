@@ -1,5 +1,6 @@
 HOUSEHOLD_TITLE = "Household"
 JOBS_TITLE = "Jobs"
+SOCIAL_SECURITY_TITLE = "Social Security"
 PORTFOLIO_TITLE = "Current Savings Portfolio"
 SETTINGS_TITLE = "Settings"
 EOD_API_KEY_SET_PLACEHOLDER = "EOD API key is set"
