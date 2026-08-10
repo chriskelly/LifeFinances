@@ -82,14 +82,14 @@
       </label>
       <label>
         Residence state
-        <input
-          type="text"
-          name="{{ forms.RESIDENCE_STATE }}"
-          value="{{ plan.household.residence_state or '' }}"
-          maxlength="2"
-          placeholder="e.g. CA"
-        >
+        <select name="{{ forms.RESIDENCE_STATE }}">
+          <option value="{{ forms.RESIDENCE_STATE_NONE }}"{% if not plan.household.residence_state %} selected{% endif %}>{{ forms.RESIDENCE_STATE_NONE_LABEL }}</option>
+          {% for state in forms.TAX_MODELED_STATES %}
+          <option value="{{ state }}"{% if plan.household.residence_state == state %} selected{% endif %}>{{ state }}</option>
+          {% endfor %}
+        </select>
       </label>
+      <a href="{{ forms.RESIDENCE_STATE_REQUEST_ISSUE_URL }}" target="_blank" rel="noopener" title="Vote for additional state income-tax models">{{ forms.RESIDENCE_STATE_REQUEST_LINK_TEXT }}</a>
       <label>
         SS &amp; pension taxable fraction
         <input

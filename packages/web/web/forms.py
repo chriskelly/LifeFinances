@@ -18,6 +18,7 @@ from domain.statutory.pension import (
     CALSTRS_2_AT_62_AGE_FACTORS,
     age_factors_from_statutory,
 )
+from domain.statutory.taxes import STATE_BRACKETS
 from pydantic import BaseModel
 from starlette.datastructures import FormData
 
@@ -60,6 +61,7 @@ MONTH_ABBREVIATIONS: tuple[tuple[int, str], ...] = (
     (11, "Nov"),
     (12, "Dec"),
 )
+TAX_MODELED_STATES: tuple[str, ...] = tuple(sorted(STATE_BRACKETS))
 CURRENT_SAVINGS_BALANCE = "current_savings_balance"
 FRED_API_KEY = "fred_api_key"
 CLEAR_FRED_API_KEY = "clear_fred_api_key"
@@ -76,6 +78,12 @@ PENSION_LABEL = "Pension"
 PENSION_NONE_LABEL = "None"
 PENSION_CALSTRS_2_AT_62_LABEL = "CalSTRS 2% at 62"
 MONTH_OF_BIRTH_LABEL = "Month of Birth"
+RESIDENCE_STATE_NONE = ""
+RESIDENCE_STATE_NONE_LABEL = "No income-tax state"
+RESIDENCE_STATE_REQUEST_ISSUE_URL = (
+    "https://github.com/chriskelly/LifeFinances/issues/200"
+)
+RESIDENCE_STATE_REQUEST_LINK_TEXT = "Request your state (#200)"
 SS_EARNINGS_FILE = "statement"
 
 

@@ -29,7 +29,12 @@ from web.forms import (
     PERSON2_BIRTH_YEAR,
     PERSON2_MAX_AGE_YEARS,
     PLAN_NAME,
+    RESIDENCE_STATE,
+    RESIDENCE_STATE_NONE_LABEL,
+    RESIDENCE_STATE_REQUEST_ISSUE_URL,
+    RESIDENCE_STATE_REQUEST_LINK_TEXT,
     RETURN_PLAN,
+    TAX_MODELED_STATES,
 )
 from web.routes import (
     EDITOR_HOUSEHOLD,
@@ -110,6 +115,22 @@ def test_editor_household_collapses_birth_month_and_year(
     assert "birth-month-fields" in response.text
     assert "Birth month" not in response.text
     assert "Birth year" not in response.text
+
+
+def test_editor_household_residence_state_is_modeled_state_dropdown(
+    client: TestClient, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{EDITOR_HOUSEHOLD}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert f'<select name="{RESIDENCE_STATE}">' in response.text
+    assert RESIDENCE_STATE_NONE_LABEL in response.text
+    for state in TAX_MODELED_STATES:
+        assert f">{state}</option>" in response.text
+    assert RESIDENCE_STATE_REQUEST_ISSUE_URL in response.text
+    assert RESIDENCE_STATE_REQUEST_LINK_TEXT in response.text
 
 
 def test_home_shows_settings_section(client: TestClient) -> None:
