@@ -87,8 +87,6 @@ Context filters which terminals appear (examples):
 - Manual stream **start:** Now, calendar, age, max-age (required; no plan-start)
 - Manual stream **end:** same plus optional plan-horizon (`None`)
 
-Legacy plan JSON with `start: null` on a job or manual stream is coerced on load to `CalendarMonthBoundary` for the injected `today` (see `core.plan_load`).
-
 ### 3.3 Shared UI building blocks
 
 - One Jinja boundary partial + `web` parse helpers (`parse_boundary` / list collectors)
