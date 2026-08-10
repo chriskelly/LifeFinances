@@ -273,6 +273,6 @@ select {
   display: none;
 }
 
-.job-row:has(input[name$=".pension_enabled"]:checked) .pension-fields {
+.job-row:has(select[name$=".pension"] option[value="calstrs_2_at_62"]:checked) .pension-fields {
   display: block;
 }

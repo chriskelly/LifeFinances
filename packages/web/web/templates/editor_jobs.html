@@ -28,7 +28,12 @@
     <template class="row-template">{{ sabbatical_row("jobs[" ~ index ~ "].sabbaticals[0]", none, choices) }}</template>
     <button type="button" data-add-row>Add sabbatical</button>
   </div>
-  <label><input type="checkbox" name="jobs[{{ index }}].pension_enabled" value="on"{% if job and job.pension %} checked{% endif %}> CalSTRS 2% at 62 pension</label>
+  <label>{{ forms.PENSION_LABEL }}
+    <select name="jobs[{{ index }}].pension">
+      <option value="{{ forms.PENSION_NONE }}"{% if not job or not job.pension %} selected{% endif %}>{{ forms.PENSION_NONE_LABEL }}</option>
+      <option value="{{ forms.PENSION_CALSTRS_2_AT_62 }}"{% if job and job.pension %} selected{% endif %}>{{ forms.PENSION_CALSTRS_2_AT_62_LABEL }}</option>
+    </select>
+  </label>
   <a href="https://github.com/chriskelly/LifeFinances/issues/197" target="_blank" rel="noopener" title="Vote for a richer pension editor">More pension options (#197)</a>
   <div class="pension-fields">
     <div class="boundary-field">Service start {{ boundary.boundary_control("jobs[" ~ index ~ "].pension_service_start", boundaries.to_form(job.pension.service_start) if (job and job.pension) else {"kind": boundaries.KIND_CALENDAR}, choices, allow_max_age=True) }}</div>

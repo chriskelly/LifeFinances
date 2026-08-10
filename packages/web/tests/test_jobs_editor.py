@@ -12,6 +12,8 @@ from fastapi.testclient import TestClient
 from web.routes import EDITOR_JOBS, PLAN_JOBS
 from web.sections import JOBS_TITLE
 
+from web import forms
+
 
 def _bootstrap_plan(db_path) -> int:
     plans = PlanRepository(db_path=db_path)
@@ -100,11 +102,12 @@ def test_patch_jobs_attaches_calstrs_pension(
 ) -> None:
     plan_id = _bootstrap_plan(db_path)
     expected_table = age_factors_from_statutory(CALSTRS_2_AT_62_AGE_FACTORS)
+    pension_preset = forms.PENSION_CALSTRS_2_AT_62
     data = {
         "jobs[0].annual_income": "100000",
         "jobs[0].start_kind": "now",
         "jobs[0].end_kind": "none",
-        "jobs[0].pension_enabled": "on",
+        "jobs[0].pension": pension_preset,
         "jobs[0].pension_service_start_kind": "calendar_month",
         "jobs[0].pension_service_start_year": "2015",
         "jobs[0].pension_service_start_month": "8",
@@ -122,6 +125,22 @@ def test_patch_jobs_attaches_calstrs_pension(
     pension = after.household.person1.jobs[0].pension
     assert pension is not None
     assert pension.age_factor_table == expected_table
+
+
+def test_editor_jobs_pension_dropdown_defaults_to_none(
+    client: TestClient, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{EDITOR_JOBS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert "pension_enabled" not in response.text
+    assert forms.PENSION_LABEL in response.text
+    assert f'value="{forms.PENSION_NONE}"' in response.text
+    assert f">{forms.PENSION_NONE_LABEL}</option>" in response.text
+    assert f'value="{forms.PENSION_CALSTRS_2_AT_62}"' in response.text
+    assert f">{forms.PENSION_CALSTRS_2_AT_62_LABEL}</option>" in response.text
 
 
 def test_patch_jobs_for_absent_partner_returns_422(

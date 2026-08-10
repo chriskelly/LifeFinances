@@ -54,6 +54,12 @@ PLAN_NAME = "name"
 RETURN_PLAN = "return_plan"
 CLAIM_AGE_YEARS = "claim_age_years"
 CLAIM_AGE_MONTHS = "claim_age_months"
+
+PENSION_NONE = "none"
+PENSION_CALSTRS_2_AT_62 = "calstrs_2_at_62"
+PENSION_LABEL = "Pension"
+PENSION_NONE_LABEL = "None"
+PENSION_CALSTRS_2_AT_62_LABEL = "CalSTRS 2% at 62"
 SS_EARNINGS_FILE = "statement"
 
 
@@ -159,7 +165,7 @@ class AppSettingsForm(BaseModel):
 
 def _job_from_row(row: list[tuple[str, str]], *, today: date) -> Job:
     pension: dict[str, object] | None = None
-    if boundaries.row_scalar(row, "pension_enabled") in _TRUE:
+    if boundaries.row_scalar(row, "pension", PENSION_NONE) == PENSION_CALSTRS_2_AT_62:
         pension = {
             "service_start": boundaries.row_boundary(
                 row, "pension_service_start", today=today
