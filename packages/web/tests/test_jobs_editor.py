@@ -10,6 +10,7 @@ from domain.statutory.pension import (
 )
 from fastapi.testclient import TestClient
 from web.currency import format_usd
+from web.percent import format_percent
 from web.routes import EDITOR_JOBS, PLAN_JOBS
 from web.sections import JOBS_TITLE
 
@@ -183,6 +184,29 @@ def test_editor_jobs_formats_income_as_usd(
     assert response.status_code == 200
     assert f'value="{expected_display}"' in response.text
     assert "checkbox-label" in response.text
+
+
+def test_editor_jobs_formats_raise_as_percent(
+    client: TestClient, repo: PlanRepository, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    raise_rate = Decimal("0.035")
+    expected_display = format_percent(raise_rate)
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            annual_income=Decimal("100000"),
+            annual_raise=raise_rate,
+            start=CalendarMonthBoundary(year=2010, month=1),
+        )
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_JOBS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert f'value="{expected_display}"' in response.text
 
 
 def test_editor_jobs_get_renders_section(client: TestClient, db_path) -> None:

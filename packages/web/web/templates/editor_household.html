@@ -93,19 +93,21 @@
       <label>
         SS &amp; pension taxable fraction
         <input
-          type="number"
-          step="0.01"
+          type="text"
+          inputmode="decimal"
+          class="percent-input"
           name="{{ forms.SS_PENSION_TAXABLE_FRACTION }}"
-          value="{{ plan.household.ss_pension_taxable_fraction }}"
+          value="{{ plan.household.ss_pension_taxable_fraction|percent }}"
         >
       </label>
       <label>
         Social Security trust factor
         <input
-          type="number"
-          step="0.01"
+          type="text"
+          inputmode="decimal"
+          class="percent-input"
           name="{{ forms.SOCIAL_SECURITY_TRUST_FACTOR }}"
-          value="{{ plan.household.social_security_trust_factor }}"
+          value="{{ plan.household.social_security_trust_factor|percent }}"
         >
       </label>
     </fieldset>

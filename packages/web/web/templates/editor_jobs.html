@@ -8,7 +8,7 @@
   <div class="boundary-field">Start {{ boundary.boundary_control(prefix ~ ".start", boundaries.to_form(sab.start) if sab else {"kind": boundaries.KIND_CALENDAR}, choices) }}</div>
   <div class="boundary-field">End {{ boundary.boundary_control(prefix ~ ".end", boundaries.to_form(sab.end) if sab else {"kind": boundaries.KIND_CALENDAR}, choices) }}</div>
   <label>Remaining fraction
-    <input type="number" step="0.01" min="0" max="1" name="{{ prefix }}.remaining_fraction" value="{{ sab.remaining_fraction if sab else '0' }}">
+    <input type="text" inputmode="decimal" class="percent-input" name="{{ prefix }}.remaining_fraction" value="{{ (sab.remaining_fraction if sab else 0)|percent }}">
   </label>
 </fieldset>
 {% endmacro %}
@@ -19,7 +19,7 @@
   <label>Label <input type="text" name="jobs[{{ index }}].label" value="{{ (job.label or '') if job else '' }}"></label>
   <label>Annual income <input type="text" inputmode="decimal" class="currency-input" name="jobs[{{ index }}].annual_income" value="{{ (job.annual_income if job else 0)|usd }}"></label>
   <label>Annual tax-deferred <input type="text" inputmode="decimal" class="currency-input" name="jobs[{{ index }}].annual_tax_deferred" value="{{ (job.annual_tax_deferred if job else 0)|usd }}"></label>
-  <label>Annual raise <input type="number" step="0.001" name="jobs[{{ index }}].annual_raise" value="{{ job.annual_raise if job else '0' }}"></label>
+  <label>Annual raise (above inflation) <input type="text" inputmode="decimal" class="percent-input" name="jobs[{{ index }}].annual_raise" value="{{ (job.annual_raise if job else 0)|percent }}"></label>
   <label class="checkbox-label"><input type="checkbox" name="jobs[{{ index }}].social_security_eligible" value="on"{% if (not job) or job.social_security_eligible %} checked{% endif %}> Social Security eligible</label>
   <div class="boundary-field">Start {{ boundary.boundary_control("jobs[" ~ index ~ "].start", boundaries.to_form(job.start) if job else {"kind": boundaries.KIND_NOW}, choices, allow_now=True) }}</div>
   <div class="boundary-field">End {{ boundary.boundary_control("jobs[" ~ index ~ "].end", boundaries.to_form(job.end) if job else {"kind": boundaries.KIND_NONE}, choices, allow_max_age=True, allow_none=True, none_label="Plan horizon") }}</div>
@@ -39,8 +39,8 @@
     <div class="boundary-field">Service start {{ boundary.boundary_control("jobs[" ~ index ~ "].pension_service_start", boundaries.to_form(job.pension.service_start) if (job and job.pension) else {"kind": boundaries.KIND_CALENDAR}, choices, allow_max_age=True) }}</div>
     <div class="boundary-field">Claim {{ boundary.boundary_control("jobs[" ~ index ~ "].pension_claim", boundaries.to_form(job.pension.claim) if (job and job.pension) else {"kind": boundaries.KIND_PERSON_AGE}, choices, allow_max_age=True) }}</div>
     <label>Averaging months <input type="number" name="jobs[{{ index }}].pension_averaging_months" value="{{ job.pension.final_comp_averaging_months if (job and job.pension) else '36' }}"></label>
-    <label>Trust factor <input type="number" step="0.01" name="jobs[{{ index }}].pension_trust_factor" value="{{ job.pension.trust_factor if (job and job.pension) else '1' }}"></label>
-    <label>Benefit real growth <input type="number" step="0.001" name="jobs[{{ index }}].pension_growth" value="{{ job.pension.benefit_real_growth_rate if (job and job.pension) else '0' }}"></label>
+    <label>Trust factor <input type="text" inputmode="decimal" class="percent-input" name="jobs[{{ index }}].pension_trust_factor" value="{{ (job.pension.trust_factor if (job and job.pension) else 1)|percent }}"></label>
+    <label>Benefit real growth <input type="text" inputmode="decimal" class="percent-input" name="jobs[{{ index }}].pension_growth" value="{{ (job.pension.benefit_real_growth_rate if (job and job.pension) else 0)|percent }}"></label>
   </div>
 </fieldset>
 {% endmacro %}

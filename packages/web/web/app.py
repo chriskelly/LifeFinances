@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 from datetime import date
-from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
 
@@ -29,7 +28,7 @@ from pydantic import ValidationError
 from simulation.result import SimulationResult
 from simulation.stub import run_simulation
 
-from web import boundaries, charts, currency, forms, routes, sections
+from web import boundaries, charts, currency, forms, percent, routes, sections
 from web.dependencies import get_repository, require_plan, resolve_default_plan_id
 from web.forms import (
     AppSettingsForm,
@@ -72,6 +71,7 @@ templates.env.globals["sections"] = sections
 templates.env.globals["forms"] = forms
 templates.env.globals["boundaries"] = boundaries
 templates.env.filters["usd"] = currency.format_usd
+templates.env.filters["percent"] = percent.format_percent
 
 _INIT_DB_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
 _SIMULATION_FAILURE_MESSAGE = "Simulation failed. Check plan inputs and try again."
@@ -397,8 +397,8 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         repo: RepoDep,
         plan: Annotated[int | None, Query()] = None,
         residence_state: Annotated[str | None, Form()] = None,
-        ss_pension_taxable_fraction: Annotated[Decimal, Form()] = Decimal("0.80"),
-        social_security_trust_factor: Annotated[Decimal, Form()] = Decimal(1),
+        ss_pension_taxable_fraction: Annotated[str, Form()] = "80.0%",
+        social_security_trust_factor: Annotated[str, Form()] = "100.0%",
         has_partner: Annotated[bool, Form()] = False,
         person2_birth_month: Annotated[int | None, Form()] = None,
         person2_birth_year: Annotated[int | None, Form()] = None,
@@ -412,8 +412,12 @@ def _register_patch_routes(web_app: FastAPI) -> None:
                 person1_max_age_years=person1_max_age_years,
                 filing_status=filing_status,  # type: ignore[arg-type]
                 residence_state=residence_state,
-                ss_pension_taxable_fraction=ss_pension_taxable_fraction,
-                social_security_trust_factor=social_security_trust_factor,
+                ss_pension_taxable_fraction=percent.parse_percent(
+                    ss_pension_taxable_fraction
+                ),
+                social_security_trust_factor=percent.parse_percent(
+                    social_security_trust_factor
+                ),
                 has_partner=has_partner,
                 person2_birth_month=person2_birth_month,
                 person2_birth_year=person2_birth_year,

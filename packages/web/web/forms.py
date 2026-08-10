@@ -24,6 +24,7 @@ from starlette.datastructures import FormData
 
 from web import boundaries
 from web.currency import parse_usd
+from web.percent import parse_percent
 
 JOBS_PREFIX = "jobs"
 STREAMS_PREFIX = "streams"
@@ -203,19 +204,19 @@ def _job_from_row(row: list[tuple[str, str]], *, today: date) -> Job:
             "final_comp_averaging_months": int(
                 boundaries.row_scalar(row, "pension_averaging_months", "36")
             ),
-            "trust_factor": Decimal(
-                boundaries.row_scalar(row, "pension_trust_factor", "1")
+            "trust_factor": parse_percent(
+                boundaries.row_scalar(row, "pension_trust_factor", "100%")
             ),
-            "benefit_real_growth_rate": Decimal(
-                boundaries.row_scalar(row, "pension_growth", "0")
+            "benefit_real_growth_rate": parse_percent(
+                boundaries.row_scalar(row, "pension_growth", "0%")
             ),
         }
     sabbaticals = [
         {
             "start": boundaries.row_boundary(sab, "start", today=today),
             "end": boundaries.row_boundary(sab, "end", today=today),
-            "remaining_fraction": Decimal(
-                boundaries.row_scalar(sab, "remaining_fraction", "0")
+            "remaining_fraction": parse_percent(
+                boundaries.row_scalar(sab, "remaining_fraction", "0%")
             ),
         }
         for sab in boundaries.sub_rows(row, "sabbaticals")
@@ -229,7 +230,9 @@ def _job_from_row(row: list[tuple[str, str]], *, today: date) -> Job:
             "annual_tax_deferred": parse_usd(
                 boundaries.row_scalar(row, "annual_tax_deferred", "0")
             ),
-            "annual_raise": Decimal(boundaries.row_scalar(row, "annual_raise", "0")),
+            "annual_raise": parse_percent(
+                boundaries.row_scalar(row, "annual_raise", "0%")
+            ),
             "start": boundaries.row_boundary(row, "start", today=today),
             "end": boundaries.row_boundary(row, "end", today=today),
             "social_security_eligible": boundaries.row_scalar(
@@ -273,8 +276,8 @@ def _stream_from_row(row: list[tuple[str, str]], *, today: date) -> TimedStream:
             "start": boundaries.row_boundary(row, "start", today=today),
             "end": boundaries.row_boundary(row, "end", today=today),
             "is_nominal": boundaries.row_scalar(row, "is_nominal") in _TRUE,
-            "annual_growth_rate": Decimal(
-                boundaries.row_scalar(row, "annual_growth_rate", "0")
+            "annual_growth_rate": parse_percent(
+                boundaries.row_scalar(row, "annual_growth_rate", "0%")
             ),
         }
     )

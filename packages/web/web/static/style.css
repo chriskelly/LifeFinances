@@ -248,7 +248,8 @@ label.partner-toggle input[type="checkbox"] {
   width: 4.75rem;
 }
 
-.currency-input {
+.currency-input,
+.percent-input {
   font-variant-numeric: tabular-nums;
 }
 
