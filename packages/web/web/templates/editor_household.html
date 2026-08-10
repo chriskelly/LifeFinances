@@ -8,20 +8,20 @@
     <fieldset class="person-fields">
       <legend>You</legend>
       <label>
-        Birth month
-        <select name="{{ forms.PERSON1_BIRTH_MONTH }}">
-          {% for month_number, month_label in forms.MONTH_ABBREVIATIONS %}
-          <option value="{{ month_number }}"{% if plan.household.person1.birth_month == month_number %} selected{% endif %}>{{ month_label }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>
-        Birth year
-        <input
-          type="number"
-          name="{{ forms.PERSON1_BIRTH_YEAR }}"
-          value="{{ plan.household.person1.birth_year }}"
-        >
+        {{ forms.MONTH_OF_BIRTH_LABEL }}
+        <span class="birth-month-fields">
+          <select name="{{ forms.PERSON1_BIRTH_MONTH }}">
+            {% for month_number, month_label in forms.MONTH_ABBREVIATIONS %}
+            <option value="{{ month_number }}"{% if plan.household.person1.birth_month == month_number %} selected{% endif %}>{{ month_label }}</option>
+            {% endfor %}
+          </select>
+          <input
+            type="number"
+            name="{{ forms.PERSON1_BIRTH_YEAR }}"
+            value="{{ plan.household.person1.birth_year }}"
+            placeholder="Year"
+          >
+        </span>
       </label>
       <label>
         Max age
@@ -44,21 +44,21 @@
     <fieldset class="person-fields partner-fields">
       <legend>Partner</legend>
       <label>
-        Birth month
-        <select name="{{ forms.PERSON2_BIRTH_MONTH }}"{% if not plan.household.person2 %} disabled{% endif %}>
-          {% for month_number, month_label in forms.MONTH_ABBREVIATIONS %}
-          <option value="{{ month_number }}"{% if plan.household.person2 and plan.household.person2.birth_month == month_number %} selected{% endif %}>{{ month_label }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>
-        Birth year
-        <input
-          type="number"
-          name="{{ forms.PERSON2_BIRTH_YEAR }}"
-          value="{{ plan.household.person2.birth_year if plan.household.person2 else '' }}"
-          {% if not plan.household.person2 %}disabled{% endif %}
-        >
+        {{ forms.MONTH_OF_BIRTH_LABEL }}
+        <span class="birth-month-fields">
+          <select name="{{ forms.PERSON2_BIRTH_MONTH }}"{% if not plan.household.person2 %} disabled{% endif %}>
+            {% for month_number, month_label in forms.MONTH_ABBREVIATIONS %}
+            <option value="{{ month_number }}"{% if plan.household.person2 and plan.household.person2.birth_month == month_number %} selected{% endif %}>{{ month_label }}</option>
+            {% endfor %}
+          </select>
+          <input
+            type="number"
+            name="{{ forms.PERSON2_BIRTH_YEAR }}"
+            value="{{ plan.household.person2.birth_year if plan.household.person2 else '' }}"
+            placeholder="Year"
+            {% if not plan.household.person2 %}disabled{% endif %}
+          >
+        </span>
       </label>
       <label>
         Max age

@@ -234,6 +234,20 @@ label.partner-toggle input[type="checkbox"] {
   width: 4.25rem;
 }
 
+.birth-month-fields {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.birth-month-fields select {
+  width: 4.25rem;
+}
+
+.birth-month-fields input[type="number"] {
+  width: 4.75rem;
+}
+
 .currency-input {
   font-variant-numeric: tabular-nums;
 }

@@ -21,6 +21,7 @@ from web.forms import (
     FILING_STATUS,
     FRED_API_KEY,
     HAS_PARTNER,
+    MONTH_OF_BIRTH_LABEL,
     PERSON1_BIRTH_MONTH,
     PERSON1_BIRTH_YEAR,
     PERSON1_MAX_AGE_YEARS,
@@ -31,6 +32,7 @@ from web.forms import (
     RETURN_PLAN,
 )
 from web.routes import (
+    EDITOR_HOUSEHOLD,
     HOME,
     PLAN_CREATE,
     PLAN_DELETE,
@@ -94,6 +96,20 @@ def test_home_shows_both_editor_sections(client: TestClient) -> None:
     assert response.status_code == 200
     assert HOUSEHOLD_TITLE in response.text
     assert PORTFOLIO_TITLE in response.text
+
+
+def test_editor_household_collapses_birth_month_and_year(
+    client: TestClient, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{EDITOR_HOUSEHOLD}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert MONTH_OF_BIRTH_LABEL in response.text
+    assert "birth-month-fields" in response.text
+    assert "Birth month" not in response.text
+    assert "Birth year" not in response.text
 
 
 def test_home_shows_settings_section(client: TestClient) -> None:

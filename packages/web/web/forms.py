@@ -75,6 +75,7 @@ PENSION_CALSTRS_2_AT_62 = "calstrs_2_at_62"
 PENSION_LABEL = "Pension"
 PENSION_NONE_LABEL = "None"
 PENSION_CALSTRS_2_AT_62_LABEL = "CalSTRS 2% at 62"
+MONTH_OF_BIRTH_LABEL = "Month of Birth"
 SS_EARNINGS_FILE = "statement"
 
 
