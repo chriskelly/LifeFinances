@@ -30,6 +30,7 @@ from web.forms import (
     PERSON2_MAX_AGE_YEARS,
     PLAN_NAME,
     RESIDENCE_STATE,
+    RESIDENCE_STATE_NONE,
     RESIDENCE_STATE_NONE_LABEL,
     RESIDENCE_STATE_REQUEST_ISSUE_URL,
     RESIDENCE_STATE_REQUEST_LINK_TEXT,
@@ -458,9 +459,42 @@ def test_patch_household_preserves_jobs_ss_and_tax_fields(
     assert after.household.residence_state == expected_state
 
 
-def test_patch_household_writes_explicit_filing_status(
+def test_patch_household_clears_residence_state_when_none_selected(
     client: TestClient, repo: PlanRepository, db_path
 ) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    modeled_state = TAX_MODELED_STATES[0]
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.residence_state = modeled_state
+    repo.save(plan_id, seeded)
+    form_data = _household_form_data()
+    form_data[HAS_PARTNER] = "on"
+    form_data[RESIDENCE_STATE] = RESIDENCE_STATE_NONE
+
+    response = client.patch(f"{PLAN_HOUSEHOLD}?plan={plan_id}", data=form_data)
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.residence_state is None
+
+
+def test_patch_household_sets_residence_state_to_modeled_state(
+    client: TestClient, repo: PlanRepository, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    modeled_state = TAX_MODELED_STATES[0]
+    form_data = _household_form_data()
+    form_data[HAS_PARTNER] = "on"
+    form_data[RESIDENCE_STATE] = modeled_state
+
+    response = client.patch(f"{PLAN_HOUSEHOLD}?plan={plan_id}", data=form_data)
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.residence_state == modeled_state
     plan_id = _bootstrap_plan(db_path)
     chosen_status = "single"
     form_data = _household_form_data()

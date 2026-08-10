@@ -78,7 +78,7 @@ PENSION_LABEL = "Pension"
 PENSION_NONE_LABEL = "None"
 PENSION_CALSTRS_2_AT_62_LABEL = "CalSTRS 2% at 62"
 MONTH_OF_BIRTH_LABEL = "Month of Birth"
-RESIDENCE_STATE_NONE = ""
+RESIDENCE_STATE_NONE = "none"
 RESIDENCE_STATE_NONE_LABEL = "No income-tax state"
 RESIDENCE_STATE_REQUEST_ISSUE_URL = (
     "https://github.com/chriskelly/LifeFinances/issues/200"
@@ -131,7 +131,11 @@ class HouseholdForm(BaseModel):
             data["person2"] = None
         data["filing_status"] = self.filing_status
         if self.residence_state is not None:
-            data["residence_state"] = self.residence_state or None
+            data["residence_state"] = (
+                None
+                if self.residence_state in ("", RESIDENCE_STATE_NONE)
+                else self.residence_state
+            )
         data["ss_pension_taxable_fraction"] = self.ss_pension_taxable_fraction
         data["social_security_trust_factor"] = self.social_security_trust_factor
         household = Household.model_validate(data)
