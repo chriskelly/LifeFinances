@@ -46,6 +46,20 @@ FILING_STATUS_LABELS = {
     "single": "Single",
     "married_filing_jointly": "Married filing jointly",
 }
+MONTH_ABBREVIATIONS: tuple[tuple[int, str], ...] = (
+    (1, "Jan"),
+    (2, "Feb"),
+    (3, "Mar"),
+    (4, "Apr"),
+    (5, "May"),
+    (6, "Jun"),
+    (7, "Jul"),
+    (8, "Aug"),
+    (9, "Sep"),
+    (10, "Oct"),
+    (11, "Nov"),
+    (12, "Dec"),
+)
 CURRENT_SAVINGS_BALANCE = "current_savings_balance"
 FRED_API_KEY = "fred_api_key"
 CLEAR_FRED_API_KEY = "clear_fred_api_key"

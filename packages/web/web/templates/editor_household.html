@@ -10,8 +10,8 @@
       <label>
         Birth month
         <select name="{{ forms.PERSON1_BIRTH_MONTH }}">
-          {% for month in range(1, 13) %}
-          <option value="{{ month }}"{% if plan.household.person1.birth_month == month %} selected{% endif %}>{{ month }}</option>
+          {% for month_number, month_label in forms.MONTH_ABBREVIATIONS %}
+          <option value="{{ month_number }}"{% if plan.household.person1.birth_month == month_number %} selected{% endif %}>{{ month_label }}</option>
           {% endfor %}
         </select>
       </label>
@@ -46,8 +46,8 @@
       <label>
         Birth month
         <select name="{{ forms.PERSON2_BIRTH_MONTH }}"{% if not plan.household.person2 %} disabled{% endif %}>
-          {% for month in range(1, 13) %}
-          <option value="{{ month }}"{% if plan.household.person2 and plan.household.person2.birth_month == month %} selected{% endif %}>{{ month }}</option>
+          {% for month_number, month_label in forms.MONTH_ABBREVIATIONS %}
+          <option value="{{ month_number }}"{% if plan.household.person2 and plan.household.person2.birth_month == month_number %} selected{% endif %}>{{ month_label }}</option>
           {% endfor %}
         </select>
       </label>

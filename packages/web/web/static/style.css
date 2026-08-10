@@ -229,6 +229,7 @@ label.partner-toggle input[type="checkbox"] {
 }
 
 .boundary-part input[name$="_month"],
+.boundary-part select[name$="_month"],
 .boundary-part input[name$="_age_months"] {
   width: 4.25rem;
 }
