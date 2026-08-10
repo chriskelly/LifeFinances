@@ -28,7 +28,16 @@ from pydantic import ValidationError
 from simulation.result import SimulationResult
 from simulation.stub import run_simulation
 
-from web import boundaries, charts, currency, forms, percent, routes, sections
+from web import (
+    boundaries,
+    charts,
+    currency,
+    forms,
+    percent,
+    routes,
+    sections,
+    spending_summary,
+)
 from web.dependencies import get_repository, require_plan, resolve_default_plan_id
 from web.forms import (
     AppSettingsForm,
@@ -70,6 +79,7 @@ templates.env.globals["routes"] = routes
 templates.env.globals["sections"] = sections
 templates.env.globals["forms"] = forms
 templates.env.globals["boundaries"] = boundaries
+templates.env.globals["spending_summary"] = spending_summary
 templates.env.filters["usd"] = currency.format_usd
 templates.env.filters["percent"] = percent.format_percent
 
@@ -231,6 +241,9 @@ def _register_home_route(web_app: FastAPI) -> None:
             "plan_id": plan_id,
             "plan": plan_model,
             "result": result,
+            "spending": (
+                spending_summary.from_result(result) if result is not None else None
+            ),
             "settings": settings,
             "summaries": summaries,
             "loadable_ids": loadable_ids,
@@ -594,12 +607,14 @@ def _register_results_route(web_app: FastAPI) -> None:
                 },
             )
         figure = charts.build_figure(result, chart_type)
+        spending = spending_summary.from_result(result)
         return templates.TemplateResponse(
             request,
             "results.html",
             {
                 "plan_id": plan_id,
                 "result": result,
+                "spending": spending,
                 "chart_type": chart_type,
                 "chart_options": charts.chart_options(result),
                 "chart_figure_json": _figure_json(figure),

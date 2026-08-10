@@ -323,6 +323,17 @@ select {
   color: #a00;
 }
 
+.results-summary,
+.results-spending {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.results-spending {
+  margin-top: 0.35rem;
+}
+
 .boundary-part[hidden] {
   display: none;
 }
