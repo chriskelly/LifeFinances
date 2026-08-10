@@ -29,7 +29,7 @@ from pydantic import ValidationError
 from simulation.result import SimulationResult
 from simulation.stub import run_simulation
 
-from web import boundaries, charts, forms, routes, sections
+from web import boundaries, charts, currency, forms, routes, sections
 from web.dependencies import get_repository, require_plan, resolve_default_plan_id
 from web.forms import (
     AppSettingsForm,
@@ -71,6 +71,7 @@ templates.env.globals["routes"] = routes
 templates.env.globals["sections"] = sections
 templates.env.globals["forms"] = forms
 templates.env.globals["boundaries"] = boundaries
+templates.env.filters["usd"] = currency.format_usd
 
 _INIT_DB_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
 _SIMULATION_FAILURE_MESSAGE = "Simulation failed. Check plan inputs and try again."
@@ -425,17 +426,17 @@ def _register_patch_routes(web_app: FastAPI) -> None:
 
     @web_app.patch(PLAN_PORTFOLIO)
     def patch_portfolio(
-        current_savings_balance: Annotated[Decimal, Form()],
+        current_savings_balance: Annotated[str, Form()],
         repo: RepoDep,
         plan: Annotated[int | None, Query()] = None,
     ) -> Response:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
             updated = PortfolioForm(
-                current_savings_balance=current_savings_balance,
+                current_savings_balance=currency.parse_usd(current_savings_balance),
             ).apply_to(plan_model)
-        except ValidationError as exc:
-            return HTMLResponse(_validation_message(exc), status_code=422)
+        except (ValidationError, ValueError, ArithmeticError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
         repo.save(plan_id, updated)
         return Response(status_code=200)
 

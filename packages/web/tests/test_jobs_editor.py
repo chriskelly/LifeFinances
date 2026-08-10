@@ -9,6 +9,7 @@ from domain.statutory.pension import (
     age_factors_from_statutory,
 )
 from fastapi.testclient import TestClient
+from web.currency import format_usd
 from web.routes import EDITOR_JOBS, PLAN_JOBS
 from web.sections import JOBS_TITLE
 
@@ -162,6 +163,26 @@ def test_patch_jobs_for_absent_partner_returns_422(
     )
 
     assert response.status_code == 422
+
+
+def test_editor_jobs_formats_income_as_usd(
+    client: TestClient, repo: PlanRepository, db_path
+) -> None:
+    plan_id = _bootstrap_plan(db_path)
+    income = Decimal("150000")
+    expected_display = format_usd(income)
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(annual_income=income, start=CalendarMonthBoundary(year=2010, month=1))
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_JOBS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert f'value="{expected_display}"' in response.text
+    assert "checkbox-label" in response.text
 
 
 def test_editor_jobs_get_renders_section(client: TestClient, db_path) -> None:

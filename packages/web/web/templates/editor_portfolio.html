@@ -11,10 +11,11 @@
     <label>
       Total savings balance
       <input
-        type="number"
+        type="text"
+        inputmode="decimal"
+        class="currency-input"
         name="{{ forms.CURRENT_SAVINGS_BALANCE }}"
-        value="{{ plan.portfolio.current_savings_balance }}"
-        step="1"
+        value="{{ plan.portfolio.current_savings_balance|usd }}"
       >
     </label>
   </form>

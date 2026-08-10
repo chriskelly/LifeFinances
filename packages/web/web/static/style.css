@@ -195,6 +195,48 @@ label {
   font-size: 0.9rem;
 }
 
+label.checkbox-label,
+label.partner-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+label.checkbox-label input[type="checkbox"],
+label.partner-toggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.boundary-control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.boundary-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.boundary-part input[name$="_year"],
+.boundary-part input[name$="_age_years"] {
+  width: 4.75rem;
+}
+
+.boundary-part input[name$="_month"],
+.boundary-part input[name$="_age_months"] {
+  width: 4.25rem;
+}
+
+.currency-input {
+  font-variant-numeric: tabular-nums;
+}
+
 input,
 select {
   padding: 0.4rem 0.5rem;

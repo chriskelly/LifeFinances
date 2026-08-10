@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from starlette.datastructures import FormData
 
 from web import boundaries
+from web.currency import parse_usd
 
 JOBS_PREFIX = "jobs"
 STREAMS_PREFIX = "streams"
@@ -195,8 +196,10 @@ def _job_from_row(row: list[tuple[str, str]], *, today: date) -> Job:
     return Job.model_validate(
         {
             "label": boundaries.row_scalar(row, "label") or None,
-            "annual_income": Decimal(boundaries.row_scalar(row, "annual_income", "0")),
-            "annual_tax_deferred": Decimal(
+            "annual_income": parse_usd(
+                boundaries.row_scalar(row, "annual_income", "0")
+            ),
+            "annual_tax_deferred": parse_usd(
                 boundaries.row_scalar(row, "annual_tax_deferred", "0")
             ),
             "annual_raise": Decimal(boundaries.row_scalar(row, "annual_raise", "0")),
@@ -237,7 +240,7 @@ def _stream_from_row(row: list[tuple[str, str]], *, today: date) -> TimedStream:
     return TimedStream.model_validate(
         {
             "label": boundaries.row_scalar(row, "label") or None,
-            "monthly_amount": Decimal(
+            "monthly_amount": parse_usd(
                 boundaries.row_scalar(row, "monthly_amount", "0")
             ),
             "start": boundaries.row_boundary(row, "start", today=today),
