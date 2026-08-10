@@ -67,7 +67,7 @@ class PersonMaxAgeBoundary(BaseModel):
 
 `boundary_to_year_month` in `core.timeline` resolves it as that person’s birth month/year plus `max_age_years` (same end-of-life math as `person_end_date`). Existing `calendar_month` and `person_age` kinds are unchanged.
 
-`None` start/end on fields that allow `Boundary | None` keep today’s projection semantics (plan start / plan horizon).
+`None` on **end** fields that allow `Boundary | None` still means plan horizon. Job and manual-income stream **starts** are required `Boundary` values (no `None` / plan-start).
 
 ### 3.2 UI ↔ storage mapping
 
@@ -77,14 +77,17 @@ class PersonMaxAgeBoundary(BaseModel):
 | Age | `PersonAgeBoundary` (`person` + years/months → `age_months`) |
 | Now | Stamp `CalendarMonthBoundary` for the current calendar month **at save** (not symbolic) |
 | Until person’s max age | `PersonMaxAgeBoundary` |
-| Plan start / plan horizon | `None`, only on fields that are `Boundary \| None` today |
+| Plan horizon | `None`, only on **end** fields that are `Boundary \| None` |
 
 Context filters which terminals appear (examples):
 
-- Job **start:** Now, calendar, age, optional plan-start (`None`)
+- Job **start:** Now, calendar, age (required; no plan-start)
 - Job **end:** calendar, age, max-age for self (and partner when present), optional plan-horizon (`None`)
 - Pension service/claim: required concrete or max-age — not Now
-- Manual stream start/end: full set including optional `None`
+- Manual stream **start:** Now, calendar, age, max-age (required; no plan-start)
+- Manual stream **end:** same plus optional plan-horizon (`None`)
+
+Legacy plan JSON with `start: null` on a job or manual stream is coerced on load to `CalendarMonthBoundary` for the injected `today` (see `core.plan_load`).
 
 ### 3.3 Shared UI building blocks
 

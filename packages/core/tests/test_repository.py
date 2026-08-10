@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
 import sqlite3
+from datetime import date
 from decimal import Decimal
 
 from core.defaults import DEFAULT_PLAN_NAME, DEFAULT_SAVINGS_BALANCE
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
+from core.streams import CalendarMonthBoundary
 
 
 def test_get_or_create_default_inserts_when_no_plans(repo: PlanRepository) -> None:
@@ -42,3 +45,39 @@ def test_get_or_create_default_returns_existing_without_insert(
     finally:
         conn.close()
     assert count == 1
+
+
+def test_get_by_id_coerces_null_job_and_stream_starts_to_today(
+    repo: PlanRepository,
+) -> None:
+    plan_id, plan = repo.get_or_create_default()
+    injected_today = date(2026, 7, 15)
+    expected_start = CalendarMonthBoundary(
+        year=injected_today.year, month=injected_today.month
+    )
+    payload = json.loads(plan.model_dump_json())
+    payload["household"]["person1"]["jobs"] = [
+        {"annual_income": "120000", "start": None}
+    ]
+    payload["manual_income_streams"] = [{"monthly_amount": "500", "start": None}]
+    conn = sqlite3.connect(repo.db_path)
+    try:
+        conn.execute(
+            "UPDATE plans SET data = ? WHERE id = ?",
+            (json.dumps(payload), plan_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    loaded = repo.get_by_id(plan_id, today=injected_today)
+
+    assert loaded is not None
+    assert loaded.household.person1.jobs[0].start == expected_start
+    assert loaded.manual_income_streams[0].start == expected_start
+
+    repo.save(plan_id, loaded)
+    round_tripped = repo.get_by_id(plan_id, today=date(2099, 1, 1))
+    assert round_tripped is not None
+    assert round_tripped.household.person1.jobs[0].start == expected_start
+    assert round_tripped.manual_income_streams[0].start == expected_start

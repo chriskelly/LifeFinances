@@ -21,7 +21,7 @@
   <label>Annual tax-deferred <input type="number" step="0.01" name="jobs[{{ index }}].annual_tax_deferred" value="{{ job.annual_tax_deferred if job else '0' }}"></label>
   <label>Annual raise <input type="number" step="0.001" name="jobs[{{ index }}].annual_raise" value="{{ job.annual_raise if job else '0' }}"></label>
   <label><input type="checkbox" name="jobs[{{ index }}].social_security_eligible" value="on"{% if (not job) or job.social_security_eligible %} checked{% endif %}> Social Security eligible</label>
-  <div class="boundary-field">Start {{ boundary.boundary_control("jobs[" ~ index ~ "].start", boundaries.to_form(job.start) if job else {"kind": boundaries.KIND_NOW}, choices, allow_now=True, allow_none=True, none_label="Plan start") }}</div>
+  <div class="boundary-field">Start {{ boundary.boundary_control("jobs[" ~ index ~ "].start", boundaries.to_form(job.start) if job else {"kind": boundaries.KIND_NOW}, choices, allow_now=True) }}</div>
   <div class="boundary-field">End {{ boundary.boundary_control("jobs[" ~ index ~ "].end", boundaries.to_form(job.end) if job else {"kind": boundaries.KIND_NONE}, choices, allow_max_age=True, allow_none=True, none_label="Plan horizon") }}</div>
   <div class="rows" data-prefix="sabbaticals">
     {% if job %}{% for sab in job.sabbaticals %}{{ sabbatical_row("jobs[" ~ index ~ "].sabbaticals[" ~ loop.index0 ~ "]", sab, choices) }}{% endfor %}{% endif %}

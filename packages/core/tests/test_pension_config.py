@@ -45,14 +45,17 @@ def test_trust_factor_must_be_between_zero_and_one() -> None:
 
 
 def test_job_pension_defaults_to_none() -> None:
-    assert Job(annual_income=Decimal("100_000")).pension is None
+    job_start = CalendarMonthBoundary(year=2010, month=1)
+    assert Job(annual_income=Decimal("100_000"), start=job_start).pension is None
 
 
 def test_pension_config_round_trips_through_repository(repo: PlanRepository) -> None:
     plan_id, plan = repo.get_or_create_default()
     expected_pension = _formula_pension()
+    job_start = CalendarMonthBoundary(year=2016, month=1)
     job_with_pension = Job(
         annual_income=Decimal("109_500"),
+        start=job_start,
         end=CalendarMonthBoundary(year=2045, month=12),
         pension=expected_pension,
     )

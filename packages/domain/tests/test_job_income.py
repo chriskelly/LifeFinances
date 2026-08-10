@@ -11,22 +11,30 @@ from core.timeline import Timeline, add_months, project_stream
 from domain.job_income import project_job_income
 from domain.job_income.compile import project_job_gross
 
+_TIMELINE_TODAY = date(2026, 1, 1)
+
 
 def _timeline() -> Timeline:
-    return Timeline(default_plan(), today=date(2026, 1, 1))
+    return Timeline(default_plan(), today=_TIMELINE_TODAY)
+
+
+def _plan_start() -> CalendarMonthBoundary:
+    return CalendarMonthBoundary(year=_TIMELINE_TODAY.year, month=_TIMELINE_TODAY.month)
 
 
 def test_single_job_matches_growth_curve() -> None:
     timeline = _timeline()
     annual_income = Decimal("120000")
     rate = Decimal("0.12")
-    job = Job(annual_income=annual_income, annual_raise=rate)
+    job = Job(annual_income=annual_income, annual_raise=rate, start=_plan_start())
 
     gross = project_job_gross(job, timeline)
 
     reference = project_stream(
         TimedStream(
-            monthly_amount=annual_income / Decimal(12), annual_growth_rate=rate
+            monthly_amount=annual_income / Decimal(12),
+            start=_plan_start(),
+            annual_growth_rate=rate,
         ),
         timeline,
     )
@@ -49,6 +57,7 @@ def test_full_break_zeroes_window_and_resumes_on_curve() -> None:
     job = Job(
         annual_income=annual_income,
         annual_raise=rate,
+        start=_plan_start(),
         sabbaticals=[
             SabbaticalWindow(
                 start=CalendarMonthBoundary(year=start_y, month=start_m),
@@ -61,7 +70,8 @@ def test_full_break_zeroes_window_and_resumes_on_curve() -> None:
     gross = project_job_gross(job, timeline)
 
     no_break = project_job_gross(
-        Job(annual_income=annual_income, annual_raise=rate), timeline
+        Job(annual_income=annual_income, annual_raise=rate, start=_plan_start()),
+        timeline,
     )
     assert gross[break_start_index] == Decimal("0.00")
     assert gross[break_end_index] == Decimal("0.00")
@@ -76,6 +86,7 @@ def test_partial_reduction_scales_window() -> None:
     win_y, win_m = add_months(timeline.today.year, timeline.today.month, window_index)
     job = Job(
         annual_income=annual_income,
+        start=_plan_start(),
         sabbaticals=[
             SabbaticalWindow(
                 start=CalendarMonthBoundary(year=win_y, month=win_m),
@@ -120,7 +131,11 @@ def test_concurrent_jobs_sum_per_person() -> None:
     income_a = Decimal("60000")
     income_b = Decimal("36000")
     plan = _plan_with_jobs(
-        [Job(annual_income=income_a), Job(annual_income=income_b)], []
+        [
+            Job(annual_income=income_a, start=_plan_start()),
+            Job(annual_income=income_b, start=_plan_start()),
+        ],
+        [],
     )
 
     projection = project_job_income(plan, timeline)
@@ -137,8 +152,16 @@ def test_non_ss_covered_job_excluded_from_ss_series() -> None:
     uncovered = Decimal("48000")
     plan = _plan_with_jobs(
         [
-            Job(annual_income=covered, social_security_eligible=True),
-            Job(annual_income=uncovered, social_security_eligible=False),
+            Job(
+                annual_income=covered,
+                start=_plan_start(),
+                social_security_eligible=True,
+            ),
+            Job(
+                annual_income=uncovered,
+                start=_plan_start(),
+                social_security_eligible=False,
+            ),
         ],
         [],
     )
@@ -158,7 +181,8 @@ def test_tax_deferred_scales_with_income_fraction() -> None:
     income = Decimal("100000")
     deferred = Decimal("20000")
     plan = _plan_with_jobs(
-        [Job(annual_income=income, annual_tax_deferred=deferred)], []
+        [Job(annual_income=income, annual_tax_deferred=deferred, start=_plan_start())],
+        [],
     )
 
     projection = project_job_income(plan, timeline)
@@ -172,7 +196,7 @@ def test_tax_deferred_scales_with_income_fraction() -> None:
 
 def test_zero_income_job_has_zero_tax_deferred() -> None:
     timeline = _timeline()
-    plan = _plan_with_jobs([Job(annual_income=Decimal("0"))], [])
+    plan = _plan_with_jobs([Job(annual_income=Decimal("0"), start=_plan_start())], [])
 
     projection = project_job_income(plan, timeline)
 
@@ -183,7 +207,10 @@ def test_household_totals_equal_sum_of_persons() -> None:
     timeline = _timeline()
     income1 = Decimal("90000")
     income2 = Decimal("72000")
-    plan = _plan_with_jobs([Job(annual_income=income1)], [Job(annual_income=income2)])
+    plan = _plan_with_jobs(
+        [Job(annual_income=income1, start=_plan_start())],
+        [Job(annual_income=income2, start=_plan_start())],
+    )
 
     projection = project_job_income(plan, timeline)
 

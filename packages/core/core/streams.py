@@ -41,7 +41,7 @@ class TimedStream(BaseModel):
 
     label: str | None = None
     monthly_amount: Decimal = Field(ge=0)
-    start: Boundary | None = None
+    start: Boundary
     end: Boundary | None = None
     is_nominal: bool = False
     annual_growth_rate: Decimal = Decimal(0)

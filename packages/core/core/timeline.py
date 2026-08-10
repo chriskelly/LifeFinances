@@ -79,7 +79,7 @@ def project_stream(stream: TimedStream, timeline: Timeline) -> list[Decimal]:
     """Project one stream into a horizon-length series of face amounts.
 
     - Fills `monthly_amount` for indices in [start, end]; 0 elsewhere.
-    - start defaults to 0 (now); end defaults to horizon - 1.
+    - end defaults to horizon - 1 when unset.
     - The window is clamped to [0, horizon - 1].
     - Monthly-compounded growth anchored at the (unclamped) start index:
       amount(t) = monthly_amount * (1 + annual_growth_rate) ** ((t - start) / 12)
@@ -90,7 +90,7 @@ def project_stream(stream: TimedStream, timeline: Timeline) -> list[Decimal]:
     if horizon <= 0:
         return series
 
-    start_index = 0 if stream.start is None else timeline.index_of(stream.start)
+    start_index = timeline.index_of(stream.start)
     end_index = horizon - 1 if stream.end is None else timeline.index_of(stream.end)
 
     low = max(start_index, 0)

@@ -3,6 +3,7 @@ from decimal import Decimal
 from core.job import Job
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
+from core.streams import CalendarMonthBoundary
 from domain.statutory.pension import (
     CALSTRS_2_AT_62_AGE_FACTORS,
     age_factors_from_statutory,
@@ -50,9 +51,12 @@ def test_patch_jobs_blank_annual_income_returns_422(
 ) -> None:
     plan_id = _bootstrap_plan(db_path)
     expected_income = Decimal("150000")
+    job_start = CalendarMonthBoundary(year=2010, month=1)
     seeded = repo.get_by_id(plan_id)
     assert seeded is not None
-    seeded.household.person1.jobs = [Job(annual_income=expected_income)]
+    seeded.household.person1.jobs = [
+        Job(annual_income=expected_income, start=job_start)
+    ]
     repo.save(plan_id, seeded)
     invalid_income = ""
 
@@ -75,9 +79,12 @@ def test_patch_jobs_empty_form_clears_jobs(
     client: TestClient, repo: PlanRepository, db_path
 ) -> None:
     plan_id = _bootstrap_plan(db_path)
+    job_start = CalendarMonthBoundary(year=2010, month=1)
     seeded = repo.get_by_id(plan_id)
     assert seeded is not None
-    seeded.household.person1.jobs = [Job(annual_income=Decimal("100000"))]
+    seeded.household.person1.jobs = [
+        Job(annual_income=Decimal("100000"), start=job_start)
+    ]
     repo.save(plan_id, seeded)
 
     response = client.patch(f"{PLAN_JOBS}?plan={plan_id}&person=person1", data={})
@@ -145,3 +152,14 @@ def test_editor_jobs_get_renders_section(client: TestClient, db_path) -> None:
 
     assert response.status_code == 200
     assert JOBS_TITLE in response.text
+
+
+def test_editor_jobs_start_omits_plan_start_option(client: TestClient, db_path) -> None:
+    plan_id = _bootstrap_plan(db_path)
+
+    response = client.get(f"{EDITOR_JOBS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert "Plan start" not in response.text
+    assert "Plan horizon" in response.text
+    assert 'value="now"' in response.text

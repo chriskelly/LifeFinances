@@ -10,6 +10,7 @@ from core.plan_names import copy_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
 from core.social_security import AnnualEarnings
+from core.streams import CalendarMonthBoundary
 from fastapi.testclient import TestClient
 from web.app import _SIMULATION_FAILURE_MESSAGE, _figure_json
 from web.forms import (
@@ -388,8 +389,13 @@ def test_patch_household_preserves_jobs_ss_and_tax_fields(
     expected_job_label = "Engineer"
     expected_year = 2022
     expected_state = "CA"
+    job_start = CalendarMonthBoundary(year=2010, month=1)
     seeded.household.person1.jobs = [
-        Job(label=expected_job_label, annual_income=Decimal("120000"))
+        Job(
+            label=expected_job_label,
+            annual_income=Decimal("120000"),
+            start=job_start,
+        )
     ]
     seeded.household.person1.social_security.earnings_record = [
         AnnualEarnings(year=expected_year, fica_earnings=Decimal("100000"))

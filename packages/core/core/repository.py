@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -9,6 +11,7 @@ from pydantic import ValidationError
 from core.defaults import DEFAULT_PLAN_NAME, default_plan
 from core.models import Plan
 from core.paths import default_db_path
+from core.plan_load import parse_plan_json
 from core.plan_names import copy_plan_name
 from core.settings_repository import SettingsRepository
 
@@ -29,7 +32,7 @@ class PlanRepository:
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.db_path)
 
-    def get_by_id(self, plan_id: int) -> Plan | None:
+    def get_by_id(self, plan_id: int, *, today: date | None = None) -> Plan | None:
         conn = self._connect()
         try:
             row = conn.execute(
@@ -40,8 +43,8 @@ class PlanRepository:
         if row is None:
             return None
         try:
-            return Plan.model_validate_json(row[0])
-        except ValidationError:
+            return parse_plan_json(row[0], today=today)
+        except ValidationError, TypeError, json.JSONDecodeError:
             return None
 
     def save(self, plan_id: int, plan: Plan) -> None:

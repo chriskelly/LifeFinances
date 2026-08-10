@@ -25,12 +25,15 @@ from domain import build_monthly_cashflows
 
 
 def _single_person_plan() -> Plan:
+    today = date(2026, 1, 1)
+    plan_start = CalendarMonthBoundary(year=today.year, month=today.month)
     person1 = PersonHousehold(
         birth_month=1,
         birth_year=1983,
         jobs=[
             Job(
                 annual_income=Decimal("120_000"),
+                start=plan_start,
                 end=CalendarMonthBoundary(year=2045, month=12),
             )
         ],
@@ -88,12 +91,14 @@ def test_single_person_ss_has_no_spousal_and_total_equals_own() -> None:
 
 
 def _single_pension_plan() -> Plan:
+    job_start = CalendarMonthBoundary(year=2010, month=1)
     person1 = PersonHousehold(
         birth_month=1,
         birth_year=1970,
         jobs=[
             Job(
                 annual_income=Decimal("120_000"),
+                start=job_start,
                 end=PersonAgeBoundary(person="person1", age_months=62 * 12),
                 pension=FormulaPension(
                     service_start=CalendarMonthBoundary(year=2010, month=1),

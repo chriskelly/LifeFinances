@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
 from core.streams import (
     Boundary,
     CalendarMonthBoundary,
@@ -9,7 +10,12 @@ from core.streams import (
     PersonMaxAgeBoundary,
     TimedStream,
 )
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
+
+
+def test_timed_stream_requires_start() -> None:
+    with pytest.raises(ValidationError):
+        TimedStream.model_validate({"monthly_amount": "100"})
 
 
 def test_timed_stream_round_trips_through_json_preserving_decimal() -> None:

@@ -41,7 +41,7 @@ class Job(BaseModel):
     annual_income: Decimal = Field(ge=0)
     annual_tax_deferred: Decimal = Field(default=Decimal(0), ge=0)
     annual_raise: Decimal = Decimal(0)
-    start: Boundary | None = None
+    start: Boundary
     end: Boundary | None = None
     social_security_eligible: bool = True
     sabbaticals: list[SabbaticalWindow] = Field(default_factory=list)
