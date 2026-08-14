@@ -39,6 +39,15 @@ def test_parse_boundary_calendar_uses_year_and_month() -> None:
     assert result == expected
 
 
+def test_parse_boundary_person_age_requires_years() -> None:
+    with pytest.raises(ValueError, match="age years"):
+        boundaries.parse_boundary(
+            kind=boundaries.KIND_PERSON_AGE,
+            person="person1",
+            today=date(2026, 7, 19),
+        )
+
+
 def test_parse_boundary_person_age_combines_years_and_months() -> None:
     person = "person1"
     age_years = 65

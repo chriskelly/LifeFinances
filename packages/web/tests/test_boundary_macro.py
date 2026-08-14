@@ -33,6 +33,7 @@ def test_boundary_control_names_use_prefix() -> None:
     assert 'name="start_kind"' in markup
     assert 'name="start_year"' in markup
     assert 'name="start_person"' in markup
+    assert "data-prefix" not in markup
 
 
 def test_boundary_control_calendar_month_uses_abbreviated_month_select() -> None:

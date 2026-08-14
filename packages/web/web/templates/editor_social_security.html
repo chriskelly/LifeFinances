@@ -1,5 +1,4 @@
-{% set people = [("person1", "You", plan.household.person1)] %}
-{% if plan.household.person2 %}{% set people = people + [("person2", "Partner", plan.household.person2)] %}{% endif %}
+{% set people = forms.people_choices(plan) %}
 <section class="editor-section" id="editor-social-security">
   <h2>{{ sections.SOCIAL_SECURITY_TITLE }}</h2>
   {% if ss_error %}<div class="form-error" role="alert">{{ ss_error }}</div>{% endif %}

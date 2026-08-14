@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 from datetime import date
-from typing import cast
 
 from core.streams import (
     Boundary,
@@ -26,6 +25,12 @@ _ROW_RE = re.compile(r"^(?P<prefix>\w+)\[(?P<index>\d+)\]\.(?P<rest>.+)$")
 def _int_or_none(value: str) -> int | None:
     value = value.strip()
     return int(value) if value else None
+
+
+def parse_person_id(raw: str) -> PersonId:
+    if raw in ("person1", "person2"):
+        return raw
+    raise ValueError(f"unknown person: {raw!r}")
 
 
 def _group_rows(
@@ -64,12 +69,16 @@ def parse_boundary(
     if kind == KIND_PERSON_AGE:
         if person is None:
             raise ValueError("person_age boundary requires person")
-        total_months = (age_years or 0) * 12 + (age_months or 0)
-        return PersonAgeBoundary(person=cast(PersonId, person), age_months=total_months)
+        if age_years is None:
+            raise ValueError("person_age boundary requires age years")
+        total_months = age_years * 12 + (age_months or 0)
+        return PersonAgeBoundary(
+            person=parse_person_id(person), age_months=total_months
+        )
     if kind == KIND_PERSON_MAX_AGE:
         if person is None:
             raise ValueError("person_max_age boundary requires person")
-        return PersonMaxAgeBoundary(person=cast(PersonId, person))
+        return PersonMaxAgeBoundary(person=parse_person_id(person))
     raise ValueError(f"unknown boundary kind: {kind!r}")
 
 
@@ -91,7 +100,10 @@ def to_form(boundary: Boundary | None) -> dict[str, object]:
 
 def collect_indexed_rows(form: FormData, prefix: str) -> list[list[tuple[str, str]]]:
     """Group `prefix[i].rest` form fields into ordered rows of (rest, value) pairs."""
-    return _group_rows(cast(Iterable[tuple[str, str]], form.multi_items()), prefix)
+    pairs = (
+        (key, value) for key, value in form.multi_items() if isinstance(value, str)
+    )
+    return _group_rows(pairs, prefix)
 
 
 def row_scalar(row: list[tuple[str, str]], field: str, default: str = "") -> str:

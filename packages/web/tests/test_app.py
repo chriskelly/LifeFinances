@@ -74,13 +74,6 @@ def test_figure_json_escapes_script_breakout_sequences() -> None:
     assert "\\u003c/script>" in dumped
 
 
-def _bootstrap_plan(db_path) -> int:
-    plans = PlanRepository(db_path=db_path)
-    settings = SettingsRepository(db_path=db_path)
-    plan_id, _ = plans.ensure_bootstrap(settings_repo=settings)
-    return plan_id
-
-
 def _household_form_data() -> dict[str, str]:
     plan = default_plan()
     p1 = plan.household.person1
@@ -106,9 +99,8 @@ def test_home_shows_both_editor_sections(client: TestClient) -> None:
 
 
 def test_editor_household_collapses_birth_month_and_year(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
 
     response = client.get(f"{EDITOR_HOUSEHOLD}?plan={plan_id}")
 
@@ -120,9 +112,8 @@ def test_editor_household_collapses_birth_month_and_year(
 
 
 def test_editor_household_residence_state_is_modeled_state_dropdown(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
 
     response = client.get(f"{EDITOR_HOUSEHOLD}?plan={plan_id}")
 
@@ -142,8 +133,7 @@ def test_home_shows_settings_section(client: TestClient) -> None:
     assert SETTINGS_TITLE in response.text
 
 
-def test_home_shows_all_income_sections(client: TestClient, db_path) -> None:
-    plan_id = _bootstrap_plan(db_path)
+def test_home_shows_all_income_sections(client: TestClient, plan_id: int) -> None:
 
     response = client.get(f"{HOME}?plan={plan_id}")
 
@@ -167,11 +157,9 @@ def test_home_auto_creates_default_plan(
     assert plan.name == DEFAULT_PLAN_NAME
 
 
-def test_home_without_plan_redirects_to_default(client: TestClient, db_path) -> None:
-    plans = PlanRepository(db_path=db_path)
-    settings = SettingsRepository(db_path=db_path)
-    plan_id, _ = plans.ensure_bootstrap(settings_repo=settings)
-
+def test_home_without_plan_redirects_to_default(
+    client: TestClient, plan_id: int
+) -> None:
     response: httpx.Response = client.get(HOME, follow_redirects=False)
 
     assert response.status_code == 302
@@ -188,7 +176,7 @@ def test_home_with_unknown_plan_returns_404(client: TestClient, db_path) -> None
     assert response.status_code == 404
 
 
-def test_home_with_plan_serves_shell(client: TestClient, db_path) -> None:
+def test_home_with_plan_serves_shell(client: TestClient, plan_id: int, db_path) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
     plan_id, plan = plans.ensure_bootstrap(settings_repo=settings)
@@ -199,8 +187,9 @@ def test_home_with_plan_serves_shell(client: TestClient, db_path) -> None:
     assert plan.name in response.text
 
 
-def test_home_loads_plotly_and_results_partial(client: TestClient, db_path) -> None:
-    plan_id = _bootstrap_plan(db_path)
+def test_home_loads_plotly_and_results_partial(
+    client: TestClient, plan_id: int
+) -> None:
 
     response: httpx.Response = client.get(f"{HOME}?plan={plan_id}")
 
@@ -212,9 +201,8 @@ def test_home_loads_plotly_and_results_partial(client: TestClient, db_path) -> N
 
 
 def test_patch_portfolio_persists_balance_change(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     expected_balance = Decimal("750000")
 
     response: httpx.Response = client.patch(
@@ -229,9 +217,8 @@ def test_patch_portfolio_persists_balance_change(
 
 
 def test_patch_portfolio_negative_balance_returns_422_without_persisting(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     original = repo.get_by_id(plan_id)
     assert original is not None
     invalid_balance = Decimal("-1")
@@ -270,8 +257,9 @@ def test_patch_portfolio_updates_only_queried_plan(client, db_path) -> None:
     assert plan_a.portfolio.current_savings_balance != expected_balance
 
 
-def test_patch_settings_persists_fred_api_key(client: TestClient, db_path) -> None:
-    plan_id = _bootstrap_plan(db_path)
+def test_patch_settings_persists_fred_api_key(
+    client: TestClient, plan_id: int, db_path
+) -> None:
     expected_key = "fred-ui-key"
     response: httpx.Response = client.patch(
         f"{PLAN_SETTINGS}?plan={plan_id}",
@@ -298,8 +286,9 @@ def test_settings_section_never_echoes_stored_api_key(
     assert "Clear stored FRED API key" in response.text
 
 
-def test_blank_settings_patch_keeps_existing_key(client: TestClient, db_path) -> None:
-    plan_id = _bootstrap_plan(db_path)
+def test_blank_settings_patch_keeps_existing_key(
+    client: TestClient, plan_id: int, db_path
+) -> None:
     expected_key = "keep-existing-key"
     SettingsRepository(db_path=db_path).save(AppSettings(fred_api_key=expected_key))
 
@@ -312,9 +301,8 @@ def test_blank_settings_patch_keeps_existing_key(client: TestClient, db_path) ->
 
 
 def test_blank_eod_settings_patch_keeps_existing_key(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int, db_path
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     expected_key = "keep-existing-eod-key"
     SettingsRepository(db_path=db_path).save(AppSettings(eod_api_key=expected_key))
 
@@ -326,8 +314,9 @@ def test_blank_eod_settings_patch_keeps_existing_key(
     assert SettingsRepository(db_path=db_path).get().eod_api_key == expected_key
 
 
-def test_clear_settings_patch_removes_existing_key(client: TestClient, db_path) -> None:
-    plan_id = _bootstrap_plan(db_path)
+def test_clear_settings_patch_removes_existing_key(
+    client: TestClient, plan_id: int, db_path
+) -> None:
     SettingsRepository(db_path=db_path).save(AppSettings(fred_api_key="clear-me"))
 
     response: httpx.Response = client.patch(
@@ -339,9 +328,10 @@ def test_clear_settings_patch_removes_existing_key(client: TestClient, db_path) 
     assert SettingsRepository(db_path=db_path).get().fred_api_key is None
 
 
-def test_patch_settings_persists_eod_api_key(client: TestClient, db_path) -> None:
+def test_patch_settings_persists_eod_api_key(
+    client: TestClient, plan_id: int, db_path
+) -> None:
     expected_key = "eod-ui-key"
-    plan_id = _bootstrap_plan(db_path)
     response: httpx.Response = client.patch(
         f"{PLAN_SETTINGS}?plan={plan_id}",
         data={EOD_API_KEY: expected_key},
@@ -352,11 +342,10 @@ def test_patch_settings_persists_eod_api_key(client: TestClient, db_path) -> Non
 
 
 def test_clear_eod_settings_patch_removes_existing_key(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int, db_path
 ) -> None:
     key_to_clear = "clear-me"
     SettingsRepository(db_path=db_path).save(AppSettings(eod_api_key=key_to_clear))
-    plan_id = _bootstrap_plan(db_path)
     response: httpx.Response = client.patch(
         f"{PLAN_SETTINGS}?plan={plan_id}",
         data={CLEAR_EOD_API_KEY: "true"},
@@ -367,11 +356,10 @@ def test_clear_eod_settings_patch_removes_existing_key(
 
 
 def test_settings_section_never_echoes_stored_eod_key(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int, db_path
 ) -> None:
     secret_key = "eod-secret-value"
     SettingsRepository(db_path=db_path).save(AppSettings(eod_api_key=secret_key))
-    plan_id = _bootstrap_plan(db_path)
     response: httpx.Response = client.get(f"{HOME}?plan={plan_id}")
 
     assert response.status_code == 200
@@ -381,9 +369,8 @@ def test_settings_section_never_echoes_stored_eod_key(
 
 
 def test_patch_household_without_partner_saves_single_person(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     form_data = _household_form_data()
     del form_data[PERSON2_BIRTH_MONTH]
     del form_data[PERSON2_BIRTH_YEAR]
@@ -402,9 +389,8 @@ def test_patch_household_without_partner_saves_single_person(
 
 
 def test_patch_household_with_partner_saves_two_people(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     form_data = _household_form_data()
     form_data[HAS_PARTNER] = "on"
 
@@ -420,9 +406,8 @@ def test_patch_household_with_partner_saves_two_people(
 
 
 def test_patch_household_preserves_jobs_ss_and_tax_fields(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     seeded = repo.get_by_id(plan_id)
     assert seeded is not None
     expected_job_label = "Engineer"
@@ -461,9 +446,8 @@ def test_patch_household_preserves_jobs_ss_and_tax_fields(
 
 
 def test_patch_household_clears_residence_state_when_none_selected(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     modeled_state = TAX_MODELED_STATES[0]
     seeded = repo.get_by_id(plan_id)
     assert seeded is not None
@@ -482,9 +466,8 @@ def test_patch_household_clears_residence_state_when_none_selected(
 
 
 def test_patch_household_sets_residence_state_to_modeled_state(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     modeled_state = TAX_MODELED_STATES[0]
     form_data = _household_form_data()
     form_data[HAS_PARTNER] = "on"
@@ -496,10 +479,14 @@ def test_patch_household_sets_residence_state_to_modeled_state(
     after = repo.get_by_id(plan_id)
     assert after is not None
     assert after.household.residence_state == modeled_state
-    plan_id = _bootstrap_plan(db_path)
+
+
+def test_patch_household_keeps_explicit_single_status_with_partner(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
     chosen_status = "single"
     form_data = _household_form_data()
-    form_data[HAS_PARTNER] = "on"  # partner present, but user forces single
+    form_data[HAS_PARTNER] = "on"
     form_data[FILING_STATUS] = chosen_status
 
     response = client.patch(f"{PLAN_HOUSEHOLD}?plan={plan_id}", data=form_data)
@@ -511,9 +498,8 @@ def test_patch_household_sets_residence_state_to_modeled_state(
 
 
 def test_patch_household_invalid_value_returns_422_without_persisting(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     original = repo.get_by_id(plan_id)
     assert original is not None
     invalid_max_age = "-200"
@@ -533,11 +519,10 @@ def test_patch_household_invalid_value_returns_422_without_persisting(
 
 @pytest.mark.parametrize("route", [HOME, RESULTS])
 def test_real_run_passes_stored_keys_with_live_refresh_enabled(
-    client: TestClient, db_path, monkeypatch, route: str
+    client: TestClient, plan_id: int, db_path, monkeypatch, route: str
 ) -> None:
     import sys
 
-    plan_id = _bootstrap_plan(db_path)
     expected_fred_key = "fred-secret"
     expected_eod_key = "eod-secret"
     allow_live_refresh = True
@@ -563,9 +548,8 @@ def test_real_run_passes_stored_keys_with_live_refresh_enabled(
 
 
 def test_results_returns_chart_after_balance_update(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     expected_balance = Decimal("750000")
     patch_response: httpx.Response = client.patch(
         f"{PLAN_PORTFOLIO}?plan={plan_id}",
@@ -579,8 +563,9 @@ def test_results_returns_chart_after_balance_update(
     assert 'id="chart-config"' in response.text
 
 
-def test_results_renders_default_chart_selected(client: TestClient, db_path) -> None:
-    plan_id = _bootstrap_plan(db_path)
+def test_results_renders_default_chart_selected(
+    client: TestClient, plan_id: int
+) -> None:
 
     response = client.get(f"{RESULTS}?plan={plan_id}")
 
@@ -590,9 +575,8 @@ def test_results_renders_default_chart_selected(client: TestClient, db_path) -> 
 
 
 def test_results_shows_initial_and_worst_case_spending(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
 
     response = client.get(f"{RESULTS}?plan={plan_id}")
 
@@ -603,9 +587,8 @@ def test_results_shows_initial_and_worst_case_spending(
 
 
 def test_results_invalid_chart_falls_back_to_default(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
 
     response = client.get(f"{RESULTS}?plan={plan_id}&chart=bogus")
 
@@ -613,8 +596,7 @@ def test_results_invalid_chart_falls_back_to_default(
     assert f'value="{web_charts.DEFAULT_CHART}" selected' in response.text
 
 
-def test_results_honors_valid_chart(client: TestClient, db_path) -> None:
-    plan_id = _bootstrap_plan(db_path)
+def test_results_honors_valid_chart(client: TestClient, plan_id: int) -> None:
     chosen = web_charts.PORTFOLIO
 
     response = client.get(f"{RESULTS}?plan={plan_id}&chart={chosen}")
@@ -624,11 +606,10 @@ def test_results_honors_valid_chart(client: TestClient, db_path) -> None:
 
 
 def test_results_caches_simulation_until_plan_changes(
-    client: TestClient, db_path, monkeypatch
+    client: TestClient, plan_id: int, monkeypatch
 ) -> None:
     import sys
 
-    plan_id = _bootstrap_plan(db_path)
     app_module = sys.modules["web.app"]
     real_run_simulation = app_module.run_simulation
     call_count = {"n": 0}
@@ -662,11 +643,10 @@ def test_results_caches_simulation_until_plan_changes(
 
 
 def test_results_reruns_simulation_after_settings_key_change(
-    client: TestClient, db_path, monkeypatch
+    client: TestClient, plan_id: int, monkeypatch
 ) -> None:
     import sys
 
-    plan_id = _bootstrap_plan(db_path)
     app_module = sys.modules["web.app"]
     real_run_simulation = app_module.run_simulation
     call_count = {"n": 0}
@@ -700,11 +680,10 @@ def test_results_reruns_simulation_after_settings_key_change(
 
 
 def test_home_and_results_share_simulation_cache(
-    client: TestClient, db_path, monkeypatch
+    client: TestClient, plan_id: int, monkeypatch
 ) -> None:
     import sys
 
-    plan_id = _bootstrap_plan(db_path)
     app_module = sys.modules["web.app"]
     real_run_simulation = app_module.run_simulation
     call_count = {"n": 0}
@@ -724,12 +703,11 @@ def test_home_and_results_share_simulation_cache(
 
 
 def test_results_shows_message_when_simulation_fails(
-    client: TestClient, db_path, monkeypatch, caplog
+    client: TestClient, plan_id: int, monkeypatch, caplog
 ) -> None:
     import logging
     import sys
 
-    plan_id = _bootstrap_plan(db_path)
     app_module = sys.modules["web.app"]
     failure_detail = "engine exploded"
 
@@ -755,11 +733,10 @@ def test_results_shows_message_when_simulation_fails(
 
 
 def test_home_shows_simulation_failure_in_results_panel(
-    client: TestClient, db_path, monkeypatch
+    client: TestClient, plan_id: int, monkeypatch
 ) -> None:
     import sys
 
-    plan_id = _bootstrap_plan(db_path)
     app_module = sys.modules["web.app"]
     failure_detail = "preprocess broke"
 
@@ -778,9 +755,8 @@ def test_home_shows_simulation_failure_in_results_panel(
 
 
 def test_home_results_panel_reads_chart_from_select(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
 
     response = client.get(f"{HOME}?plan={plan_id}")
 
@@ -821,7 +797,9 @@ def test_create_plan_sets_default_when_unset(client: TestClient, db_path) -> Non
     assert response.headers["location"] == f"{HOME}?plan={new_id}"
 
 
-def test_duplicate_plan_redirects_to_copy(client: TestClient, db_path) -> None:
+def test_duplicate_plan_redirects_to_copy(
+    client: TestClient, plan_id: int, db_path
+) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
     source_id, source = plans.ensure_bootstrap(settings_repo=settings)
@@ -847,7 +825,7 @@ def test_duplicate_plan_redirects_to_copy(client: TestClient, db_path) -> None:
     assert copied.portfolio.current_savings_balance == expected_balance
 
 
-def test_rename_plan_updates_name(client: TestClient, db_path) -> None:
+def test_rename_plan_updates_name(client: TestClient, plan_id: int, db_path) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
     plan_id, _ = plans.ensure_bootstrap(settings_repo=settings)
@@ -865,7 +843,9 @@ def test_rename_plan_updates_name(client: TestClient, db_path) -> None:
     assert loaded.name == expected_name
 
 
-def test_rename_plan_with_blank_name_returns_400(client: TestClient, db_path) -> None:
+def test_rename_plan_with_blank_name_returns_400(
+    client: TestClient, plan_id: int, db_path
+) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
     plan_id, _ = plans.ensure_bootstrap(settings_repo=settings)
@@ -884,7 +864,9 @@ def test_rename_plan_with_blank_name_returns_400(client: TestClient, db_path) ->
     assert loaded.name == original_name
 
 
-def test_set_default_updates_settings(client: TestClient, db_path) -> None:
+def test_set_default_updates_settings(
+    client: TestClient, plan_id: int, db_path
+) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
     first_id, _ = plans.ensure_bootstrap(settings_repo=settings)
@@ -901,7 +883,9 @@ def test_set_default_updates_settings(client: TestClient, db_path) -> None:
     assert first_id != second_id
 
 
-def test_delete_plan_reassigns_default_when_needed(client: TestClient, db_path) -> None:
+def test_delete_plan_reassigns_default_when_needed(
+    client: TestClient, plan_id: int, db_path
+) -> None:
     plans = PlanRepository(db_path=db_path)
     settings_repo = SettingsRepository(db_path=db_path)
     first_id, _ = plans.ensure_bootstrap(settings_repo=settings_repo)
@@ -923,7 +907,7 @@ def test_delete_plan_reassigns_default_when_needed(client: TestClient, db_path) 
 
 
 def test_delete_plan_redirects_to_real_id_when_default_is_none(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int, db_path
 ) -> None:
     plans = PlanRepository(db_path=db_path)
     settings_repo = SettingsRepository(db_path=db_path)
@@ -943,7 +927,7 @@ def test_delete_plan_redirects_to_real_id_when_default_is_none(
     assert response.headers["location"] == f"{HOME}?plan={first_id}"
 
 
-def test_delete_last_plan_rejected(client: TestClient, db_path) -> None:
+def test_delete_last_plan_rejected(client: TestClient, plan_id: int, db_path) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
     only_id, _ = plans.ensure_bootstrap(settings_repo=settings)
@@ -955,7 +939,7 @@ def test_delete_last_plan_rejected(client: TestClient, db_path) -> None:
 
 
 def test_delete_last_loadable_rejected_when_corrupt_sibling_exists(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int, db_path
 ) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
@@ -977,7 +961,9 @@ def test_delete_last_loadable_rejected_when_corrupt_sibling_exists(
     assert len(plans.list()) == 2
 
 
-def test_delete_sibling_keeps_active_plan(client: TestClient, db_path) -> None:
+def test_delete_sibling_keeps_active_plan(
+    client: TestClient, plan_id: int, db_path
+) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
     active_id, _ = plans.ensure_bootstrap(settings_repo=settings)
@@ -996,7 +982,9 @@ def test_delete_sibling_keeps_active_plan(client: TestClient, db_path) -> None:
     assert response.headers["location"] == f"{HOME}?plan={active_id}"
 
 
-def test_delete_unknown_plan_returns_404(client: TestClient, db_path) -> None:
+def test_delete_unknown_plan_returns_404(
+    client: TestClient, plan_id: int, db_path
+) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
     plans.ensure_bootstrap(settings_repo=settings)
@@ -1008,17 +996,15 @@ def test_delete_unknown_plan_returns_404(client: TestClient, db_path) -> None:
     assert plans.list() == before
 
 
-def test_results_without_plan_returns_404(client: TestClient, db_path) -> None:
-    _bootstrap_plan(db_path)
-
+def test_results_without_plan_returns_404(client: TestClient, plan_id: int) -> None:
     response = client.get(RESULTS)
 
     assert response.status_code == 404
 
 
-def test_patch_portfolio_without_plan_returns_404(client: TestClient, db_path) -> None:
-    _bootstrap_plan(db_path)
-
+def test_patch_portfolio_without_plan_returns_404(
+    client: TestClient, plan_id: int
+) -> None:
     response = client.patch(
         PLAN_PORTFOLIO,
         data={CURRENT_SAVINGS_BALANCE: "1000"},
@@ -1028,7 +1014,7 @@ def test_patch_portfolio_without_plan_returns_404(client: TestClient, db_path) -
 
 
 def test_delete_unparseable_plan_succeeds_without_loading_json(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int, db_path
 ) -> None:
     plans = PlanRepository(db_path=db_path)
     settings = SettingsRepository(db_path=db_path)
@@ -1056,8 +1042,9 @@ def test_delete_unparseable_plan_succeeds_without_loading_json(
     assert response.headers["location"] == f"{HOME}?plan={good_id}"
 
 
-def test_home_delete_form_requires_confirm(client: TestClient, db_path) -> None:
-    plan_id = _bootstrap_plan(db_path)
+def test_home_delete_form_requires_confirm(
+    client: TestClient, plan_id: int, db_path
+) -> None:
     plans = PlanRepository(db_path=db_path)
     plans.create(name="Second")
 

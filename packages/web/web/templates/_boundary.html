@@ -1,5 +1,5 @@
 {% macro boundary_control(name_prefix, current, people, allow_none=False, allow_now=False, allow_max_age=False, none_label="—") -%}
-<span class="boundary-control" data-prefix="{{ name_prefix }}">
+<span class="boundary-control">
   <select name="{{ name_prefix }}_kind" class="boundary-kind">
     {% if allow_none %}<option value="none"{% if current.kind == 'none' %} selected{% endif %}>{{ none_label }}</option>{% endif %}
     {% if allow_now %}<option value="now"{% if current.kind == 'now' %} selected{% endif %}>Now</option>{% endif %}

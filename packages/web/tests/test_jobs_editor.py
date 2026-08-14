@@ -2,7 +2,6 @@ from decimal import Decimal
 
 from core.job import Job
 from core.repository import PlanRepository
-from core.settings_repository import SettingsRepository
 from core.streams import CalendarMonthBoundary
 from domain.statutory.pension import (
     CALSTRS_2_AT_62_AGE_FACTORS,
@@ -17,17 +16,9 @@ from web.sections import JOBS_TITLE
 from web import forms
 
 
-def _bootstrap_plan(db_path) -> int:
-    plans = PlanRepository(db_path=db_path)
-    settings = SettingsRepository(db_path=db_path)
-    plan_id, _ = plans.ensure_bootstrap(settings_repo=settings)
-    return plan_id
-
-
 def test_patch_jobs_adds_job_to_person1(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     expected_label = "Engineer"
     expected_income = "150000"
     data = {
@@ -51,9 +42,8 @@ def test_patch_jobs_adds_job_to_person1(
 
 
 def test_patch_jobs_blank_annual_income_returns_422(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     expected_income = Decimal("150000")
     job_start = CalendarMonthBoundary(year=2010, month=1)
     seeded = repo.get_by_id(plan_id)
@@ -80,9 +70,8 @@ def test_patch_jobs_blank_annual_income_returns_422(
 
 
 def test_patch_jobs_empty_form_clears_jobs(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     job_start = CalendarMonthBoundary(year=2010, month=1)
     seeded = repo.get_by_id(plan_id)
     assert seeded is not None
@@ -100,9 +89,8 @@ def test_patch_jobs_empty_form_clears_jobs(
 
 
 def test_patch_jobs_attaches_calstrs_pension(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     expected_table = age_factors_from_statutory(CALSTRS_2_AT_62_AGE_FACTORS)
     pension_preset = forms.PENSION_CALSTRS_2_AT_62
     data = {
@@ -130,14 +118,12 @@ def test_patch_jobs_attaches_calstrs_pension(
 
 
 def test_editor_jobs_pension_dropdown_defaults_to_none(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
 
     response = client.get(f"{EDITOR_JOBS}?plan={plan_id}")
 
     assert response.status_code == 200
-    assert "pension_enabled" not in response.text
     assert forms.PENSION_LABEL in response.text
     assert f'value="{forms.PENSION_NONE}"' in response.text
     assert f">{forms.PENSION_NONE_LABEL}</option>" in response.text
@@ -146,9 +132,8 @@ def test_editor_jobs_pension_dropdown_defaults_to_none(
 
 
 def test_patch_jobs_for_absent_partner_returns_422(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     single = repo.get_by_id(plan_id)
     assert single is not None
     single.household.person2 = None
@@ -167,9 +152,8 @@ def test_patch_jobs_for_absent_partner_returns_422(
 
 
 def test_editor_jobs_formats_income_as_usd(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     income = Decimal("150000")
     expected_display = format_usd(income)
     seeded = repo.get_by_id(plan_id)
@@ -187,9 +171,8 @@ def test_editor_jobs_formats_income_as_usd(
 
 
 def test_editor_jobs_formats_raise_as_percent(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     raise_rate = Decimal("0.035")
     expected_display = format_percent(raise_rate)
     seeded = repo.get_by_id(plan_id)
@@ -209,8 +192,7 @@ def test_editor_jobs_formats_raise_as_percent(
     assert f'value="{expected_display}"' in response.text
 
 
-def test_editor_jobs_get_renders_section(client: TestClient, db_path) -> None:
-    plan_id = _bootstrap_plan(db_path)
+def test_editor_jobs_get_renders_section(client: TestClient, plan_id: int) -> None:
 
     response = client.get(f"{EDITOR_JOBS}?plan={plan_id}")
 
@@ -218,8 +200,9 @@ def test_editor_jobs_get_renders_section(client: TestClient, db_path) -> None:
     assert JOBS_TITLE in response.text
 
 
-def test_editor_jobs_start_omits_plan_start_option(client: TestClient, db_path) -> None:
-    plan_id = _bootstrap_plan(db_path)
+def test_editor_jobs_start_omits_plan_start_option(
+    client: TestClient, plan_id: int
+) -> None:
 
     response = client.get(f"{EDITOR_JOBS}?plan={plan_id}")
 

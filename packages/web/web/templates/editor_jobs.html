@@ -1,6 +1,5 @@
 {% import "_boundary.html" as boundary %}
-{% set people = [("person1", "You", plan.household.person1)] %}
-{% if plan.household.person2 %}{% set people = people + [("person2", "Partner", plan.household.person2)] %}{% endif %}
+{% set people = forms.people_choices(plan) %}
 
 {% macro sabbatical_row(prefix, sab, choices) %}
 <fieldset class="row sabbatical-row">
@@ -38,7 +37,7 @@
   <div class="pension-fields">
     <div class="boundary-field">Service start {{ boundary.boundary_control("jobs[" ~ index ~ "].pension_service_start", boundaries.to_form(job.pension.service_start) if (job and job.pension) else {"kind": boundaries.KIND_CALENDAR}, choices, allow_max_age=True) }}</div>
     <div class="boundary-field">Claim {{ boundary.boundary_control("jobs[" ~ index ~ "].pension_claim", boundaries.to_form(job.pension.claim) if (job and job.pension) else {"kind": boundaries.KIND_PERSON_AGE}, choices, allow_max_age=True) }}</div>
-    <label>Averaging months <input type="number" name="jobs[{{ index }}].pension_averaging_months" value="{{ job.pension.final_comp_averaging_months if (job and job.pension) else '36' }}"></label>
+    <label>Averaging months <input type="number" name="jobs[{{ index }}].pension_averaging_months" value="{{ job.pension.final_comp_averaging_months if (job and job.pension) else forms.PENSION_AVERAGING_MONTHS_DEFAULT }}"></label>
     <label>Trust factor <input type="text" inputmode="decimal" class="percent-input" name="jobs[{{ index }}].pension_trust_factor" value="{{ (job.pension.trust_factor if (job and job.pension) else 1)|percent }}"></label>
     <label>Benefit real growth <input type="text" inputmode="decimal" class="percent-input" name="jobs[{{ index }}].pension_growth" value="{{ (job.pension.benefit_real_growth_rate if (job and job.pension) else 0)|percent }}"></label>
   </div>

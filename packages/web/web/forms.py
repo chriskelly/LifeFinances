@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from typing import get_args
 
-from core.job import Job
+from core.job import FormulaPension, Job
 from core.models import (
     AppSettings,
     FilingStatus,
@@ -78,6 +78,9 @@ PENSION_CALSTRS_2_AT_62 = "calstrs_2_at_62"
 PENSION_LABEL = "Pension"
 PENSION_NONE_LABEL = "None"
 PENSION_CALSTRS_2_AT_62_LABEL = "CalSTRS 2% at 62"
+PENSION_AVERAGING_MONTHS_DEFAULT = int(
+    FormulaPension.model_fields["final_comp_averaging_months"].default
+)
 MONTH_OF_BIRTH_LABEL = "Month of Birth"
 RESIDENCE_STATE_NONE = "none"
 RESIDENCE_STATE_NONE_LABEL = "No income-tax state"
@@ -88,9 +91,22 @@ RESIDENCE_STATE_REQUEST_LINK_TEXT = "Request your state (#200)"
 SS_EARNINGS_FILE = "statement"
 
 
-class HouseholdForm(BaseModel):
-    """Flat transport DTO for HTML forms. Constraints live on core.models only."""
+def parse_filing_status(raw: str) -> FilingStatus:
+    if raw == "single" or raw == "married_filing_jointly":
+        return raw
+    raise ValueError(f"unknown filing status: {raw!r}")
 
+
+def people_choices(plan: Plan) -> list[tuple[str, str, PersonHousehold]]:
+    people: list[tuple[str, str, PersonHousehold]] = [
+        ("person1", "You", plan.household.person1)
+    ]
+    if plan.household.person2 is not None:
+        people.append(("person2", "Partner", plan.household.person2))
+    return people
+
+
+class HouseholdForm(BaseModel):
     person1_birth_month: int
     person1_birth_year: int
     person1_max_age_years: int
@@ -113,20 +129,27 @@ class HouseholdForm(BaseModel):
             }
         )
         if self.has_partner:
+            if (
+                self.person2_birth_month is None
+                or self.person2_birth_year is None
+                or self.person2_max_age_years is None
+            ):
+                raise ValueError("Partner requires birth month, year, and max age")
             existing2 = data.get("person2")
             if existing2 is None:
                 existing2 = PersonHousehold(
-                    birth_month=self.person2_birth_month or 1,
-                    birth_year=self.person2_birth_year or 0,
-                    max_age_years=self.person2_max_age_years or 1,
+                    birth_month=self.person2_birth_month,
+                    birth_year=self.person2_birth_year,
+                    max_age_years=self.person2_max_age_years,
                 ).model_dump()
-            existing2.update(
-                {
-                    "birth_month": self.person2_birth_month,
-                    "birth_year": self.person2_birth_year,
-                    "max_age_years": self.person2_max_age_years,
-                }
-            )
+            else:
+                existing2.update(
+                    {
+                        "birth_month": self.person2_birth_month,
+                        "birth_year": self.person2_birth_year,
+                        "max_age_years": self.person2_max_age_years,
+                    }
+                )
             data["person2"] = existing2
         else:
             data["person2"] = None
@@ -134,7 +157,7 @@ class HouseholdForm(BaseModel):
         if self.residence_state is not None:
             data["residence_state"] = (
                 None
-                if self.residence_state in ("", RESIDENCE_STATE_NONE)
+                if self.residence_state == RESIDENCE_STATE_NONE
                 else self.residence_state
             )
         data["ss_pension_taxable_fraction"] = self.ss_pension_taxable_fraction
@@ -144,8 +167,6 @@ class HouseholdForm(BaseModel):
 
 
 class PortfolioForm(BaseModel):
-    """Flat transport DTO for HTML forms. Constraints live on core.models only."""
-
     current_savings_balance: Decimal
 
     def apply_to(self, plan: Plan) -> Plan:
@@ -170,8 +191,6 @@ def _apply_api_key(
 
 
 class AppSettingsForm(BaseModel):
-    """Flat transport DTO for local app settings."""
-
     fred_api_key: str | None = None
     clear_fred_api_key: bool = False
     eod_api_key: str | None = None
@@ -202,7 +221,11 @@ def _job_from_row(row: list[tuple[str, str]], *, today: date) -> Job:
             "claim": boundaries.row_boundary(row, "pension_claim", today=today),
             "age_factor_table": age_factors_from_statutory(CALSTRS_2_AT_62_AGE_FACTORS),
             "final_comp_averaging_months": int(
-                boundaries.row_scalar(row, "pension_averaging_months", "36")
+                boundaries.row_scalar(
+                    row,
+                    "pension_averaging_months",
+                    str(PENSION_AVERAGING_MONTHS_DEFAULT),
+                )
             ),
             "trust_factor": parse_percent(
                 boundaries.row_scalar(row, "pension_trust_factor", "100%")
@@ -297,8 +320,6 @@ class ManualIncomeForm:
 
 
 class SocialSecurityForm(BaseModel):
-    """Flat transport DTO. Bounds live on core.social_security."""
-
     person: PersonId
     claim_age_years: int
     claim_age_months: int = 0

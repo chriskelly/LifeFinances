@@ -283,15 +283,6 @@ select {
   min-height: 450px;
 }
 
-.results-stub p {
-  margin: 0 0 0.75rem;
-}
-
-.stub-disclaimer {
-  color: #666;
-  font-size: 0.9rem;
-}
-
 .error-message {
   margin: 2rem;
   color: #a00;

@@ -1,6 +1,5 @@
 {% import "_boundary.html" as boundary %}
-{% set people = [("person1", "You")] %}
-{% if plan.household.person2 %}{% set people = people + [("person2", "Partner")] %}{% endif %}
+{% set people = forms.people_choices(plan) %}
 
 {% macro stream_row(index, stream, choices) %}
 <fieldset class="row stream-row">

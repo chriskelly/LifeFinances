@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 from core.repository import PlanRepository
-from core.settings_repository import SettingsRepository
 from core.social_security import AnnualEarnings
 from fastapi.testclient import TestClient
 from web.forms import CLAIM_AGE_MONTHS, CLAIM_AGE_YEARS, SS_EARNINGS_FILE
@@ -30,17 +29,9 @@ def _statement_xml(years: list[int]) -> str:
     )
 
 
-def _bootstrap_plan(db_path) -> int:
-    plans = PlanRepository(db_path=db_path)
-    settings = SettingsRepository(db_path=db_path)
-    plan_id, _ = plans.ensure_bootstrap(settings_repo=settings)
-    return plan_id
-
-
 def test_patch_claim_age_persists_total_months_and_keeps_earnings(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     seeded = repo.get_by_id(plan_id)
     assert seeded is not None
     kept_year = 2019
@@ -65,9 +56,8 @@ def test_patch_claim_age_persists_total_months_and_keeps_earnings(
 
 
 def test_upload_statement_replaces_earnings_and_triggers_refresh(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     expected_years = [2020, 2023]
 
     response = client.post(
@@ -90,9 +80,8 @@ def test_upload_statement_replaces_earnings_and_triggers_refresh(
 
 
 def test_upload_invalid_xml_returns_422_without_changing_earnings(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     seeded = repo.get_by_id(plan_id)
     assert seeded is not None
     kept_year = 2019
@@ -115,9 +104,8 @@ def test_upload_invalid_xml_returns_422_without_changing_earnings(
 
 
 def test_editor_social_security_get_renders_section(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
 
     response = client.get(f"{EDITOR_SOCIAL_SECURITY}?plan={plan_id}")
 

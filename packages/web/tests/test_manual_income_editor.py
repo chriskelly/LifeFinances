@@ -1,24 +1,15 @@
 from decimal import Decimal
 
 from core.repository import PlanRepository
-from core.settings_repository import SettingsRepository
 from core.streams import CalendarMonthBoundary, TimedStream
 from fastapi.testclient import TestClient
 from web.routes import EDITOR_MANUAL_INCOME, PLAN_MANUAL_INCOME
 from web.sections import MANUAL_INCOME_TITLE
 
 
-def _bootstrap_plan(db_path) -> int:
-    plans = PlanRepository(db_path=db_path)
-    settings = SettingsRepository(db_path=db_path)
-    plan_id, _ = plans.ensure_bootstrap(settings_repo=settings)
-    return plan_id
-
-
 def test_patch_manual_income_adds_stream(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     expected_label = "Rental"
     expected_amount = "2500"
     data = {
@@ -40,9 +31,8 @@ def test_patch_manual_income_adds_stream(
 
 
 def test_patch_manual_income_blank_monthly_amount_returns_422(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     expected_label = "Rental"
     expected_amount = Decimal("2500")
     stream_start = CalendarMonthBoundary(year=2010, month=1)
@@ -74,9 +64,8 @@ def test_patch_manual_income_blank_monthly_amount_returns_422(
 
 
 def test_patch_manual_income_empty_clears_streams(
-    client: TestClient, repo: PlanRepository, db_path
+    client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
     stream_start = CalendarMonthBoundary(year=2010, month=1)
     seeded = repo.get_by_id(plan_id)
     assert seeded is not None
@@ -93,8 +82,9 @@ def test_patch_manual_income_empty_clears_streams(
     assert after.manual_income_streams == []
 
 
-def test_editor_manual_income_get_renders_section(client: TestClient, db_path) -> None:
-    plan_id = _bootstrap_plan(db_path)
+def test_editor_manual_income_get_renders_section(
+    client: TestClient, plan_id: int
+) -> None:
 
     response = client.get(f"{EDITOR_MANUAL_INCOME}?plan={plan_id}")
 
@@ -103,9 +93,8 @@ def test_editor_manual_income_get_renders_section(client: TestClient, db_path) -
 
 
 def test_editor_manual_income_start_omits_plan_start_option(
-    client: TestClient, db_path
+    client: TestClient, plan_id: int
 ) -> None:
-    plan_id = _bootstrap_plan(db_path)
 
     response = client.get(f"{EDITOR_MANUAL_INCOME}?plan={plan_id}")
 

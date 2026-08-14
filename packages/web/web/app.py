@@ -354,7 +354,7 @@ def _register_social_security_routes(web_app: FastAPI) -> None:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
             updated = SocialSecurityForm(
-                person=person,  # type: ignore[arg-type]
+                person=boundaries.parse_person_id(person),
                 claim_age_years=claim_age_years,
                 claim_age_months=claim_age_months,
             ).apply_to(plan_model)
@@ -374,11 +374,12 @@ def _register_social_security_routes(web_app: FastAPI) -> None:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         raw = (await statement.read()).decode("utf-8", errors="replace")
         try:
+            person_id = boundaries.parse_person_id(person)
             earnings = parse_social_security_statement_xml(raw)
             data = plan_model.household.model_dump()
-            if data.get(person) is None:
+            if data.get(person_id) is None:
                 raise ValueError("No partner on the plan for this upload")
-            data[person]["social_security"]["earnings_record"] = [
+            data[person_id]["social_security"]["earnings_record"] = [
                 e.model_dump() for e in earnings
             ]
             household = Household.model_validate(data)
@@ -423,7 +424,7 @@ def _register_patch_routes(web_app: FastAPI) -> None:
                 person1_birth_month=person1_birth_month,
                 person1_birth_year=person1_birth_year,
                 person1_max_age_years=person1_max_age_years,
-                filing_status=filing_status,  # type: ignore[arg-type]
+                filing_status=forms.parse_filing_status(filing_status),
                 residence_state=residence_state,
                 ss_pension_taxable_fraction=percent.parse_percent(
                     ss_pension_taxable_fraction
@@ -490,7 +491,7 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         try:
             updated = JobsForm.from_form(
                 form,
-                person=person,  # type: ignore[arg-type]
+                person=boundaries.parse_person_id(person),
                 today=date.today(),
             ).apply_to(plan_model)
         except (ValidationError, ValueError, ArithmeticError) as exc:
