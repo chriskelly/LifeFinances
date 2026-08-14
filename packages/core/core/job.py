@@ -52,3 +52,11 @@ class Job(BaseModel):
         if self.annual_tax_deferred > self.annual_income:
             raise ValueError("annual_tax_deferred must not exceed annual_income")
         return self
+
+    @model_validator(mode="after")
+    def _pension_requires_end(self) -> Job:
+        # Service credit and final compensation are both measured to the job's
+        # end, so an open-ended pensioned job has no computable benefit.
+        if self.pension is not None and self.end is None:
+            raise ValueError("a job with a pension must have an end boundary")
+        return self

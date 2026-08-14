@@ -88,16 +88,13 @@ def test_patch_jobs_empty_form_clears_jobs(
     assert after.household.person1.jobs == []
 
 
-def test_patch_jobs_attaches_calstrs_pension(
-    client: TestClient, repo: PlanRepository, plan_id: int
-) -> None:
-    expected_table = age_factors_from_statutory(CALSTRS_2_AT_62_AGE_FACTORS)
-    pension_preset = forms.PENSION_CALSTRS_2_AT_62
-    data = {
+def _calstrs_job_form_data(*, end_kind: str) -> dict[str, str]:
+    return {
         "jobs[0].annual_income": "100000",
         "jobs[0].start_kind": "now",
-        "jobs[0].end_kind": "none",
-        "jobs[0].pension": pension_preset,
+        "jobs[0].end_kind": end_kind,
+        "jobs[0].end_person": "person1",
+        "jobs[0].pension": forms.PENSION_CALSTRS_2_AT_62,
         "jobs[0].pension_service_start_kind": "calendar_month",
         "jobs[0].pension_service_start_year": "2015",
         "jobs[0].pension_service_start_month": "8",
@@ -107,7 +104,16 @@ def test_patch_jobs_attaches_calstrs_pension(
         "jobs[0].pension_claim_age_months": "0",
     }
 
-    response = client.patch(f"{PLAN_JOBS}?plan={plan_id}&person=person1", data=data)
+
+def test_patch_jobs_attaches_calstrs_pension(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    expected_table = age_factors_from_statutory(CALSTRS_2_AT_62_AGE_FACTORS)
+
+    response = client.patch(
+        f"{PLAN_JOBS}?plan={plan_id}&person=person1",
+        data=_calstrs_job_form_data(end_kind="person_max_age"),
+    )
 
     assert response.status_code == 200
     after = repo.get_by_id(plan_id)
@@ -115,6 +121,20 @@ def test_patch_jobs_attaches_calstrs_pension(
     pension = after.household.person1.jobs[0].pension
     assert pension is not None
     assert pension.age_factor_table == expected_table
+
+
+def test_patch_jobs_rejects_pension_without_a_job_end(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    response = client.patch(
+        f"{PLAN_JOBS}?plan={plan_id}&person=person1",
+        data=_calstrs_job_form_data(end_kind="none"),
+    )
+
+    assert response.status_code == 422
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.person1.jobs == []
 
 
 def test_editor_jobs_pension_dropdown_defaults_to_none(

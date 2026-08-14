@@ -81,6 +81,9 @@ PENSION_CALSTRS_2_AT_62_LABEL = "CalSTRS 2% at 62"
 PENSION_AVERAGING_MONTHS_DEFAULT = int(
     FormulaPension.model_fields["final_comp_averaging_months"].default
 )
+PENSION_REQUEST_ISSUE_URL = "https://github.com/chriskelly/LifeFinances/issues/197"
+PENSION_REQUEST_LINK_TEXT = "More pension options (#197)"
+PENSION_REQUEST_LINK_TITLE = "Vote for a richer pension editor"
 MONTH_OF_BIRTH_LABEL = "Month of Birth"
 RESIDENCE_STATE_NONE = "none"
 RESIDENCE_STATE_NONE_LABEL = "No income-tax state"
@@ -97,6 +100,19 @@ def parse_filing_status(raw: str) -> FilingStatus:
     raise ValueError(f"unknown filing status: {raw!r}")
 
 
+def parse_residence_state(raw: str) -> str | None:
+    """Map a residence-state selection to a stored value, or `None` for no state tax.
+
+    Anything outside `TAX_MODELED_STATES` is rejected rather than stored, because
+    the tax layer silently treats an unknown state as zero state income tax.
+    """
+    if raw == RESIDENCE_STATE_NONE:
+        return None
+    if raw in TAX_MODELED_STATES:
+        return raw
+    raise ValueError(f"{raw!r} is not a state we model income tax for")
+
+
 def people_choices(plan: Plan) -> list[tuple[str, str, PersonHousehold]]:
     people: list[tuple[str, str, PersonHousehold]] = [
         ("person1", "You", plan.household.person1)
@@ -111,9 +127,12 @@ class HouseholdForm(BaseModel):
     person1_birth_year: int
     person1_max_age_years: int
     filing_status: FilingStatus
+    # `None` means "absent from the submission", so the stored value is left
+    # alone. Clearing residence state is the explicit RESIDENCE_STATE_NONE
+    # selection, not an omitted field.
     residence_state: str | None = None
-    ss_pension_taxable_fraction: Decimal = Decimal("0.80")
-    social_security_trust_factor: Decimal = Decimal(1)
+    ss_pension_taxable_fraction: Decimal | None = None
+    social_security_trust_factor: Decimal | None = None
     has_partner: bool = False
     person2_birth_month: int | None = None
     person2_birth_year: int | None = None
@@ -155,13 +174,11 @@ class HouseholdForm(BaseModel):
             data["person2"] = None
         data["filing_status"] = self.filing_status
         if self.residence_state is not None:
-            data["residence_state"] = (
-                None
-                if self.residence_state == RESIDENCE_STATE_NONE
-                else self.residence_state
-            )
-        data["ss_pension_taxable_fraction"] = self.ss_pension_taxable_fraction
-        data["social_security_trust_factor"] = self.social_security_trust_factor
+            data["residence_state"] = parse_residence_state(self.residence_state)
+        if self.ss_pension_taxable_fraction is not None:
+            data["ss_pension_taxable_fraction"] = self.ss_pension_taxable_fraction
+        if self.social_security_trust_factor is not None:
+            data["social_security_trust_factor"] = self.social_security_trust_factor
         household = Household.model_validate(data)
         return plan.model_copy(update={"household": household})
 

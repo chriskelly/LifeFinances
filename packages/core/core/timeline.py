@@ -21,15 +21,22 @@ def add_months(year: int, month: int, months: int) -> tuple[int, int]:
     return total // 12, total % 12 + 1
 
 
+def _resolve_person(household: Household, person_id: str) -> PersonHousehold:
+    person = getattr(household, person_id)
+    if person is None:
+        raise ValueError(f"boundary references {person_id}, who is not on the plan")
+    return person
+
+
 def boundary_to_year_month(boundary: Boundary, household: Household) -> tuple[int, int]:
     """Resolve a boundary to an absolute (year, month). Birth-date only; no `today`."""
     if isinstance(boundary, CalendarMonthBoundary):
         return boundary.year, boundary.month
     if isinstance(boundary, PersonAgeBoundary):
-        person = getattr(household, boundary.person)
+        person = _resolve_person(household, boundary.person)
         return add_months(person.birth_year, person.birth_month, boundary.age_months)
     if isinstance(boundary, PersonMaxAgeBoundary):
-        person = getattr(household, boundary.person)
+        person = _resolve_person(household, boundary.person)
         return person.birth_year + person.max_age_years, person.birth_month
     raise TypeError(f"Unknown boundary: {boundary!r}")
 

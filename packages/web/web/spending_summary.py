@@ -15,13 +15,19 @@ class SpendingSummary:
 
 
 def from_result(result: SimulationResult) -> SpendingSummary:
-    """Summarize total-spending series for the results panel.
+    """Summarize the total-spending series for the results panel.
 
-    Month 0 is deterministic across percentile rows; worst-case is the minimum
-    along the lowest-percentile path over the full horizon.
+    Row 0 of every percentile array is the lowest configured percentile
+    (`result.percentiles` is sorted ascending). Month 0 is identical across
+    rows, so `initial` is unambiguous.
+
+    `worst_case` is the smallest month on that lowest-percentile row. Percentiles
+    are computed independently per month, so the row is a cross-sectional
+    envelope rather than a single simulated run — no individual run necessarily
+    follows it.
     """
-    total = result.withdrawals_total
+    lowest_percentile_row = result.withdrawals_total[0]
     return SpendingSummary(
-        initial=float(total[0, 0]),
-        worst_case=float(total[0].min()),
+        initial=float(lowest_percentile_row[0]),
+        worst_case=float(lowest_percentile_row.min()),
     )

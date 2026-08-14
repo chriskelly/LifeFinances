@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,6 +12,8 @@ from core.models import Plan
 from core.paths import default_db_path
 from core.plan_names import copy_plan_name
 from core.settings_repository import SettingsRepository
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -42,6 +45,8 @@ class PlanRepository:
         try:
             return Plan.model_validate_json(row[0])
         except ValidationError:
+            # An unloadable plan disappears from the UI entirely, so record why.
+            logger.warning("Plan %s failed validation and cannot be loaded", plan_id)
             return None
 
     def save(self, plan_id: int, plan: Plan) -> None:

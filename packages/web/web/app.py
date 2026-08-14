@@ -86,6 +86,13 @@ templates.env.filters["percent"] = percent.format_percent
 _INIT_DB_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
 _SIMULATION_FAILURE_MESSAGE = "Simulation failed. Check plan inputs and try again."
 
+# A real SSA statement XML is a few hundred KB; cap the upload well above that
+# so a malformed or hostile file cannot be read into memory unbounded.
+MAX_STATEMENT_BYTES = 5 * 1024 * 1024
+STATEMENT_TOO_LARGE_MESSAGE = (
+    f"Statement is too large (limit {MAX_STATEMENT_BYTES // (1024 * 1024)} MB)."
+)
+
 _FIELD_LABELS = {
     "birth_month": "Birth month",
     "birth_year": "Birth year",
@@ -115,14 +122,12 @@ def _ss_partial(
     plan_id: int,
     plan_model: Plan,
     error: str | None = None,
-    status_code: int = 200,
     headers: dict[str, str] | None = None,
 ) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "editor_social_security.html",
         {"plan_id": plan_id, "plan": plan_model, "ss_error": error},
-        status_code=status_code,
         headers=headers,
     )
 
@@ -372,9 +377,22 @@ def _register_social_security_routes(web_app: FastAPI) -> None:
         person: Annotated[str, Query()] = "person1",
     ) -> Response:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
-        raw = (await statement.read()).decode("utf-8", errors="replace")
+        # Read one byte past the cap so an oversize upload is detectable without
+        # materializing the whole body.
+        payload = await statement.read(MAX_STATEMENT_BYTES + 1)
+        if len(payload) > MAX_STATEMENT_BYTES:
+            return _ss_partial(
+                request,
+                plan_id=plan_id,
+                plan_model=plan_model,
+                error=STATEMENT_TOO_LARGE_MESSAGE,
+            )
+        raw = payload.decode("utf-8", errors="replace")
         try:
             person_id = boundaries.parse_person_id(person)
+            # ElementTree is deliberate: it does not expand external or nested
+            # entities, so a hostile statement cannot mount an XXE or
+            # billion-laughs attack. Do not swap in a DTD-processing parser.
             earnings = parse_social_security_statement_xml(raw)
             data = plan_model.household.model_dump()
             if data.get(person_id) is None:
@@ -385,12 +403,14 @@ def _register_social_security_routes(web_app: FastAPI) -> None:
             household = Household.model_validate(data)
             updated = plan_model.model_copy(update={"household": household})
         except (ValidationError, ValueError) as exc:
+            # Returned as 200 so htmx swaps the re-rendered section: it ignores
+            # the body of non-2xx responses, which would leave the user with
+            # raw markup in the error banner instead of this partial.
             return _ss_partial(
                 request,
                 plan_id=plan_id,
                 plan_model=plan_model,
                 error=_error_message(exc),
-                status_code=422,
             )
         repo.save(plan_id, updated)
         return _ss_partial(
@@ -411,8 +431,8 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         repo: RepoDep,
         plan: Annotated[int | None, Query()] = None,
         residence_state: Annotated[str | None, Form()] = None,
-        ss_pension_taxable_fraction: Annotated[str, Form()] = "80.0%",
-        social_security_trust_factor: Annotated[str, Form()] = "100.0%",
+        ss_pension_taxable_fraction: Annotated[str | None, Form()] = None,
+        social_security_trust_factor: Annotated[str | None, Form()] = None,
         has_partner: Annotated[bool, Form()] = False,
         person2_birth_month: Annotated[int | None, Form()] = None,
         person2_birth_year: Annotated[int | None, Form()] = None,
@@ -426,10 +446,10 @@ def _register_patch_routes(web_app: FastAPI) -> None:
                 person1_max_age_years=person1_max_age_years,
                 filing_status=forms.parse_filing_status(filing_status),
                 residence_state=residence_state,
-                ss_pension_taxable_fraction=percent.parse_percent(
+                ss_pension_taxable_fraction=percent.parse_optional_percent(
                     ss_pension_taxable_fraction
                 ),
-                social_security_trust_factor=percent.parse_percent(
+                social_security_trust_factor=percent.parse_optional_percent(
                     social_security_trust_factor
                 ),
                 has_partner=has_partner,

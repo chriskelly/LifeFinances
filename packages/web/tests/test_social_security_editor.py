@@ -3,6 +3,7 @@ from decimal import Decimal
 from core.repository import PlanRepository
 from core.social_security import AnnualEarnings
 from fastapi.testclient import TestClient
+from web.app import MAX_STATEMENT_BYTES
 from web.forms import CLAIM_AGE_MONTHS, CLAIM_AGE_YEARS, SS_EARNINGS_FILE
 from web.routes import (
     EDITOR_SOCIAL_SECURITY,
@@ -79,25 +80,49 @@ def test_upload_statement_replaces_earnings_and_triggers_refresh(
     assert years == expected_years
 
 
-def test_upload_invalid_xml_returns_422_without_changing_earnings(
-    client: TestClient, repo: PlanRepository, plan_id: int
-) -> None:
+def _seed_earnings(repo: PlanRepository, plan_id: int) -> list[AnnualEarnings]:
     seeded = repo.get_by_id(plan_id)
     assert seeded is not None
-    kept_year = 2019
-    seeded_fica = Decimal("40000")
-    seeded_record = [AnnualEarnings(year=kept_year, fica_earnings=seeded_fica)]
-    seeded.household.person1.social_security.earnings_record = seeded_record
+    record = [AnnualEarnings(year=2019, fica_earnings=Decimal("40000"))]
+    seeded.household.person1.social_security.earnings_record = record
     repo.save(plan_id, seeded)
+    return record
+
+
+def test_upload_invalid_xml_rerenders_error_without_changing_earnings(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    seeded_record = _seed_earnings(repo, plan_id)
 
     response = client.post(
         f"{PLAN_SS_EARNINGS}?plan={plan_id}&person=person1",
         files={SS_EARNINGS_FILE: ("bad.xml", "<not-valid", "text/xml")},
     )
 
-    assert response.status_code == 422
+    # htmx only swaps 2xx responses, so the error has to come back as a
+    # renderable partial rather than an error status the shell dumps as text.
+    assert response.status_code == 200
     assert 'class="form-error"' in response.text
     assert 'role="alert"' in response.text
+    assert response.headers.get("HX-Trigger") is None
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.person1.social_security.earnings_record == seeded_record
+
+
+def test_upload_oversized_statement_is_rejected_without_changing_earnings(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    seeded_record = _seed_earnings(repo, plan_id)
+    too_large = "x" * (MAX_STATEMENT_BYTES + 1)
+
+    response = client.post(
+        f"{PLAN_SS_EARNINGS}?plan={plan_id}&person=person1",
+        files={SS_EARNINGS_FILE: ("huge.xml", too_large, "text/xml")},
+    )
+
+    assert response.status_code == 200
+    assert 'class="form-error"' in response.text
     after = repo.get_by_id(plan_id)
     assert after is not None
     assert after.household.person1.social_security.earnings_record == seeded_record

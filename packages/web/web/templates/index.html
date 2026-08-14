@@ -29,11 +29,35 @@
 
 <script>
   const formError = document.getElementById("form-error");
+  const GENERIC_SAVE_ERROR = "Something went wrong saving your changes.";
+
+  // Save routes answer with a plain-text message, but framework-level failures
+  // answer with JSON or HTML. Showing those verbatim dumps markup or an error
+  // blob into the banner, so only plain text is passed through.
+  function saveErrorMessage(body) {
+    const text = (body || "").trim();
+    if (!text) return GENERIC_SAVE_ERROR;
+    if (text.startsWith("{") || text.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(text);
+        const detail = parsed.detail;
+        if (typeof detail === "string") return detail;
+        if (Array.isArray(detail) && detail.length && detail[0].msg) {
+          return detail.map(function (item) { return item.msg; }).join("; ");
+        }
+      } catch (error) {
+        return GENERIC_SAVE_ERROR;
+      }
+      return GENERIC_SAVE_ERROR;
+    }
+    if (text.startsWith("<")) return GENERIC_SAVE_ERROR;
+    return text;
+  }
 
   document.body.addEventListener("htmx:responseError", function (event) {
-    formError.textContent =
-      (event.detail.xhr && event.detail.xhr.responseText) ||
-      "Something went wrong saving your changes.";
+    formError.textContent = saveErrorMessage(
+      event.detail.xhr && event.detail.xhr.responseText
+    );
     formError.hidden = false;
   });
 
@@ -43,7 +67,7 @@
     const isPlanForm =
       form.tagName === "FORM" &&
       patchTarget &&
-      patchTarget.startsWith("/plan/");
+      patchTarget.startsWith("{{ routes.PLAN_PREFIX }}");
     if (isPlanForm && event.detail.successful) {
       formError.textContent = "";
       formError.hidden = true;

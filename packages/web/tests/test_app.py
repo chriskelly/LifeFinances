@@ -10,7 +10,7 @@ from core.plan_names import copy_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
 from core.social_security import AnnualEarnings
-from core.streams import CalendarMonthBoundary
+from core.streams import CalendarMonthBoundary, PersonMaxAgeBoundary
 from fastapi.testclient import TestClient
 from web.app import _SIMULATION_FAILURE_MESSAGE, _figure_json
 from web.forms import (
@@ -412,7 +412,7 @@ def test_patch_household_preserves_jobs_ss_and_tax_fields(
     assert seeded is not None
     expected_job_label = "Engineer"
     expected_year = 2022
-    expected_state = "CA"
+    expected_state = TAX_MODELED_STATES[0]
     job_start = CalendarMonthBoundary(year=2010, month=1)
     seeded.household.person1.jobs = [
         Job(
@@ -479,6 +479,73 @@ def test_patch_household_sets_residence_state_to_modeled_state(
     after = repo.get_by_id(plan_id)
     assert after is not None
     assert after.household.residence_state == modeled_state
+
+
+def test_patch_household_removing_partner_referenced_by_a_boundary_returns_422(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            annual_income=Decimal("120000"),
+            start=CalendarMonthBoundary(year=2010, month=1),
+            end=PersonMaxAgeBoundary(person="person2"),
+        )
+    ]
+    repo.save(plan_id, seeded)
+    form_data = _household_form_data()
+    form_data.pop(HAS_PARTNER, None)
+
+    response = client.patch(f"{PLAN_HOUSEHOLD}?plan={plan_id}", data=form_data)
+
+    assert response.status_code == 422
+    assert "person2" in response.text
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.person2 is not None
+
+
+def test_patch_household_rejects_unmodeled_residence_state(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    modeled_state = TAX_MODELED_STATES[0]
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.residence_state = modeled_state
+    repo.save(plan_id, seeded)
+    form_data = _household_form_data()
+    form_data[HAS_PARTNER] = "on"
+    form_data[RESIDENCE_STATE] = "Atlantis"
+
+    response = client.patch(f"{PLAN_HOUSEHOLD}?plan={plan_id}", data=form_data)
+
+    assert response.status_code == 422
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.residence_state == modeled_state
+
+
+def test_patch_household_preserves_stored_percent_fields_when_omitted(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    stored_taxable_fraction = Decimal("0.55")
+    stored_trust_factor = Decimal("0.75")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.ss_pension_taxable_fraction = stored_taxable_fraction
+    seeded.household.social_security_trust_factor = stored_trust_factor
+    repo.save(plan_id, seeded)
+    form_data = _household_form_data()
+    form_data[HAS_PARTNER] = "on"
+
+    response = client.patch(f"{PLAN_HOUSEHOLD}?plan={plan_id}", data=form_data)
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.ss_pension_taxable_fraction == stored_taxable_fraction
+    assert after.household.social_security_trust_factor == stored_trust_factor
 
 
 def test_patch_household_keeps_explicit_single_status_with_partner(

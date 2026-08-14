@@ -112,21 +112,23 @@ def test_service_credit_reduced_by_sabbatical_loss() -> None:
 
 
 def test_service_credit_requires_job_end() -> None:
-    job_start = CalendarMonthBoundary(year=2016, month=1)
-    job = Job(
+    valid_job = Job(
         annual_income=Decimal("120_000"),
-        start=job_start,
+        start=CalendarMonthBoundary(year=2016, month=1),
+        end=CalendarMonthBoundary(year=2046, month=1),
         pension=FormulaPension(
             service_start=CalendarMonthBoundary(year=2016, month=1),
             claim=PersonAgeBoundary(person="person1", age_months=62 * 12),
             age_factor_table=[AgeFactor(age_months=62 * 12, factor=Decimal("0.02"))],
         ),
     )
-    plan = _plan_with_person1_job(job)
-    timeline = Timeline(plan, today=date(2026, 1, 1))
+    # `Job` rejects a pension without an end, so bypass validation to reach the
+    # defensive guard that keeps this function honest for unvalidated callers.
+    end_less_job = valid_job.model_copy(update={"end": None})
+    timeline = Timeline(_plan_with_person1_job(valid_job), today=date(2026, 1, 1))
 
     with pytest.raises(ValueError, match="job end"):
-        service_credit_years(job=job, timeline=timeline)
+        service_credit_years(job=end_less_job, timeline=timeline)
 
 
 def test_final_compensation_averages_trailing_months_annualized() -> None:

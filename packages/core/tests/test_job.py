@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from core.job import Job, SabbaticalWindow
+from core.job import AgeFactor, FormulaPension, Job, SabbaticalWindow
 from core.models import Household, PersonHousehold
 from core.repository import PlanRepository
 from core.streams import CalendarMonthBoundary, PersonAgeBoundary
@@ -22,9 +22,40 @@ def _plan_start(*, year: int = 2026, month: int = 1) -> CalendarMonthBoundary:
     return CalendarMonthBoundary(year=year, month=month)
 
 
+def _calstrs_pension() -> FormulaPension:
+    return FormulaPension(
+        service_start=CalendarMonthBoundary(year=2026, month=1),
+        claim=PersonAgeBoundary(person="person1", age_months=62 * 12),
+        age_factor_table=[AgeFactor(age_months=62 * 12, factor=Decimal("0.02"))],
+    )
+
+
 def test_job_requires_start() -> None:
     with pytest.raises(ValidationError):
         Job.model_validate({"annual_income": "100000"})
+
+
+def test_job_with_pension_requires_an_end_boundary() -> None:
+    with pytest.raises(ValidationError, match="end"):
+        Job(
+            annual_income=Decimal("100000"),
+            start=_plan_start(),
+            end=None,
+            pension=_calstrs_pension(),
+        )
+
+
+def test_job_with_pension_and_end_is_accepted() -> None:
+    end = CalendarMonthBoundary(year=2050, month=6)
+
+    job = Job(
+        annual_income=Decimal("100000"),
+        start=_plan_start(),
+        end=end,
+        pension=_calstrs_pension(),
+    )
+
+    assert job.end == end
 
 
 def test_job_rejects_tax_deferred_above_income() -> None:

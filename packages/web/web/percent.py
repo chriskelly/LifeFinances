@@ -5,6 +5,8 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 _HUNDRED = Decimal(100)
 _ONE_DECIMAL = Decimal("0.1")
 
+INVALID_PERCENT_MESSAGE = "Enter a percent, for example 3.5%"
+
 
 def format_percent(value: Decimal | int | float | str | None) -> str:
     """Format a 0–1 fraction as a percent with one decimal (e.g. ``3.5%``)."""
@@ -17,10 +19,21 @@ def format_percent(value: Decimal | int | float | str | None) -> str:
 
 
 def parse_percent(raw: str | None) -> Decimal:
-    """Parse a percent-ish string (``3.5%``, ``3.5``, blanks) to a 0–1 fraction."""
-    if raw is None:
-        raise InvalidOperation("empty percent value")
-    cleaned = raw.strip().replace("%", "").replace(",", "")
+    """Parse a percent-ish string (``3.5%``, ``3.5``) to a 0–1 fraction.
+
+    Raises `ValueError` with a user-facing message on blank or unparseable input.
+    """
+    cleaned = (raw or "").strip().replace("%", "").replace(",", "")
     if cleaned == "":
-        raise InvalidOperation("empty percent value")
-    return Decimal(cleaned) / _HUNDRED
+        raise ValueError(INVALID_PERCENT_MESSAGE)
+    try:
+        return Decimal(cleaned) / _HUNDRED
+    except InvalidOperation as exc:
+        raise ValueError(INVALID_PERCENT_MESSAGE) from exc
+
+
+def parse_optional_percent(raw: str | None) -> Decimal | None:
+    """Parse a percent, treating an absent field as "leave the stored value alone"."""
+    if raw is None:
+        return None
+    return parse_percent(raw)

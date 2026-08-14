@@ -1,20 +1,26 @@
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+import re
+from decimal import Decimal
 
 import pytest
-from web.currency import format_usd, parse_usd
+from web.currency import INVALID_CURRENCY_MESSAGE, format_usd, parse_usd
+
+_EXPECTED_ERROR = re.escape(INVALID_CURRENCY_MESSAGE)
 
 
-def test_format_usd_uses_dollar_sign_commas_and_zero_decimals() -> None:
-    amount = Decimal("120000.49")
-
-    assert format_usd(amount) == "$120,000"
+def test_format_usd_rounds_cents_away_to_whole_dollars() -> None:
+    # Display contract is intentionally pinned: leading "$", thousands commas,
+    # no decimal places.
+    assert format_usd(Decimal("120000.49")) == "$120,000"
+    assert format_usd(Decimal("120000.50")) == "$120,001"
 
 
 def test_format_usd_none_and_empty_are_zero() -> None:
-    assert format_usd(None) == "$0"
-    assert format_usd("") == "$0"
+    zero_display = format_usd(Decimal(0))
+
+    assert format_usd(None) == zero_display
+    assert format_usd("") == zero_display
 
 
 def test_parse_usd_accepts_formatted_and_plain() -> None:
@@ -25,10 +31,12 @@ def test_parse_usd_accepts_formatted_and_plain() -> None:
     assert parse_usd(" 150,000 ") == expected
 
 
-def test_parse_usd_rejects_blank() -> None:
-    with pytest.raises(InvalidOperation):
-        parse_usd("")
-    with pytest.raises(InvalidOperation):
-        parse_usd("   ")
-    with pytest.raises(InvalidOperation):
-        parse_usd(None)
+@pytest.mark.parametrize("raw", ["", "   ", None])
+def test_parse_usd_rejects_blank_with_a_user_facing_message(raw: str | None) -> None:
+    with pytest.raises(ValueError, match=_EXPECTED_ERROR):
+        parse_usd(raw)
+
+
+def test_parse_usd_rejects_garbage_with_a_user_facing_message() -> None:
+    with pytest.raises(ValueError, match=_EXPECTED_ERROR):
+        parse_usd("abc")

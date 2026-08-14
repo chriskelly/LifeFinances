@@ -51,9 +51,9 @@
       container.insertBefore(clone, template);
       reindex(container);
       clone.querySelectorAll(".boundary-control").forEach(syncBoundary);
-      container
-        .closest("form")
-        .dispatchEvent(new Event("change", { bubbles: true }));
+      // No save here: a fresh row has blank required boundary fields, so
+      // submitting it would fail validation and block the whole section from
+      // saving until the user fills it in. The user's first edit saves it.
       return;
     }
     const removeButton = event.target.closest("[data-remove-row]");
