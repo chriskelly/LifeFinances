@@ -333,6 +333,7 @@ select {
   display: none;
 }
 
-.job-row:has(select[name$=".pension"] option[value="calstrs_2_at_62"]:checked) .pension-fields {
+.job-row:has(select[name$=".pension"] option[value="calstrs_2_at_62"]:checked) .pension-fields,
+.job-row:has(select[name$=".pension"] option[value="custom"]:checked) .pension-fields {
   display: block;
 }

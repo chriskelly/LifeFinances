@@ -509,10 +509,14 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         form = await request.form()
         try:
+            person_id = boundaries.parse_person_id(person)
+            person_model = getattr(plan_model.household, person_id)
+            existing_jobs = [] if person_model is None else list(person_model.jobs)
             updated = JobsForm.from_form(
                 form,
-                person=boundaries.parse_person_id(person),
+                person=person_id,
                 today=date.today(),
+                existing_jobs=existing_jobs,
             ).apply_to(plan_model)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)

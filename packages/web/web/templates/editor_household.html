@@ -36,8 +36,10 @@
       <input
         type="checkbox"
         name="{{ forms.HAS_PARTNER }}"
+        data-confirm-partner-remove
+        data-confirm-message="{{ forms.REMOVE_PARTNER_CONFIRM }}"
+        data-partner-has-data="{{ 'true' if forms.partner_has_removable_data(plan.household.person2) else 'false' }}"
         {% if plan.household.person2 %}checked{% endif %}
-        onchange="this.closest('form').querySelectorAll('.partner-fields input, .partner-fields select').forEach(el => el.disabled = !this.checked)"
       >
       Include a partner
     </label>

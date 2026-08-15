@@ -1,4 +1,10 @@
 (function () {
+  const REMOVE_ROW_MESSAGE = "Remove this item? This cannot be undone.";
+  const CLEAR_PENSION_MESSAGE =
+    "Clear this pension? Service dates, claim age, and related settings will be removed.";
+  const OVERWRITE_PENSION_MESSAGE =
+    "Replace the custom pension table with CalSTRS 2% at 62? The existing age-factor table will be overwritten.";
+
   function syncBoundary(control) {
     const kind = control.querySelector(".boundary-kind").value;
     control.querySelectorAll(".boundary-part").forEach(function (part) {
@@ -13,31 +19,87 @@
     });
   }
 
-  function reindex(container) {
+  function maxSiblingIndex(container) {
     const prefix = container.dataset.prefix;
-    const pattern = new RegExp(prefix + "\\[\\d+\\]");
-    rowChildren(container).forEach(function (row, index) {
-      const replacement = prefix + "[" + index + "]";
+    const pattern = new RegExp(prefix + "\\[(\\d+)\\]");
+    let max = -1;
+    rowChildren(container).forEach(function (row) {
       row.querySelectorAll("[name]").forEach(function (field) {
+        const match = field.name.match(pattern);
+        if (match) {
+          max = Math.max(max, parseInt(match[1], 10));
+        }
+      });
+    });
+    return max;
+  }
+
+  function setRowIndex(row, prefix, index) {
+    const pattern = new RegExp(prefix + "\\[\\d+\\]");
+    const replacement = prefix + "[" + index + "]";
+    function rewrite(root) {
+      root.querySelectorAll("[name]").forEach(function (field) {
         field.name = field.name.replace(pattern, replacement);
       });
-      row.querySelectorAll("template").forEach(function (tpl) {
-        tpl.content.querySelectorAll("[name]").forEach(function (field) {
-          field.name = field.name.replace(pattern, replacement);
-        });
-      });
-      row.querySelectorAll(".rows").forEach(reindex);
+    }
+    rewrite(row);
+    row.querySelectorAll("template").forEach(function (tpl) {
+      rewrite(tpl.content);
     });
   }
 
   function initAll() {
     document.querySelectorAll(".boundary-control").forEach(syncBoundary);
-    document.querySelectorAll(".rows").forEach(reindex);
   }
 
   document.addEventListener("change", function (event) {
-    if (event.target.classList.contains("boundary-kind")) {
-      syncBoundary(event.target.closest(".boundary-control"));
+    const target = event.target;
+    if (target.classList.contains("boundary-kind")) {
+      syncBoundary(target.closest(".boundary-control"));
+      return;
+    }
+    if (target.matches("[data-confirm-partner-remove]")) {
+      if (!target.checked && target.dataset.partnerHasData === "true") {
+        const message =
+          target.dataset.confirmMessage ||
+          "Remove partner? Their jobs and Social Security earnings will be deleted.";
+        if (!window.confirm(message)) {
+          target.checked = true;
+          event.stopImmediatePropagation();
+          return;
+        }
+      }
+      const form = target.closest("form");
+      if (form) {
+        form
+          .querySelectorAll(".partner-fields input, .partner-fields select")
+          .forEach(function (el) {
+            el.disabled = !target.checked;
+          });
+      }
+      return;
+    }
+    if (target.matches("[data-pension-select]")) {
+      const previous = target.dataset.previousValue || "";
+      const next = target.value;
+      const noneValue = target.dataset.pensionNone || "none";
+      const calstrsValue = target.dataset.pensionCalstrs || "";
+      const isCustom = target.dataset.pensionIsCustom === "true";
+      if (previous !== noneValue && next === noneValue) {
+        if (!window.confirm(CLEAR_PENSION_MESSAGE)) {
+          target.value = previous;
+          event.stopImmediatePropagation();
+          return;
+        }
+      } else if (isCustom && next === calstrsValue) {
+        if (!window.confirm(OVERWRITE_PENSION_MESSAGE)) {
+          target.value = previous;
+          event.stopImmediatePropagation();
+          return;
+        }
+        target.dataset.pensionIsCustom = "false";
+      }
+      target.dataset.previousValue = target.value;
     }
   });
 
@@ -47,9 +109,10 @@
       event.preventDefault();
       const container = addButton.closest(".rows");
       const template = container.querySelector(":scope > .row-template");
+      const nextIndex = maxSiblingIndex(container) + 1;
       const clone = template.content.firstElementChild.cloneNode(true);
+      setRowIndex(clone, container.dataset.prefix, nextIndex);
       container.insertBefore(clone, template);
-      reindex(container);
       clone.querySelectorAll(".boundary-control").forEach(syncBoundary);
       // No save here: a fresh row has blank required boundary fields, so
       // submitting it would fail validation and block the whole section from
@@ -59,11 +122,13 @@
     const removeButton = event.target.closest("[data-remove-row]");
     if (removeButton) {
       event.preventDefault();
+      if (!window.confirm(REMOVE_ROW_MESSAGE)) {
+        return;
+      }
       const row = removeButton.closest(".row");
-      const container = row.parentElement;
       const form = row.closest("form");
       row.remove();
-      reindex(container);
+      // Leave sparse gaps; the server orders by numeric index.
       form.dispatchEvent(new Event("change", { bubbles: true }));
     }
   });

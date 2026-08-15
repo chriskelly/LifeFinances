@@ -13,8 +13,11 @@
 {% endmacro %}
 
 {% macro job_row(index, job, choices) %}
+{% set is_custom_pension = job and job.pension and not forms.is_calstrs_pension(job.pension) %}
+{% set pension_value = forms.PENSION_NONE if (not job or not job.pension) else (forms.PENSION_CUSTOM if is_custom_pension else forms.PENSION_CALSTRS_2_AT_62) %}
 <fieldset class="row job-row">
   <button type="button" data-remove-row>Remove job</button>
+  {% if job %}<input type="hidden" name="jobs[{{ index }}].{{ forms.EXISTING_INDEX }}" value="{{ index }}">{% endif %}
   <label>Label <input type="text" name="jobs[{{ index }}].label" value="{{ (job.label or '') if job else '' }}"></label>
   <label>Annual income <input type="text" inputmode="decimal" class="currency-input" name="jobs[{{ index }}].annual_income" value="{{ (job.annual_income if job else 0)|usd }}"></label>
   <label>Annual tax-deferred <input type="text" inputmode="decimal" class="currency-input" name="jobs[{{ index }}].annual_tax_deferred" value="{{ (job.annual_tax_deferred if job else 0)|usd }}"></label>
@@ -28,9 +31,19 @@
     <button type="button" data-add-row>Add sabbatical</button>
   </div>
   <label>{{ forms.PENSION_LABEL }}
-    <select name="jobs[{{ index }}].pension">
-      <option value="{{ forms.PENSION_NONE }}"{% if not job or not job.pension %} selected{% endif %}>{{ forms.PENSION_NONE_LABEL }}</option>
-      <option value="{{ forms.PENSION_CALSTRS_2_AT_62 }}"{% if job and job.pension %} selected{% endif %}>{{ forms.PENSION_CALSTRS_2_AT_62_LABEL }}</option>
+    <select
+      name="jobs[{{ index }}].pension"
+      data-pension-select
+      data-previous-value="{{ pension_value }}"
+      data-pension-none="{{ forms.PENSION_NONE }}"
+      data-pension-calstrs="{{ forms.PENSION_CALSTRS_2_AT_62 }}"
+      data-pension-is-custom="{{ 'true' if is_custom_pension else 'false' }}"
+    >
+      <option value="{{ forms.PENSION_NONE }}"{% if pension_value == forms.PENSION_NONE %} selected{% endif %}>{{ forms.PENSION_NONE_LABEL }}</option>
+      <option value="{{ forms.PENSION_CALSTRS_2_AT_62 }}"{% if pension_value == forms.PENSION_CALSTRS_2_AT_62 %} selected{% endif %}>{{ forms.PENSION_CALSTRS_2_AT_62_LABEL }}</option>
+      {% if is_custom_pension %}
+      <option value="{{ forms.PENSION_CUSTOM }}" selected>{{ forms.PENSION_CUSTOM_LABEL }}</option>
+      {% endif %}
     </select>
   </label>
   <a href="{{ forms.PENSION_REQUEST_ISSUE_URL }}" target="_blank" rel="noopener" title="{{ forms.PENSION_REQUEST_LINK_TITLE }}">{{ forms.PENSION_REQUEST_LINK_TEXT }}</a>

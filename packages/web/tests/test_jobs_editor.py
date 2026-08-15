@@ -1,8 +1,8 @@
 from decimal import Decimal
 
-from core.job import Job
+from core.job import AgeFactor, FormulaPension, Job
 from core.repository import PlanRepository
-from core.streams import CalendarMonthBoundary
+from core.streams import CalendarMonthBoundary, PersonAgeBoundary
 from domain.statutory.pension import (
     CALSTRS_2_AT_62_AGE_FACTORS,
     age_factors_from_statutory,
@@ -88,6 +88,44 @@ def test_patch_jobs_empty_form_clears_jobs(
     assert after.household.person1.jobs == []
 
 
+def test_patch_jobs_sparse_indices_attribute_nested_sabbaticals_to_correct_job(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    # Mimics mint-max+1 after removing a middle job: gaps in job and sabbatical
+    # indices must not misattribute nested rows.
+    first_label = "Kept job"
+    second_label = "Later job"
+    sab_fraction = "25%"
+    data = {
+        "jobs[0].label": first_label,
+        "jobs[0].annual_income": "100000",
+        "jobs[0].start_kind": "now",
+        "jobs[0].end_kind": "none",
+        "jobs[2].label": second_label,
+        "jobs[2].annual_income": "120000",
+        "jobs[2].start_kind": "now",
+        "jobs[2].end_kind": "none",
+        "jobs[2].sabbaticals[5].start_kind": "calendar_month",
+        "jobs[2].sabbaticals[5].start_year": "2030",
+        "jobs[2].sabbaticals[5].start_month": "1",
+        "jobs[2].sabbaticals[5].end_kind": "calendar_month",
+        "jobs[2].sabbaticals[5].end_year": "2030",
+        "jobs[2].sabbaticals[5].end_month": "6",
+        "jobs[2].sabbaticals[5].remaining_fraction": sab_fraction,
+    }
+
+    response = client.patch(f"{PLAN_JOBS}?plan={plan_id}&person=person1", data=data)
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    jobs = after.household.person1.jobs
+    assert [j.label for j in jobs] == [first_label, second_label]
+    assert jobs[0].sabbaticals == []
+    assert len(jobs[1].sabbaticals) == 1
+    assert jobs[1].sabbaticals[0].remaining_fraction == Decimal("0.25")
+
+
 def _calstrs_job_form_data(*, end_kind: str) -> dict[str, str]:
     return {
         "jobs[0].annual_income": "100000",
@@ -149,6 +187,86 @@ def test_editor_jobs_pension_dropdown_defaults_to_none(
     assert f">{forms.PENSION_NONE_LABEL}</option>" in response.text
     assert f'value="{forms.PENSION_CALSTRS_2_AT_62}"' in response.text
     assert f">{forms.PENSION_CALSTRS_2_AT_62_LABEL}</option>" in response.text
+
+
+def test_editor_jobs_shows_custom_pension_when_table_is_not_calstrs(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    custom_table = [AgeFactor(age_months=60 * 12, factor=Decimal("0.015"))]
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            annual_income=Decimal("100000"),
+            start=CalendarMonthBoundary(year=2010, month=1),
+            end=CalendarMonthBoundary(year=2040, month=1),
+            pension=FormulaPension(
+                service_start=CalendarMonthBoundary(year=2010, month=1),
+                claim=PersonAgeBoundary(person="person1", age_months=60 * 12),
+                age_factor_table=custom_table,
+            ),
+        )
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_JOBS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert f'value="{forms.PENSION_CUSTOM}"' in response.text
+    assert forms.PENSION_CUSTOM_LABEL in response.text
+    assert 'data-pension-is-custom="true"' in response.text
+    assert "data-pension-select" in response.text
+    assert "data-remove-row" in response.text
+
+
+def test_patch_jobs_preserves_custom_age_factor_table_when_custom_selected(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    custom_table = [AgeFactor(age_months=60 * 12, factor=Decimal("0.015"))]
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            label="Teacher",
+            annual_income=Decimal("100000"),
+            start=CalendarMonthBoundary(year=2010, month=1),
+            end=CalendarMonthBoundary(year=2040, month=1),
+            pension=FormulaPension(
+                service_start=CalendarMonthBoundary(year=2010, month=1),
+                claim=PersonAgeBoundary(person="person1", age_months=60 * 12),
+                age_factor_table=custom_table,
+            ),
+        )
+    ]
+    repo.save(plan_id, seeded)
+    data = {
+        f"jobs[0].{forms.EXISTING_INDEX}": "0",
+        "jobs[0].label": "Teacher",
+        "jobs[0].annual_income": "100000",
+        "jobs[0].start_kind": "calendar_month",
+        "jobs[0].start_year": "2010",
+        "jobs[0].start_month": "1",
+        "jobs[0].end_kind": "calendar_month",
+        "jobs[0].end_year": "2040",
+        "jobs[0].end_month": "1",
+        "jobs[0].pension": forms.PENSION_CUSTOM,
+        "jobs[0].pension_service_start_kind": "calendar_month",
+        "jobs[0].pension_service_start_year": "2010",
+        "jobs[0].pension_service_start_month": "1",
+        "jobs[0].pension_claim_kind": "person_age",
+        "jobs[0].pension_claim_person": "person1",
+        "jobs[0].pension_claim_age_years": "60",
+        "jobs[0].pension_claim_age_months": "0",
+    }
+
+    response = client.patch(f"{PLAN_JOBS}?plan={plan_id}&person=person1", data=data)
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    pension = after.household.person1.jobs[0].pension
+    assert pension is not None
+    assert pension.age_factor_table == custom_table
 
 
 def test_patch_jobs_for_absent_partner_returns_422(

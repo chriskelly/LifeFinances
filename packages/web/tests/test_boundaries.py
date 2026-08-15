@@ -100,6 +100,44 @@ def test_collect_indexed_rows_groups_and_orders_by_index() -> None:
     ]
 
 
+def test_collect_indexed_rows_accepts_sparse_indices() -> None:
+    """Client mints max+1 and leaves gaps after remove; server must still order."""
+    early_label = "Kept early"
+    late_label = "Added later"
+    form = FormData(
+        [
+            ("jobs[0].label", early_label),
+            ("jobs[3].label", late_label),
+        ]
+    )
+
+    rows = boundaries.collect_indexed_rows(form, "jobs")
+
+    assert [boundaries.row_scalar(r, "label") for r in rows] == [
+        early_label,
+        late_label,
+    ]
+
+
+def test_collect_indexed_rows_merges_duplicate_indices() -> None:
+    # Documented wire behavior: duplicate index keys land in one row; the first
+    # occurrence of a given field name wins via row_scalar.
+    first_income = "100000"
+    second_income = "200000"
+    form = FormData(
+        [
+            ("jobs[0].annual_income", first_income),
+            ("jobs[0].annual_income", second_income),
+            ("jobs[0].label", "Eng"),
+        ]
+    )
+
+    rows = boundaries.collect_indexed_rows(form, "jobs")
+
+    assert len(rows) == 1
+    assert boundaries.row_scalar(rows[0], "annual_income") == first_income
+
+
 def test_sub_rows_extracts_nested_list() -> None:
     first_fraction = "0.5"
     second_fraction = "0.25"
@@ -108,6 +146,26 @@ def test_sub_rows_extracts_nested_list() -> None:
             ("jobs[0].label", "Eng"),
             ("jobs[0].sabbaticals[0].remaining_fraction", first_fraction),
             ("jobs[0].sabbaticals[1].remaining_fraction", second_fraction),
+        ]
+    )
+    (row,) = boundaries.collect_indexed_rows(form, "jobs")
+
+    sabbaticals = boundaries.sub_rows(row, "sabbaticals")
+
+    assert [boundaries.row_scalar(s, "remaining_fraction") for s in sabbaticals] == [
+        first_fraction,
+        second_fraction,
+    ]
+
+
+def test_sub_rows_accepts_sparse_nested_indices_under_high_parent() -> None:
+    first_fraction = "10%"
+    second_fraction = "25%"
+    form = FormData(
+        [
+            ("jobs[2].label", "Later job"),
+            ("jobs[2].sabbaticals[0].remaining_fraction", first_fraction),
+            ("jobs[2].sabbaticals[5].remaining_fraction", second_fraction),
         ]
     )
     (row,) = boundaries.collect_indexed_rows(form, "jobs")

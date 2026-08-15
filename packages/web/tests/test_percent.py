@@ -11,10 +11,17 @@ from web.percent import (
 )
 
 
-def test_format_percent_uses_one_decimal_and_percent_sign() -> None:
-    # Display contract is intentionally pinned: one decimal place, trailing "%".
+def test_format_percent_keeps_significant_decimals_without_forcing_one() -> None:
+    # Display contract: trailing "%", variable precision, no fixed 1-dp rounding.
     assert format_percent(Decimal("0.035")) == "3.5%"
-    assert format_percent(Decimal("0.0355")) == "3.6%"
+    assert format_percent(Decimal("0.0355")) == "3.55%"
+    assert format_percent(Decimal("0.03")) == "3%"
+    assert format_percent(Decimal(1)) == "100%"
+
+
+def test_format_percent_strips_float_junk() -> None:
+    # Intentionally pinned: fine-grid quantization must kill float noise.
+    assert format_percent(Decimal("0.03100000001")) == "3.1%"
 
 
 def test_format_percent_none_and_empty_are_zero() -> None:
@@ -22,6 +29,7 @@ def test_format_percent_none_and_empty_are_zero() -> None:
 
     assert format_percent(None) == zero_display
     assert format_percent("") == zero_display
+    assert zero_display == "0%"
 
 
 def test_parse_percent_accepts_formatted_and_plain() -> None:
@@ -30,6 +38,12 @@ def test_parse_percent_accepts_formatted_and_plain() -> None:
     assert parse_percent("3.5%") == expected
     assert parse_percent("3.5") == expected
     assert parse_percent(" 3.5% ") == expected
+
+
+def test_format_then_parse_preserves_multi_decimal_rates() -> None:
+    stored = Decimal("0.0355")
+
+    assert parse_percent(format_percent(stored)) == stored
 
 
 @pytest.mark.parametrize("raw", ["", "   ", None])

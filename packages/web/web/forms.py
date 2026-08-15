@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from typing import get_args
 
-from core.job import FormulaPension, Job
+from core.job import AgeFactor, FormulaPension, Job
 from core.models import (
     AppSettings,
     FilingStatus,
@@ -75,15 +75,21 @@ CLAIM_AGE_MONTHS = "claim_age_months"
 
 PENSION_NONE = "none"
 PENSION_CALSTRS_2_AT_62 = "calstrs_2_at_62"
+PENSION_CUSTOM = "custom"
 PENSION_LABEL = "Pension"
 PENSION_NONE_LABEL = "None"
 PENSION_CALSTRS_2_AT_62_LABEL = "CalSTRS 2% at 62"
+PENSION_CUSTOM_LABEL = "Custom"
 PENSION_AVERAGING_MONTHS_DEFAULT = int(
     FormulaPension.model_fields["final_comp_averaging_months"].default
 )
 PENSION_REQUEST_ISSUE_URL = "https://github.com/chriskelly/LifeFinances/issues/197"
 PENSION_REQUEST_LINK_TEXT = "More pension options (#197)"
 PENSION_REQUEST_LINK_TITLE = "Vote for a richer pension editor"
+EXISTING_INDEX = "existing_index"
+REMOVE_PARTNER_CONFIRM = (
+    "Remove partner? Their jobs and Social Security earnings will be deleted."
+)
 MONTH_OF_BIRTH_LABEL = "Month of Birth"
 RESIDENCE_STATE_NONE = "none"
 RESIDENCE_STATE_NONE_LABEL = "No income-tax state"
@@ -120,6 +126,138 @@ def people_choices(plan: Plan) -> list[tuple[str, str, PersonHousehold]]:
     if plan.household.person2 is not None:
         people.append(("person2", "Partner", plan.household.person2))
     return people
+
+
+def calstrs_age_factor_table() -> list[AgeFactor]:
+    return age_factors_from_statutory(CALSTRS_2_AT_62_AGE_FACTORS)
+
+
+def is_calstrs_pension(pension: FormulaPension | None) -> bool:
+    if pension is None:
+        return False
+    return pension.age_factor_table == calstrs_age_factor_table()
+
+
+def partner_has_removable_data(person: PersonHousehold | None) -> bool:
+    if person is None:
+        return False
+    return bool(person.jobs) or bool(person.social_security.earnings_record)
+
+
+def _pension_fields_from_row(
+    row: list[tuple[str, str]],
+    *,
+    today: date,
+    age_factor_table: list[AgeFactor],
+) -> dict[str, object]:
+    return {
+        "service_start": boundaries.row_boundary(
+            row, "pension_service_start", today=today
+        ),
+        "claim": boundaries.row_boundary(row, "pension_claim", today=today),
+        "age_factor_table": age_factor_table,
+        "final_comp_averaging_months": int(
+            boundaries.row_scalar(
+                row,
+                "pension_averaging_months",
+                str(PENSION_AVERAGING_MONTHS_DEFAULT),
+            )
+        ),
+        "trust_factor": parse_percent(
+            boundaries.row_scalar(row, "pension_trust_factor", "100%")
+        ),
+        "benefit_real_growth_rate": parse_percent(
+            boundaries.row_scalar(row, "pension_growth", "0%")
+        ),
+    }
+
+
+def _job_from_row(
+    row: list[tuple[str, str]], *, today: date, previous: Job | None = None
+) -> Job:
+    pension_choice = boundaries.row_scalar(row, "pension", PENSION_NONE)
+    pension: dict[str, object] | None = None
+    if pension_choice == PENSION_CALSTRS_2_AT_62:
+        pension = _pension_fields_from_row(
+            row, today=today, age_factor_table=calstrs_age_factor_table()
+        )
+    elif pension_choice == PENSION_CUSTOM:
+        if previous is None or previous.pension is None:
+            raise ValueError(
+                "Custom pension is no longer available; choose CalSTRS or None"
+            )
+        pension = _pension_fields_from_row(
+            row,
+            today=today,
+            age_factor_table=previous.pension.age_factor_table,
+        )
+    sabbaticals = [
+        {
+            "start": boundaries.row_boundary(sab, "start", today=today),
+            "end": boundaries.row_boundary(sab, "end", today=today),
+            "remaining_fraction": parse_percent(
+                boundaries.row_scalar(sab, "remaining_fraction", "0%")
+            ),
+        }
+        for sab in boundaries.sub_rows(row, "sabbaticals")
+    ]
+    return Job.model_validate(
+        {
+            "label": boundaries.row_scalar(row, "label") or None,
+            "annual_income": parse_usd(
+                boundaries.row_scalar(row, "annual_income", "0")
+            ),
+            "annual_tax_deferred": parse_usd(
+                boundaries.row_scalar(row, "annual_tax_deferred", "0")
+            ),
+            "annual_raise": parse_percent(
+                boundaries.row_scalar(row, "annual_raise", "0%")
+            ),
+            "start": boundaries.row_boundary(row, "start", today=today),
+            "end": boundaries.row_boundary(row, "end", today=today),
+            "social_security_eligible": boundaries.row_scalar(
+                row, "social_security_eligible"
+            )
+            in _TRUE,
+            "sabbaticals": sabbaticals,
+            "pension": pension,
+        }
+    )
+
+
+class JobsForm:
+    def __init__(self, *, person: PersonId, jobs: list[Job]) -> None:
+        self.person = person
+        self.jobs = jobs
+
+    @classmethod
+    def from_form(
+        cls,
+        form: FormData,
+        *,
+        person: PersonId,
+        today: date,
+        existing_jobs: list[Job],
+    ) -> JobsForm:
+        rows = boundaries.collect_indexed_rows(form, JOBS_PREFIX)
+        jobs: list[Job] = []
+        for row in rows:
+            raw_index = boundaries.row_scalar(row, EXISTING_INDEX)
+            previous: Job | None = None
+            if raw_index.strip():
+                index = int(raw_index)
+                if 0 <= index < len(existing_jobs):
+                    previous = existing_jobs[index]
+            jobs.append(_job_from_row(row, today=today, previous=previous))
+        return cls(person=person, jobs=jobs)
+
+    def apply_to(self, plan: Plan) -> Plan:
+        data = plan.household.model_dump()
+        if data.get(self.person) is None:
+            raise ValueError("Cannot edit jobs for a partner who is not on the plan")
+        data[self.person]["jobs"] = [job.model_dump() for job in self.jobs]
+        household = Household.model_validate(data)
+        return plan.model_copy(update={"household": household})
 
 
 class HouseholdForm(BaseModel):
@@ -226,84 +364,6 @@ class AppSettingsForm(BaseModel):
             value=self.eod_api_key,
             clear=self.clear_eod_api_key,
         )
-
-
-def _job_from_row(row: list[tuple[str, str]], *, today: date) -> Job:
-    pension: dict[str, object] | None = None
-    if boundaries.row_scalar(row, "pension", PENSION_NONE) == PENSION_CALSTRS_2_AT_62:
-        pension = {
-            "service_start": boundaries.row_boundary(
-                row, "pension_service_start", today=today
-            ),
-            "claim": boundaries.row_boundary(row, "pension_claim", today=today),
-            "age_factor_table": age_factors_from_statutory(CALSTRS_2_AT_62_AGE_FACTORS),
-            "final_comp_averaging_months": int(
-                boundaries.row_scalar(
-                    row,
-                    "pension_averaging_months",
-                    str(PENSION_AVERAGING_MONTHS_DEFAULT),
-                )
-            ),
-            "trust_factor": parse_percent(
-                boundaries.row_scalar(row, "pension_trust_factor", "100%")
-            ),
-            "benefit_real_growth_rate": parse_percent(
-                boundaries.row_scalar(row, "pension_growth", "0%")
-            ),
-        }
-    sabbaticals = [
-        {
-            "start": boundaries.row_boundary(sab, "start", today=today),
-            "end": boundaries.row_boundary(sab, "end", today=today),
-            "remaining_fraction": parse_percent(
-                boundaries.row_scalar(sab, "remaining_fraction", "0%")
-            ),
-        }
-        for sab in boundaries.sub_rows(row, "sabbaticals")
-    ]
-    return Job.model_validate(
-        {
-            "label": boundaries.row_scalar(row, "label") or None,
-            "annual_income": parse_usd(
-                boundaries.row_scalar(row, "annual_income", "0")
-            ),
-            "annual_tax_deferred": parse_usd(
-                boundaries.row_scalar(row, "annual_tax_deferred", "0")
-            ),
-            "annual_raise": parse_percent(
-                boundaries.row_scalar(row, "annual_raise", "0%")
-            ),
-            "start": boundaries.row_boundary(row, "start", today=today),
-            "end": boundaries.row_boundary(row, "end", today=today),
-            "social_security_eligible": boundaries.row_scalar(
-                row, "social_security_eligible"
-            )
-            in _TRUE,
-            "sabbaticals": sabbaticals,
-            "pension": pension,
-        }
-    )
-
-
-class JobsForm:
-    def __init__(self, *, person: PersonId, jobs: list[Job]) -> None:
-        self.person = person
-        self.jobs = jobs
-
-    @classmethod
-    def from_form(cls, form: FormData, *, person: PersonId, today: date) -> JobsForm:
-        rows = boundaries.collect_indexed_rows(form, JOBS_PREFIX)
-        return cls(
-            person=person, jobs=[_job_from_row(row, today=today) for row in rows]
-        )
-
-    def apply_to(self, plan: Plan) -> Plan:
-        data = plan.household.model_dump()
-        if data.get(self.person) is None:
-            raise ValueError("Cannot edit jobs for a partner who is not on the plan")
-        data[self.person]["jobs"] = [job.model_dump() for job in self.jobs]
-        household = Household.model_validate(data)
-        return plan.model_copy(update={"household": household})
 
 
 def _stream_from_row(row: list[tuple[str, str]], *, today: date) -> TimedStream:
