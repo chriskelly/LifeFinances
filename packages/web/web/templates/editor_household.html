@@ -38,7 +38,6 @@
         name="{{ forms.HAS_PARTNER }}"
         data-confirm-partner-remove
         data-confirm-message="{{ forms.REMOVE_PARTNER_CONFIRM }}"
-        data-partner-has-data="{{ 'true' if forms.partner_has_removable_data(plan.household.person2) else 'false' }}"
         {% if plan.household.person2 %}checked{% endif %}
       >
       Include a partner

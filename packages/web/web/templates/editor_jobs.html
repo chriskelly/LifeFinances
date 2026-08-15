@@ -18,6 +18,7 @@
 <fieldset class="row job-row">
   <button type="button" data-remove-row>Remove job</button>
   {% if job %}<input type="hidden" name="jobs[{{ index }}].{{ forms.EXISTING_INDEX }}" value="{{ index }}">{% endif %}
+  {% if is_custom_pension %}<input type="hidden" name="jobs[{{ index }}].{{ forms.PENSION_AGE_FACTOR_TABLE }}" value="{{ forms.encode_age_factor_table(job.pension.age_factor_table) }}">{% endif %}
   <label>Label <input type="text" name="jobs[{{ index }}].label" value="{{ (job.label or '') if job else '' }}"></label>
   <label>Annual income <input type="text" inputmode="decimal" class="currency-input" name="jobs[{{ index }}].annual_income" value="{{ (job.annual_income if job else 0)|usd }}"></label>
   <label>Annual tax-deferred <input type="text" inputmode="decimal" class="currency-input" name="jobs[{{ index }}].annual_tax_deferred" value="{{ (job.annual_tax_deferred if job else 0)|usd }}"></label>

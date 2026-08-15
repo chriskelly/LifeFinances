@@ -471,7 +471,10 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
             updated = PortfolioForm(
-                current_savings_balance=currency.parse_usd(current_savings_balance),
+                current_savings_balance=currency.parse_usd(
+                    current_savings_balance,
+                    previous=plan_model.portfolio.current_savings_balance,
+                ),
             ).apply_to(plan_model)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
@@ -532,9 +535,11 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         form = await request.form()
         try:
-            updated = ManualIncomeForm.from_form(form, today=date.today()).apply_to(
-                plan_model
-            )
+            updated = ManualIncomeForm.from_form(
+                form,
+                today=date.today(),
+                existing_streams=plan_model.manual_income_streams,
+            ).apply_to(plan_model)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
         repo.save(plan_id, updated)

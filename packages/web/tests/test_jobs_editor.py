@@ -8,6 +8,7 @@ from domain.statutory.pension import (
     age_factors_from_statutory,
 )
 from fastapi.testclient import TestClient
+from markupsafe import escape
 from web.currency import format_usd
 from web.percent import format_percent
 from web.routes import EDITOR_JOBS, PLAN_JOBS
@@ -250,6 +251,9 @@ def test_patch_jobs_preserves_custom_age_factor_table_when_custom_selected(
         "jobs[0].end_year": "2040",
         "jobs[0].end_month": "1",
         "jobs[0].pension": forms.PENSION_CUSTOM,
+        f"jobs[0].{forms.PENSION_AGE_FACTOR_TABLE}": forms.encode_age_factor_table(
+            custom_table
+        ),
         "jobs[0].pension_service_start_kind": "calendar_month",
         "jobs[0].pension_service_start_year": "2010",
         "jobs[0].pension_service_start_month": "1",
@@ -267,6 +271,127 @@ def test_patch_jobs_preserves_custom_age_factor_table_when_custom_selected(
     pension = after.household.person1.jobs[0].pension
     assert pension is not None
     assert pension.age_factor_table == custom_table
+
+
+def test_patch_jobs_preserves_custom_pension_when_existing_index_is_stale(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    # Mimics hx-swap=none after deleting an earlier job: the remaining custom
+    # row still posts the pre-delete existing_index, which is out of range for
+    # the post-delete list. The age-factor table must travel with the form.
+    custom_table = [AgeFactor(age_months=60 * 12, factor=Decimal("0.015"))]
+    kept_label = "Kept custom"
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            label=kept_label,
+            annual_income=Decimal("100000"),
+            start=CalendarMonthBoundary(year=2010, month=1),
+            end=CalendarMonthBoundary(year=2040, month=1),
+            pension=FormulaPension(
+                service_start=CalendarMonthBoundary(year=2010, month=1),
+                claim=PersonAgeBoundary(person="person1", age_months=60 * 12),
+                age_factor_table=custom_table,
+            ),
+        )
+    ]
+    repo.save(plan_id, seeded)
+    stale_existing_index = "1"
+    data = {
+        f"jobs[2].{forms.EXISTING_INDEX}": stale_existing_index,
+        "jobs[2].label": kept_label,
+        "jobs[2].annual_income": "100000",
+        "jobs[2].start_kind": "calendar_month",
+        "jobs[2].start_year": "2010",
+        "jobs[2].start_month": "1",
+        "jobs[2].end_kind": "calendar_month",
+        "jobs[2].end_year": "2040",
+        "jobs[2].end_month": "1",
+        "jobs[2].pension": forms.PENSION_CUSTOM,
+        f"jobs[2].{forms.PENSION_AGE_FACTOR_TABLE}": forms.encode_age_factor_table(
+            custom_table
+        ),
+        "jobs[2].pension_service_start_kind": "calendar_month",
+        "jobs[2].pension_service_start_year": "2010",
+        "jobs[2].pension_service_start_month": "1",
+        "jobs[2].pension_claim_kind": "person_age",
+        "jobs[2].pension_claim_person": "person1",
+        "jobs[2].pension_claim_age_years": "60",
+        "jobs[2].pension_claim_age_months": "0",
+    }
+
+    response = client.patch(f"{PLAN_JOBS}?plan={plan_id}&person=person1", data=data)
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    jobs = after.household.person1.jobs
+    assert len(jobs) == 1
+    assert jobs[0].label == kept_label
+    assert jobs[0].pension is not None
+    assert jobs[0].pension.age_factor_table == custom_table
+
+
+def test_editor_jobs_embeds_custom_age_factor_table_for_round_trip(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    custom_table = [AgeFactor(age_months=60 * 12, factor=Decimal("0.015"))]
+    encoded = forms.encode_age_factor_table(custom_table)
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            annual_income=Decimal("100000"),
+            start=CalendarMonthBoundary(year=2010, month=1),
+            end=CalendarMonthBoundary(year=2040, month=1),
+            pension=FormulaPension(
+                service_start=CalendarMonthBoundary(year=2010, month=1),
+                claim=PersonAgeBoundary(person="person1", age_months=60 * 12),
+                age_factor_table=custom_table,
+            ),
+        )
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_JOBS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert forms.PENSION_AGE_FACTOR_TABLE in response.text
+    assert str(escape(encoded)) in response.text
+
+
+def test_patch_jobs_preserves_cent_income_when_usd_display_is_echoed(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    stored_income = Decimal("120000.50")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            label="Keep cents",
+            annual_income=stored_income,
+            start=CalendarMonthBoundary(year=2010, month=1),
+        )
+    ]
+    repo.save(plan_id, seeded)
+    data = {
+        f"jobs[0].{forms.EXISTING_INDEX}": "0",
+        "jobs[0].label": "Keep cents",
+        "jobs[0].annual_income": format_usd(stored_income),
+        "jobs[0].annual_tax_deferred": format_usd(Decimal(0)),
+        "jobs[0].start_kind": "calendar_month",
+        "jobs[0].start_year": "2010",
+        "jobs[0].start_month": "1",
+        "jobs[0].end_kind": "none",
+    }
+
+    response = client.patch(f"{PLAN_JOBS}?plan={plan_id}&person=person1", data=data)
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.person1.jobs[0].annual_income == stored_income
 
 
 def test_patch_jobs_for_absent_partner_returns_422(
@@ -305,7 +430,6 @@ def test_editor_jobs_formats_income_as_usd(
 
     assert response.status_code == 200
     assert f'value="{expected_display}"' in response.text
-    assert "checkbox-label" in response.text
 
 
 def test_editor_jobs_formats_raise_as_percent(

@@ -59,11 +59,9 @@
       return;
     }
     if (target.matches("[data-confirm-partner-remove]")) {
-      if (!target.checked && target.dataset.partnerHasData === "true") {
-        const message =
-          target.dataset.confirmMessage ||
-          "Remove partner? Their jobs and Social Security earnings will be deleted.";
-        if (!window.confirm(message)) {
+      if (!target.checked) {
+        const message = target.dataset.confirmMessage;
+        if (!message || !window.confirm(message)) {
           target.checked = true;
           event.stopImmediatePropagation();
           return;

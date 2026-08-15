@@ -44,9 +44,11 @@ class PlanRepository:
             return None
         try:
             return Plan.model_validate_json(row[0])
-        except ValidationError:
+        except ValidationError as exc:
             # An unloadable plan disappears from the UI entirely, so record why.
-            logger.warning("Plan %s failed validation and cannot be loaded", plan_id)
+            logger.warning(
+                "Plan %s failed validation and cannot be loaded: %s", plan_id, exc
+            )
             return None
 
     def save(self, plan_id: int, plan: Plan) -> None:

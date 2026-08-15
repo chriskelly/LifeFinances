@@ -127,25 +127,16 @@ def test_editor_household_residence_state_is_modeled_state_dropdown(
     assert RESIDENCE_STATE_REQUEST_LINK_TEXT in response.text
 
 
-def test_editor_household_partner_toggle_marks_destructive_when_partner_has_data(
-    client: TestClient, repo: PlanRepository, plan_id: int
+def test_editor_household_partner_toggle_always_confirms_on_remove(
+    client: TestClient, plan_id: int
 ) -> None:
-    seeded = repo.get_by_id(plan_id)
-    assert seeded is not None
-    assert seeded.household.person2 is not None
-    seeded.household.person2.jobs = [
-        Job(
-            annual_income=Decimal("80000"),
-            start=CalendarMonthBoundary(year=2015, month=1),
-        )
-    ]
-    repo.save(plan_id, seeded)
-
+    # Confirm must not depend on a render-time has-data flag: jobs/SS can be
+    # added in other sections without refreshing the household partial.
     response = client.get(f"{EDITOR_HOUSEHOLD}?plan={plan_id}")
 
     assert response.status_code == 200
     assert "data-confirm-partner-remove" in response.text
-    assert 'data-partner-has-data="true"' in response.text
+    assert "data-partner-has-data" not in response.text
     assert REMOVE_PARTNER_CONFIRM in response.text
 
 

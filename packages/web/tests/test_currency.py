@@ -40,3 +40,17 @@ def test_parse_usd_rejects_blank_with_a_user_facing_message(raw: str | None) -> 
 def test_parse_usd_rejects_garbage_with_a_user_facing_message() -> None:
     with pytest.raises(ValueError, match=_EXPECTED_ERROR):
         parse_usd("abc")
+
+
+def test_parse_usd_keeps_previous_when_submitted_display_matches() -> None:
+    previous = Decimal("2500.50")
+    echoed = format_usd(previous)
+
+    assert parse_usd(echoed, previous=previous) == previous
+
+
+def test_parse_usd_applies_edit_when_submitted_display_differs() -> None:
+    previous = Decimal("2500.50")
+    edited = "$2,500"
+
+    assert parse_usd(edited, previous=previous) == Decimal("2500")

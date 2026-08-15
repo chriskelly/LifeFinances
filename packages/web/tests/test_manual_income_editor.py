@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 from web.routes import EDITOR_MANUAL_INCOME, PLAN_MANUAL_INCOME
 from web.sections import MANUAL_INCOME_TITLE
 
+from web import boundaries
+
 
 def test_patch_manual_income_adds_stream(
     client: TestClient, repo: PlanRepository, plan_id: int
@@ -102,3 +104,16 @@ def test_editor_manual_income_start_omits_plan_start_option(
     assert "Plan start" not in response.text
     assert "Plan horizon" in response.text
     assert 'value="now"' in response.text
+
+
+def test_editor_manual_income_start_omits_max_age_option(
+    client: TestClient, plan_id: int
+) -> None:
+    response = client.get(f"{EDITOR_MANUAL_INCOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    # Start control must not offer Max age (empty stream); End may still offer it.
+    start_block = response.text.split("Start", 1)[1].split("End", 1)[0]
+    assert f'value="{boundaries.KIND_PERSON_MAX_AGE}"' not in start_block
+    end_block = response.text.split("End", 1)[1]
+    assert f'value="{boundaries.KIND_PERSON_MAX_AGE}"' in end_block

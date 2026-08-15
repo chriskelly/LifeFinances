@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 from decimal import Decimal
 from typing import get_args
@@ -87,6 +88,9 @@ PENSION_REQUEST_ISSUE_URL = "https://github.com/chriskelly/LifeFinances/issues/1
 PENSION_REQUEST_LINK_TEXT = "More pension options (#197)"
 PENSION_REQUEST_LINK_TITLE = "Vote for a richer pension editor"
 EXISTING_INDEX = "existing_index"
+PENSION_AGE_FACTOR_TABLE = "pension_age_factor_table"
+INVALID_AGE_FACTOR_TABLE_MESSAGE = "Custom pension table is missing or invalid"
+INVALID_AVERAGING_MONTHS_MESSAGE = "Enter averaging months as a whole number"
 REMOVE_PARTNER_CONFIRM = (
     "Remove partner? Their jobs and Social Security earnings will be deleted."
 )
@@ -138,10 +142,39 @@ def is_calstrs_pension(pension: FormulaPension | None) -> bool:
     return pension.age_factor_table == calstrs_age_factor_table()
 
 
-def partner_has_removable_data(person: PersonHousehold | None) -> bool:
-    if person is None:
-        return False
-    return bool(person.jobs) or bool(person.social_security.earnings_record)
+def encode_age_factor_table(table: list[AgeFactor]) -> str:
+    return json.dumps([factor.model_dump(mode="json") for factor in table])
+
+
+def decode_age_factor_table(raw: str) -> list[AgeFactor]:
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(INVALID_AGE_FACTOR_TABLE_MESSAGE) from exc
+    if not isinstance(payload, list) or not payload:
+        raise ValueError(INVALID_AGE_FACTOR_TABLE_MESSAGE)
+    try:
+        return [AgeFactor.model_validate(item) for item in payload]
+    except (TypeError, ValueError) as exc:
+        raise ValueError(INVALID_AGE_FACTOR_TABLE_MESSAGE) from exc
+
+
+def _parse_averaging_months(raw: str) -> int:
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise ValueError(INVALID_AVERAGING_MONTHS_MESSAGE) from exc
+
+
+def _custom_age_factor_table(
+    row: list[tuple[str, str]], *, previous: Job | None
+) -> list[AgeFactor]:
+    encoded = boundaries.row_scalar(row, PENSION_AGE_FACTOR_TABLE)
+    if encoded.strip():
+        return decode_age_factor_table(encoded)
+    if previous is not None and previous.pension is not None:
+        return previous.pension.age_factor_table
+    raise ValueError("Custom pension is no longer available; choose CalSTRS or None")
 
 
 def _pension_fields_from_row(
@@ -156,7 +189,7 @@ def _pension_fields_from_row(
         ),
         "claim": boundaries.row_boundary(row, "pension_claim", today=today),
         "age_factor_table": age_factor_table,
-        "final_comp_averaging_months": int(
+        "final_comp_averaging_months": _parse_averaging_months(
             boundaries.row_scalar(
                 row,
                 "pension_averaging_months",
@@ -182,14 +215,10 @@ def _job_from_row(
             row, today=today, age_factor_table=calstrs_age_factor_table()
         )
     elif pension_choice == PENSION_CUSTOM:
-        if previous is None or previous.pension is None:
-            raise ValueError(
-                "Custom pension is no longer available; choose CalSTRS or None"
-            )
         pension = _pension_fields_from_row(
             row,
             today=today,
-            age_factor_table=previous.pension.age_factor_table,
+            age_factor_table=_custom_age_factor_table(row, previous=previous),
         )
     sabbaticals = [
         {
@@ -205,10 +234,12 @@ def _job_from_row(
         {
             "label": boundaries.row_scalar(row, "label") or None,
             "annual_income": parse_usd(
-                boundaries.row_scalar(row, "annual_income", "0")
+                boundaries.row_scalar(row, "annual_income", "0"),
+                previous=previous.annual_income if previous else None,
             ),
             "annual_tax_deferred": parse_usd(
-                boundaries.row_scalar(row, "annual_tax_deferred", "0")
+                boundaries.row_scalar(row, "annual_tax_deferred", "0"),
+                previous=previous.annual_tax_deferred if previous else None,
             ),
             "annual_raise": parse_percent(
                 boundaries.row_scalar(row, "annual_raise", "0%")
@@ -366,12 +397,18 @@ class AppSettingsForm(BaseModel):
         )
 
 
-def _stream_from_row(row: list[tuple[str, str]], *, today: date) -> TimedStream:
+def _stream_from_row(
+    row: list[tuple[str, str]],
+    *,
+    today: date,
+    previous: TimedStream | None = None,
+) -> TimedStream:
     return TimedStream.model_validate(
         {
             "label": boundaries.row_scalar(row, "label") or None,
             "monthly_amount": parse_usd(
-                boundaries.row_scalar(row, "monthly_amount", "0")
+                boundaries.row_scalar(row, "monthly_amount", "0"),
+                previous=previous.monthly_amount if previous else None,
             ),
             "start": boundaries.row_boundary(row, "start", today=today),
             "end": boundaries.row_boundary(row, "end", today=today),
@@ -388,9 +425,24 @@ class ManualIncomeForm:
         self.streams = streams
 
     @classmethod
-    def from_form(cls, form: FormData, *, today: date) -> ManualIncomeForm:
+    def from_form(
+        cls,
+        form: FormData,
+        *,
+        today: date,
+        existing_streams: list[TimedStream],
+    ) -> ManualIncomeForm:
         rows = boundaries.collect_indexed_rows(form, STREAMS_PREFIX)
-        return cls(streams=[_stream_from_row(row, today=today) for row in rows])
+        streams: list[TimedStream] = []
+        for row in rows:
+            raw_index = boundaries.row_scalar(row, EXISTING_INDEX)
+            previous: TimedStream | None = None
+            if raw_index.strip():
+                index = int(raw_index)
+                if 0 <= index < len(existing_streams):
+                    previous = existing_streams[index]
+            streams.append(_stream_from_row(row, today=today, previous=previous))
+        return cls(streams=streams)
 
     def apply_to(self, plan: Plan) -> Plan:
         return plan.model_copy(update={"manual_income_streams": self.streams})
