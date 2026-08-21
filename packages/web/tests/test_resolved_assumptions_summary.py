@@ -4,14 +4,17 @@ import math
 import sys
 from datetime import date, datetime
 from html import unescape
+from typing import Literal
 
 import numpy as np
 import pytest
 from core.models import DEFAULT_PERCENTILES, PlanningPreset
 from fastapi.testclient import TestClient
+from simulation.market_data.cache import MarketDataSource
 from simulation.result import ResolvedAssumptions, SimulationResult
 from web.percent import format_percent
 from web.resolved_assumptions import (
+    SOURCE_LABELS,
     UNAVAILABLE_MESSAGE,
     annual_stock_log_volatility,
 )
@@ -20,16 +23,18 @@ from web.sections import MARKET_ASSUMPTIONS_TITLE
 
 from web import forms
 
+InflationSource = Literal["manual", "live", "cache", "vendored"]
+
 
 def _assumptions(
     *,
     annual_stock_log_variance: float,
     planning_preset: PlanningPreset = "regression_prediction",
-    inflation_source: str = "vendored",
+    inflation_source: InflationSource = "vendored",
     inflation_observation_date: date | None = date(2026, 4, 30),
-    sp500_source: str | None = "cache",
+    sp500_source: MarketDataSource | None = "cache",
     sp500_observation_date: date | None = date(2026, 5, 1),
-    treasury_source: str | None = "live",
+    treasury_source: MarketDataSource | None = "live",
     treasury_observation_date: date | None = date(2026, 5, 2),
     annual_inflation: float = 0.023,
     annual_stock_return: float = 0.051,
@@ -41,11 +46,11 @@ def _assumptions(
         annual_bond_return=annual_bond_return,
         annual_stock_log_variance=annual_stock_log_variance,
         planning_preset=planning_preset,
-        inflation_source=inflation_source,  # type: ignore[arg-type]
+        inflation_source=inflation_source,
         inflation_observation_date=inflation_observation_date,
-        sp500_source=sp500_source,  # type: ignore[arg-type]
+        sp500_source=sp500_source,
         sp500_observation_date=sp500_observation_date,
-        treasury_source=treasury_source,  # type: ignore[arg-type]
+        treasury_source=treasury_source,
         treasury_observation_date=treasury_observation_date,
     )
 
@@ -136,11 +141,11 @@ def test_home_renders_resolved_assumptions_from_cached_result(
     assert format_percent(annual_bond_return) in body
     assert format_percent(math.sqrt(annual_variance)) in body
     assert forms.PLANNING_PRESET_LABELS["regression_prediction"] in body
-    assert "Vendored fallback" in body
+    assert SOURCE_LABELS["vendored"] in body
     assert inflation_date.isoformat() in body
-    assert "Cached" in body
+    assert SOURCE_LABELS["cache"] in body
     assert sp500_date.isoformat() in body
-    assert "Live" in body
+    assert SOURCE_LABELS["live"] in body
     assert treasury_date.isoformat() in body
     assert UNAVAILABLE_MESSAGE not in body
 
@@ -251,4 +256,4 @@ def test_fixed_and_historical_presets_omit_market_source_dates(
     assert f"<dd>{expected_label}</dd>" in body
     assert "S&P 500 source:" not in body
     assert "Treasury source:" not in body
-    assert "Inflation source: Manual" in body
+    assert f"Inflation source: {SOURCE_LABELS['manual']}" in body
