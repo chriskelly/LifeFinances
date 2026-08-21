@@ -4,18 +4,23 @@ import json
 from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
-from typing import get_args
+from typing import Literal, get_args
 
 from core.job import AgeFactor, FormulaPension, Job
 from core.models import RISK_TOLERANCE_NUM_VALUES as _RISK_TOLERANCE_NUM_VALUES
 from core.models import (
     AppSettings,
+    BondPresetBase,
     FilingStatus,
     Household,
+    InflationConfig,
     PersonHousehold,
     Plan,
+    PlanningPreset,
+    PlanningReturnsConfig,
     Portfolio,
     RiskConfig,
+    StockPresetBase,
 )
 from core.streams import PersonId, TimedStream
 from domain.statutory.pension import (
@@ -41,6 +46,50 @@ DELTA_AT_MAX_AGE = "delta_at_max_age"
 LEGACY_DELTA_FROM_AT_20 = "legacy_delta_from_at_20"
 TIME_PREFERENCE = "time_preference"
 ADDITIONAL_ANNUAL_SPENDING_TILT = "additional_annual_spending_tilt"
+INFLATION_MODE = "inflation_mode"
+INFLATION_MANUAL_ANNUAL_RATE = "inflation_manual_annual_rate"
+PLANNING_PRESET = "planning_preset"
+FIXED_EQUITY_PREMIUM = "fixed_equity_premium"
+CUSTOM_STOCKS_BASE = "custom_stocks_base"
+CUSTOM_BONDS_BASE = "custom_bonds_base"
+CUSTOM_STOCKS_DELTA = "custom_stocks_delta"
+CUSTOM_BONDS_DELTA = "custom_bonds_delta"
+EXPECTED_ANNUAL_RETURN_STOCKS = "expected_annual_return_stocks"
+EXPECTED_ANNUAL_RETURN_BONDS = "expected_annual_return_bonds"
+STOCK_VOLATILITY_SCALE = "stock_volatility_scale"
+FIXED_EQUITY_PREMIUM_FORM_DEFAULT = Decimal("0.03")
+CUSTOM_STOCKS_BASE_FORM_DEFAULT: StockPresetBase = "regression_prediction"
+CUSTOM_BONDS_BASE_FORM_DEFAULT: BondPresetBase = "twenty_year_tips_yield"
+INFLATION_MODES: tuple[Literal["suggested", "manual"], ...] = (
+    "suggested",
+    "manual",
+)
+INFLATION_MODE_LABELS = {
+    "suggested": "Suggested",
+    "manual": "Manual",
+}
+PLANNING_PRESETS: tuple[PlanningPreset, ...] = get_args(PlanningPreset)
+PLANNING_PRESET_LABELS = {
+    "regression_prediction": "Regression prediction + 20-year TIPS",
+    "conservative_estimate": "Conservative estimate + 20-year TIPS",
+    "one_over_cape": "1/CAPE + 20-year TIPS",
+    "historical": "Historical",
+    "fixed_equity_premium": "Fixed equity premium",
+    "custom": "Custom",
+    "fixed": "Fixed",
+}
+STOCK_PRESET_BASES: tuple[StockPresetBase, ...] = get_args(StockPresetBase)
+STOCK_PRESET_BASE_LABELS = {
+    "regression_prediction": "Regression prediction",
+    "conservative_estimate": "Conservative estimate",
+    "one_over_cape": "1/CAPE",
+    "historical": "Historical",
+}
+BOND_PRESET_BASES: tuple[BondPresetBase, ...] = get_args(BondPresetBase)
+BOND_PRESET_BASE_LABELS = {
+    "twenty_year_tips_yield": "20-year TIPS yield",
+    "historical": "Historical",
+}
 # Re-export for Jinja templates (`forms.RISK_TOLERANCE_NUM_VALUES`).
 RISK_TOLERANCE_NUM_VALUES = _RISK_TOLERANCE_NUM_VALUES
 STREAM_LABEL = "label"
@@ -434,6 +483,49 @@ class RiskForm(BaseModel):
     def apply_to(self, plan: Plan) -> Plan:
         risk = RiskConfig.model_validate(self.model_dump())
         return plan.model_copy(update={"risk": risk})
+
+
+class MarketAssumptionsForm(BaseModel):
+    inflation_mode: Literal["suggested", "manual"]
+    inflation_manual_annual_rate: Decimal | None = None
+    planning_preset: PlanningPreset
+    fixed_equity_premium: Decimal | None = None
+    custom_stocks_base: StockPresetBase | None = None
+    custom_bonds_base: BondPresetBase | None = None
+    custom_stocks_delta: Decimal | None = None
+    custom_bonds_delta: Decimal | None = None
+    expected_annual_return_stocks: Decimal | None = None
+    expected_annual_return_bonds: Decimal | None = None
+    stock_volatility_scale: Decimal | None = None
+
+    def apply_to(self, plan: Plan) -> Plan:
+        inflation_data = plan.inflation.model_dump()
+        inflation_data["mode"] = self.inflation_mode
+        if self.inflation_manual_annual_rate is not None:
+            inflation_data["manual_annual_rate"] = self.inflation_manual_annual_rate
+
+        returns_data = plan.planning_returns.model_dump()
+        returns_data["preset"] = self.planning_preset
+        for field in (
+            "fixed_equity_premium",
+            "custom_stocks_base",
+            "custom_bonds_base",
+            "custom_stocks_delta",
+            "custom_bonds_delta",
+            "expected_annual_return_stocks",
+            "expected_annual_return_bonds",
+            "stock_volatility_scale",
+        ):
+            value = getattr(self, field)
+            if value is not None:
+                returns_data[field] = value
+
+        return plan.model_copy(
+            update={
+                "inflation": InflationConfig.model_validate(inflation_data),
+                "planning_returns": PlanningReturnsConfig.model_validate(returns_data),
+            }
+        )
 
 
 def _apply_api_key(
