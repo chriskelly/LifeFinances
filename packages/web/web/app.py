@@ -46,6 +46,7 @@ from web.forms import (
     ManualIncomeForm,
     PortfolioForm,
     SocialSecurityForm,
+    SpendingGoalsForm,
 )
 from web.routes import (
     EDITOR_HOUSEHOLD,
@@ -54,6 +55,7 @@ from web.routes import (
     EDITOR_PORTFOLIO,
     EDITOR_SETTINGS,
     EDITOR_SOCIAL_SECURITY,
+    EDITOR_SPENDING,
     HOME,
     PLAN_CREATE,
     PLAN_DELETE,
@@ -66,6 +68,7 @@ from web.routes import (
     PLAN_SET_DEFAULT,
     PLAN_SETTINGS,
     PLAN_SOCIAL_SECURITY,
+    PLAN_SPENDING,
     PLAN_SS_EARNINGS,
     RESULTS,
 )
@@ -336,6 +339,42 @@ def _register_editor_routes(web_app: FastAPI) -> None:
             "editor_manual_income.html",
             {"plan_id": plan_id, "plan": plan_model},
         )
+
+
+def _register_spending_routes(web_app: FastAPI) -> None:
+    @web_app.get(EDITOR_SPENDING, response_class=HTMLResponse)
+    def editor_spending(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> HTMLResponse:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        return templates.TemplateResponse(
+            request,
+            "editor_spending.html",
+            {"plan_id": plan_id, "plan": plan_model},
+        )
+
+    @web_app.patch(PLAN_SPENDING)
+    async def patch_spending(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        form = await request.form()
+        try:
+            updated = SpendingGoalsForm.from_form(
+                form,
+                today=date.today(),
+                existing_essential=plan_model.extra_essential_spending,
+                existing_discretionary=plan_model.extra_discretionary_spending,
+                existing_legacy_target=plan_model.legacy_target,
+            ).apply_to(plan_model)
+        except (ValidationError, ValueError, ArithmeticError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        repo.save(plan_id, updated)
+        return Response(status_code=200)
 
 
 def _register_social_security_routes(web_app: FastAPI) -> None:
@@ -660,6 +699,7 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
     _mount_static(web_app)
     _register_home_route(web_app)
     _register_editor_routes(web_app)
+    _register_spending_routes(web_app)
     _register_social_security_routes(web_app)
     _register_patch_routes(web_app)
     _register_plan_management_routes(web_app)

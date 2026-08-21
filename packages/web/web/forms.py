@@ -30,6 +30,16 @@ from web.percent import parse_percent
 
 JOBS_PREFIX = "jobs"
 STREAMS_PREFIX = "streams"
+ESSENTIAL_PREFIX = "essential"
+DISCRETIONARY_PREFIX = "discretionary"
+LEGACY_TARGET = "legacy_target"
+LEGACY_TARGET_HELP = "Target at the plan horizon, in today's dollars."
+STREAM_LABEL = "label"
+STREAM_MONTHLY_AMOUNT = "monthly_amount"
+STREAM_IS_NOMINAL = "is_nominal"
+STREAM_ANNUAL_GROWTH_RATE = "annual_growth_rate"
+STREAM_START = "start"
+STREAM_END = "end"
 _TRUE = {"on", "true", "1"}
 
 # Field-name constants for templates/tests — must match DTO field names
@@ -448,19 +458,41 @@ def _stream_from_row(
 ) -> TimedStream:
     return TimedStream.model_validate(
         {
-            "label": boundaries.row_scalar(row, "label") or None,
+            "label": boundaries.row_scalar(row, STREAM_LABEL) or None,
             "monthly_amount": parse_usd(
-                boundaries.row_scalar(row, "monthly_amount", "0"),
+                boundaries.row_scalar(row, STREAM_MONTHLY_AMOUNT, "0"),
                 previous=previous.monthly_amount if previous else None,
             ),
-            "start": boundaries.row_boundary(row, "start", today=today),
-            "end": boundaries.row_boundary(row, "end", today=today),
-            "is_nominal": boundaries.row_scalar(row, "is_nominal") in _TRUE,
+            "start": boundaries.row_boundary(row, STREAM_START, today=today),
+            "end": boundaries.row_boundary(row, STREAM_END, today=today),
+            "is_nominal": boundaries.row_scalar(row, STREAM_IS_NOMINAL) in _TRUE,
             "annual_growth_rate": parse_percent(
-                boundaries.row_scalar(row, "annual_growth_rate", "0%")
+                boundaries.row_scalar(row, STREAM_ANNUAL_GROWTH_RATE, "0%")
             ),
         }
     )
+
+
+def _streams_from_form(
+    form: FormData,
+    *,
+    prefix: str,
+    today: date,
+    existing: list[TimedStream],
+) -> list[TimedStream]:
+    rows = boundaries.collect_indexed_rows(form, prefix)
+    streams: list[TimedStream] = []
+    claimed: set[int] = set()
+    for row in rows:
+        previous = _resolve_previous(
+            row,
+            existing=existing,
+            claimed=claimed,
+            amount_of=lambda stream: stream.monthly_amount,
+            amount_field=STREAM_MONTHLY_AMOUNT,
+        )
+        streams.append(_stream_from_row(row, today=today, previous=previous))
+    return streams
 
 
 class ManualIncomeForm:
@@ -475,22 +507,69 @@ class ManualIncomeForm:
         today: date,
         existing_streams: list[TimedStream],
     ) -> ManualIncomeForm:
-        rows = boundaries.collect_indexed_rows(form, STREAMS_PREFIX)
-        streams: list[TimedStream] = []
-        claimed: set[int] = set()
-        for row in rows:
-            previous = _resolve_previous(
-                row,
+        return cls(
+            streams=_streams_from_form(
+                form,
+                prefix=STREAMS_PREFIX,
+                today=today,
                 existing=existing_streams,
-                claimed=claimed,
-                amount_of=lambda stream: stream.monthly_amount,
-                amount_field="monthly_amount",
             )
-            streams.append(_stream_from_row(row, today=today, previous=previous))
-        return cls(streams=streams)
+        )
 
     def apply_to(self, plan: Plan) -> Plan:
         return plan.model_copy(update={"manual_income_streams": self.streams})
+
+
+class SpendingGoalsForm:
+    def __init__(
+        self,
+        *,
+        essential: list[TimedStream],
+        discretionary: list[TimedStream],
+        legacy_target: Decimal,
+    ) -> None:
+        self.essential = essential
+        self.discretionary = discretionary
+        self.legacy_target = legacy_target
+
+    @classmethod
+    def from_form(
+        cls,
+        form: FormData,
+        *,
+        today: date,
+        existing_essential: list[TimedStream],
+        existing_discretionary: list[TimedStream],
+        existing_legacy_target: Decimal,
+    ) -> SpendingGoalsForm:
+        raw_legacy = form.get(LEGACY_TARGET, "")
+        if not isinstance(raw_legacy, str):
+            raise ValueError("Legacy target must be text")
+        legacy_target = parse_usd(raw_legacy, previous=existing_legacy_target)
+        return cls(
+            essential=_streams_from_form(
+                form,
+                prefix=ESSENTIAL_PREFIX,
+                today=today,
+                existing=existing_essential,
+            ),
+            discretionary=_streams_from_form(
+                form,
+                prefix=DISCRETIONARY_PREFIX,
+                today=today,
+                existing=existing_discretionary,
+            ),
+            legacy_target=legacy_target,
+        )
+
+    def apply_to(self, plan: Plan) -> Plan:
+        return plan.model_copy(
+            update={
+                "extra_essential_spending": self.essential,
+                "extra_discretionary_spending": self.discretionary,
+                "legacy_target": self.legacy_target,
+            }
+        )
 
 
 class SocialSecurityForm(BaseModel):

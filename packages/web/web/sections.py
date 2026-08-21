@@ -1,6 +1,7 @@
 HOUSEHOLD_TITLE = "Household"
 JOBS_TITLE = "Jobs"
 MANUAL_INCOME_TITLE = "Manual Income"
+SPENDING_GOALS_TITLE = "Spending goals"
 SOCIAL_SECURITY_TITLE = "Social Security"
 PORTFOLIO_TITLE = "Current Savings Portfolio"
 SETTINGS_TITLE = "Settings"
