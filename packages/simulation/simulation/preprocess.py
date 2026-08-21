@@ -58,11 +58,27 @@ def _decimal_series_to_float64(series: Sequence[Decimal]) -> np.ndarray:
     return np.array([float(value) for value in series], dtype=np.float64)
 
 
-def _sum_streams(streams: Sequence[TimedStream], timeline: Timeline) -> np.ndarray:
-    months = timeline.horizon_months
-    total = np.zeros(months, dtype=np.float64)
+def _stream_to_real(
+    stream: TimedStream,
+    timeline: Timeline,
+    *,
+    deflator: np.ndarray,
+) -> np.ndarray:
+    projected = _decimal_series_to_float64(project_stream(stream, timeline))
+    if stream.is_nominal:
+        return projected / deflator
+    return projected
+
+
+def _sum_streams_real(
+    streams: Sequence[TimedStream],
+    timeline: Timeline,
+    *,
+    deflator: np.ndarray,
+) -> np.ndarray:
+    total = np.zeros(timeline.horizon_months, dtype=np.float64)
     for stream in streams:
-        total += _decimal_series_to_float64(project_stream(stream, timeline))
+        total += _stream_to_real(stream, timeline, deflator=deflator)
     return total
 
 
@@ -118,9 +134,11 @@ def preprocess(
     deflator = (1.0 + inflation.monthly) ** np.arange(months, dtype=np.float64)
     income_nominal = _decimal_series_to_float64(cashflows.net_cashflow)
     income_real = income_nominal / deflator
-    essential_real = _sum_streams(plan.extra_essential_spending, timeline) / deflator
-    discretionary_real = (
-        _sum_streams(plan.extra_discretionary_spending, timeline) / deflator
+    essential_real = _sum_streams_real(
+        plan.extra_essential_spending, timeline, deflator=deflator
+    )
+    discretionary_real = _sum_streams_real(
+        plan.extra_discretionary_spending, timeline, deflator=deflator
     )
 
     # Per-month RRA from the longer-lived person's age glide. "Longer-lived"
