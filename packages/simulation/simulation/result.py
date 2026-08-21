@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any
+from datetime import date, datetime
+from typing import Any, Literal
 
 import numpy as np
+from core.models import PlanningPreset
 from pydantic import BaseModel, ConfigDict
+
+from simulation.market_data.cache import MarketDataSource
+from simulation.market_data.inflation import InflationResolved
+from simulation.planning_returns import PlanningReturns
 
 ENGINE_VERSION = "phase3d"
 
@@ -69,6 +74,50 @@ class RawSimulationResult(BaseModel):
         return _eq_ndarray_model(self, other, array_fields=RAW_ARRAY_FIELDS)
 
 
+class ResolvedAssumptions(BaseModel):
+    annual_inflation: float
+    annual_stock_return: float
+    annual_bond_return: float
+    annual_stock_log_variance: float
+    planning_preset: PlanningPreset
+    inflation_source: Literal["manual", "live", "cache", "vendored"]
+    inflation_observation_date: date | None = None
+    sp500_source: MarketDataSource | None = None
+    sp500_observation_date: date | None = None
+    treasury_source: MarketDataSource | None = None
+    treasury_observation_date: date | None = None
+
+
+def build_resolved_assumptions(
+    *,
+    inflation: InflationResolved,
+    planning: PlanningReturns,
+    preset: PlanningPreset,
+) -> ResolvedAssumptions:
+    inflation_source = (
+        "manual" if inflation.source == "manual" else inflation.market_source
+    )
+    if inflation_source is None:
+        raise ValueError("suggested inflation is missing market provenance")
+    return ResolvedAssumptions(
+        annual_inflation=inflation.annual,
+        annual_stock_return=planning.annual_stocks,
+        annual_bond_return=planning.annual_bonds,
+        annual_stock_log_variance=planning.annual_stock_log_variance,
+        planning_preset=preset,
+        inflation_source=inflation_source,
+        inflation_observation_date=inflation.observation_date,
+        sp500_source=planning.sp500.source if planning.sp500 else None,
+        sp500_observation_date=(
+            planning.sp500.observation_date if planning.sp500 else None
+        ),
+        treasury_source=planning.treasury.source if planning.treasury else None,
+        treasury_observation_date=(
+            planning.treasury.observation_date if planning.treasury else None
+        ),
+    )
+
+
 class SimulationResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -88,6 +137,7 @@ class SimulationResult(BaseModel):
     wealth_pension: np.ndarray
     wealth_manual: np.ndarray
     num_runs_insufficient: int
+    resolved_assumptions: ResolvedAssumptions
     engine_version: str = ENGINE_VERSION
 
     def __eq__(self, other: Any) -> bool:

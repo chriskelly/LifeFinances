@@ -4,9 +4,20 @@ from datetime import datetime
 
 import numpy as np
 from core.models import DEFAULT_PERCENTILES
-from simulation.result import SimulationResult
+from simulation.result import ResolvedAssumptions, SimulationResult
 
 from web import spending_summary as spending
+
+
+def _resolved_assumptions() -> ResolvedAssumptions:
+    return ResolvedAssumptions(
+        annual_inflation=0.02,
+        annual_stock_return=0.05,
+        annual_bond_return=0.02,
+        annual_stock_log_variance=0.03,
+        planning_preset="fixed",
+        inflation_source="manual",
+    )
 
 
 def _result_with_withdrawals(
@@ -32,6 +43,7 @@ def _result_with_withdrawals(
         wealth_pension=months.copy(),
         wealth_manual=months.copy(),
         num_runs_insufficient=0,
+        resolved_assumptions=_resolved_assumptions(),
     )
 
 

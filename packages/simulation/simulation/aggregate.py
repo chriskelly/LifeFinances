@@ -3,7 +3,12 @@ from __future__ import annotations
 import numpy as np
 
 from simulation.composition import WealthBySource
-from simulation.result import RAW_ARRAY_FIELDS, RawSimulationResult, SimulationResult
+from simulation.result import (
+    RAW_ARRAY_FIELDS,
+    RawSimulationResult,
+    ResolvedAssumptions,
+    SimulationResult,
+)
 
 
 def _percentile_arrays(
@@ -21,6 +26,7 @@ def build_public_result(
     percentiles: list[int],
     composition: WealthBySource,
     start_month: tuple[int, int],
+    resolved_assumptions: ResolvedAssumptions,
 ) -> SimulationResult:
     reduced = _percentile_arrays(raw, percentiles=percentiles)
     return SimulationResult(
@@ -40,4 +46,5 @@ def build_public_result(
         wealth_pension=composition.pension,
         wealth_manual=composition.manual,
         num_runs_insufficient=raw.num_runs_insufficient,
+        resolved_assumptions=resolved_assumptions,
     )

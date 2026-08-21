@@ -9,7 +9,7 @@ from simulation.composition import wealth_by_income_source
 from simulation.engine import simulate_monthly
 from simulation.market_data import build_return_paths
 from simulation.preprocess import preprocess
-from simulation.result import SimulationResult
+from simulation.result import SimulationResult, build_resolved_assumptions
 
 
 def run_simulation(
@@ -58,9 +58,15 @@ def run_simulation(
         monthly_bond_rate=processed.monthly_planning_bonds,
     )
 
+    resolved_assumptions = build_resolved_assumptions(
+        inflation=processed.inflation_resolved,
+        planning=processed.planning_resolved,
+        preset=plan.planning_returns.preset,
+    )
     return build_public_result(
         raw,
         percentiles=resolved,
         composition=composition,
         start_month=(today.year, today.month),
+        resolved_assumptions=resolved_assumptions,
     )

@@ -5,8 +5,19 @@ from datetime import date, datetime
 import numpy as np
 from core.defaults import default_plan
 from fastapi import FastAPI
-from simulation.result import SimulationResult
+from simulation.result import ResolvedAssumptions, SimulationResult
 from web.simulation_cache import CACHE_MAX_SIZE, fingerprint_plan, get_or_run_simulation
+
+
+def _resolved_assumptions() -> ResolvedAssumptions:
+    return ResolvedAssumptions(
+        annual_inflation=0.02,
+        annual_stock_return=0.05,
+        annual_bond_return=0.02,
+        annual_stock_log_variance=0.03,
+        planning_preset="fixed",
+        inflation_source="manual",
+    )
 
 
 def _make_result() -> SimulationResult:
@@ -32,6 +43,7 @@ def _make_result() -> SimulationResult:
         wealth_pension=months.copy(),
         wealth_manual=months.copy(),
         num_runs_insufficient=0,
+        resolved_assumptions=_resolved_assumptions(),
     )
 
 
