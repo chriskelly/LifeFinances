@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
 
@@ -45,6 +46,7 @@ from web.forms import (
     JobsForm,
     ManualIncomeForm,
     PortfolioForm,
+    RiskForm,
     SocialSecurityForm,
     SpendingGoalsForm,
 )
@@ -53,6 +55,7 @@ from web.routes import (
     EDITOR_JOBS,
     EDITOR_MANUAL_INCOME,
     EDITOR_PORTFOLIO,
+    EDITOR_RISK,
     EDITOR_SETTINGS,
     EDITOR_SOCIAL_SECURITY,
     EDITOR_SPENDING,
@@ -65,6 +68,7 @@ from web.routes import (
     PLAN_MANUAL_INCOME,
     PLAN_PORTFOLIO,
     PLAN_RENAME,
+    PLAN_RISK,
     PLAN_SET_DEFAULT,
     PLAN_SETTINGS,
     PLAN_SOCIAL_SECURITY,
@@ -370,6 +374,47 @@ def _register_spending_routes(web_app: FastAPI) -> None:
                 existing_essential=plan_model.extra_essential_spending,
                 existing_discretionary=plan_model.extra_discretionary_spending,
                 existing_legacy_target=plan_model.legacy_target,
+            ).apply_to(plan_model)
+        except (ValidationError, ValueError, ArithmeticError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        repo.save(plan_id, updated)
+        return Response(status_code=200)
+
+
+def _register_risk_routes(web_app: FastAPI) -> None:
+    @web_app.get(EDITOR_RISK, response_class=HTMLResponse)
+    def editor_risk(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> HTMLResponse:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        return templates.TemplateResponse(
+            request,
+            "editor_risk.html",
+            {"plan_id": plan_id, "plan": plan_model},
+        )
+
+    @web_app.patch(PLAN_RISK)
+    def patch_risk(
+        risk_tolerance_at_20: Annotated[str, Form()],
+        delta_at_max_age: Annotated[str, Form()],
+        legacy_delta_from_at_20: Annotated[str, Form()],
+        time_preference: Annotated[str, Form()],
+        additional_annual_spending_tilt: Annotated[str, Form()],
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        try:
+            updated = RiskForm(
+                risk_tolerance_at_20=Decimal(risk_tolerance_at_20),
+                delta_at_max_age=Decimal(delta_at_max_age),
+                legacy_delta_from_at_20=Decimal(legacy_delta_from_at_20),
+                time_preference=percent.parse_percent(time_preference),
+                additional_annual_spending_tilt=percent.parse_percent(
+                    additional_annual_spending_tilt
+                ),
             ).apply_to(plan_model)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
@@ -700,6 +745,7 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
     _register_home_route(web_app)
     _register_editor_routes(web_app)
     _register_spending_routes(web_app)
+    _register_risk_routes(web_app)
     _register_social_security_routes(web_app)
     _register_patch_routes(web_app)
     _register_plan_management_routes(web_app)

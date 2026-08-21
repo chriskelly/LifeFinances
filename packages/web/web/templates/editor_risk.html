@@ -1,0 +1,68 @@
+<section class="editor-section">
+  <h2>{{ sections.RISK_TITLE }}</h2>
+  <form
+    hx-patch="{{ routes.PLAN_RISK }}?plan={{ plan_id }}"
+    hx-trigger="input changed delay:750ms"
+    hx-swap="none"
+  >
+    <label>
+      Risk tolerance at age 20
+      <input
+        type="range"
+        name="{{ forms.RISK_TOLERANCE_AT_20 }}"
+        min="0"
+        max="{{ forms.RISK_TOLERANCE_NUM_VALUES - 1 }}"
+        step="1"
+        value="{{ plan.risk.risk_tolerance_at_20 }}"
+      >
+    </label>
+    <p class="field-help">
+      <span>Conservative</span>
+      <span>Moderate</span>
+      <span>Aggressive</span>
+    </p>
+
+    <label>
+      Additional annual spending tilt
+      <input
+        type="text"
+        inputmode="decimal"
+        class="percent-input"
+        name="{{ forms.ADDITIONAL_ANNUAL_SPENDING_TILT }}"
+        value="{{ plan.risk.additional_annual_spending_tilt|percent }}"
+      >
+    </label>
+
+    <details>
+      <summary>Advanced risk settings</summary>
+      <label>
+        Risk tolerance change by max age
+        <input
+          type="text"
+          inputmode="decimal"
+          name="{{ forms.DELTA_AT_MAX_AGE }}"
+          value="{{ plan.risk.delta_at_max_age }}"
+        >
+      </label>
+      <label>
+        Legacy risk tolerance delta from age 20
+        <input
+          type="text"
+          inputmode="decimal"
+          name="{{ forms.LEGACY_DELTA_FROM_AT_20 }}"
+          value="{{ plan.risk.legacy_delta_from_at_20 }}"
+        >
+      </label>
+      <label>
+        Time preference
+        <input
+          type="text"
+          inputmode="decimal"
+          class="percent-input"
+          name="{{ forms.TIME_PREFERENCE }}"
+          value="{{ plan.risk.time_preference|percent }}"
+        >
+      </label>
+    </details>
+  </form>
+</section>
