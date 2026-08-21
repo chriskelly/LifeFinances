@@ -4,6 +4,7 @@
     hx-patch="{{ routes.PLAN_MARKET_ASSUMPTIONS }}?plan={{ plan_id }}"
     hx-trigger="input changed delay:750ms, change delay:750ms"
     hx-swap="none"
+    hx-validate="true"
   >
     {% set equity_premium = plan.planning_returns.fixed_equity_premium if plan.planning_returns.fixed_equity_premium is not none else forms.FIXED_EQUITY_PREMIUM_FORM_DEFAULT %}
     {% set stocks_base = plan.planning_returns.custom_stocks_base or forms.CUSTOM_STOCKS_BASE_FORM_DEFAULT %}

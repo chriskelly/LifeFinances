@@ -280,6 +280,7 @@ def test_editor_market_assumptions_get_includes_conditional_hooks_and_defaults(
     assert 'data-condition-value="fixed"' in body
     assert "data-condition-input" in body
     assert "data-required-when-active" in body
+    assert 'hx-validate="true"' in body
     assert f'name="{forms.FIXED_EQUITY_PREMIUM}"' in body
     assert format_percent(forms.FIXED_EQUITY_PREMIUM_FORM_DEFAULT) in body
     assert (
