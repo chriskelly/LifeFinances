@@ -4,6 +4,7 @@ from core.models import (
     AdvancedConfig,
     normalize_percentiles,
 )
+from pydantic import ValidationError
 
 
 def test_normalize_percentiles_sorts_ascending():
@@ -21,6 +22,21 @@ def test_normalize_percentiles_rejects_empty():
 def test_normalize_percentiles_rejects_out_of_range():
     with pytest.raises(ValueError, match="0..100"):
         normalize_percentiles([50, 101])
+
+
+def test_normalize_percentiles_rejects_duplicates() -> None:
+    duplicate = 50
+    values = [5, duplicate, duplicate, 95]
+
+    with pytest.raises(ValueError, match="duplicates"):
+        normalize_percentiles(values)
+
+
+def test_advanced_config_applies_duplicate_rejection() -> None:
+    duplicate = 25
+
+    with pytest.raises(ValidationError, match="duplicates"):
+        AdvancedConfig(percentiles=[duplicate, duplicate])
 
 
 def test_advanced_config_uses_normalize_percentiles():

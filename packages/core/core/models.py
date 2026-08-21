@@ -65,6 +65,8 @@ class AppSettings(BaseModel):
 def normalize_percentiles(value: list[int]) -> list[int]:
     if not value:
         raise ValueError("percentiles must be non-empty")
+    if len(set(value)) != len(value):
+        raise ValueError("percentiles must not contain duplicates")
     if any(p < 0 or p > 100 for p in value):
         raise ValueError("each percentile must be in 0..100")
     return sorted(value)
