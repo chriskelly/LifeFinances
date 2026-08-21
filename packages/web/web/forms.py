@@ -9,6 +9,7 @@ from typing import Literal, get_args
 from core.job import AgeFactor, FormulaPension, Job
 from core.models import RISK_TOLERANCE_NUM_VALUES as _RISK_TOLERANCE_NUM_VALUES
 from core.models import (
+    AdvancedConfig,
     AppSettings,
     BondPresetBase,
     FilingStatus,
@@ -20,7 +21,9 @@ from core.models import (
     PlanningReturnsConfig,
     Portfolio,
     RiskConfig,
+    SamplingConfig,
     StockPresetBase,
+    normalize_percentiles,
 )
 from core.streams import PersonId, TimedStream
 from domain.statutory.pension import (
@@ -57,6 +60,15 @@ CUSTOM_BONDS_DELTA = "custom_bonds_delta"
 EXPECTED_ANNUAL_RETURN_STOCKS = "expected_annual_return_stocks"
 EXPECTED_ANNUAL_RETURN_BONDS = "expected_annual_return_bonds"
 STOCK_VOLATILITY_SCALE = "stock_volatility_scale"
+BLOCK_SIZE_MONTHS = "block_size_months"
+NUM_RUNS = "num_runs"
+STAGGER_RUN_STARTS = "stagger_run_starts"
+SAMPLING_SEED = "seed"
+PERCENTILES = "percentiles"
+PERCENTILES_WEALTH_MAPPING_HELP = (
+    "Wealth composition Low, Middle, and High use the first, middle, "
+    "and last configured percentiles."
+)
 FIXED_EQUITY_PREMIUM_FORM_DEFAULT = Decimal("0.03")
 CUSTOM_STOCKS_BASE_FORM_DEFAULT: StockPresetBase = "regression_prediction"
 CUSTOM_BONDS_BASE_FORM_DEFAULT: BondPresetBase = "twenty_year_tips_yield"
@@ -526,6 +538,35 @@ class MarketAssumptionsForm(BaseModel):
                 "planning_returns": PlanningReturnsConfig.model_validate(returns_data),
             }
         )
+
+
+def parse_percentiles_field(raw: str) -> list[int]:
+    tokens = [token.strip() for token in raw.split(",")]
+    if not tokens or any(not token for token in tokens):
+        raise ValueError("Enter one or more comma-separated percentiles")
+    try:
+        parsed = [int(token) for token in tokens]
+    except ValueError as exc:
+        raise ValueError("Percentiles must be whole numbers") from exc
+    return normalize_percentiles(parsed)
+
+
+class SimulationDetailsForm(BaseModel):
+    block_size_months: int
+    num_runs: int
+    stagger_run_starts: bool
+    seed: int
+    percentiles: list[int]
+
+    def apply_to(self, plan: Plan) -> Plan:
+        sampling = SamplingConfig(
+            block_size_months=self.block_size_months,
+            num_runs=self.num_runs,
+            stagger_run_starts=self.stagger_run_starts,
+            seed=self.seed,
+        )
+        advanced = AdvancedConfig(percentiles=self.percentiles)
+        return plan.model_copy(update={"sampling": sampling, "advanced": advanced})
 
 
 def _apply_api_key(
