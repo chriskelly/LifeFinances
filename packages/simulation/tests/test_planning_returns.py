@@ -1,10 +1,15 @@
 from datetime import date
 from decimal import Decimal
 
+import pytest
 from core.defaults import default_plan
-from core.models import DEFAULT_BLOCK_SIZE_MONTHS
-from simulation.market_data import load_historical_returns
-from simulation.planning_returns import resolve_planning_returns
+from core.models import DEFAULT_BLOCK_SIZE_MONTHS, PlanningPreset
+from simulation.market_data import (
+    SP500Resolved,
+    TreasuryYieldsResolved,
+    load_historical_returns,
+)
+from simulation.planning_returns import TWENTY_YEAR_TENOR, resolve_planning_returns
 from simulation.presets import (
     historical_annual_return,
     historical_bond_return,
@@ -27,6 +32,10 @@ def _spy_resolver(value):
         return value
 
     return resolver, calls
+
+
+def _resolver_that_fails_if_called(**kwargs):
+    raise AssertionError(f"resolver must not be called; got {kwargs}")
 
 
 class _SP500:
@@ -221,3 +230,89 @@ def test_variance_uses_block_size_table_and_scale():
     result = resolve_planning_returns(plan, today=TODAY)
 
     assert result.annual_stock_log_variance == expected_variance
+
+
+def test_regression_preset_retains_both_market_sources() -> None:
+    sp500_date = date(2026, 4, 1)
+    treasury_date = date(2026, 4, 2)
+    expected_sp500 = SP500Resolved(
+        close=6_000.0, observation_date=sp500_date, source="cache"
+    )
+    expected_treasury = TreasuryYieldsResolved(
+        yields={TWENTY_YEAR_TENOR: 0.018},
+        observation_date=treasury_date,
+        source="vendored",
+    )
+    plan = default_plan()
+    plan.planning_returns.preset = "regression_prediction"
+
+    resolved = resolve_planning_returns(
+        plan,
+        sp500_resolver=lambda **_: expected_sp500,
+        treasury_resolver=lambda **_: expected_treasury,
+    )
+
+    assert resolved.sp500 == expected_sp500
+    assert resolved.treasury == expected_treasury
+
+
+@pytest.mark.parametrize("preset", ["historical", "fixed"])
+def test_non_market_presets_have_no_market_provenance(preset: PlanningPreset) -> None:
+    plan = default_plan()
+    plan.planning_returns.preset = preset
+
+    resolved = resolve_planning_returns(
+        plan,
+        sp500_resolver=_resolver_that_fails_if_called,
+        treasury_resolver=_resolver_that_fails_if_called,
+    )
+
+    assert resolved.sp500 is None
+    assert resolved.treasury is None
+
+
+def test_fixed_equity_premium_retains_only_treasury_provenance() -> None:
+    treasury_date = date(2026, 4, 2)
+    expected_treasury = TreasuryYieldsResolved(
+        yields={TWENTY_YEAR_TENOR: 0.018},
+        observation_date=treasury_date,
+        source="vendored",
+    )
+    plan = default_plan()
+    plan.planning_returns.preset = "fixed_equity_premium"
+    plan.planning_returns.fixed_equity_premium = Decimal("0.03")
+
+    resolved = resolve_planning_returns(
+        plan,
+        sp500_resolver=_resolver_that_fails_if_called,
+        treasury_resolver=lambda **_: expected_treasury,
+    )
+
+    assert resolved.sp500 is None
+    assert resolved.treasury == expected_treasury
+
+
+def test_custom_preset_retains_both_market_sources_when_bases_consume_them() -> None:
+    sp500_date = date(2026, 4, 1)
+    treasury_date = date(2026, 4, 2)
+    expected_sp500 = SP500Resolved(
+        close=6_000.0, observation_date=sp500_date, source="cache"
+    )
+    expected_treasury = TreasuryYieldsResolved(
+        yields={TWENTY_YEAR_TENOR: 0.018},
+        observation_date=treasury_date,
+        source="vendored",
+    )
+    plan = default_plan()
+    plan.planning_returns.preset = "custom"
+    plan.planning_returns.custom_stocks_base = "regression_prediction"
+    plan.planning_returns.custom_bonds_base = "twenty_year_tips_yield"
+
+    resolved = resolve_planning_returns(
+        plan,
+        sp500_resolver=lambda **_: expected_sp500,
+        treasury_resolver=lambda **_: expected_treasury,
+    )
+
+    assert resolved.sp500 == expected_sp500
+    assert resolved.treasury == expected_treasury
