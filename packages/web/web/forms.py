@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import get_args
 
 from core.job import AgeFactor, FormulaPension, Job
+from core.models import RISK_TOLERANCE_NUM_VALUES as _RISK_TOLERANCE_NUM_VALUES
 from core.models import (
     AppSettings,
     FilingStatus,
@@ -14,6 +15,7 @@ from core.models import (
     PersonHousehold,
     Plan,
     Portfolio,
+    RiskConfig,
 )
 from core.streams import PersonId, TimedStream
 from domain.statutory.pension import (
@@ -34,6 +36,13 @@ ESSENTIAL_PREFIX = "essential"
 DISCRETIONARY_PREFIX = "discretionary"
 LEGACY_TARGET = "legacy_target"
 LEGACY_TARGET_HELP = "Target at the plan horizon, in today's dollars."
+RISK_TOLERANCE_AT_20 = "risk_tolerance_at_20"
+DELTA_AT_MAX_AGE = "delta_at_max_age"
+LEGACY_DELTA_FROM_AT_20 = "legacy_delta_from_at_20"
+TIME_PREFERENCE = "time_preference"
+ADDITIONAL_ANNUAL_SPENDING_TILT = "additional_annual_spending_tilt"
+# Re-export for Jinja templates (`forms.RISK_TOLERANCE_NUM_VALUES`).
+RISK_TOLERANCE_NUM_VALUES = _RISK_TOLERANCE_NUM_VALUES
 STREAM_LABEL = "label"
 STREAM_MONTHLY_AMOUNT = "monthly_amount"
 STREAM_IS_NOMINAL = "is_nominal"
@@ -413,6 +422,18 @@ class PortfolioForm(BaseModel):
         data["current_savings_balance"] = self.current_savings_balance
         portfolio = Portfolio.model_validate(data)
         return plan.model_copy(update={"portfolio": portfolio})
+
+
+class RiskForm(BaseModel):
+    risk_tolerance_at_20: Decimal
+    delta_at_max_age: Decimal
+    legacy_delta_from_at_20: Decimal
+    time_preference: Decimal
+    additional_annual_spending_tilt: Decimal
+
+    def apply_to(self, plan: Plan) -> Plan:
+        risk = RiskConfig.model_validate(self.model_dump())
+        return plan.model_copy(update={"risk": risk})
 
 
 def _apply_api_key(
