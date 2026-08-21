@@ -49,12 +49,14 @@ def test_snapshot_carries_only_present_market_provenance() -> None:
         observation_date=treasury_date,
         source="cache",
     )
+    inflation_observation_date = date(2026, 4, 30)
+    expected_inflation_source = "vendored"
     inflation = InflationResolved(
         annual=0.023,
         monthly=annual_to_monthly(0.023),
         source="suggested",
-        market_source="vendored",
-        observation_date=date(2026, 4, 30),
+        market_source=expected_inflation_source,
+        observation_date=inflation_observation_date,
     )
     planning = PlanningReturns(
         annual_stocks=0.051,
@@ -70,6 +72,8 @@ def test_snapshot_carries_only_present_market_provenance() -> None:
         preset="regression_prediction",
     )
 
+    assert snapshot.inflation_source == expected_inflation_source
+    assert snapshot.inflation_observation_date == inflation_observation_date
     assert snapshot.sp500_source == sp500.source
     assert snapshot.sp500_observation_date == sp500_date
     assert snapshot.treasury_source == treasury.source

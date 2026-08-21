@@ -130,6 +130,43 @@ def test_refresh_does_not_call_fetcher_without_api_key(tmp_path: Path) -> None:
     assert calls == 0
 
 
+def test_warm_cache_hit_reports_cache_market_source(tmp_path: Path) -> None:
+    expected_observation_date = date(2026, 1, 3)
+    expected_market_source = "cache"
+    expected_annual = 0.025
+    cache_path = _write_t10yie(tmp_path / "cache.csv", ["2026-01-03,2.50"])
+    meta_path = tmp_path / "cache.meta.json"
+    now = datetime(2026, 1, 4, 12, tzinfo=UTC)
+    meta_path.write_text(
+        f'{{"fetched_at": "{now.isoformat()}", "source": "fred_api",'
+        f' "series_id": "T10YIE"}}\n',
+        encoding="utf-8",
+    )
+    calls = 0
+
+    def fetcher(**kwargs):
+        nonlocal calls
+        calls += 1
+        return []
+
+    resolved = resolve_inflation(
+        _suggested_plan(),
+        today=date(2026, 1, 4),
+        allow_refresh=True,
+        now=now,
+        api_key="fred-key",
+        fetcher=fetcher,
+        t10yie_cache_path=cache_path,
+        t10yie_meta_path=meta_path,
+    )
+
+    assert resolved.source == "suggested"
+    assert resolved.annual == pytest.approx(expected_annual)
+    assert resolved.observation_date == expected_observation_date
+    assert resolved.market_source == expected_market_source
+    assert calls == 0
+
+
 def test_refresh_writes_cache_and_uses_live_value_when_stale(tmp_path: Path) -> None:
     vendored = _write_t10yie(tmp_path / "vendored.csv", ["2026-01-01,2.0"])
     cache_path = tmp_path / "cache.csv"
