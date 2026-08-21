@@ -34,10 +34,10 @@
 
 | Field             | Value                                                      |
 | ----------------- | ---------------------------------------------------------- |
-| **Current phase** | Phase 4c — Editor — household & income                   |
-| **Active plan**   | `2026-06-12-phase-4c-editor-income.md` *(to write)*       |
-| **Design spec**   | [`2026-07-19-phase-4c-editor-income-design.md`](../specs/2026-07-19-phase-4c-editor-income-design.md) |
-| **Next action**   | Write Phase 4c plan, then execute                          |
+| **Current phase** | Phase 4e — Web: extended charts                            |
+| **Active plan**   | `2026-06-12-phase-4e-extended-charts.md` *(to write)*      |
+| **Design spec**   | *(write with plan)*                                        |
+| **Next action**   | Write Phase 4e plan, then execute                          |
 
 
 When a phase completes: set its plan header to `status: complete`, update this table, and write the next phase plan before coding.
@@ -448,7 +448,9 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 ### Phase 4d — Web: editor — spending & simulation config
 
-**Plan file:** `2026-06-12-phase-4d-editor-sim-config.md` *(to write)*
+**Plan file:** [`2026-06-12-phase-4d-editor-sim-config.md`](2026-06-12-phase-4d-editor-sim-config.md)
+
+**Design spec:** [`2026-08-21-phase-4d-editor-spending-simulation-config-design.md`](../specs/2026-08-21-phase-4d-editor-spending-simulation-config-design.md)
 
 **Delivers:** Editor sections for spending and simulation config deferred from Phases 3a–3d: `extra_essential_spending`, `extra_discretionary_spending`, `legacy_target`, `SamplingConfig`, `InflationConfig`, `RiskConfig`, `PlanningReturnsConfig` (full preset menu), `AdvancedConfig` (percentiles).
 
@@ -458,11 +460,11 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 **Exit criteria:**
 
-- [ ] Extra essential/discretionary timed-stream editors
-- [ ] Legacy target field
-- [ ] Sampling, inflation, risk, planning-returns, and advanced percentiles sections
-- [ ] Planning-returns preset UI covers all `PlanningPreset` values with conditional sub-fields
-- [ ] `make` passes
+- [x] Extra essential/discretionary timed-stream editors
+- [x] Legacy target field
+- [x] Sampling, inflation, risk, planning-returns, and advanced percentiles sections
+- [x] Planning-returns preset UI covers all `PlanningPreset` values with conditional sub-fields
+- [x] `make` passes
 
 ---
 
@@ -579,10 +581,12 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 | Phase 3d | `2026-06-12-phase-3d-simulation-results.md` | complete |
 | Phase 4a | `2026-06-12-phase-4a-plan-shell.md` | complete |
 | Phase 4b | `2026-06-12-phase-4b-core-charts.md` | complete |
+| Phase 4c | `2026-06-12-phase-4c-editor-income.md` | complete |
+| Phase 4d | `2026-06-12-phase-4d-editor-sim-config.md` | complete |
 
 
 ---
 
 ## Next step
 
-Write and execute **Phase 4c** (household & income editors). Phase 4b is complete ([plan](2026-06-12-phase-4b-core-charts.md), [design](../specs/2026-07-15-phase-4b-core-charts-design.md)).
+Write and execute **Phase 4e** (extended charts). Phase 4d is complete ([plan](2026-06-12-phase-4d-editor-sim-config.md), [design](../specs/2026-08-21-phase-4d-editor-spending-simulation-config-design.md)).

@@ -37,3 +37,8 @@
   </p>
   {% endif %}
 </div>
+{% if assumptions_oob %}
+<div id="resolved-assumptions-summary" hx-swap-oob="innerHTML">
+  {% include "_resolved_assumptions.html" %}
+</div>
+{% endif %}
