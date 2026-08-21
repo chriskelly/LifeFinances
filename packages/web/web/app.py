@@ -48,6 +48,7 @@ from web.forms import (
     MarketAssumptionsForm,
     PortfolioForm,
     RiskForm,
+    SimulationDetailsForm,
     SocialSecurityForm,
     SpendingGoalsForm,
 )
@@ -59,6 +60,7 @@ from web.routes import (
     EDITOR_PORTFOLIO,
     EDITOR_RISK,
     EDITOR_SETTINGS,
+    EDITOR_SIMULATION_DETAILS,
     EDITOR_SOCIAL_SECURITY,
     EDITOR_SPENDING,
     HOME,
@@ -74,6 +76,7 @@ from web.routes import (
     PLAN_RISK,
     PLAN_SET_DEFAULT,
     PLAN_SETTINGS,
+    PLAN_SIMULATION_DETAILS,
     PLAN_SOCIAL_SECURITY,
     PLAN_SPENDING,
     PLAN_SS_EARNINGS,
@@ -502,6 +505,45 @@ def _register_market_assumptions_routes(web_app: FastAPI) -> None:
         return Response(status_code=200)
 
 
+def _register_simulation_details_routes(web_app: FastAPI) -> None:
+    @web_app.get(EDITOR_SIMULATION_DETAILS, response_class=HTMLResponse)
+    def editor_simulation_details(
+        request: Request,
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> HTMLResponse:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        return templates.TemplateResponse(
+            request,
+            "editor_simulation_details.html",
+            {"plan_id": plan_id, "plan": plan_model},
+        )
+
+    @web_app.patch(PLAN_SIMULATION_DETAILS)
+    def patch_simulation_details(
+        block_size_months: Annotated[int, Form()],
+        num_runs: Annotated[int, Form()],
+        seed: Annotated[int, Form()],
+        percentiles: Annotated[str, Form()],
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+        stagger_run_starts: Annotated[bool, Form()] = False,
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        try:
+            updated = SimulationDetailsForm(
+                block_size_months=block_size_months,
+                num_runs=num_runs,
+                stagger_run_starts=stagger_run_starts,
+                seed=seed,
+                percentiles=forms.parse_percentiles_field(percentiles),
+            ).apply_to(plan_model)
+        except (ValidationError, ValueError, ArithmeticError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        repo.save(plan_id, updated)
+        return Response(status_code=200)
+
+
 def _register_social_security_routes(web_app: FastAPI) -> None:
     @web_app.get(EDITOR_SOCIAL_SECURITY, response_class=HTMLResponse)
     def editor_social_security(
@@ -827,6 +869,7 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
     _register_spending_routes(web_app)
     _register_risk_routes(web_app)
     _register_market_assumptions_routes(web_app)
+    _register_simulation_details_routes(web_app)
     _register_social_security_routes(web_app)
     _register_patch_routes(web_app)
     _register_plan_management_routes(web_app)
