@@ -13,6 +13,7 @@ from core.models import Plan
 from simulation.market_data.cache import (
     DEFAULT_T10YIE_CACHE_PATH,
     DEFAULT_T10YIE_META_PATH,
+    MarketDataSource,
     is_t10yie_cache_stale,
     resolve_t10yie_read_path,
     write_t10yie_cache,
@@ -29,6 +30,8 @@ class InflationResolved:
     annual: float
     monthly: float
     source: Literal["suggested", "manual"]
+    market_source: MarketDataSource | None = None
+    observation_date: date | None = None
 
 
 def annual_to_monthly(annual: float) -> float:
@@ -40,18 +43,18 @@ def _round_half_away(value: Decimal, places: str = "0.001") -> Decimal:
     return value.quantize(Decimal(places), rounding=ROUND_HALF_UP)
 
 
-def _suggested_annual(today: date, path: Path) -> float:
+def _suggested_annual(today: date, path: Path) -> tuple[float, date]:
     best_date: date | None = None
     best_value: Decimal | None = None
     with path.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.reader(handle)
-        next(reader, None)  # header
+        next(reader, None)
         for row in reader:
             if len(row) < 2:
                 continue
             try:
                 observed = date.fromisoformat(row[0].strip())
-                percent = Decimal(row[1].strip())  # raises for "." / blanks
+                percent = Decimal(row[1].strip())
             except ValueError, ArithmeticError:
                 continue
             if observed > today:
@@ -59,9 +62,23 @@ def _suggested_annual(today: date, path: Path) -> float:
             if best_date is None or observed > best_date:
                 best_date = observed
                 best_value = percent
-    if best_value is None:
+    if best_value is None or best_date is None:
         raise ValueError(f"no T10YIE observation at or before {today.isoformat()}")
-    return float(_round_half_away(best_value / Decimal(100)))
+    annual = float(_round_half_away(best_value / Decimal(100)))
+    return annual, best_date
+
+
+def _market_source(
+    *,
+    refreshed_live: bool,
+    read_path: Path,
+    cache_path: Path,
+) -> MarketDataSource:
+    if refreshed_live:
+        return "live"
+    if read_path == cache_path and cache_path.is_file():
+        return "cache"
+    return "vendored"
 
 
 def _resolve_t10yie_path(
@@ -73,7 +90,7 @@ def _resolve_t10yie_path(
     fetcher: T10YIEFetcher,
     t10yie_cache_path: Path,
     t10yie_meta_path: Path,
-) -> Path:
+) -> tuple[Path, bool]:
     vendored_path = t10yie_path or _DEFAULT_T10YIE_CSV
     default_path_mode = t10yie_path is None
     read_path = (
@@ -84,16 +101,17 @@ def _resolve_t10yie_path(
         if default_path_mode
         else vendored_path
     )
+    refreshed_live = False
 
     if not allow_refresh or not api_key:
-        return read_path
+        return read_path, refreshed_live
 
     resolved_now = now or datetime.now(tz=UTC)
     if default_path_mode and not is_t10yie_cache_stale(
         now=resolved_now,
         meta_path=t10yie_meta_path,
     ):
-        return read_path
+        return read_path, refreshed_live
 
     try:
         pairs = fetcher(
@@ -101,19 +119,23 @@ def _resolve_t10yie_path(
             observation_start=resolved_now.date() - timedelta(days=LOOKBACK_DAYS),
         )
         if not pairs:
-            return read_path
+            return read_path, refreshed_live
         write_t10yie_cache(
             pairs,
             now=resolved_now,
             cache_path=t10yie_cache_path,
             meta_path=t10yie_meta_path,
         )
+        refreshed_live = True
     except Exception:
-        return read_path
+        return read_path, refreshed_live
 
-    return resolve_t10yie_read_path(
-        cache_path=t10yie_cache_path,
-        vendored_path=vendored_path,
+    return (
+        resolve_t10yie_read_path(
+            cache_path=t10yie_cache_path,
+            vendored_path=vendored_path,
+        ),
+        refreshed_live,
     )
 
 
@@ -130,6 +152,8 @@ def resolve_inflation(
     t10yie_meta_path: Path = DEFAULT_T10YIE_META_PATH,
 ) -> InflationResolved:
     today = today or date.today()
+    market_source: MarketDataSource | None = None
+    observation_date: date | None = None
     if plan.inflation.mode == "manual":
         rate = plan.inflation.manual_annual_rate
         if rate is None:
@@ -138,7 +162,7 @@ def resolve_inflation(
         source: Literal["suggested", "manual"] = "manual"
     else:
         vendored_path = t10yie_path or _DEFAULT_T10YIE_CSV
-        path = _resolve_t10yie_path(
+        path, refreshed_live = _resolve_t10yie_path(
             t10yie_path=t10yie_path,
             allow_refresh=allow_refresh,
             now=now,
@@ -148,12 +172,23 @@ def resolve_inflation(
             t10yie_meta_path=t10yie_meta_path,
         )
         try:
-            annual = _suggested_annual(today, path)
+            annual, observation_date = _suggested_annual(today, path)
         except ValueError:
             if path == vendored_path:
                 raise
-            annual = _suggested_annual(today, vendored_path)
+            path = vendored_path
+            refreshed_live = False
+            annual, observation_date = _suggested_annual(today, path)
+        market_source = _market_source(
+            refreshed_live=refreshed_live,
+            read_path=path,
+            cache_path=t10yie_cache_path,
+        )
         source = "suggested"
     return InflationResolved(
-        annual=annual, monthly=annual_to_monthly(annual), source=source
+        annual=annual,
+        monthly=annual_to_monthly(annual),
+        source=source,
+        market_source=market_source,
+        observation_date=observation_date,
     )

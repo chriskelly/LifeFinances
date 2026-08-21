@@ -38,6 +38,8 @@ def test_annual_to_monthly_matches_compounding_formula() -> None:
 def test_suggested_uses_latest_observation_at_or_before_today(tmp_path: Path) -> None:
     # second value is after the date used for today, so it's ignored
     csv = _write_t10yie(tmp_path / "t.csv", ["2026-01-01,2.0", "2026-02-01,2.5"])
+    expected_observation_date = date(2026, 1, 1)
+    expected_market_source = "vendored"
 
     resolved = resolve_inflation(
         _suggested_plan(), today=date(2026, 1, 15), t10yie_path=csv
@@ -45,30 +47,42 @@ def test_suggested_uses_latest_observation_at_or_before_today(tmp_path: Path) ->
 
     assert resolved.source == "suggested"
     assert resolved.annual == pytest.approx(0.020)
+    assert resolved.observation_date == expected_observation_date
+    assert resolved.market_source == expected_market_source
 
 
 def test_suggested_picks_exact_match_on_observation_date(tmp_path: Path) -> None:
     csv = _write_t10yie(tmp_path / "t.csv", ["2026-01-01,2.0", "2026-02-01,2.5"])
+    expected_observation_date = date(2026, 2, 1)
+    expected_market_source = "vendored"
 
     resolved = resolve_inflation(
         _suggested_plan(), today=date(2026, 2, 1), t10yie_path=csv
     )
 
     assert resolved.annual == pytest.approx(0.025)
+    assert resolved.observation_date == expected_observation_date
+    assert resolved.market_source == expected_market_source
 
 
 def test_suggested_skips_non_numeric_rows(tmp_path: Path) -> None:
     csv = _write_t10yie(tmp_path / "t.csv", ["2026-01-01,2.0", "2026-02-01,."])
+    expected_observation_date = date(2026, 1, 1)
+    expected_market_source = "vendored"
 
     resolved = resolve_inflation(
         _suggested_plan(), today=date(2026, 2, 15), t10yie_path=csv
     )
 
     assert resolved.annual == pytest.approx(0.020)
+    assert resolved.observation_date == expected_observation_date
+    assert resolved.market_source == expected_market_source
 
 
 def test_refresh_does_not_call_fetcher_when_not_allowed(tmp_path: Path) -> None:
     csv = _write_t10yie(tmp_path / "vendored.csv", ["2026-01-01,2.0"])
+    expected_observation_date = date(2026, 1, 1)
+    expected_market_source = "vendored"
     calls = 0
 
     def fetcher(**kwargs):
@@ -86,11 +100,15 @@ def test_refresh_does_not_call_fetcher_when_not_allowed(tmp_path: Path) -> None:
     )
 
     assert resolved.annual == pytest.approx(0.020)
+    assert resolved.observation_date == expected_observation_date
+    assert resolved.market_source == expected_market_source
     assert calls == 0
 
 
 def test_refresh_does_not_call_fetcher_without_api_key(tmp_path: Path) -> None:
     csv = _write_t10yie(tmp_path / "vendored.csv", ["2026-01-01,2.0"])
+    expected_observation_date = date(2026, 1, 1)
+    expected_market_source = "vendored"
     calls = 0
 
     def fetcher(**kwargs):
@@ -98,7 +116,7 @@ def test_refresh_does_not_call_fetcher_without_api_key(tmp_path: Path) -> None:
         calls += 1
         return []
 
-    resolve_inflation(
+    resolved = resolve_inflation(
         _suggested_plan(),
         today=date(2026, 1, 2),
         t10yie_path=csv,
@@ -107,6 +125,8 @@ def test_refresh_does_not_call_fetcher_without_api_key(tmp_path: Path) -> None:
         fetcher=fetcher,
     )
 
+    assert resolved.observation_date == expected_observation_date
+    assert resolved.market_source == expected_market_source
     assert calls == 0
 
 
@@ -115,6 +135,8 @@ def test_refresh_writes_cache_and_uses_live_value_when_stale(tmp_path: Path) -> 
     cache_path = tmp_path / "cache.csv"
     meta_path = tmp_path / "cache.meta.json"
     expected_percent = Decimal("2.50")
+    expected_observation_date = date(2026, 1, 3)
+    expected_market_source = "live"
 
     def fetcher(**kwargs):
         return [(date(2026, 1, 3), expected_percent)]
@@ -132,6 +154,8 @@ def test_refresh_writes_cache_and_uses_live_value_when_stale(tmp_path: Path) -> 
     )
 
     assert resolved.annual == pytest.approx(0.025)
+    assert resolved.observation_date == expected_observation_date
+    assert resolved.market_source == expected_market_source
     assert cache_path.is_file()
     assert meta_path.is_file()
 
@@ -140,6 +164,8 @@ def test_refresh_failure_falls_back_to_vendored(tmp_path: Path) -> None:
     vendored = _write_t10yie(tmp_path / "vendored.csv", ["2026-01-01,2.0"])
     cache_path = tmp_path / "cache.csv"
     meta_path = tmp_path / "cache.meta.json"
+    expected_observation_date = date(2026, 1, 1)
+    expected_market_source = "vendored"
 
     def fetcher(**kwargs):
         raise RuntimeError("network unavailable")
@@ -157,11 +183,15 @@ def test_refresh_failure_falls_back_to_vendored(tmp_path: Path) -> None:
     )
 
     assert resolved.annual == pytest.approx(0.020)
+    assert resolved.observation_date == expected_observation_date
+    assert resolved.market_source == expected_market_source
 
 
 def test_falls_back_to_vendored_when_cache_lacks_in_range_row(tmp_path: Path) -> None:
     today = date(2020, 6, 1)
     plan = _suggested_plan()
+    expected_observation_date = date(2020, 6, 1)
+    expected_market_source = "vendored"
     expected = resolve_inflation(
         plan,
         today=today,
@@ -177,17 +207,25 @@ def test_falls_back_to_vendored_when_cache_lacks_in_range_row(tmp_path: Path) ->
 
     assert resolved.annual == expected.annual
     assert resolved.source == "suggested"
+    assert resolved.observation_date == expected_observation_date
+    assert resolved.market_source == expected_market_source
+    assert expected.observation_date == expected_observation_date
+    assert expected.market_source == expected_market_source
 
 
 def test_suggested_rounds_to_three_decimal_places(tmp_path: Path) -> None:
     # 2.37% -> 0.0237 -> round half-away to 3 dp -> 0.024
     csv = _write_t10yie(tmp_path / "t.csv", ["2026-01-01,2.37"])
+    expected_observation_date = date(2026, 1, 1)
+    expected_market_source = "vendored"
 
     resolved = resolve_inflation(
         _suggested_plan(), today=date(2026, 1, 2), t10yie_path=csv
     )
 
     assert resolved.annual == pytest.approx(0.024)
+    assert resolved.observation_date == expected_observation_date
+    assert resolved.market_source == expected_market_source
 
 
 def test_manual_mode_uses_configured_rate(tmp_path: Path) -> None:
@@ -200,6 +238,20 @@ def test_manual_mode_uses_configured_rate(tmp_path: Path) -> None:
     assert resolved.source == "manual"
     assert resolved.annual == pytest.approx(float(expected_annual))
     assert resolved.monthly == pytest.approx(annual_to_monthly(float(expected_annual)))
+    assert resolved.observation_date is None
+    assert resolved.market_source is None
+
+
+def test_manual_inflation_has_no_market_provenance() -> None:
+    annual_rate = Decimal("0.031")
+    plan = default_plan()
+    plan.inflation = InflationConfig(mode="manual", manual_annual_rate=annual_rate)
+
+    resolved = resolve_inflation(plan)
+
+    assert resolved.source == "manual"
+    assert resolved.observation_date is None
+    assert resolved.market_source is None
 
 
 def test_resolve_returns_inflation_resolved_type() -> None:
