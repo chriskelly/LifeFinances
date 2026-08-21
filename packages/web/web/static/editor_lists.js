@@ -131,6 +131,46 @@
     }
   });
 
+  function remintExistingIndices(form) {
+    const selectors = [
+      ".rows[data-prefix='jobs'] > .row",
+      ".rows[data-prefix='streams'] > .row",
+    ];
+    form.querySelectorAll(selectors.join(", ")).forEach(function (row, position) {
+      const container = row.parentElement;
+      const prefix = container.dataset.prefix;
+      const pattern = new RegExp("^" + prefix + "\\[(\\d+)\\]");
+      let wireIndex = null;
+      row.querySelectorAll("[name]").forEach(function (field) {
+        if (wireIndex !== null) return;
+        const match = field.name.match(pattern);
+        if (match) wireIndex = parseInt(match[1], 10);
+      });
+      if (wireIndex === null) return;
+      let input = null;
+      row.querySelectorAll("input[type='hidden']").forEach(function (el) {
+        if (el.name.indexOf("." + "existing_index") !== -1) {
+          // Only the row's own existing_index, not nested lists (none today).
+          const own = el.name.match(pattern);
+          if (own && parseInt(own[1], 10) === wireIndex) input = el;
+        }
+      });
+      if (!input) {
+        input = document.createElement("input");
+        input.type = "hidden";
+        input.name = prefix + "[" + wireIndex + "].existing_index";
+        row.insertBefore(input, row.firstChild);
+      }
+      input.value = String(position);
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", initAll);
   document.body.addEventListener("htmx:afterSettle", initAll);
+  document.body.addEventListener("htmx:afterRequest", function (event) {
+    if (!event.detail.successful) return;
+    const form = event.detail.elt;
+    if (!form || form.tagName !== "FORM") return;
+    remintExistingIndices(form);
+  });
 })();

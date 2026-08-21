@@ -10,6 +10,10 @@ from domain.statutory.pension import (
 from fastapi.testclient import TestClient
 from markupsafe import escape
 from web.currency import format_usd
+from web.forms import (
+    INVALID_AGE_FACTOR_TABLE_MESSAGE,
+    INVALID_AVERAGING_MONTHS_MESSAGE,
+)
 from web.percent import format_percent
 from web.routes import EDITOR_JOBS, PLAN_JOBS
 from web.sections import JOBS_TITLE
@@ -392,6 +396,173 @@ def test_patch_jobs_preserves_cent_income_when_usd_display_is_echoed(
     after = repo.get_by_id(plan_id)
     assert after is not None
     assert after.household.person1.jobs[0].annual_income == stored_income
+
+
+def test_patch_jobs_preserves_cent_incomes_across_stale_existing_index_after_delete(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    # Mimics hx-swap=none: delete job[0], then two saves that still post the
+    # pre-delete existing_index values (1 and 2) against a compacted list.
+    first_income = Decimal("200.60")
+    second_income = Decimal("300.40")
+    start = CalendarMonthBoundary(year=2010, month=1)
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(label="Removed", annual_income=Decimal("100.10"), start=start),
+        Job(label="Kept A", annual_income=first_income, start=start),
+        Job(label="Kept B", annual_income=second_income, start=start),
+    ]
+    repo.save(plan_id, seeded)
+
+    def _stale_payload() -> dict[str, str]:
+        return {
+            f"jobs[1].{forms.EXISTING_INDEX}": "1",
+            "jobs[1].label": "Kept A",
+            "jobs[1].annual_income": format_usd(first_income),
+            "jobs[1].annual_tax_deferred": format_usd(Decimal(0)),
+            "jobs[1].start_kind": "calendar_month",
+            "jobs[1].start_year": "2010",
+            "jobs[1].start_month": "1",
+            "jobs[1].end_kind": "none",
+            f"jobs[2].{forms.EXISTING_INDEX}": "2",
+            "jobs[2].label": "Kept B",
+            "jobs[2].annual_income": format_usd(second_income),
+            "jobs[2].annual_tax_deferred": format_usd(Decimal(0)),
+            "jobs[2].start_kind": "calendar_month",
+            "jobs[2].start_year": "2010",
+            "jobs[2].start_month": "1",
+            "jobs[2].end_kind": "none",
+        }
+
+    first = client.patch(
+        f"{PLAN_JOBS}?plan={plan_id}&person=person1", data=_stale_payload()
+    )
+    assert first.status_code == 200
+    mid = repo.get_by_id(plan_id)
+    assert mid is not None
+    assert [j.annual_income for j in mid.household.person1.jobs] == [
+        first_income,
+        second_income,
+    ]
+
+    second = client.patch(
+        f"{PLAN_JOBS}?plan={plan_id}&person=person1", data=_stale_payload()
+    )
+    assert second.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert [j.annual_income for j in after.household.person1.jobs] == [
+        first_income,
+        second_income,
+    ]
+
+
+def test_patch_jobs_rejects_corrupt_custom_age_factor_table(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    custom_table = [AgeFactor(age_months=60 * 12, factor=Decimal("0.015"))]
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            label="Teacher",
+            annual_income=Decimal("100000"),
+            start=CalendarMonthBoundary(year=2010, month=1),
+            end=CalendarMonthBoundary(year=2040, month=1),
+            pension=FormulaPension(
+                service_start=CalendarMonthBoundary(year=2010, month=1),
+                claim=PersonAgeBoundary(person="person1", age_months=60 * 12),
+                age_factor_table=custom_table,
+            ),
+        )
+    ]
+    repo.save(plan_id, seeded)
+    corrupt_table = "{not-json"
+
+    response = client.patch(
+        f"{PLAN_JOBS}?plan={plan_id}&person=person1",
+        data={
+            f"jobs[0].{forms.EXISTING_INDEX}": "0",
+            "jobs[0].label": "Teacher",
+            "jobs[0].annual_income": "100000",
+            "jobs[0].start_kind": "calendar_month",
+            "jobs[0].start_year": "2010",
+            "jobs[0].start_month": "1",
+            "jobs[0].end_kind": "calendar_month",
+            "jobs[0].end_year": "2040",
+            "jobs[0].end_month": "1",
+            "jobs[0].pension": forms.PENSION_CUSTOM,
+            f"jobs[0].{forms.PENSION_AGE_FACTOR_TABLE}": corrupt_table,
+            "jobs[0].pension_service_start_kind": "calendar_month",
+            "jobs[0].pension_service_start_year": "2010",
+            "jobs[0].pension_service_start_month": "1",
+            "jobs[0].pension_claim_kind": "person_age",
+            "jobs[0].pension_claim_person": "person1",
+            "jobs[0].pension_claim_age_years": "60",
+            "jobs[0].pension_claim_age_months": "0",
+        },
+    )
+
+    assert response.status_code == 422
+    assert INVALID_AGE_FACTOR_TABLE_MESSAGE in response.text
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.person1.jobs[0].pension is not None
+    assert after.household.person1.jobs[0].pension.age_factor_table == custom_table
+
+
+def test_patch_jobs_rejects_blank_averaging_months(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            label="Teacher",
+            annual_income=Decimal("100000"),
+            start=CalendarMonthBoundary(year=2010, month=1),
+            end=CalendarMonthBoundary(year=2040, month=1),
+            pension=FormulaPension(
+                service_start=CalendarMonthBoundary(year=2010, month=1),
+                claim=PersonAgeBoundary(person="person1", age_months=62 * 12),
+                age_factor_table=age_factors_from_statutory(
+                    CALSTRS_2_AT_62_AGE_FACTORS
+                ),
+            ),
+        )
+    ]
+    repo.save(plan_id, seeded)
+    blank_months = ""
+
+    response = client.patch(
+        f"{PLAN_JOBS}?plan={plan_id}&person=person1",
+        data={
+            "jobs[0].label": "Teacher",
+            "jobs[0].annual_income": "100000",
+            "jobs[0].start_kind": "calendar_month",
+            "jobs[0].start_year": "2010",
+            "jobs[0].start_month": "1",
+            "jobs[0].end_kind": "calendar_month",
+            "jobs[0].end_year": "2040",
+            "jobs[0].end_month": "1",
+            "jobs[0].pension": forms.PENSION_CALSTRS_2_AT_62,
+            "jobs[0].pension_service_start_kind": "calendar_month",
+            "jobs[0].pension_service_start_year": "2010",
+            "jobs[0].pension_service_start_month": "1",
+            "jobs[0].pension_claim_kind": "person_age",
+            "jobs[0].pension_claim_person": "person1",
+            "jobs[0].pension_claim_age_years": "62",
+            "jobs[0].pension_claim_age_months": "0",
+            "jobs[0].pension_averaging_months": blank_months,
+        },
+    )
+
+    assert response.status_code == 422
+    assert INVALID_AVERAGING_MONTHS_MESSAGE in response.text
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.person1.jobs[0].pension is not None
 
 
 def test_patch_jobs_for_absent_partner_returns_422(

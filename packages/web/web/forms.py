@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
 from typing import get_args
@@ -24,7 +25,7 @@ from pydantic import BaseModel
 from starlette.datastructures import FormData
 
 from web import boundaries
-from web.currency import parse_usd
+from web.currency import format_usd, parse_usd
 from web.percent import parse_percent
 
 JOBS_PREFIX = "jobs"
@@ -140,6 +141,46 @@ def is_calstrs_pension(pension: FormulaPension | None) -> bool:
     if pension is None:
         return False
     return pension.age_factor_table == calstrs_age_factor_table()
+
+
+def _usd_display_matches(*, submitted: str, amount: Decimal) -> bool:
+    return submitted.strip() == format_usd(amount)
+
+
+def _resolve_previous[T](
+    row: list[tuple[str, str]],
+    *,
+    existing: list[T],
+    claimed: set[int],
+    amount_of: Callable[[T], Decimal],
+    amount_field: str,
+) -> T | None:
+    """Map a submitted row to an existing item without trusting a stale index.
+
+    `EXISTING_INDEX` is only accepted when its USD display still matches the
+    submitted amount. Otherwise (or when the index is out of range), fall back
+    to a unique display match among unclaimed items. This keeps cent-preserving
+    `parse_usd(..., previous=)` correct after delete-under-`hx-swap=none`.
+    """
+    submitted = boundaries.row_scalar(row, amount_field, "0")
+    raw_index = boundaries.row_scalar(row, EXISTING_INDEX).strip()
+    if raw_index:
+        index = int(raw_index)
+        if 0 <= index < len(existing) and index not in claimed:
+            candidate = existing[index]
+            if _usd_display_matches(submitted=submitted, amount=amount_of(candidate)):
+                claimed.add(index)
+                return candidate
+    matches = [
+        i
+        for i, item in enumerate(existing)
+        if i not in claimed
+        and _usd_display_matches(submitted=submitted, amount=amount_of(item))
+    ]
+    if len(matches) == 1:
+        claimed.add(matches[0])
+        return existing[matches[0]]
+    return None
 
 
 def encode_age_factor_table(table: list[AgeFactor]) -> str:
@@ -272,13 +313,15 @@ class JobsForm:
     ) -> JobsForm:
         rows = boundaries.collect_indexed_rows(form, JOBS_PREFIX)
         jobs: list[Job] = []
+        claimed: set[int] = set()
         for row in rows:
-            raw_index = boundaries.row_scalar(row, EXISTING_INDEX)
-            previous: Job | None = None
-            if raw_index.strip():
-                index = int(raw_index)
-                if 0 <= index < len(existing_jobs):
-                    previous = existing_jobs[index]
+            previous = _resolve_previous(
+                row,
+                existing=existing_jobs,
+                claimed=claimed,
+                amount_of=lambda job: job.annual_income,
+                amount_field="annual_income",
+            )
             jobs.append(_job_from_row(row, today=today, previous=previous))
         return cls(person=person, jobs=jobs)
 
@@ -434,13 +477,15 @@ class ManualIncomeForm:
     ) -> ManualIncomeForm:
         rows = boundaries.collect_indexed_rows(form, STREAMS_PREFIX)
         streams: list[TimedStream] = []
+        claimed: set[int] = set()
         for row in rows:
-            raw_index = boundaries.row_scalar(row, EXISTING_INDEX)
-            previous: TimedStream | None = None
-            if raw_index.strip():
-                index = int(raw_index)
-                if 0 <= index < len(existing_streams):
-                    previous = existing_streams[index]
+            previous = _resolve_previous(
+                row,
+                existing=existing_streams,
+                claimed=claimed,
+                amount_of=lambda stream: stream.monthly_amount,
+                amount_field="monthly_amount",
+            )
             streams.append(_stream_from_row(row, today=today, previous=previous))
         return cls(streams=streams)
 

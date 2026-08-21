@@ -13,6 +13,7 @@ from core.social_security import AnnualEarnings
 from core.streams import CalendarMonthBoundary, PersonMaxAgeBoundary
 from fastapi.testclient import TestClient
 from web.app import _SIMULATION_FAILURE_MESSAGE, _figure_json
+from web.currency import format_usd
 from web.forms import (
     CLEAR_EOD_API_KEY,
     CLEAR_FRED_API_KEY,
@@ -228,6 +229,26 @@ def test_patch_portfolio_persists_balance_change(
     plan = repo.get_by_id(plan_id)
     assert plan is not None
     assert plan.portfolio.current_savings_balance == expected_balance
+
+
+def test_patch_portfolio_preserves_cent_balance_when_usd_display_is_echoed(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    stored_balance = Decimal("750000.50")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.portfolio.current_savings_balance = stored_balance
+    repo.save(plan_id, seeded)
+
+    response: httpx.Response = client.patch(
+        f"{PLAN_PORTFOLIO}?plan={plan_id}",
+        data={CURRENT_SAVINGS_BALANCE: format_usd(stored_balance)},
+    )
+
+    assert response.status_code == 200
+    plan = repo.get_by_id(plan_id)
+    assert plan is not None
+    assert plan.portfolio.current_savings_balance == stored_balance
 
 
 def test_patch_portfolio_negative_balance_returns_422_without_persisting(
