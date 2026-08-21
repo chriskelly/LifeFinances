@@ -4,7 +4,7 @@
   <dt>Stocks</dt><dd>{{ assumptions.annual_stock_return|percent }}</dd>
   <dt>Bonds</dt><dd>{{ assumptions.annual_bond_return|percent }}</dd>
   <dt>Stock volatility</dt><dd>{{ resolved_assumptions.annual_stock_log_volatility(assumptions)|percent }}</dd>
-  <dt>Planning preset</dt><dd>{{ forms.PLANNING_PRESET_LABELS[assumptions.planning_preset] }}</dd>
+  <dt>Planning preset</dt><dd>{{ resolved_assumptions.planning_preset_label(assumptions.planning_preset) }}</dd>
 </dl>
 <p>Inflation source: {{ resolved_assumptions.SOURCE_LABELS[assumptions.inflation_source] }}{% if assumptions.inflation_observation_date %} · {{ assumptions.inflation_observation_date.isoformat() }}{% endif %}</p>
 {% if assumptions.sp500_source %}

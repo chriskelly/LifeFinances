@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 
+from core.models import PlanningPreset
 from simulation.result import ResolvedAssumptions
 
 from web import forms
@@ -21,5 +22,5 @@ def annual_stock_log_volatility(
     return math.sqrt(assumptions.annual_stock_log_variance)
 
 
-def planning_preset_label(preset: str) -> str:
+def planning_preset_label(preset: PlanningPreset) -> str:
     return forms.PLANNING_PRESET_LABELS[preset]
