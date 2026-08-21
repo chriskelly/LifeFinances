@@ -4,9 +4,81 @@ from decimal import Decimal
 import numpy as np
 import pytest
 from core.defaults import default_plan
-from core.models import PersonHousehold
+from core.models import InflationConfig, PersonHousehold
+from core.streams import CalendarMonthBoundary, TimedStream
+from simulation.market_data.inflation import annual_to_monthly
 from simulation.preprocess import ProcessedPlan, preprocess
 from simulation.risk import rra_by_month
+
+
+def _spending_plan(*, streams: list[TimedStream], annual_inflation: Decimal):
+    plan = default_plan()
+    plan.inflation = InflationConfig(mode="manual", manual_annual_rate=annual_inflation)
+    plan.extra_essential_spending = streams
+    return plan
+
+
+def test_real_essential_spending_is_not_deflated() -> None:
+    amount = Decimal("1_000")
+    annual_inflation = Decimal("0.12")
+    today = date(2026, 1, 1)
+    sample_month = 12
+    stream = TimedStream(
+        monthly_amount=amount,
+        start=CalendarMonthBoundary(year=today.year, month=today.month),
+        is_nominal=False,
+    )
+
+    processed = preprocess(
+        _spending_plan(streams=[stream], annual_inflation=annual_inflation),
+        today=today,
+    )
+
+    assert processed.essential_real[sample_month] == pytest.approx(float(amount))
+
+
+def test_nominal_essential_spending_is_deflated() -> None:
+    amount = Decimal("1_000")
+    annual_inflation = Decimal("0.12")
+    today = date(2026, 1, 1)
+    sample_month = 12
+    monthly_inflation = annual_to_monthly(float(annual_inflation))
+    expected = float(amount) / ((1.0 + monthly_inflation) ** sample_month)
+    stream = TimedStream(
+        monthly_amount=amount,
+        start=CalendarMonthBoundary(year=today.year, month=today.month),
+        is_nominal=True,
+    )
+
+    processed = preprocess(
+        _spending_plan(streams=[stream], annual_inflation=annual_inflation),
+        today=today,
+    )
+
+    assert processed.essential_real[sample_month] == pytest.approx(expected)
+
+
+def test_mixed_spending_streams_are_converted_before_summing() -> None:
+    real_amount = Decimal("1_000")
+    nominal_amount = Decimal("500")
+    annual_inflation = Decimal("0.12")
+    today = date(2026, 1, 1)
+    sample_month = 12
+    monthly_inflation = annual_to_monthly(float(annual_inflation))
+    deflator = (1.0 + monthly_inflation) ** sample_month
+    expected = float(real_amount) + float(nominal_amount) / deflator
+    start = CalendarMonthBoundary(year=today.year, month=today.month)
+    streams = [
+        TimedStream(monthly_amount=real_amount, start=start, is_nominal=False),
+        TimedStream(monthly_amount=nominal_amount, start=start, is_nominal=True),
+    ]
+
+    processed = preprocess(
+        _spending_plan(streams=streams, annual_inflation=annual_inflation),
+        today=today,
+    )
+
+    assert processed.essential_real[sample_month] == pytest.approx(expected)
 
 
 def test_preprocess_shapes_and_basic_invariants():
