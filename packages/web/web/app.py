@@ -45,6 +45,7 @@ from web.forms import (
     HouseholdForm,
     JobsForm,
     ManualIncomeForm,
+    MarketAssumptionsForm,
     PortfolioForm,
     RiskForm,
     SocialSecurityForm,
@@ -54,6 +55,7 @@ from web.routes import (
     EDITOR_HOUSEHOLD,
     EDITOR_JOBS,
     EDITOR_MANUAL_INCOME,
+    EDITOR_MARKET_ASSUMPTIONS,
     EDITOR_PORTFOLIO,
     EDITOR_RISK,
     EDITOR_SETTINGS,
@@ -66,6 +68,7 @@ from web.routes import (
     PLAN_HOUSEHOLD,
     PLAN_JOBS,
     PLAN_MANUAL_INCOME,
+    PLAN_MARKET_ASSUMPTIONS,
     PLAN_PORTFOLIO,
     PLAN_RENAME,
     PLAN_RISK,
@@ -422,6 +425,83 @@ def _register_risk_routes(web_app: FastAPI) -> None:
         return Response(status_code=200)
 
 
+def _register_market_assumptions_routes(web_app: FastAPI) -> None:
+    @web_app.get(EDITOR_MARKET_ASSUMPTIONS, response_class=HTMLResponse)
+    def editor_market_assumptions(
+        request: Request,
+        repo: RepoDep,
+        settings_repo: SettingsRepoDep,
+        plan: Annotated[int | None, Query()] = None,
+    ) -> HTMLResponse:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        settings = settings_repo.get()
+        _load_simulation(
+            request,
+            plan_id=plan_id,
+            plan_model=plan_model,
+            settings=settings,
+        )
+        return templates.TemplateResponse(
+            request,
+            "editor_market_assumptions.html",
+            {"plan_id": plan_id, "plan": plan_model},
+        )
+
+    @web_app.patch(PLAN_MARKET_ASSUMPTIONS)
+    def patch_market_assumptions(
+        inflation_mode: Annotated[str, Form()],
+        planning_preset: Annotated[str, Form()],
+        repo: RepoDep,
+        plan: Annotated[int | None, Query()] = None,
+        inflation_manual_annual_rate: Annotated[str | None, Form()] = None,
+        fixed_equity_premium: Annotated[str | None, Form()] = None,
+        custom_stocks_base: Annotated[str | None, Form()] = None,
+        custom_bonds_base: Annotated[str | None, Form()] = None,
+        custom_stocks_delta: Annotated[str | None, Form()] = None,
+        custom_bonds_delta: Annotated[str | None, Form()] = None,
+        expected_annual_return_stocks: Annotated[str | None, Form()] = None,
+        expected_annual_return_bonds: Annotated[str | None, Form()] = None,
+        stock_volatility_scale: Annotated[str | None, Form()] = None,
+    ) -> Response:
+        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        try:
+            updated = MarketAssumptionsForm.model_validate(
+                {
+                    "inflation_mode": inflation_mode,
+                    "inflation_manual_annual_rate": percent.parse_optional_percent(
+                        inflation_manual_annual_rate
+                    ),
+                    "planning_preset": planning_preset,
+                    "fixed_equity_premium": percent.parse_optional_percent(
+                        fixed_equity_premium
+                    ),
+                    "custom_stocks_base": custom_stocks_base or None,
+                    "custom_bonds_base": custom_bonds_base or None,
+                    "custom_stocks_delta": percent.parse_optional_percent(
+                        custom_stocks_delta
+                    ),
+                    "custom_bonds_delta": percent.parse_optional_percent(
+                        custom_bonds_delta
+                    ),
+                    "expected_annual_return_stocks": percent.parse_optional_percent(
+                        expected_annual_return_stocks
+                    ),
+                    "expected_annual_return_bonds": percent.parse_optional_percent(
+                        expected_annual_return_bonds
+                    ),
+                    "stock_volatility_scale": (
+                        Decimal(stock_volatility_scale)
+                        if stock_volatility_scale is not None
+                        else None
+                    ),
+                }
+            ).apply_to(plan_model)
+        except (ValidationError, ValueError, ArithmeticError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        repo.save(plan_id, updated)
+        return Response(status_code=200)
+
+
 def _register_social_security_routes(web_app: FastAPI) -> None:
     @web_app.get(EDITOR_SOCIAL_SECURITY, response_class=HTMLResponse)
     def editor_social_security(
@@ -746,6 +826,7 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
     _register_editor_routes(web_app)
     _register_spending_routes(web_app)
     _register_risk_routes(web_app)
+    _register_market_assumptions_routes(web_app)
     _register_social_security_routes(web_app)
     _register_patch_routes(web_app)
     _register_plan_management_routes(web_app)

@@ -1,0 +1,184 @@
+<section class="editor-section">
+  <h2>{{ sections.MARKET_ASSUMPTIONS_TITLE }}</h2>
+  <form
+    hx-patch="{{ routes.PLAN_MARKET_ASSUMPTIONS }}?plan={{ plan_id }}"
+    hx-trigger="input changed delay:750ms, change delay:750ms"
+    hx-swap="none"
+  >
+    {% set equity_premium = plan.planning_returns.fixed_equity_premium if plan.planning_returns.fixed_equity_premium is not none else forms.FIXED_EQUITY_PREMIUM_FORM_DEFAULT %}
+    {% set stocks_base = plan.planning_returns.custom_stocks_base or forms.CUSTOM_STOCKS_BASE_FORM_DEFAULT %}
+    {% set bonds_base = plan.planning_returns.custom_bonds_base or forms.CUSTOM_BONDS_BASE_FORM_DEFAULT %}
+
+    <label>
+      Inflation
+      <select
+        id="inflation-mode"
+        name="{{ forms.INFLATION_MODE }}"
+        data-condition-controller="inflation-mode"
+      >
+        {% for mode in forms.INFLATION_MODES %}
+        <option
+          value="{{ mode }}"
+          {% if plan.inflation.mode == mode %}selected{% endif %}
+        >{{ forms.INFLATION_MODE_LABELS[mode] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <div
+      data-condition-group
+      data-condition-controller-id="inflation-mode"
+      data-condition-value="manual"
+    >
+      <label>
+        Manual annual inflation rate
+        <input
+          type="text"
+          inputmode="decimal"
+          class="percent-input"
+          name="{{ forms.INFLATION_MANUAL_ANNUAL_RATE }}"
+          value="{{ plan.inflation.manual_annual_rate|percent if plan.inflation.manual_annual_rate is not none else '' }}"
+          data-condition-input
+          data-required-when-active
+        >
+      </label>
+    </div>
+
+    <label>
+      Planning returns
+      <select
+        id="planning-preset"
+        name="{{ forms.PLANNING_PRESET }}"
+        data-condition-controller="planning-preset"
+      >
+        {% for preset in forms.PLANNING_PRESETS %}
+        <option
+          value="{{ preset }}"
+          {% if plan.planning_returns.preset == preset %}selected{% endif %}
+        >{{ forms.PLANNING_PRESET_LABELS[preset] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <div
+      data-condition-group
+      data-condition-controller-id="planning-preset"
+      data-condition-value="fixed_equity_premium"
+    >
+      <label>
+        Fixed equity premium
+        <input
+          type="text"
+          inputmode="decimal"
+          class="percent-input"
+          name="{{ forms.FIXED_EQUITY_PREMIUM }}"
+          value="{{ equity_premium|percent }}"
+          data-condition-input
+          data-required-when-active
+        >
+      </label>
+    </div>
+
+    <div
+      data-condition-group
+      data-condition-controller-id="planning-preset"
+      data-condition-value="custom"
+    >
+      <label>
+        Custom stocks base
+        <select
+          name="{{ forms.CUSTOM_STOCKS_BASE }}"
+          data-condition-input
+          data-required-when-active
+        >
+          {% for base in forms.STOCK_PRESET_BASES %}
+          <option
+            value="{{ base }}"
+            {% if stocks_base == base %}selected{% endif %}
+          >{{ forms.STOCK_PRESET_BASE_LABELS[base] }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Custom stocks delta
+        <input
+          type="text"
+          inputmode="decimal"
+          class="percent-input"
+          name="{{ forms.CUSTOM_STOCKS_DELTA }}"
+          value="{{ plan.planning_returns.custom_stocks_delta|percent }}"
+          data-condition-input
+        >
+      </label>
+      <label>
+        Custom bonds base
+        <select
+          name="{{ forms.CUSTOM_BONDS_BASE }}"
+          data-condition-input
+          data-required-when-active
+        >
+          {% for base in forms.BOND_PRESET_BASES %}
+          <option
+            value="{{ base }}"
+            {% if bonds_base == base %}selected{% endif %}
+          >{{ forms.BOND_PRESET_BASE_LABELS[base] }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Custom bonds delta
+        <input
+          type="text"
+          inputmode="decimal"
+          class="percent-input"
+          name="{{ forms.CUSTOM_BONDS_DELTA }}"
+          value="{{ plan.planning_returns.custom_bonds_delta|percent }}"
+          data-condition-input
+        >
+      </label>
+    </div>
+
+    <div
+      data-condition-group
+      data-condition-controller-id="planning-preset"
+      data-condition-value="fixed"
+    >
+      <label>
+        Expected annual return (stocks)
+        <input
+          type="text"
+          inputmode="decimal"
+          class="percent-input"
+          name="{{ forms.EXPECTED_ANNUAL_RETURN_STOCKS }}"
+          value="{{ plan.planning_returns.expected_annual_return_stocks|percent }}"
+          data-condition-input
+        >
+      </label>
+      <label>
+        Expected annual return (bonds)
+        <input
+          type="text"
+          inputmode="decimal"
+          class="percent-input"
+          name="{{ forms.EXPECTED_ANNUAL_RETURN_BONDS }}"
+          value="{{ plan.planning_returns.expected_annual_return_bonds|percent }}"
+          data-condition-input
+        >
+      </label>
+    </div>
+
+    <details>
+      <summary>Customize</summary>
+      <label>
+        Stock volatility scale
+        <input
+          type="text"
+          inputmode="decimal"
+          name="{{ forms.STOCK_VOLATILITY_SCALE }}"
+          value="{{ plan.planning_returns.stock_volatility_scale }}"
+        >
+      </label>
+    </details>
+  </form>
+  <div id="resolved-assumptions-summary"></div>
+</section>
