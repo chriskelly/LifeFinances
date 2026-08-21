@@ -1,7 +1,25 @@
 import numpy as np
 import pytest
 from simulation.engine import simulate_monthly
+from simulation.market_data.inflation import InflationResolved, annual_to_monthly
+from simulation.planning_returns import PlanningReturns
 from simulation.preprocess import ProcessedPlan
+
+
+def _resolver_fixtures() -> tuple[InflationResolved, PlanningReturns]:
+    annual_inflation = 0.02
+    return (
+        InflationResolved(
+            annual=annual_inflation,
+            monthly=annual_to_monthly(annual_inflation),
+            source="manual",
+        ),
+        PlanningReturns(
+            annual_stocks=0.05,
+            annual_bonds=0.02,
+            annual_stock_log_variance=0.03,
+        ),
+    )
 
 
 def _flat_processed(
@@ -11,6 +29,7 @@ def _flat_processed(
     essential_real: np.ndarray | None = None,
 ) -> ProcessedPlan:
     zeros = np.zeros(months, dtype=np.float64)
+    inflation_resolved, planning_resolved = _resolver_fixtures()
     return ProcessedPlan(
         months=months,
         starting_balance=starting_balance,
@@ -34,6 +53,8 @@ def _flat_processed(
         gross_pension=zeros.copy(),
         gross_manual=zeros.copy(),
         taxes=zeros.copy(),
+        inflation_resolved=inflation_resolved,
+        planning_resolved=planning_resolved,
     )
 
 

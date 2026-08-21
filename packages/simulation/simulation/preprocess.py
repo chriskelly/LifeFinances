@@ -19,9 +19,10 @@ from core.timeline import Timeline, person_end_date, project_stream
 
 from domain import build_monthly_cashflows
 from simulation.market_data import resolve_inflation
+from simulation.market_data.inflation import InflationResolved
 from simulation.mertons import effective_mertons
 from simulation.npv import backward_npv_including_current
-from simulation.planning_returns import resolve_planning_returns
+from simulation.planning_returns import PlanningReturns, resolve_planning_returns
 from simulation.risk import legacy_rra, rra_by_month
 
 
@@ -52,6 +53,8 @@ class ProcessedPlan:
     gross_pension: np.ndarray
     gross_manual: np.ndarray
     taxes: np.ndarray
+    inflation_resolved: InflationResolved
+    planning_resolved: PlanningReturns
 
 
 def _decimal_series_to_float64(series: Sequence[Decimal]) -> np.ndarray:
@@ -254,4 +257,6 @@ def preprocess(
         gross_pension=_decimal_series_to_float64(cashflows.gross_pension),
         gross_manual=_decimal_series_to_float64(cashflows.gross_manual),
         taxes=_decimal_series_to_float64(cashflows.taxes.stored_total),
+        inflation_resolved=inflation,
+        planning_resolved=planning,
     )

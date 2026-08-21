@@ -1,7 +1,18 @@
 from datetime import datetime
 
 import numpy as np
-from simulation.result import RawSimulationResult, SimulationResult
+from simulation.result import RawSimulationResult, ResolvedAssumptions, SimulationResult
+
+
+def _resolved_assumptions() -> ResolvedAssumptions:
+    return ResolvedAssumptions(
+        annual_inflation=0.02,
+        annual_stock_return=0.05,
+        annual_bond_return=0.02,
+        annual_stock_log_variance=0.03,
+        planning_preset="fixed",
+        inflation_source="manual",
+    )
 
 
 def test_raw_simulation_result_holds_per_run_arrays():
@@ -91,6 +102,7 @@ def _make_public_result(*, balance_start: np.ndarray) -> SimulationResult:
         wealth_pension=wealth.copy(),
         wealth_manual=wealth.copy(),
         num_runs_insufficient=0,
+        resolved_assumptions=_resolved_assumptions(),
     )
 
 
@@ -107,5 +119,20 @@ def test_public_simulation_result_inequality_on_differing_wealth_band():
     balance_start = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=np.float64)
     first = _make_public_result(balance_start=balance_start)
     second = first.model_copy(update={"wealth_job": first.wealth_job + 1.0})
+
+    assert first != second
+
+
+def test_public_simulation_result_inequality_on_differing_assumptions():
+    balance_start = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=np.float64)
+    first = _make_public_result(balance_start=balance_start)
+    changed_inflation = first.resolved_assumptions.annual_inflation + 0.01
+    second = first.model_copy(
+        update={
+            "resolved_assumptions": first.resolved_assumptions.model_copy(
+                update={"annual_inflation": changed_inflation}
+            )
+        }
+    )
 
     assert first != second

@@ -1,8 +1,15 @@
 from datetime import date, datetime
+from decimal import Decimal
 
 from core.defaults import default_plan
-from core.models import DEFAULT_PERCENTILES, AdvancedConfig
+from core.models import (
+    DEFAULT_PERCENTILES,
+    AdvancedConfig,
+    InflationConfig,
+    PlanningReturnsConfig,
+)
 from core.timeline import Timeline
+from simulation.presets import stock_log_variance
 from simulation.result import ENGINE_VERSION
 
 from simulation import run_simulation
@@ -71,3 +78,42 @@ def test_run_simulation_start_month_and_horizon_match_timeline():
     assert result.start_month == (today.year, today.month)
     assert result.horizon_months == timeline.horizon_months
     assert result.percentiles == DEFAULT_PERCENTILES
+
+
+def test_run_simulation_resolved_assumptions_match_fixed_preset() -> None:
+    annual_inflation = 0.023
+    annual_stocks = 0.051
+    annual_bonds = 0.018
+    plan = default_plan().model_copy(
+        update={
+            "inflation": InflationConfig(
+                mode="manual", manual_annual_rate=Decimal(str(annual_inflation))
+            ),
+            "planning_returns": PlanningReturnsConfig(
+                preset="fixed",
+                expected_annual_return_stocks=Decimal(str(annual_stocks)),
+                expected_annual_return_bonds=Decimal(str(annual_bonds)),
+            ),
+        }
+    )
+    expected_variance = stock_log_variance(
+        block_size_months=plan.sampling.block_size_months,
+        volatility_scale=float(plan.planning_returns.stock_volatility_scale),
+    )
+
+    result = run_simulation(
+        plan,
+        today=date(2026, 1, 1),
+        ran_at=datetime(2026, 1, 1),
+    )
+
+    assumptions = result.resolved_assumptions
+    assert assumptions.annual_inflation == annual_inflation
+    assert assumptions.annual_stock_return == annual_stocks
+    assert assumptions.annual_bond_return == annual_bonds
+    assert assumptions.annual_stock_log_variance == expected_variance
+    assert assumptions.planning_preset == "fixed"
+    assert assumptions.inflation_source == "manual"
+    assert assumptions.inflation_observation_date is None
+    assert assumptions.sp500_source is None
+    assert assumptions.treasury_source is None

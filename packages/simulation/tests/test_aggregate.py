@@ -1,9 +1,10 @@
 from datetime import datetime
 
 import numpy as np
+from core.models import DEFAULT_PERCENTILES
 from simulation.aggregate import build_public_result
 from simulation.composition import WealthBySource
-from simulation.result import RAW_ARRAY_FIELDS, RawSimulationResult
+from simulation.result import RAW_ARRAY_FIELDS, RawSimulationResult, ResolvedAssumptions
 
 _NUM_RUNS = 3
 _MONTHS = 2
@@ -14,6 +15,27 @@ _BASE = np.array([[1.0, 10.0], [2.0, 20.0], [3.0, 30.0]], dtype=np.float64)
 _RAW_ARRAYS = {
     field: _BASE * float(index + 1) for index, field in enumerate(RAW_ARRAY_FIELDS)
 }
+
+
+def _resolved_assumptions() -> ResolvedAssumptions:
+    return ResolvedAssumptions(
+        annual_inflation=0.02,
+        annual_stock_return=0.05,
+        annual_bond_return=0.02,
+        annual_stock_log_variance=0.03,
+        planning_preset="fixed",
+        inflation_source="manual",
+    )
+
+
+def _composition() -> WealthBySource:
+    zeros = np.zeros(_MONTHS, dtype=np.float64)
+    return WealthBySource(
+        job=zeros.copy(),
+        social_security=zeros.copy(),
+        pension=zeros.copy(),
+        manual=zeros.copy(),
+    )
 
 
 def _raw() -> RawSimulationResult:
@@ -35,18 +57,14 @@ def test_build_public_result_reduces_each_array_field_along_runs():
     percentiles = [0, 50, 100]  # min / median / max
     start_month = (2026, 1)
     raw = _raw()
-    composition = WealthBySource(
-        job=np.zeros(_MONTHS, dtype=np.float64),
-        social_security=np.zeros(_MONTHS, dtype=np.float64),
-        pension=np.zeros(_MONTHS, dtype=np.float64),
-        manual=np.zeros(_MONTHS, dtype=np.float64),
-    )
+    composition = _composition()
 
     result = build_public_result(
         raw,
         percentiles=percentiles,
         composition=composition,
         start_month=start_month,
+        resolved_assumptions=_resolved_assumptions(),
     )
 
     for field, raw_array in _RAW_ARRAYS.items():
@@ -63,3 +81,15 @@ def test_build_public_result_reduces_each_array_field_along_runs():
     assert result.percentiles == percentiles
     assert result.num_runs == _NUM_RUNS
     assert result.start_month == start_month
+
+
+def test_build_public_result_carries_resolved_assumptions() -> None:
+    assumptions = _resolved_assumptions()
+    result = build_public_result(
+        _raw(),
+        percentiles=list(DEFAULT_PERCENTILES),
+        composition=_composition(),
+        start_month=(2026, 1),
+        resolved_assumptions=assumptions,
+    )
+    assert result.resolved_assumptions == assumptions

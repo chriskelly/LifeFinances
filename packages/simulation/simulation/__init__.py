@@ -12,13 +12,14 @@ from simulation.market_data import (
     resolve_inflation,
 )
 from simulation.preprocess import preprocess
-from simulation.result import ENGINE_VERSION, SimulationResult
+from simulation.result import ENGINE_VERSION, ResolvedAssumptions, SimulationResult
 from simulation.stub import run_simulation
 
 __all__ = [
     "ENGINE_VERSION",
     "HistoricalReturns",
     "InflationResolved",
+    "ResolvedAssumptions",
     "ReturnPaths",
     "SimulationResult",
     "build_return_paths",
