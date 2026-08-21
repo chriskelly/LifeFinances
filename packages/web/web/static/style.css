@@ -195,6 +195,64 @@ label {
   font-size: 0.9rem;
 }
 
+label.checkbox-label,
+label.partner-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+label.checkbox-label input[type="checkbox"],
+label.partner-toggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.boundary-control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.boundary-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.boundary-part input[name$="_year"],
+.boundary-part input[name$="_age_years"] {
+  width: 4.75rem;
+}
+
+.boundary-part input[name$="_month"],
+.boundary-part select[name$="_month"],
+.boundary-part input[name$="_age_months"] {
+  width: 4.25rem;
+}
+
+.birth-month-fields {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.birth-month-fields select {
+  width: 4.25rem;
+}
+
+.birth-month-fields input[type="number"] {
+  width: 4.75rem;
+}
+
+.currency-input,
+.percent-input {
+  font-variant-numeric: tabular-nums;
+}
+
 input,
 select {
   padding: 0.4rem 0.5rem;
@@ -225,15 +283,6 @@ select {
   min-height: 450px;
 }
 
-.results-stub p {
-  margin: 0 0 0.75rem;
-}
-
-.stub-disclaimer {
-  color: #666;
-  font-size: 0.9rem;
-}
-
 .error-message {
   margin: 2rem;
   color: #a00;
@@ -248,10 +297,43 @@ select {
   font-size: 0.9rem;
 }
 
+/* Pin the global save-error banner to the top of the scrollable editor pane
+   so it stays visible no matter how far down the user has scrolled. */
+#form-error {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
 .results-error {
   padding: 0.75rem 1rem;
   background: #fdecea;
   border: 1px solid #f5c2c0;
   border-radius: 4px;
   color: #a00;
+}
+
+.results-summary,
+.results-spending {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.results-spending {
+  margin-top: 0.35rem;
+}
+
+.boundary-part[hidden] {
+  display: none;
+}
+
+.pension-fields {
+  display: none;
+}
+
+.job-row:has(select[name$=".pension"] option[value="calstrs_2_at_62"]:checked) .pension-fields,
+.job-row:has(select[name$=".pension"] option[value="custom"]:checked) .pension-fields {
+  display: block;
 }

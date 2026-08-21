@@ -12,16 +12,21 @@ def _timeline() -> Timeline:
     return Timeline(default_plan(), today=date(2026, 1, 1))
 
 
+def _today_start(timeline: Timeline) -> CalendarMonthBoundary:
+    return CalendarMonthBoundary(year=timeline.today.year, month=timeline.today.month)
+
+
 def test_open_stream_fills_whole_horizon_flat() -> None:
     timeline = _timeline()
     amount = Decimal("1000.00")
-    stream = TimedStream(monthly_amount=amount)
+    stream = TimedStream(monthly_amount=amount, start=_today_start(timeline))
 
     series = project_stream(stream, timeline)
 
     assert len(series) == timeline.horizon_months
     assert series[0] == amount
     assert series[-1] == amount
+    assert timeline.index_of(stream.start) == 0
 
 
 def test_bounded_window_is_zero_outside_and_amount_inside() -> None:
@@ -53,7 +58,11 @@ def test_growth_compounds_monthly_from_start_anchor() -> None:
     timeline = _timeline()
     base = Decimal("1000.00")
     rate = Decimal("0.12")
-    stream = TimedStream(monthly_amount=base, annual_growth_rate=rate)
+    stream = TimedStream(
+        monthly_amount=base,
+        annual_growth_rate=rate,
+        start=_today_start(timeline),
+    )
 
     series = project_stream(stream, timeline)
 

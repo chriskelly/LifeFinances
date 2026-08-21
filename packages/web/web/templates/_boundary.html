@@ -1,0 +1,30 @@
+{% macro boundary_control(name_prefix, current, people, allow_none=False, allow_now=False, allow_max_age=False, none_label="—") -%}
+<span class="boundary-control">
+  <select name="{{ name_prefix }}_kind" class="boundary-kind">
+    {% if allow_none %}<option value="{{ boundaries.KIND_NONE }}"{% if current.kind == boundaries.KIND_NONE %} selected{% endif %}>{{ none_label }}</option>{% endif %}
+    {% if allow_now %}<option value="{{ boundaries.KIND_NOW }}"{% if current.kind == boundaries.KIND_NOW %} selected{% endif %}>Now</option>{% endif %}
+    <option value="{{ boundaries.KIND_CALENDAR }}"{% if current.kind == boundaries.KIND_CALENDAR %} selected{% endif %}>Calendar date</option>
+    <option value="{{ boundaries.KIND_PERSON_AGE }}"{% if current.kind == boundaries.KIND_PERSON_AGE %} selected{% endif %}>At age</option>
+    {% if allow_max_age %}<option value="{{ boundaries.KIND_PERSON_MAX_AGE }}"{% if current.kind == boundaries.KIND_PERSON_MAX_AGE %} selected{% endif %}>Max age</option>{% endif %}
+  </select>
+  <span class="boundary-part" data-kinds="{{ boundaries.KIND_CALENDAR }}">
+    <input type="number" name="{{ name_prefix }}_year" value="{{ current.year if current.kind == boundaries.KIND_CALENDAR else '' }}" placeholder="Year">
+    <select name="{{ name_prefix }}_month">
+      {% for month_number, month_label in forms.MONTH_ABBREVIATIONS %}
+      <option value="{{ month_number }}"{% if current.kind == boundaries.KIND_CALENDAR and current.month == month_number %} selected{% endif %}>{{ month_label }}</option>
+      {% endfor %}
+    </select>
+  </span>
+  <span class="boundary-part" data-kinds="{{ boundaries.KIND_PERSON_AGE }} {{ boundaries.KIND_PERSON_MAX_AGE }}">
+    <select name="{{ name_prefix }}_person">
+      {% for person in people %}
+      <option value="{{ person[0] }}"{% if current.person == person[0] %} selected{% endif %}>{{ person[1] }}</option>
+      {% endfor %}
+    </select>
+  </span>
+  <span class="boundary-part" data-kinds="{{ boundaries.KIND_PERSON_AGE }}">
+    <input type="number" name="{{ name_prefix }}_age_years" value="{{ current.age_years if current.kind == boundaries.KIND_PERSON_AGE else '' }}" placeholder="Years">
+    <input type="number" name="{{ name_prefix }}_age_months" min="0" max="11" value="{{ current.age_months if current.kind == boundaries.KIND_PERSON_AGE else '' }}" placeholder="Months">
+  </span>
+</span>
+{%- endmacro %}

@@ -2,11 +2,20 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
 from core.streams import (
+    Boundary,
     CalendarMonthBoundary,
     PersonAgeBoundary,
+    PersonMaxAgeBoundary,
     TimedStream,
 )
+from pydantic import TypeAdapter, ValidationError
+
+
+def test_timed_stream_requires_start() -> None:
+    with pytest.raises(ValidationError):
+        TimedStream.model_validate({"monthly_amount": "100"})
 
 
 def test_timed_stream_round_trips_through_json_preserving_decimal() -> None:
@@ -45,3 +54,15 @@ def test_boundary_union_resolves_to_correct_kind() -> None:
     assert isinstance(loaded.end, PersonAgeBoundary)
     assert loaded.end.person == "person2"
     assert loaded.end.age_months == age_months
+
+
+def test_person_max_age_boundary_round_trips_through_boundary_union() -> None:
+    expected_person = "person2"
+    adapter = TypeAdapter(Boundary)
+
+    parsed = adapter.validate_python(
+        {"kind": "person_max_age", "person": expected_person}
+    )
+
+    assert isinstance(parsed, PersonMaxAgeBoundary)
+    assert parsed.person == expected_person

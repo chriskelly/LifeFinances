@@ -41,7 +41,7 @@ class Job(BaseModel):
     annual_income: Decimal = Field(ge=0)
     annual_tax_deferred: Decimal = Field(default=Decimal(0), ge=0)
     annual_raise: Decimal = Decimal(0)
-    start: Boundary | None = None
+    start: Boundary
     end: Boundary | None = None
     social_security_eligible: bool = True
     sabbaticals: list[SabbaticalWindow] = Field(default_factory=list)
@@ -51,4 +51,12 @@ class Job(BaseModel):
     def _tax_deferred_within_income(self) -> Job:
         if self.annual_tax_deferred > self.annual_income:
             raise ValueError("annual_tax_deferred must not exceed annual_income")
+        return self
+
+    @model_validator(mode="after")
+    def _pension_requires_end(self) -> Job:
+        # Service credit and final compensation are both measured to the job's
+        # end, so an open-ended pensioned job has no computable benefit.
+        if self.pension is not None and self.end is None:
+            raise ValueError("a job with a pension must have an end boundary")
         return self

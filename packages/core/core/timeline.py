@@ -10,6 +10,7 @@ from core.streams import (
     Boundary,
     CalendarMonthBoundary,
     PersonAgeBoundary,
+    PersonMaxAgeBoundary,
     TimedStream,
 )
 
@@ -20,13 +21,23 @@ def add_months(year: int, month: int, months: int) -> tuple[int, int]:
     return total // 12, total % 12 + 1
 
 
+def _resolve_person(household: Household, person_id: str) -> PersonHousehold:
+    person = getattr(household, person_id)
+    if person is None:
+        raise ValueError(f"boundary references {person_id}, who is not on the plan")
+    return person
+
+
 def boundary_to_year_month(boundary: Boundary, household: Household) -> tuple[int, int]:
     """Resolve a boundary to an absolute (year, month). Birth-date only; no `today`."""
     if isinstance(boundary, CalendarMonthBoundary):
         return boundary.year, boundary.month
     if isinstance(boundary, PersonAgeBoundary):
-        person = getattr(household, boundary.person)
+        person = _resolve_person(household, boundary.person)
         return add_months(person.birth_year, person.birth_month, boundary.age_months)
+    if isinstance(boundary, PersonMaxAgeBoundary):
+        person = _resolve_person(household, boundary.person)
+        return person.birth_year + person.max_age_years, person.birth_month
     raise TypeError(f"Unknown boundary: {boundary!r}")
 
 
@@ -75,7 +86,7 @@ def project_stream(stream: TimedStream, timeline: Timeline) -> list[Decimal]:
     """Project one stream into a horizon-length series of face amounts.
 
     - Fills `monthly_amount` for indices in [start, end]; 0 elsewhere.
-    - start defaults to 0 (now); end defaults to horizon - 1.
+    - end defaults to horizon - 1 when unset.
     - The window is clamped to [0, horizon - 1].
     - Monthly-compounded growth anchored at the (unclamped) start index:
       amount(t) = monthly_amount * (1 + annual_growth_rate) ** ((t - start) / 12)
@@ -86,7 +97,7 @@ def project_stream(stream: TimedStream, timeline: Timeline) -> list[Decimal]:
     if horizon <= 0:
         return series
 
-    start_index = 0 if stream.start is None else timeline.index_of(stream.start)
+    start_index = timeline.index_of(stream.start)
     end_index = horizon - 1 if stream.end is None else timeline.index_of(stream.end)
 
     low = max(start_index, 0)

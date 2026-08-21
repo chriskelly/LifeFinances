@@ -20,8 +20,13 @@ class PersonAgeBoundary(BaseModel):
     age_months: int = Field(ge=0)
 
 
+class PersonMaxAgeBoundary(BaseModel):
+    kind: Literal["person_max_age"] = "person_max_age"
+    person: PersonId
+
+
 Boundary = Annotated[
-    CalendarMonthBoundary | PersonAgeBoundary,
+    CalendarMonthBoundary | PersonAgeBoundary | PersonMaxAgeBoundary,
     Field(discriminator="kind"),
 ]
 
@@ -36,7 +41,7 @@ class TimedStream(BaseModel):
 
     label: str | None = None
     monthly_amount: Decimal = Field(ge=0)
-    start: Boundary | None = None
+    start: Boundary
     end: Boundary | None = None
     is_nominal: bool = False
     annual_growth_rate: Decimal = Decimal(0)

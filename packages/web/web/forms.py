@@ -1,9 +1,36 @@
 from __future__ import annotations
 
+import json
+from collections.abc import Callable
+from datetime import date
 from decimal import Decimal
+from typing import get_args
 
-from core.models import AppSettings, Household, PersonHousehold, Plan, Portfolio
+from core.job import AgeFactor, FormulaPension, Job
+from core.models import (
+    AppSettings,
+    FilingStatus,
+    Household,
+    PersonHousehold,
+    Plan,
+    Portfolio,
+)
+from core.streams import PersonId, TimedStream
+from domain.statutory.pension import (
+    CALSTRS_2_AT_62_AGE_FACTORS,
+    age_factors_from_statutory,
+)
+from domain.statutory.taxes import STATE_BRACKETS
 from pydantic import BaseModel
+from starlette.datastructures import FormData
+
+from web import boundaries
+from web.currency import format_usd, parse_usd
+from web.percent import parse_percent
+
+JOBS_PREFIX = "jobs"
+STREAMS_PREFIX = "streams"
+_TRUE = {"on", "true", "1"}
 
 # Field-name constants for templates/tests — must match DTO field names
 PERSON1_BIRTH_MONTH = "person1_birth_month"
@@ -13,6 +40,31 @@ PERSON2_BIRTH_MONTH = "person2_birth_month"
 PERSON2_BIRTH_YEAR = "person2_birth_year"
 PERSON2_MAX_AGE_YEARS = "person2_max_age_years"
 HAS_PARTNER = "has_partner"
+FILING_STATUS = "filing_status"
+RESIDENCE_STATE = "residence_state"
+SS_PENSION_TAXABLE_FRACTION = "ss_pension_taxable_fraction"
+SOCIAL_SECURITY_TRUST_FACTOR = "social_security_trust_factor"
+
+FILING_STATUSES: tuple[FilingStatus, ...] = get_args(FilingStatus)
+FILING_STATUS_LABELS = {
+    "single": "Single",
+    "married_filing_jointly": "Married filing jointly",
+}
+MONTH_ABBREVIATIONS: tuple[tuple[int, str], ...] = (
+    (1, "Jan"),
+    (2, "Feb"),
+    (3, "Mar"),
+    (4, "Apr"),
+    (5, "May"),
+    (6, "Jun"),
+    (7, "Jul"),
+    (8, "Aug"),
+    (9, "Sep"),
+    (10, "Oct"),
+    (11, "Nov"),
+    (12, "Dec"),
+)
+TAX_MODELED_STATES: tuple[str, ...] = tuple(sorted(STATE_BRACKETS))
 CURRENT_SAVINGS_BALANCE = "current_savings_balance"
 FRED_API_KEY = "fred_api_key"
 CLEAR_FRED_API_KEY = "clear_fred_api_key"
@@ -20,43 +72,330 @@ EOD_API_KEY = "eod_api_key"
 CLEAR_EOD_API_KEY = "clear_eod_api_key"
 PLAN_NAME = "name"
 RETURN_PLAN = "return_plan"
+CLAIM_AGE_YEARS = "claim_age_years"
+CLAIM_AGE_MONTHS = "claim_age_months"
+
+PENSION_NONE = "none"
+PENSION_CALSTRS_2_AT_62 = "calstrs_2_at_62"
+PENSION_CUSTOM = "custom"
+PENSION_LABEL = "Pension"
+PENSION_NONE_LABEL = "None"
+PENSION_CALSTRS_2_AT_62_LABEL = "CalSTRS 2% at 62"
+PENSION_CUSTOM_LABEL = "Custom"
+PENSION_AVERAGING_MONTHS_DEFAULT = int(
+    FormulaPension.model_fields["final_comp_averaging_months"].default
+)
+PENSION_REQUEST_ISSUE_URL = "https://github.com/chriskelly/LifeFinances/issues/197"
+PENSION_REQUEST_LINK_TEXT = "More pension options (#197)"
+PENSION_REQUEST_LINK_TITLE = "Vote for a richer pension editor"
+EXISTING_INDEX = "existing_index"
+PENSION_AGE_FACTOR_TABLE = "pension_age_factor_table"
+INVALID_AGE_FACTOR_TABLE_MESSAGE = "Custom pension table is missing or invalid"
+INVALID_AVERAGING_MONTHS_MESSAGE = "Enter averaging months as a whole number"
+REMOVE_PARTNER_CONFIRM = (
+    "Remove partner? Their jobs and Social Security earnings will be deleted."
+)
+MONTH_OF_BIRTH_LABEL = "Month of Birth"
+RESIDENCE_STATE_NONE = "none"
+RESIDENCE_STATE_NONE_LABEL = "No income-tax state"
+RESIDENCE_STATE_REQUEST_ISSUE_URL = (
+    "https://github.com/chriskelly/LifeFinances/issues/200"
+)
+RESIDENCE_STATE_REQUEST_LINK_TEXT = "Request your state (#200)"
+SS_EARNINGS_FILE = "statement"
+
+
+def parse_filing_status(raw: str) -> FilingStatus:
+    if raw == "single" or raw == "married_filing_jointly":
+        return raw
+    raise ValueError(f"unknown filing status: {raw!r}")
+
+
+def parse_residence_state(raw: str) -> str | None:
+    """Map a residence-state selection to a stored value, or `None` for no state tax.
+
+    Anything outside `TAX_MODELED_STATES` is rejected rather than stored, because
+    the tax layer silently treats an unknown state as zero state income tax.
+    """
+    if raw == RESIDENCE_STATE_NONE:
+        return None
+    if raw in TAX_MODELED_STATES:
+        return raw
+    raise ValueError(f"{raw!r} is not a state we model income tax for")
+
+
+def people_choices(plan: Plan) -> list[tuple[str, str, PersonHousehold]]:
+    people: list[tuple[str, str, PersonHousehold]] = [
+        ("person1", "You", plan.household.person1)
+    ]
+    if plan.household.person2 is not None:
+        people.append(("person2", "Partner", plan.household.person2))
+    return people
+
+
+def calstrs_age_factor_table() -> list[AgeFactor]:
+    return age_factors_from_statutory(CALSTRS_2_AT_62_AGE_FACTORS)
+
+
+def is_calstrs_pension(pension: FormulaPension | None) -> bool:
+    if pension is None:
+        return False
+    return pension.age_factor_table == calstrs_age_factor_table()
+
+
+def _usd_display_matches(*, submitted: str, amount: Decimal) -> bool:
+    return submitted.strip() == format_usd(amount)
+
+
+def _resolve_previous[T](
+    row: list[tuple[str, str]],
+    *,
+    existing: list[T],
+    claimed: set[int],
+    amount_of: Callable[[T], Decimal],
+    amount_field: str,
+) -> T | None:
+    """Map a submitted row to an existing item without trusting a stale index.
+
+    `EXISTING_INDEX` is only accepted when its USD display still matches the
+    submitted amount. Otherwise (or when the index is out of range), fall back
+    to a unique display match among unclaimed items. This keeps cent-preserving
+    `parse_usd(..., previous=)` correct after delete-under-`hx-swap=none`.
+    """
+    submitted = boundaries.row_scalar(row, amount_field, "0")
+    raw_index = boundaries.row_scalar(row, EXISTING_INDEX).strip()
+    if raw_index:
+        index = int(raw_index)
+        if 0 <= index < len(existing) and index not in claimed:
+            candidate = existing[index]
+            if _usd_display_matches(submitted=submitted, amount=amount_of(candidate)):
+                claimed.add(index)
+                return candidate
+    matches = [
+        i
+        for i, item in enumerate(existing)
+        if i not in claimed
+        and _usd_display_matches(submitted=submitted, amount=amount_of(item))
+    ]
+    if len(matches) == 1:
+        claimed.add(matches[0])
+        return existing[matches[0]]
+    return None
+
+
+def encode_age_factor_table(table: list[AgeFactor]) -> str:
+    return json.dumps([factor.model_dump(mode="json") for factor in table])
+
+
+def decode_age_factor_table(raw: str) -> list[AgeFactor]:
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(INVALID_AGE_FACTOR_TABLE_MESSAGE) from exc
+    if not isinstance(payload, list) or not payload:
+        raise ValueError(INVALID_AGE_FACTOR_TABLE_MESSAGE)
+    try:
+        return [AgeFactor.model_validate(item) for item in payload]
+    except (TypeError, ValueError) as exc:
+        raise ValueError(INVALID_AGE_FACTOR_TABLE_MESSAGE) from exc
+
+
+def _parse_averaging_months(raw: str) -> int:
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise ValueError(INVALID_AVERAGING_MONTHS_MESSAGE) from exc
+
+
+def _custom_age_factor_table(
+    row: list[tuple[str, str]], *, previous: Job | None
+) -> list[AgeFactor]:
+    encoded = boundaries.row_scalar(row, PENSION_AGE_FACTOR_TABLE)
+    if encoded.strip():
+        return decode_age_factor_table(encoded)
+    if previous is not None and previous.pension is not None:
+        return previous.pension.age_factor_table
+    raise ValueError("Custom pension is no longer available; choose CalSTRS or None")
+
+
+def _pension_fields_from_row(
+    row: list[tuple[str, str]],
+    *,
+    today: date,
+    age_factor_table: list[AgeFactor],
+) -> dict[str, object]:
+    return {
+        "service_start": boundaries.row_boundary(
+            row, "pension_service_start", today=today
+        ),
+        "claim": boundaries.row_boundary(row, "pension_claim", today=today),
+        "age_factor_table": age_factor_table,
+        "final_comp_averaging_months": _parse_averaging_months(
+            boundaries.row_scalar(
+                row,
+                "pension_averaging_months",
+                str(PENSION_AVERAGING_MONTHS_DEFAULT),
+            )
+        ),
+        "trust_factor": parse_percent(
+            boundaries.row_scalar(row, "pension_trust_factor", "100%")
+        ),
+        "benefit_real_growth_rate": parse_percent(
+            boundaries.row_scalar(row, "pension_growth", "0%")
+        ),
+    }
+
+
+def _job_from_row(
+    row: list[tuple[str, str]], *, today: date, previous: Job | None = None
+) -> Job:
+    pension_choice = boundaries.row_scalar(row, "pension", PENSION_NONE)
+    pension: dict[str, object] | None = None
+    if pension_choice == PENSION_CALSTRS_2_AT_62:
+        pension = _pension_fields_from_row(
+            row, today=today, age_factor_table=calstrs_age_factor_table()
+        )
+    elif pension_choice == PENSION_CUSTOM:
+        pension = _pension_fields_from_row(
+            row,
+            today=today,
+            age_factor_table=_custom_age_factor_table(row, previous=previous),
+        )
+    sabbaticals = [
+        {
+            "start": boundaries.row_boundary(sab, "start", today=today),
+            "end": boundaries.row_boundary(sab, "end", today=today),
+            "remaining_fraction": parse_percent(
+                boundaries.row_scalar(sab, "remaining_fraction", "0%")
+            ),
+        }
+        for sab in boundaries.sub_rows(row, "sabbaticals")
+    ]
+    return Job.model_validate(
+        {
+            "label": boundaries.row_scalar(row, "label") or None,
+            "annual_income": parse_usd(
+                boundaries.row_scalar(row, "annual_income", "0"),
+                previous=previous.annual_income if previous else None,
+            ),
+            "annual_tax_deferred": parse_usd(
+                boundaries.row_scalar(row, "annual_tax_deferred", "0"),
+                previous=previous.annual_tax_deferred if previous else None,
+            ),
+            "annual_raise": parse_percent(
+                boundaries.row_scalar(row, "annual_raise", "0%")
+            ),
+            "start": boundaries.row_boundary(row, "start", today=today),
+            "end": boundaries.row_boundary(row, "end", today=today),
+            "social_security_eligible": boundaries.row_scalar(
+                row, "social_security_eligible"
+            )
+            in _TRUE,
+            "sabbaticals": sabbaticals,
+            "pension": pension,
+        }
+    )
+
+
+class JobsForm:
+    def __init__(self, *, person: PersonId, jobs: list[Job]) -> None:
+        self.person = person
+        self.jobs = jobs
+
+    @classmethod
+    def from_form(
+        cls,
+        form: FormData,
+        *,
+        person: PersonId,
+        today: date,
+        existing_jobs: list[Job],
+    ) -> JobsForm:
+        rows = boundaries.collect_indexed_rows(form, JOBS_PREFIX)
+        jobs: list[Job] = []
+        claimed: set[int] = set()
+        for row in rows:
+            previous = _resolve_previous(
+                row,
+                existing=existing_jobs,
+                claimed=claimed,
+                amount_of=lambda job: job.annual_income,
+                amount_field="annual_income",
+            )
+            jobs.append(_job_from_row(row, today=today, previous=previous))
+        return cls(person=person, jobs=jobs)
+
+    def apply_to(self, plan: Plan) -> Plan:
+        data = plan.household.model_dump()
+        if data.get(self.person) is None:
+            raise ValueError("Cannot edit jobs for a partner who is not on the plan")
+        data[self.person]["jobs"] = [job.model_dump() for job in self.jobs]
+        household = Household.model_validate(data)
+        return plan.model_copy(update={"household": household})
 
 
 class HouseholdForm(BaseModel):
-    """Flat transport DTO for HTML forms. Constraints live on core.models only."""
-
     person1_birth_month: int
     person1_birth_year: int
     person1_max_age_years: int
+    filing_status: FilingStatus
+    # `None` means "absent from the submission", so the stored value is left
+    # alone. Clearing residence state is the explicit RESIDENCE_STATE_NONE
+    # selection, not an omitted field.
+    residence_state: str | None = None
+    ss_pension_taxable_fraction: Decimal | None = None
+    social_security_trust_factor: Decimal | None = None
     has_partner: bool = False
     person2_birth_month: int | None = None
     person2_birth_year: int | None = None
     person2_max_age_years: int | None = None
 
     def apply_to(self, plan: Plan) -> Plan:
-        person2 = None
-        if self.has_partner:
-            person2 = PersonHousehold.model_validate(
-                {
-                    "birth_month": self.person2_birth_month,
-                    "birth_year": self.person2_birth_year,
-                    "max_age_years": self.person2_max_age_years,
-                }
-            )
-        household = Household(
-            person1=PersonHousehold(
-                birth_month=self.person1_birth_month,
-                birth_year=self.person1_birth_year,
-                max_age_years=self.person1_max_age_years,
-            ),
-            person2=person2,
+        data = plan.household.model_dump()
+        data["person1"].update(
+            {
+                "birth_month": self.person1_birth_month,
+                "birth_year": self.person1_birth_year,
+                "max_age_years": self.person1_max_age_years,
+            }
         )
+        if self.has_partner:
+            if (
+                self.person2_birth_month is None
+                or self.person2_birth_year is None
+                or self.person2_max_age_years is None
+            ):
+                raise ValueError("Partner requires birth month, year, and max age")
+            existing2 = data.get("person2")
+            if existing2 is None:
+                existing2 = PersonHousehold(
+                    birth_month=self.person2_birth_month,
+                    birth_year=self.person2_birth_year,
+                    max_age_years=self.person2_max_age_years,
+                ).model_dump()
+            else:
+                existing2.update(
+                    {
+                        "birth_month": self.person2_birth_month,
+                        "birth_year": self.person2_birth_year,
+                        "max_age_years": self.person2_max_age_years,
+                    }
+                )
+            data["person2"] = existing2
+        else:
+            data["person2"] = None
+        data["filing_status"] = self.filing_status
+        if self.residence_state is not None:
+            data["residence_state"] = parse_residence_state(self.residence_state)
+        if self.ss_pension_taxable_fraction is not None:
+            data["ss_pension_taxable_fraction"] = self.ss_pension_taxable_fraction
+        if self.social_security_trust_factor is not None:
+            data["social_security_trust_factor"] = self.social_security_trust_factor
+        household = Household.model_validate(data)
         return plan.model_copy(update={"household": household})
 
 
 class PortfolioForm(BaseModel):
-    """Flat transport DTO for HTML forms. Constraints live on core.models only."""
-
     current_savings_balance: Decimal
 
     def apply_to(self, plan: Plan) -> Plan:
@@ -81,8 +420,6 @@ def _apply_api_key(
 
 
 class AppSettingsForm(BaseModel):
-    """Flat transport DTO for local app settings."""
-
     fred_api_key: str | None = None
     clear_fred_api_key: bool = False
     eod_api_key: str | None = None
@@ -101,3 +438,74 @@ class AppSettingsForm(BaseModel):
             value=self.eod_api_key,
             clear=self.clear_eod_api_key,
         )
+
+
+def _stream_from_row(
+    row: list[tuple[str, str]],
+    *,
+    today: date,
+    previous: TimedStream | None = None,
+) -> TimedStream:
+    return TimedStream.model_validate(
+        {
+            "label": boundaries.row_scalar(row, "label") or None,
+            "monthly_amount": parse_usd(
+                boundaries.row_scalar(row, "monthly_amount", "0"),
+                previous=previous.monthly_amount if previous else None,
+            ),
+            "start": boundaries.row_boundary(row, "start", today=today),
+            "end": boundaries.row_boundary(row, "end", today=today),
+            "is_nominal": boundaries.row_scalar(row, "is_nominal") in _TRUE,
+            "annual_growth_rate": parse_percent(
+                boundaries.row_scalar(row, "annual_growth_rate", "0%")
+            ),
+        }
+    )
+
+
+class ManualIncomeForm:
+    def __init__(self, *, streams: list[TimedStream]) -> None:
+        self.streams = streams
+
+    @classmethod
+    def from_form(
+        cls,
+        form: FormData,
+        *,
+        today: date,
+        existing_streams: list[TimedStream],
+    ) -> ManualIncomeForm:
+        rows = boundaries.collect_indexed_rows(form, STREAMS_PREFIX)
+        streams: list[TimedStream] = []
+        claimed: set[int] = set()
+        for row in rows:
+            previous = _resolve_previous(
+                row,
+                existing=existing_streams,
+                claimed=claimed,
+                amount_of=lambda stream: stream.monthly_amount,
+                amount_field="monthly_amount",
+            )
+            streams.append(_stream_from_row(row, today=today, previous=previous))
+        return cls(streams=streams)
+
+    def apply_to(self, plan: Plan) -> Plan:
+        return plan.model_copy(update={"manual_income_streams": self.streams})
+
+
+class SocialSecurityForm(BaseModel):
+    person: PersonId
+    claim_age_years: int
+    claim_age_months: int = 0
+
+    def apply_to(self, plan: Plan) -> Plan:
+        data = plan.household.model_dump()
+        if data.get(self.person) is None:
+            raise ValueError(
+                "Cannot edit Social Security for a partner who is not on the plan"
+            )
+        data[self.person]["social_security"]["claim_age_months"] = (
+            self.claim_age_years * 12 + self.claim_age_months
+        )
+        household = Household.model_validate(data)
+        return plan.model_copy(update={"household": household})

@@ -17,8 +17,11 @@ from simulation.preprocess import ProcessedPlan, preprocess
 def _plan_with_job_income() -> Plan:
     """Minimal plan with positive gross job income across the horizon."""
     base = default_plan()
+    today = date(2026, 1, 1)
+    plan_start = CalendarMonthBoundary(year=today.year, month=today.month)
     job = Job(
         annual_income=Decimal("120_000"),
+        start=plan_start,
         end=CalendarMonthBoundary(year=2045, month=12),
     )
     person1 = PersonHousehold(

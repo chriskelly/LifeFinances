@@ -14,8 +14,11 @@ from domain import MonthlyCashflows, build_monthly_cashflows
 
 def _working_plan() -> Plan:
     base = default_plan()
+    today = date(2026, 1, 1)
+    plan_start = CalendarMonthBoundary(year=today.year, month=today.month)
     job = Job(
         annual_income=Decimal("120_000"),
+        start=plan_start,
         end=CalendarMonthBoundary(year=2045, month=12),
     )
     person1 = PersonHousehold(
@@ -78,10 +81,11 @@ def test_total_gross_sums_all_income_components() -> None:
 def test_manual_income_stream_appears_in_gross_manual() -> None:
     plan = _working_plan()
     monthly_amount = Decimal("2_000.00")
-    plan.manual_income_streams = [
-        TimedStream(label="rental", monthly_amount=monthly_amount)
-    ]
     today = date(2026, 1, 1)
+    plan_start = CalendarMonthBoundary(year=today.year, month=today.month)
+    plan.manual_income_streams = [
+        TimedStream(label="rental", monthly_amount=monthly_amount, start=plan_start)
+    ]
 
     cashflows = build_monthly_cashflows(plan, today=today)
 
@@ -103,10 +107,14 @@ def test_sabbatical_reduced_income_lowers_taxes() -> None:
             portfolio=Portfolio(current_savings_balance=Decimal("0")),
         )
 
-    no_break = plan_with(Job(annual_income=Decimal("120_000"), end=career_end))
+    plan_start = CalendarMonthBoundary(year=today.year, month=today.month)
+    no_break = plan_with(
+        Job(annual_income=Decimal("120_000"), start=plan_start, end=career_end)
+    )
     with_break = plan_with(
         Job(
             annual_income=Decimal("120_000"),
+            start=plan_start,
             end=career_end,
             sabbaticals=[
                 SabbaticalWindow(

@@ -66,6 +66,7 @@ def test_service_credit_counts_inclusive_months_as_years() -> None:
     expected_years = Decimal(30)
     job = Job(
         annual_income=Decimal("120_000"),
+        start=service_start,
         end=job_end,
         pension=FormulaPension(
             service_start=service_start,
@@ -89,6 +90,7 @@ def test_service_credit_reduced_by_sabbatical_loss() -> None:
     expected_years = Decimal(30) - (Decimal(1) - remaining) * window_years
     job = Job(
         annual_income=Decimal("120_000"),
+        start=service_start,
         end=job_end,
         sabbaticals=[
             SabbaticalWindow(
@@ -110,19 +112,23 @@ def test_service_credit_reduced_by_sabbatical_loss() -> None:
 
 
 def test_service_credit_requires_job_end() -> None:
-    job = Job(
+    valid_job = Job(
         annual_income=Decimal("120_000"),
+        start=CalendarMonthBoundary(year=2016, month=1),
+        end=CalendarMonthBoundary(year=2046, month=1),
         pension=FormulaPension(
             service_start=CalendarMonthBoundary(year=2016, month=1),
             claim=PersonAgeBoundary(person="person1", age_months=62 * 12),
             age_factor_table=[AgeFactor(age_months=62 * 12, factor=Decimal("0.02"))],
         ),
     )
-    plan = _plan_with_person1_job(job)
-    timeline = Timeline(plan, today=date(2026, 1, 1))
+    # `Job` rejects a pension without an end, so bypass validation to reach the
+    # defensive guard that keeps this function honest for unvalidated callers.
+    end_less_job = valid_job.model_copy(update={"end": None})
+    timeline = Timeline(_plan_with_person1_job(valid_job), today=date(2026, 1, 1))
 
     with pytest.raises(ValueError, match="job end"):
-        service_credit_years(job=job, timeline=timeline)
+        service_credit_years(job=end_less_job, timeline=timeline)
 
 
 def test_final_compensation_averages_trailing_months_annualized() -> None:
@@ -131,6 +137,7 @@ def test_final_compensation_averages_trailing_months_annualized() -> None:
     job_end = CalendarMonthBoundary(year=2045, month=12)
     job = Job(
         annual_income=annual_income,
+        start=CalendarMonthBoundary(year=2016, month=1),
         end=job_end,
         pension=FormulaPension(
             service_start=CalendarMonthBoundary(year=2016, month=1),
@@ -196,6 +203,7 @@ def _job_with_pension(
 ) -> Job:
     return Job(
         annual_income=annual_income,
+        start=CalendarMonthBoundary(year=2016, month=1),
         end=CalendarMonthBoundary(year=end_year, month=12),
         pension=FormulaPension(
             service_start=CalendarMonthBoundary(year=2016, month=1),
@@ -322,10 +330,14 @@ def test_manual_income_streams_flow_into_pension_manual() -> None:
             end_year=2045,
         )
     )
+    today = date(2026, 1, 1)
+    plan_start = CalendarMonthBoundary(year=today.year, month=today.month)
     plan.manual_income_streams = [
-        TimedStream(label="inherited pension", monthly_amount=monthly_amount)
+        TimedStream(
+            label="inherited pension", monthly_amount=monthly_amount, start=plan_start
+        )
     ]
-    timeline = Timeline(plan, today=date(2026, 1, 1))
+    timeline = Timeline(plan, today=today)
     job_income = project_job_income(plan, timeline)
 
     projection = project_pension(plan, timeline, job_income)

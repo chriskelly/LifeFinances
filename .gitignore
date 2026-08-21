@@ -6,6 +6,9 @@
 config.yml
 data/data.db
 data/market_cache/
+# Personal SSA statement downloads (never commit)
+social-security-statement.xml
+
 docs/ideas/
 docs/backlog/
 docs/active/

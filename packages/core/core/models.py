@@ -139,7 +139,7 @@ def _validate_job_windows(job: Job, household: Household) -> None:
         year, month = boundary_to_year_month(boundary, household)
         return year * 12 + month
 
-    low = absolute(job.start) if job.start is not None else None
+    low = absolute(job.start)
     high = absolute(job.end) if job.end is not None else None
 
     previous_end: int | None = None
@@ -148,7 +148,7 @@ def _validate_job_windows(job: Job, household: Household) -> None:
         end = absolute(window.end)
         if start > end:
             raise ValueError("sabbatical window start must not be after its end")
-        if low is not None and start < low:
+        if start < low:
             raise ValueError("sabbatical window starts before the job's start")
         if high is not None and end > high:
             raise ValueError("sabbatical window ends after the job's end")

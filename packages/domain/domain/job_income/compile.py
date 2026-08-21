@@ -56,7 +56,7 @@ def project_job_gross(job: Job, timeline: Timeline) -> list[Decimal]:
 
     base_monthly = job.annual_income / _MONTHS_PER_YEAR
     growth = job.annual_raise
-    job_start = 0 if job.start is None else timeline.index_of(job.start)
+    job_start = timeline.index_of(job.start)
     job_end = horizon - 1 if job.end is None else timeline.index_of(job.end)
 
     for segment_start, segment_end, remaining in _segments(

@@ -8,20 +8,20 @@
     <fieldset class="person-fields">
       <legend>You</legend>
       <label>
-        Birth month
-        <select name="{{ forms.PERSON1_BIRTH_MONTH }}">
-          {% for month in range(1, 13) %}
-          <option value="{{ month }}"{% if plan.household.person1.birth_month == month %} selected{% endif %}>{{ month }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>
-        Birth year
-        <input
-          type="number"
-          name="{{ forms.PERSON1_BIRTH_YEAR }}"
-          value="{{ plan.household.person1.birth_year }}"
-        >
+        {{ forms.MONTH_OF_BIRTH_LABEL }}
+        <span class="birth-month-fields">
+          <select name="{{ forms.PERSON1_BIRTH_MONTH }}">
+            {% for month_number, month_label in forms.MONTH_ABBREVIATIONS %}
+            <option value="{{ month_number }}"{% if plan.household.person1.birth_month == month_number %} selected{% endif %}>{{ month_label }}</option>
+            {% endfor %}
+          </select>
+          <input
+            type="number"
+            name="{{ forms.PERSON1_BIRTH_YEAR }}"
+            value="{{ plan.household.person1.birth_year }}"
+            placeholder="Year"
+          >
+        </span>
       </label>
       <label>
         Max age
@@ -36,29 +36,30 @@
       <input
         type="checkbox"
         name="{{ forms.HAS_PARTNER }}"
+        data-confirm-partner-remove
+        data-confirm-message="{{ forms.REMOVE_PARTNER_CONFIRM }}"
         {% if plan.household.person2 %}checked{% endif %}
-        onchange="this.closest('form').querySelectorAll('.partner-fields input, .partner-fields select').forEach(el => el.disabled = !this.checked)"
       >
       Include a partner
     </label>
     <fieldset class="person-fields partner-fields">
       <legend>Partner</legend>
       <label>
-        Birth month
-        <select name="{{ forms.PERSON2_BIRTH_MONTH }}"{% if not plan.household.person2 %} disabled{% endif %}>
-          {% for month in range(1, 13) %}
-          <option value="{{ month }}"{% if plan.household.person2 and plan.household.person2.birth_month == month %} selected{% endif %}>{{ month }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>
-        Birth year
-        <input
-          type="number"
-          name="{{ forms.PERSON2_BIRTH_YEAR }}"
-          value="{{ plan.household.person2.birth_year if plan.household.person2 else '' }}"
-          {% if not plan.household.person2 %}disabled{% endif %}
-        >
+        {{ forms.MONTH_OF_BIRTH_LABEL }}
+        <span class="birth-month-fields">
+          <select name="{{ forms.PERSON2_BIRTH_MONTH }}"{% if not plan.household.person2 %} disabled{% endif %}>
+            {% for month_number, month_label in forms.MONTH_ABBREVIATIONS %}
+            <option value="{{ month_number }}"{% if plan.household.person2 and plan.household.person2.birth_month == month_number %} selected{% endif %}>{{ month_label }}</option>
+            {% endfor %}
+          </select>
+          <input
+            type="number"
+            name="{{ forms.PERSON2_BIRTH_YEAR }}"
+            value="{{ plan.household.person2.birth_year if plan.household.person2 else '' }}"
+            placeholder="Year"
+            {% if not plan.household.person2 %}disabled{% endif %}
+          >
+        </span>
       </label>
       <label>
         Max age
@@ -67,6 +68,47 @@
           name="{{ forms.PERSON2_MAX_AGE_YEARS }}"
           value="{{ plan.household.person2.max_age_years if plan.household.person2 else '' }}"
           {% if not plan.household.person2 %}disabled{% endif %}
+        >
+      </label>
+    </fieldset>
+    <fieldset class="tax-fields">
+      <legend>Taxes</legend>
+      <label>
+        Filing status
+        <select name="{{ forms.FILING_STATUS }}">
+          {% for status in forms.FILING_STATUSES %}
+          <option value="{{ status }}"{% if plan.household.resolved_filing_status == status %} selected{% endif %}>{{ forms.FILING_STATUS_LABELS[status] }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Residence state
+        <select name="{{ forms.RESIDENCE_STATE }}">
+          <option value="{{ forms.RESIDENCE_STATE_NONE }}"{% if not plan.household.residence_state %} selected{% endif %}>{{ forms.RESIDENCE_STATE_NONE_LABEL }}</option>
+          {% for state in forms.TAX_MODELED_STATES %}
+          <option value="{{ state }}"{% if plan.household.residence_state == state %} selected{% endif %}>{{ state }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <a href="{{ forms.RESIDENCE_STATE_REQUEST_ISSUE_URL }}" target="_blank" rel="noopener" title="Vote for additional state income-tax models">{{ forms.RESIDENCE_STATE_REQUEST_LINK_TEXT }}</a>
+      <label>
+        SS &amp; pension taxable fraction
+        <input
+          type="text"
+          inputmode="decimal"
+          class="percent-input"
+          name="{{ forms.SS_PENSION_TAXABLE_FRACTION }}"
+          value="{{ plan.household.ss_pension_taxable_fraction|percent }}"
+        >
+      </label>
+      <label>
+        Social Security trust factor
+        <input
+          type="text"
+          inputmode="decimal"
+          class="percent-input"
+          name="{{ forms.SOCIAL_SECURITY_TRUST_FACTOR }}"
+          value="{{ plan.household.social_security_trust_factor|percent }}"
         >
       </label>
     </fieldset>

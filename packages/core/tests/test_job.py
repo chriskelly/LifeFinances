@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from core.job import Job, SabbaticalWindow
+from core.job import AgeFactor, FormulaPension, Job, SabbaticalWindow
 from core.models import Household, PersonHousehold
 from core.repository import PlanRepository
 from core.streams import CalendarMonthBoundary, PersonAgeBoundary
@@ -18,18 +18,62 @@ def _household_with_person1_jobs(jobs: list[Job]) -> Household:
     )
 
 
+def _plan_start(*, year: int = 2026, month: int = 1) -> CalendarMonthBoundary:
+    return CalendarMonthBoundary(year=year, month=month)
+
+
+def _calstrs_pension() -> FormulaPension:
+    return FormulaPension(
+        service_start=CalendarMonthBoundary(year=2026, month=1),
+        claim=PersonAgeBoundary(person="person1", age_months=62 * 12),
+        age_factor_table=[AgeFactor(age_months=62 * 12, factor=Decimal("0.02"))],
+    )
+
+
+def test_job_requires_start() -> None:
+    with pytest.raises(ValidationError):
+        Job.model_validate({"annual_income": "100000"})
+
+
+def test_job_with_pension_requires_an_end_boundary() -> None:
+    with pytest.raises(ValidationError, match="end"):
+        Job(
+            annual_income=Decimal("100000"),
+            start=_plan_start(),
+            end=None,
+            pension=_calstrs_pension(),
+        )
+
+
+def test_job_with_pension_and_end_is_accepted() -> None:
+    end = CalendarMonthBoundary(year=2050, month=6)
+
+    job = Job(
+        annual_income=Decimal("100000"),
+        start=_plan_start(),
+        end=end,
+        pension=_calstrs_pension(),
+    )
+
+    assert job.end == end
+
+
 def test_job_rejects_tax_deferred_above_income() -> None:
     income = Decimal("100000")
     too_much_deferred = income + Decimal("1")
 
     with pytest.raises(ValidationError):
-        Job(annual_income=income, annual_tax_deferred=too_much_deferred)
+        Job(
+            annual_income=income,
+            annual_tax_deferred=too_much_deferred,
+            start=_plan_start(),
+        )
 
 
 def test_job_allows_tax_deferred_equal_to_income() -> None:
     income = Decimal("100000")
 
-    job = Job(annual_income=income, annual_tax_deferred=income)
+    job = Job(annual_income=income, annual_tax_deferred=income, start=_plan_start())
 
     assert job.annual_tax_deferred == income
 
@@ -42,6 +86,7 @@ def test_plan_with_jobs_round_trips_through_repository(repo: PlanRepository) -> 
         annual_income=annual_income,
         annual_tax_deferred=Decimal("23000"),
         annual_raise=Decimal("0.03"),
+        start=_plan_start(year=date.today().year, month=date.today().month),
         end=CalendarMonthBoundary(year=date.today().year + 30, month=1),
         sabbaticals=[
             SabbaticalWindow(
@@ -64,6 +109,7 @@ def test_plan_with_jobs_round_trips_through_repository(repo: PlanRepository) -> 
 def test_overlapping_sabbatical_windows_rejected() -> None:
     job = Job(
         annual_income=Decimal("100000"),
+        start=_plan_start(year=2026, month=1),
         sabbaticals=[
             SabbaticalWindow(
                 start=CalendarMonthBoundary(year=2030, month=1),
@@ -101,9 +147,10 @@ def test_window_outside_explicit_job_bounds_rejected() -> None:
         _household_with_person1_jobs([job])
 
 
-def test_window_against_open_bound_is_accepted() -> None:
+def test_window_against_open_end_bound_is_accepted() -> None:
     job = Job(
         annual_income=Decimal("100000"),
+        start=_plan_start(year=1980, month=1),
         sabbaticals=[
             SabbaticalWindow(
                 start=PersonAgeBoundary(person="person1", age_months=720),
@@ -121,6 +168,7 @@ def test_window_against_open_bound_is_accepted() -> None:
 def test_cross_person_and_mixed_boundary_kinds_resolve() -> None:
     job = Job(
         annual_income=Decimal("100000"),
+        start=_plan_start(year=2026, month=1),
         sabbaticals=[
             SabbaticalWindow(
                 start=CalendarMonthBoundary(year=2030, month=1),
