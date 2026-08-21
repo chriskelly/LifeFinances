@@ -52,6 +52,8 @@ class PlanningReturns:
     annual_stocks: float
     annual_bonds: float
     annual_stock_log_variance: float
+    sp500: SP500Resolved | None = None
+    treasury: TreasuryYieldsResolved | None = None
 
 
 def _validate_fixed_preset_literals(config: PlanningReturnsConfig) -> None:
@@ -110,6 +112,73 @@ def _resolve_preset_returns(
     return (stocks_from_base(preset), tips_20yr())
 
 
+class _LazyMarketFeeds:
+    """Memoize full SP500/Treasury resolver objects; unused feeds stay None."""
+
+    def __init__(
+        self,
+        *,
+        sp500_resolver: SP500Resolver,
+        treasury_resolver: TreasuryResolver,
+        today: date,
+        allow_refresh: bool,
+        now: datetime | None,
+        eod_api_key: str | None,
+    ) -> None:
+        self._sp500_resolver = sp500_resolver
+        self._treasury_resolver = treasury_resolver
+        self._today = today
+        self._allow_refresh = allow_refresh
+        self._now = now
+        self._eod_api_key = eod_api_key
+        self.sp500_cache: SP500Resolved | None = None
+        self.treasury_cache: TreasuryYieldsResolved | None = None
+        self._stock_estimates_cache: StockEstimates | None = None
+
+    def sp500_resolved(self) -> SP500Resolved:
+        if self.sp500_cache is None:
+            self.sp500_cache = self._sp500_resolver(
+                today=self._today,
+                allow_refresh=self._allow_refresh,
+                now=self._now,
+                api_key=self._eod_api_key,
+            )
+        return self.sp500_cache
+
+    def treasury_resolved(self) -> TreasuryYieldsResolved:
+        if self.treasury_cache is None:
+            self.treasury_cache = self._treasury_resolver(
+                today=self._today,
+                allow_refresh=self._allow_refresh,
+                now=self._now,
+            )
+        return self.treasury_cache
+
+    def tips_20yr(self) -> float:
+        # tpaw rounds the 20yr TIPS yield to 3dp (source_rounded.bond_rates) before
+        # it feeds any preset.
+        return round3(self.treasury_resolved().yields[TWENTY_YEAR_TENOR])
+
+    def stocks_from_base(self, base: str) -> float:
+        if base == "historical":
+            return historical_annual_return(load_historical_returns().stocks_log)
+        if self._stock_estimates_cache is None:
+            self._stock_estimates_cache = stock_estimates(
+                sp500_close=self.sp500_resolved().close
+            )
+        estimates = self._stock_estimates_cache
+        return {
+            "regression_prediction": estimates.regression_prediction,
+            "conservative_estimate": estimates.conservative_estimate,
+            "one_over_cape": estimates.one_over_cape,
+        }[base]
+
+    def bonds_from_base(self, base: str) -> float:
+        if base == "historical":
+            return historical_bond_return()
+        return self.tips_20yr()
+
+
 def resolve_planning_returns(
     plan: Plan,
     *,
@@ -126,52 +195,20 @@ def resolve_planning_returns(
 
     # Lazy + memoized: only hit the (cache/vendored) data once, and only for
     # presets that actually need it.
-    _stock_estimates_cache: StockEstimates | None = None
-    _tips_20yr_cache: float | None = None
-
-    def sp500_close() -> float:
-        return sp500_resolver(
-            today=today, allow_refresh=allow_refresh, now=now, api_key=eod_api_key
-        ).close
-
-    def tips_20yr() -> float:
-        nonlocal _tips_20yr_cache
-        if _tips_20yr_cache is not None:
-            return _tips_20yr_cache
-        # tpaw rounds the 20yr TIPS yield to 3dp (source_rounded.bond_rates) before
-        # it feeds any preset.
-        raw = treasury_resolver(
-            today=today, allow_refresh=allow_refresh, now=now
-        ).yields[TWENTY_YEAR_TENOR]
-        _tips_20yr_cache = round3(raw)
-        return _tips_20yr_cache
-
-    def _cached_stock_estimates() -> StockEstimates:
-        nonlocal _stock_estimates_cache
-        if _stock_estimates_cache is None:
-            _stock_estimates_cache = stock_estimates(sp500_close=sp500_close())
-        return _stock_estimates_cache
-
-    def stocks_from_base(base: str) -> float:
-        if base == "historical":
-            return historical_annual_return(load_historical_returns().stocks_log)
-        estimates = _cached_stock_estimates()
-        return {
-            "regression_prediction": estimates.regression_prediction,
-            "conservative_estimate": estimates.conservative_estimate,
-            "one_over_cape": estimates.one_over_cape,
-        }[base]
-
-    def bonds_from_base(base: str) -> float:
-        if base == "historical":
-            return historical_bond_return()
-        return tips_20yr()
+    feeds = _LazyMarketFeeds(
+        sp500_resolver=sp500_resolver,
+        treasury_resolver=treasury_resolver,
+        today=today,
+        allow_refresh=allow_refresh,
+        now=now,
+        eod_api_key=eod_api_key,
+    )
 
     annual_stocks, annual_bonds = _resolve_preset_returns(
         config,
-        stocks_from_base=stocks_from_base,
-        bonds_from_base=bonds_from_base,
-        tips_20yr=tips_20yr,
+        stocks_from_base=feeds.stocks_from_base,
+        bonds_from_base=feeds.bonds_from_base,
+        tips_20yr=feeds.tips_20yr,
     )
 
     variance = stock_log_variance(
@@ -182,4 +219,6 @@ def resolve_planning_returns(
         annual_stocks=annual_stocks,
         annual_bonds=annual_bonds,
         annual_stock_log_variance=variance,
+        sp500=feeds.sp500_cache,
+        treasury=feeds.treasury_cache,
     )
