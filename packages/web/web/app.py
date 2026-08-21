@@ -35,6 +35,7 @@ from web import (
     currency,
     forms,
     percent,
+    resolved_assumptions,
     routes,
     sections,
     spending_summary,
@@ -93,6 +94,7 @@ templates.env.globals["sections"] = sections
 templates.env.globals["forms"] = forms
 templates.env.globals["boundaries"] = boundaries
 templates.env.globals["spending_summary"] = spending_summary
+templates.env.globals["resolved_assumptions"] = resolved_assumptions
 templates.env.filters["usd"] = currency.format_usd
 templates.env.filters["percent"] = percent.format_percent
 
@@ -274,6 +276,10 @@ def _register_home_route(web_app: FastAPI) -> None:
                 if result is not None
                 else None
             ),
+            "assumptions": (
+                result.resolved_assumptions if result is not None else None
+            ),
+            "assumptions_oob": False,
         }
         return templates.TemplateResponse(
             request,
@@ -438,7 +444,7 @@ def _register_market_assumptions_routes(web_app: FastAPI) -> None:
     ) -> HTMLResponse:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         settings = settings_repo.get()
-        _load_simulation(
+        result, _simulation_error = _load_simulation(
             request,
             plan_id=plan_id,
             plan_model=plan_model,
@@ -447,7 +453,13 @@ def _register_market_assumptions_routes(web_app: FastAPI) -> None:
         return templates.TemplateResponse(
             request,
             "editor_market_assumptions.html",
-            {"plan_id": plan_id, "plan": plan_model},
+            {
+                "plan_id": plan_id,
+                "plan": plan_model,
+                "assumptions": (
+                    result.resolved_assumptions if result is not None else None
+                ),
+            },
         )
 
     @web_app.patch(PLAN_MARKET_ASSUMPTIONS)
@@ -840,6 +852,8 @@ def _register_results_route(web_app: FastAPI) -> None:
                     "chart_options": [],
                     "chart_figure_json": None,
                     "simulation_error": simulation_error or _SIMULATION_FAILURE_MESSAGE,
+                    "assumptions": None,
+                    "assumptions_oob": True,
                 },
             )
         figure = charts.build_figure(result, chart_type)
@@ -855,6 +869,8 @@ def _register_results_route(web_app: FastAPI) -> None:
                 "chart_options": charts.chart_options(result),
                 "chart_figure_json": _figure_json(figure),
                 "simulation_error": None,
+                "assumptions": result.resolved_assumptions,
+                "assumptions_oob": True,
             },
         )
 
