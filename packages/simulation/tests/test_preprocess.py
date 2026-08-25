@@ -81,6 +81,55 @@ def test_mixed_spending_streams_are_converted_before_summing() -> None:
     assert processed.essential_real[sample_month] == pytest.approx(expected)
 
 
+def _manual_income_plan(*, streams: list[TimedStream], annual_inflation: Decimal):
+    plan = default_plan()
+    plan.inflation = InflationConfig(mode="manual", manual_annual_rate=annual_inflation)
+    plan.manual_income_streams = streams
+    return plan
+
+
+def test_real_manual_income_is_not_deflated() -> None:
+    amount = Decimal("1_000")
+    annual_inflation = Decimal("0.12")
+    today = date(2026, 1, 1)
+    sample_month = 12
+    stream = TimedStream(
+        monthly_amount=amount,
+        start=CalendarMonthBoundary(year=today.year, month=today.month),
+        is_nominal=False,
+    )
+
+    processed = preprocess(
+        _manual_income_plan(streams=[stream], annual_inflation=annual_inflation),
+        today=today,
+    )
+
+    assert processed.income_real[sample_month] == pytest.approx(float(amount))
+    assert processed.manual_gross_real[sample_month] == pytest.approx(float(amount))
+
+
+def test_nominal_manual_income_is_deflated() -> None:
+    amount = Decimal("1_000")
+    annual_inflation = Decimal("0.12")
+    today = date(2026, 1, 1)
+    sample_month = 12
+    monthly_inflation = annual_to_monthly(float(annual_inflation))
+    expected = float(amount) / ((1.0 + monthly_inflation) ** sample_month)
+    stream = TimedStream(
+        monthly_amount=amount,
+        start=CalendarMonthBoundary(year=today.year, month=today.month),
+        is_nominal=True,
+    )
+
+    processed = preprocess(
+        _manual_income_plan(streams=[stream], annual_inflation=annual_inflation),
+        today=today,
+    )
+
+    assert processed.income_real[sample_month] == pytest.approx(expected)
+    assert processed.manual_gross_real[sample_month] == pytest.approx(expected)
+
+
 def test_preprocess_shapes_and_basic_invariants():
     plan = default_plan()
     today = date(2026, 1, 1)

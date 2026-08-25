@@ -53,6 +53,7 @@ def wealth_by_income_source(
     taxes: np.ndarray,
     monthly_inflation: float,
     monthly_bond_rate: float,
+    manual_gross_real: np.ndarray | None = None,
 ) -> WealthBySource:
     nets = prorate_net_income_by_source(
         gross_job=gross_job,
@@ -64,10 +65,13 @@ def wealth_by_income_source(
     months = gross_job.shape[0]
     deflator = (1.0 + monthly_inflation) ** np.arange(months, dtype=np.float64)
     one_over = 1.0 / (1.0 + monthly_bond_rate)
-    bands = {
-        key: backward_npv_including_current(
-            nets[key] / deflator, one_over_1_plus_r=one_over
+    real_nets = {key: nets[key] / deflator for key in _SOURCE_KEYS}
+    if manual_gross_real is not None:
+        real_nets["manual"] = real_nets["manual"] + (
+            manual_gross_real - gross_manual / deflator
         )
+    bands = {
+        key: backward_npv_including_current(real_nets[key], one_over_1_plus_r=one_over)
         for key in _SOURCE_KEYS
     }
     return WealthBySource(

@@ -52,6 +52,7 @@ def _flat_processed(
         gross_social_security=zeros.copy(),
         gross_pension=zeros.copy(),
         gross_manual=zeros.copy(),
+        manual_gross_real=zeros.copy(),
         taxes=zeros.copy(),
         inflation_resolved=inflation_resolved,
         planning_resolved=planning_resolved,

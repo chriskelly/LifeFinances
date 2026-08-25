@@ -52,6 +52,7 @@ class ProcessedPlan:
     gross_social_security: np.ndarray
     gross_pension: np.ndarray
     gross_manual: np.ndarray
+    manual_gross_real: np.ndarray
     taxes: np.ndarray
     inflation_resolved: InflationResolved
     planning_resolved: PlanningReturns
@@ -134,9 +135,16 @@ def preprocess(
         )
 
     # Real conversion: divide month t nominal by (1 + monthly_inflation) ** t.
+    # Manual streams honor is_nominal per stream (same contract as extra spending).
     deflator = (1.0 + inflation.monthly) ** np.arange(months, dtype=np.float64)
     income_nominal = _decimal_series_to_float64(cashflows.net_cashflow)
-    income_real = income_nominal / deflator
+    gross_manual = _decimal_series_to_float64(cashflows.gross_manual)
+    manual_gross_real = _sum_streams_real(
+        plan.manual_income_streams, timeline, deflator=deflator
+    )
+    income_real = income_nominal / deflator + (
+        manual_gross_real - gross_manual / deflator
+    )
     essential_real = _sum_streams_real(
         plan.extra_essential_spending, timeline, deflator=deflator
     )
@@ -255,7 +263,8 @@ def preprocess(
             cashflows.gross_social_security
         ),
         gross_pension=_decimal_series_to_float64(cashflows.gross_pension),
-        gross_manual=_decimal_series_to_float64(cashflows.gross_manual),
+        gross_manual=gross_manual,
+        manual_gross_real=manual_gross_real,
         taxes=_decimal_series_to_float64(cashflows.taxes.stored_total),
         inflation_resolved=inflation,
         planning_resolved=planning,
