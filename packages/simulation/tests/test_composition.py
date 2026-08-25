@@ -155,6 +155,7 @@ def _wealth_from_processed(processed: ProcessedPlan) -> WealthBySource:
         taxes=processed.taxes,
         monthly_inflation=processed.monthly_inflation,
         monthly_bond_rate=processed.monthly_planning_bonds,
+        manual_gross_real=processed.manual_gross_real,
     )
 
 

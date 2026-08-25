@@ -56,6 +56,7 @@ def run_simulation(
         taxes=processed.taxes,
         monthly_inflation=processed.monthly_inflation,
         monthly_bond_rate=processed.monthly_planning_bonds,
+        manual_gross_real=processed.manual_gross_real,
     )
 
     resolved_assumptions = build_resolved_assumptions(
