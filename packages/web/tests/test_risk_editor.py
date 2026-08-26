@@ -145,6 +145,22 @@ def test_editor_risk_get_renders_title_and_slider_bounds(
     assert "Aggressive" in body
 
 
+def test_editor_risk_get_shows_selected_tolerance_value(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    selected = Decimal("18")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.risk = seeded.risk.model_copy(update={"risk_tolerance_at_20": selected})
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_RISK}?plan={plan_id}")
+    body = unescape(response.text)
+
+    assert response.status_code == 200
+    assert f">{selected}</output>" in body
+
+
 def test_editor_risk_get_advanced_details_contains_field_names(
     client: TestClient, plan_id: int
 ) -> None:

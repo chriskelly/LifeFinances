@@ -6,15 +6,20 @@
     hx-swap="none"
   >
     <label>
-      Risk tolerance at age 20
-      <input
-        type="range"
-        name="{{ forms.RISK_TOLERANCE_AT_20 }}"
-        min="0"
-        max="{{ forms.RISK_TOLERANCE_NUM_VALUES - 1 }}"
-        step="1"
-        value="{{ plan.risk.risk_tolerance_at_20 }}"
-      >
+      Risk tolerance
+      <span class="range-with-value">
+        <input
+          type="range"
+          id="{{ forms.RISK_TOLERANCE_AT_20 }}"
+          name="{{ forms.RISK_TOLERANCE_AT_20 }}"
+          min="0"
+          max="{{ forms.RISK_TOLERANCE_NUM_VALUES - 1 }}"
+          step="1"
+          value="{{ plan.risk.risk_tolerance_at_20 }}"
+          oninput="this.nextElementSibling.value = this.value"
+        >
+        <output class="range-value" for="{{ forms.RISK_TOLERANCE_AT_20 }}">{{ plan.risk.risk_tolerance_at_20 }}</output>
+      </span>
     </label>
     <p class="field-help">
       <span>Conservative</span>

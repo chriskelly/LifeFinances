@@ -337,3 +337,20 @@ select {
 .job-row:has(select[name$=".pension"] option[value="custom"]:checked) .pension-fields {
   display: block;
 }
+
+.range-with-value {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.range-with-value input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.range-value {
+  min-width: 1.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
