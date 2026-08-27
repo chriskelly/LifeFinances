@@ -161,6 +161,63 @@ def test_editor_risk_get_shows_selected_tolerance_value(
     assert f">{selected}</output>" in body
 
 
+def test_editor_risk_get_renders_percent_slider_bounds_for_tilt_and_time_preference(
+    client: TestClient, plan_id: int
+) -> None:
+    response = client.get(f"{EDITOR_RISK}?plan={plan_id}")
+    body = unescape(response.text)
+
+    assert response.status_code == 200
+    for field_name in (
+        forms.ADDITIONAL_ANNUAL_SPENDING_TILT,
+        forms.TIME_PREFERENCE,
+    ):
+        assert f'name="{field_name}"' in body
+        assert f'id="{field_name}"' in body
+    assert f'min="{forms.PERCENT_SLIDER_MIN}"' in body
+    assert f'max="{forms.PERCENT_SLIDER_MAX}"' in body
+    assert f'step="{forms.PERCENT_SLIDER_STEP}"' in body
+
+
+def test_editor_risk_get_shows_selected_tilt_and_time_preference_values(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    tilt = Decimal("0.0125")
+    time_preference = Decimal("-0.025")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.risk = seeded.risk.model_copy(
+        update={
+            "additional_annual_spending_tilt": tilt,
+            "time_preference": time_preference,
+        }
+    )
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_RISK}?plan={plan_id}")
+    body = unescape(response.text)
+
+    assert response.status_code == 200
+    assert f">{format_percent(tilt)}</output>" in body
+    assert f">{format_percent(time_preference)}</output>" in body
+
+
+def test_patch_risk_accepts_slider_style_tilt_without_percent_suffix(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    tilt = Decimal("0.0125")
+
+    response = client.patch(
+        f"{PLAN_RISK}?plan={plan_id}",
+        data=_risk_form_data(additional_annual_spending_tilt="1.25"),
+    )
+
+    assert response.status_code == 200
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.risk.additional_annual_spending_tilt == tilt
+
+
 def test_editor_risk_get_advanced_details_contains_field_names(
     client: TestClient, plan_id: int
 ) -> None:

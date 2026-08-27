@@ -6,6 +6,7 @@ import pytest
 from web.percent import (
     INVALID_PERCENT_MESSAGE,
     format_percent,
+    format_percent_points,
     parse_optional_percent,
     parse_percent,
 )
@@ -62,3 +63,15 @@ def test_parse_percent_rejects_garbage_with_a_user_facing_message() -> None:
 def test_parse_optional_percent_treats_absent_field_as_no_change() -> None:
     assert parse_optional_percent(None) is None
     assert parse_optional_percent("3.5%") == Decimal("0.035")
+
+
+def test_format_percent_points_is_format_percent_without_suffix() -> None:
+    fraction = Decimal("0.0125")
+
+    assert format_percent_points(fraction) == format_percent(fraction).removesuffix("%")
+    assert format_percent_points(Decimal(0)) == format_percent(Decimal(0)).removesuffix(
+        "%"
+    )
+    assert format_percent_points(Decimal("-0.025")) == format_percent(
+        Decimal("-0.025")
+    ).removesuffix("%")

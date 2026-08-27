@@ -97,6 +97,7 @@ templates.env.globals["spending_summary"] = spending_summary
 templates.env.globals["resolved_assumptions"] = resolved_assumptions
 templates.env.filters["usd"] = currency.format_usd
 templates.env.filters["percent"] = percent.format_percent
+templates.env.filters["percent_points"] = percent.format_percent_points
 
 _INIT_DB_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
 _SIMULATION_FAILURE_MESSAGE = "Simulation failed. Check plan inputs and try again."
