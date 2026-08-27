@@ -44,6 +44,21 @@ class WealthBySource:
     manual: np.ndarray
 
 
+def manual_stream_real_adjustment(
+    *,
+    manual_gross_real: np.ndarray,
+    gross_manual: np.ndarray,
+    deflator: np.ndarray,
+) -> np.ndarray:
+    """Difference between honoring each manual stream's own real/nominal basis
+    and naively deflating the domain-computed manual total uniformly.
+
+    Shared by `preprocess.py` (net cashflow) and `wealth_by_income_source`
+    below (manual wealth band) so both apply the identical correction.
+    """
+    return manual_gross_real - gross_manual / deflator
+
+
 def wealth_by_income_source(
     *,
     gross_job: np.ndarray,
@@ -53,7 +68,7 @@ def wealth_by_income_source(
     taxes: np.ndarray,
     monthly_inflation: float,
     monthly_bond_rate: float,
-    manual_gross_real: np.ndarray | None = None,
+    manual_gross_real: np.ndarray,
 ) -> WealthBySource:
     nets = prorate_net_income_by_source(
         gross_job=gross_job,
@@ -66,10 +81,11 @@ def wealth_by_income_source(
     deflator = (1.0 + monthly_inflation) ** np.arange(months, dtype=np.float64)
     one_over = 1.0 / (1.0 + monthly_bond_rate)
     real_nets = {key: nets[key] / deflator for key in _SOURCE_KEYS}
-    if manual_gross_real is not None:
-        real_nets["manual"] = real_nets["manual"] + (
-            manual_gross_real - gross_manual / deflator
-        )
+    real_nets["manual"] = real_nets["manual"] + manual_stream_real_adjustment(
+        manual_gross_real=manual_gross_real,
+        gross_manual=gross_manual,
+        deflator=deflator,
+    )
     bands = {
         key: backward_npv_including_current(real_nets[key], one_over_1_plus_r=one_over)
         for key in _SOURCE_KEYS

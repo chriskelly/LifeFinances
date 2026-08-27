@@ -6,6 +6,7 @@ from core.models import (
     DEFAULT_PERCENTILES,
     AdvancedConfig,
     InflationConfig,
+    PlanningPreset,
     PlanningReturnsConfig,
 )
 from core.timeline import Timeline
@@ -84,13 +85,15 @@ def test_run_simulation_resolved_assumptions_match_fixed_preset() -> None:
     annual_inflation = 0.023
     annual_stocks = 0.051
     annual_bonds = 0.018
+    preset: PlanningPreset = "fixed"
+    inflation_mode = "manual"
     plan = default_plan().model_copy(
         update={
             "inflation": InflationConfig(
-                mode="manual", manual_annual_rate=Decimal(str(annual_inflation))
+                mode=inflation_mode, manual_annual_rate=Decimal(str(annual_inflation))
             ),
             "planning_returns": PlanningReturnsConfig(
-                preset="fixed",
+                preset=preset,
                 expected_annual_return_stocks=Decimal(str(annual_stocks)),
                 expected_annual_return_bonds=Decimal(str(annual_bonds)),
             ),
@@ -112,8 +115,8 @@ def test_run_simulation_resolved_assumptions_match_fixed_preset() -> None:
     assert assumptions.annual_stock_return == annual_stocks
     assert assumptions.annual_bond_return == annual_bonds
     assert assumptions.annual_stock_log_variance == expected_variance
-    assert assumptions.planning_preset == "fixed"
-    assert assumptions.inflation_source == "manual"
+    assert assumptions.planning_preset == preset
+    assert assumptions.inflation_source == inflation_mode
     assert assumptions.inflation_observation_date is None
     assert assumptions.sp500_source is None
     assert assumptions.treasury_source is None

@@ -16,6 +16,10 @@ DEFAULT_BLOCK_SIZE_MONTHS = 60  # tpaw blockSize.inMonths = 12 * 5
 DEFAULT_NUM_RUNS = 500  # tpaw numOfSimulationForMonteCarloSampling
 DEFAULT_STAGGER_RUN_STARTS = True  # tpaw staggerRunStarts
 DEFAULT_SAMPLING_SEED = 1_234_567  # LifeFinances default for reproducibility
+# Upper bound of the vendored tpaw stock-log-variance-by-block table. `core`
+# cannot import `simulation`, so the value is duplicated here and pinned by
+# `simulation/tests/test_presets.py` against the table itself.
+MAX_BLOCK_SIZE_MONTHS = 1_440
 DEFAULT_PERCENTILES = [5, 50, 95]
 
 DEFAULT_RISK_TOLERANCE_AT_20 = Decimal(12)  # tpaw default test plan "Moderate"
@@ -82,10 +86,14 @@ class AdvancedConfig(BaseModel):
 
 
 class SamplingConfig(BaseModel):
-    block_size_months: int = Field(default=DEFAULT_BLOCK_SIZE_MONTHS, ge=1)
+    block_size_months: int = Field(
+        default=DEFAULT_BLOCK_SIZE_MONTHS, ge=1, le=MAX_BLOCK_SIZE_MONTHS
+    )
     num_runs: int = Field(default=DEFAULT_NUM_RUNS, ge=1)
     stagger_run_starts: bool = DEFAULT_STAGGER_RUN_STARTS
-    seed: int = DEFAULT_SAMPLING_SEED
+    # numpy's default_rng rejects negative seeds, so an unbounded int here would
+    # persist a plan that fails on every subsequent simulation run.
+    seed: int = Field(default=DEFAULT_SAMPLING_SEED, ge=0)
 
 
 class InflationConfig(BaseModel):

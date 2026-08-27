@@ -1,5 +1,9 @@
+{% import "_condition_group.html" as condition %}
 <section class="editor-section">
   <h2>{{ sections.MARKET_ASSUMPTIONS_TITLE }}</h2>
+  {% if simulation_error %}
+  <p class="results-error" role="alert">{{ simulation_error }}</p>
+  {% endif %}
   <form
     hx-patch="{{ routes.PLAN_MARKET_ASSUMPTIONS }}?plan={{ plan_id }}"
     hx-trigger="input changed delay:750ms, change delay:750ms"
@@ -26,11 +30,7 @@
       </select>
     </label>
 
-    <div
-      data-condition-group
-      data-condition-controller-id="inflation-mode"
-      data-condition-value="manual"
-    >
+    {% call condition.condition_group("inflation-mode", "manual") %}
       <label>
         Manual annual inflation rate
         <input
@@ -43,7 +43,7 @@
           data-required-when-active
         >
       </label>
-    </div>
+    {% endcall %}
 
     <label>
       Planning returns
@@ -61,11 +61,7 @@
       </select>
     </label>
 
-    <div
-      data-condition-group
-      data-condition-controller-id="planning-preset"
-      data-condition-value="fixed_equity_premium"
-    >
+    {% call condition.condition_group("planning-preset", "fixed_equity_premium") %}
       <label>
         Fixed equity premium
         <input
@@ -78,13 +74,9 @@
           data-required-when-active
         >
       </label>
-    </div>
+    {% endcall %}
 
-    <div
-      data-condition-group
-      data-condition-controller-id="planning-preset"
-      data-condition-value="custom"
-    >
+    {% call condition.condition_group("planning-preset", "custom") %}
       <label>
         Custom stocks base
         <select
@@ -137,13 +129,9 @@
           data-condition-input
         >
       </label>
-    </div>
+    {% endcall %}
 
-    <div
-      data-condition-group
-      data-condition-controller-id="planning-preset"
-      data-condition-value="fixed"
-    >
+    {% call condition.condition_group("planning-preset", "fixed") %}
       <label>
         Expected annual return (stocks)
         <input
@@ -166,7 +154,7 @@
           data-condition-input
         >
       </label>
-    </div>
+    {% endcall %}
 
     <details>
       <summary>Customize</summary>

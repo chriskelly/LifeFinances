@@ -1,6 +1,8 @@
 from datetime import date
 
+import pytest
 from core.models import PlanningPreset
+from pydantic import ValidationError
 from simulation.market_data import (
     InflationResolved,
     SP500Resolved,
@@ -8,7 +10,7 @@ from simulation.market_data import (
 )
 from simulation.market_data.inflation import annual_to_monthly
 from simulation.planning_returns import TWENTY_YEAR_TENOR, PlanningReturns
-from simulation.result import build_resolved_assumptions
+from simulation.result import ResolvedAssumptions, build_resolved_assumptions
 
 
 def test_snapshot_uses_exact_resolver_values() -> None:
@@ -17,10 +19,11 @@ def test_snapshot_uses_exact_resolver_values() -> None:
     annual_bonds = 0.018
     annual_variance = 0.031
     preset: PlanningPreset = "fixed"
+    inflation_source = "manual"
     inflation = InflationResolved(
         annual=annual_inflation,
         monthly=annual_to_monthly(annual_inflation),
-        source="manual",
+        source=inflation_source,
     )
     planning = PlanningReturns(
         annual_stocks=annual_stocks,
@@ -37,7 +40,7 @@ def test_snapshot_uses_exact_resolver_values() -> None:
     assert snapshot.annual_bond_return == annual_bonds
     assert snapshot.annual_stock_log_variance == annual_variance
     assert snapshot.planning_preset == preset
-    assert snapshot.inflation_source == "manual"
+    assert snapshot.inflation_source == inflation_source
 
 
 def test_snapshot_carries_only_present_market_provenance() -> None:
@@ -78,3 +81,21 @@ def test_snapshot_carries_only_present_market_provenance() -> None:
     assert snapshot.sp500_observation_date == sp500_date
     assert snapshot.treasury_source == treasury.source
     assert snapshot.treasury_observation_date == treasury_date
+
+
+@pytest.mark.parametrize("feed", ["sp500", "treasury"])
+def test_market_provenance_source_requires_observation_date(feed: str) -> None:
+    # Display code reads the date whenever the source is set, so a half-set
+    # pair must be rejected here rather than raising during template render.
+    half_set = {f"{feed}_source": "cache", f"{feed}_observation_date": None}
+
+    with pytest.raises(ValidationError, match=feed):
+        ResolvedAssumptions(
+            annual_inflation=0.02,
+            annual_stock_return=0.05,
+            annual_bond_return=0.02,
+            annual_stock_log_variance=0.03,
+            planning_preset="fixed",
+            inflation_source="manual",
+            **half_set,
+        )

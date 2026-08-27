@@ -277,9 +277,7 @@ def _register_home_route(web_app: FastAPI) -> None:
                 if result is not None
                 else None
             ),
-            "assumptions": (
-                result.resolved_assumptions if result is not None else None
-            ),
+            "assumptions": resolved_assumptions.from_result(result),
             "assumptions_oob": False,
         }
         return templates.TemplateResponse(
@@ -445,7 +443,7 @@ def _register_market_assumptions_routes(web_app: FastAPI) -> None:
     ) -> HTMLResponse:
         plan_id, plan_model = require_plan(plan, plan_repo=repo)
         settings = settings_repo.get()
-        result, _simulation_error = _load_simulation(
+        result, simulation_error = _load_simulation(
             request,
             plan_id=plan_id,
             plan_model=plan_model,
@@ -457,9 +455,8 @@ def _register_market_assumptions_routes(web_app: FastAPI) -> None:
             {
                 "plan_id": plan_id,
                 "plan": plan_model,
-                "assumptions": (
-                    result.resolved_assumptions if result is not None else None
-                ),
+                "assumptions": resolved_assumptions.from_result(result),
+                "simulation_error": simulation_error,
             },
         )
 
@@ -870,7 +867,7 @@ def _register_results_route(web_app: FastAPI) -> None:
                 "chart_options": charts.chart_options(result),
                 "chart_figure_json": _figure_json(figure),
                 "simulation_error": None,
-                "assumptions": result.resolved_assumptions,
+                "assumptions": resolved_assumptions.from_result(result),
                 "assumptions_oob": True,
             },
         )

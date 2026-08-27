@@ -5,6 +5,7 @@ from decimal import Decimal
 import pytest
 from core.defaults import default_plan
 from core.models import (
+    MAX_BLOCK_SIZE_MONTHS,
     InflationConfig,
     Plan,
     SamplingConfig,
@@ -17,9 +18,29 @@ def test_sampling_rejects_non_positive_block_size() -> None:
         SamplingConfig(block_size_months=0)
 
 
+def test_sampling_rejects_block_size_beyond_variance_table() -> None:
+    # Past this bound `simulation.presets.stock_log_variance` has no vendored
+    # entry and every later run raises, so the plan must not save at all.
+    with pytest.raises(ValidationError):
+        SamplingConfig(block_size_months=MAX_BLOCK_SIZE_MONTHS + 1)
+
+
+def test_sampling_accepts_largest_supported_block_size() -> None:
+    config = SamplingConfig(block_size_months=MAX_BLOCK_SIZE_MONTHS)
+
+    assert config.block_size_months == MAX_BLOCK_SIZE_MONTHS
+
+
 def test_sampling_rejects_non_positive_num_runs() -> None:
     with pytest.raises(ValidationError):
         SamplingConfig(num_runs=0)
+
+
+def test_sampling_rejects_negative_seed() -> None:
+    # numpy's default_rng rejects negative seeds; persisting one would break
+    # every subsequent simulation for the plan.
+    with pytest.raises(ValidationError):
+        SamplingConfig(seed=-1)
 
 
 def test_inflation_defaults_to_suggested() -> None:

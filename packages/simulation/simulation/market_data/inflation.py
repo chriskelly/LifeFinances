@@ -54,6 +54,7 @@ def _suggested_annual(today: date, path: Path) -> tuple[float, date]:
                 continue
             try:
                 observed = date.fromisoformat(row[0].strip())
+                # FRED emits "." for missing observations; Decimal raises on it.
                 percent = Decimal(row[1].strip())
             except ValueError, ArithmeticError:
                 continue

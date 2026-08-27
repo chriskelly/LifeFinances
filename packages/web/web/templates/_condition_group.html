@@ -1,0 +1,9 @@
+{% macro condition_group(controller_id, value) %}
+<div
+  data-condition-group
+  data-condition-controller-id="{{ controller_id }}"
+  data-condition-value="{{ value }}"
+>
+  {{ caller() }}
+</div>
+{% endmacro %}

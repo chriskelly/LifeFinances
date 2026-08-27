@@ -4,14 +4,13 @@ import math
 import sys
 from datetime import date, datetime
 from html import unescape
-from typing import Literal
 
 import numpy as np
 import pytest
 from core.models import DEFAULT_PERCENTILES, PlanningPreset
 from fastapi.testclient import TestClient
 from simulation.market_data.cache import MarketDataSource
-from simulation.result import ResolvedAssumptions, SimulationResult
+from simulation.result import InflationSource, ResolvedAssumptions, SimulationResult
 from web.percent import format_percent
 from web.resolved_assumptions import (
     SOURCE_LABELS,
@@ -22,8 +21,6 @@ from web.routes import EDITOR_MARKET_ASSUMPTIONS, HOME, RESULTS
 from web.sections import MARKET_ASSUMPTIONS_TITLE
 
 from web import forms
-
-InflationSource = Literal["manual", "live", "cache", "vendored"]
 
 
 def _assumptions(
