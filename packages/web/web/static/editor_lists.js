@@ -134,8 +134,8 @@
   function remintExistingIndices(form) {
     form.querySelectorAll(".rows[data-prefix]").forEach(function (container) {
       const prefix = container.dataset.prefix;
+      const pattern = new RegExp("^" + prefix + "\\[(\\d+)\\]");
       rowChildren(container).forEach(function (row, position) {
-        const pattern = new RegExp("^" + prefix + "\\[(\\d+)\\]");
         let wireIndex = null;
         row.querySelectorAll("[name]").forEach(function (field) {
           if (wireIndex !== null) return;

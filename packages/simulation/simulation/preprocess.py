@@ -18,6 +18,7 @@ from core.streams import TimedStream
 from core.timeline import Timeline, person_end_date, project_stream
 
 from domain import build_monthly_cashflows
+from simulation.composition import manual_stream_real_adjustment
 from simulation.market_data import resolve_inflation
 from simulation.market_data.inflation import InflationResolved
 from simulation.mertons import effective_mertons
@@ -142,8 +143,10 @@ def preprocess(
     manual_gross_real = _sum_streams_real(
         plan.manual_income_streams, timeline, deflator=deflator
     )
-    income_real = income_nominal / deflator + (
-        manual_gross_real - gross_manual / deflator
+    income_real = income_nominal / deflator + manual_stream_real_adjustment(
+        manual_gross_real=manual_gross_real,
+        gross_manual=gross_manual,
+        deflator=deflator,
     )
     essential_real = _sum_streams_real(
         plan.extra_essential_spending, timeline, deflator=deflator

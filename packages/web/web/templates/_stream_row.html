@@ -1,0 +1,16 @@
+{% import "_boundary.html" as boundary %}
+
+{% macro stream_row(prefix, index, stream, choices) %}
+<fieldset class="row stream-row">
+  <button type="button" data-remove-row>Remove</button>
+  {% if stream %}
+  <input type="hidden" name="{{ prefix }}[{{ index }}].{{ forms.EXISTING_INDEX }}" value="{{ index }}">
+  {% endif %}
+  <label>Label <input type="text" name="{{ prefix }}[{{ index }}].{{ forms.STREAM_LABEL }}" value="{{ (stream.label or '') if stream else '' }}"></label>
+  <label>Monthly amount <input type="text" inputmode="decimal" class="currency-input" name="{{ prefix }}[{{ index }}].{{ forms.STREAM_MONTHLY_AMOUNT }}" value="{{ (stream.monthly_amount if stream else 0)|usd }}"></label>
+  <label class="checkbox-label"><input type="checkbox" name="{{ prefix }}[{{ index }}].{{ forms.STREAM_IS_NOMINAL }}" value="on"{% if stream and stream.is_nominal %} checked{% endif %}> Nominal (not inflation-adjusted)</label>
+  <label>Annual growth <input type="text" inputmode="decimal" class="percent-input" name="{{ prefix }}[{{ index }}].{{ forms.STREAM_ANNUAL_GROWTH_RATE }}" value="{{ (stream.annual_growth_rate if stream else 0)|percent }}"></label>
+  <div class="boundary-field">Start {{ boundary.boundary_control(prefix ~ "[" ~ index ~ "]." ~ forms.STREAM_START, boundaries.to_form(stream.start) if stream else {"kind": boundaries.KIND_NOW}, choices, allow_now=True) }}</div>
+  <div class="boundary-field">End {{ boundary.boundary_control(prefix ~ "[" ~ index ~ "]." ~ forms.STREAM_END, boundaries.to_form(stream.end) if stream else {"kind": boundaries.KIND_NONE}, choices, allow_now=True, allow_none=True, allow_max_age=True, none_label="Plan horizon") }}</div>
+</fieldset>
+{% endmacro %}

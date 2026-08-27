@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Literal, get_args
 
 from core.job import AgeFactor, FormulaPension, Job
+from core.models import MAX_BLOCK_SIZE_MONTHS as _MAX_BLOCK_SIZE_MONTHS
 from core.models import RISK_TOLERANCE_NUM_VALUES as _RISK_TOLERANCE_NUM_VALUES
 from core.models import (
     AdvancedConfig,
@@ -104,6 +105,7 @@ BOND_PRESET_BASE_LABELS = {
 }
 # Re-export for Jinja templates (`forms.RISK_TOLERANCE_NUM_VALUES`).
 RISK_TOLERANCE_NUM_VALUES = _RISK_TOLERANCE_NUM_VALUES
+MAX_BLOCK_SIZE_MONTHS = _MAX_BLOCK_SIZE_MONTHS
 PERCENT_SLIDER_MIN = "-5"
 PERCENT_SLIDER_MAX = "5"
 PERCENT_SLIDER_STEP = "0.25"
@@ -521,19 +523,21 @@ class MarketAssumptionsForm(BaseModel):
 
         returns_data = plan.planning_returns.model_dump()
         returns_data["preset"] = self.planning_preset
-        for field in (
-            "fixed_equity_premium",
-            "custom_stocks_base",
-            "custom_bonds_base",
-            "custom_stocks_delta",
-            "custom_bonds_delta",
-            "expected_annual_return_stocks",
-            "expected_annual_return_bonds",
-            "stock_volatility_scale",
-        ):
-            value = getattr(self, field)
-            if value is not None:
-                returns_data[field] = value
+        returns_data.update(
+            self.model_dump(
+                include={
+                    "fixed_equity_premium",
+                    "custom_stocks_base",
+                    "custom_bonds_base",
+                    "custom_stocks_delta",
+                    "custom_bonds_delta",
+                    "expected_annual_return_stocks",
+                    "expected_annual_return_bonds",
+                    "stock_volatility_scale",
+                },
+                exclude_none=True,
+            )
+        )
 
         return plan.model_copy(
             update={
@@ -544,8 +548,10 @@ class MarketAssumptionsForm(BaseModel):
 
 
 def parse_percentiles_field(raw: str) -> list[int]:
+    # `str.split` always yields at least one element, so a blank token is the
+    # only way to express empty or trailing-comma input.
     tokens = [token.strip() for token in raw.split(",")]
-    if not tokens or any(not token for token in tokens):
+    if any(not token for token in tokens):
         raise ValueError("Enter one or more comma-separated percentiles")
     try:
         parsed = [int(token) for token in tokens]

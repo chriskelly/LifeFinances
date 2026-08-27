@@ -1,4 +1,5 @@
 import pytest
+from core.models import MAX_BLOCK_SIZE_MONTHS
 from simulation.market_data import load_historical_returns
 from simulation.market_data.presets_data import (
     REGRESSION_KEYS,
@@ -98,3 +99,15 @@ def test_stock_log_variance_scales_table_entry():
 def test_stock_log_variance_rejects_unknown_block_size():
     with pytest.raises(ValueError, match="block size"):
         stock_log_variance(block_size_months=99999, volatility_scale=1.0)
+
+
+def test_core_block_size_bound_matches_vendored_table():
+    # `core` cannot import `simulation`, so `SamplingConfig.block_size_months`
+    # duplicates the table's upper bound. Pin them together here: a plan that
+    # validates must always find a vendored variance entry.
+    table = load_stock_log_variance_by_block()
+
+    assert max(table) == MAX_BLOCK_SIZE_MONTHS
+    assert stock_log_variance(
+        block_size_months=MAX_BLOCK_SIZE_MONTHS, volatility_scale=1.0
+    ) == pytest.approx(table[MAX_BLOCK_SIZE_MONTHS])

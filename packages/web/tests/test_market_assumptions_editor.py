@@ -32,6 +32,12 @@ def _market_form_data(
     }
 
 
+def _select_block(body: str, field_name: str) -> str:
+    """The markup of one `<select>`, so option assertions cannot match a
+    same-valued option belonging to a different control."""
+    return body.split(f'name="{field_name}"', 1)[1].split("</select>", 1)[0]
+
+
 def _preset_required_fields(preset: str) -> dict[str, str]:
     if preset == "fixed_equity_premium":
         return {
@@ -283,12 +289,12 @@ def test_editor_market_assumptions_get_includes_conditional_hooks_and_defaults(
     assert 'hx-validate="true"' in body
     assert f'name="{forms.FIXED_EQUITY_PREMIUM}"' in body
     assert format_percent(forms.FIXED_EQUITY_PREMIUM_FORM_DEFAULT) in body
-    assert (
-        f'value="{forms.CUSTOM_STOCKS_BASE_FORM_DEFAULT}"' in body
-        or f'value="{forms.CUSTOM_STOCKS_BASE_FORM_DEFAULT}" selected' in body
-    )
-    assert forms.CUSTOM_STOCKS_BASE_FORM_DEFAULT in body
-    assert forms.CUSTOM_BONDS_BASE_FORM_DEFAULT in body
+    stocks_select = _select_block(body, forms.CUSTOM_STOCKS_BASE)
+    bonds_select = _select_block(body, forms.CUSTOM_BONDS_BASE)
+    assert f'value="{forms.CUSTOM_STOCKS_BASE_FORM_DEFAULT}"' in stocks_select
+    assert "selected" in stocks_select
+    assert f'value="{forms.CUSTOM_BONDS_BASE_FORM_DEFAULT}"' in bonds_select
+    assert "selected" in bonds_select
     assert 'id="resolved-assumptions-summary"' in body
     assert "<summary>Customize</summary>" in body
     assert f'name="{forms.STOCK_VOLATILITY_SCALE}"' in body

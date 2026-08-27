@@ -6,7 +6,7 @@
     hx-swap="none"
   >
     <label>Block size (months)
-      <input type="number" min="1" name="{{ forms.BLOCK_SIZE_MONTHS }}" value="{{ plan.sampling.block_size_months }}">
+      <input type="number" min="1" max="{{ forms.MAX_BLOCK_SIZE_MONTHS }}" name="{{ forms.BLOCK_SIZE_MONTHS }}" value="{{ plan.sampling.block_size_months }}">
     </label>
     <label>Number of runs
       <input type="number" min="1" name="{{ forms.NUM_RUNS }}" value="{{ plan.sampling.num_runs }}">
@@ -16,7 +16,7 @@
       Stagger run starts
     </label>
     <label>Sampling seed
-      <input type="number" name="{{ forms.SAMPLING_SEED }}" value="{{ plan.sampling.seed }}">
+      <input type="number" min="0" name="{{ forms.SAMPLING_SEED }}" value="{{ plan.sampling.seed }}">
     </label>
     <label>Output percentiles
       <input type="text" name="{{ forms.PERCENTILES }}" value="{{ plan.advanced.percentiles|join(', ') }}">

@@ -2,10 +2,11 @@ from datetime import date
 from decimal import Decimal
 
 import numpy as np
+import pytest
 from core.defaults import default_plan
 from core.job import Job
 from core.models import Household, PersonHousehold, Plan, Portfolio
-from core.streams import CalendarMonthBoundary
+from core.streams import CalendarMonthBoundary, TimedStream
 from simulation.composition import (
     WealthBySource,
     prorate_net_income_by_source,
@@ -14,8 +15,14 @@ from simulation.composition import (
 from simulation.preprocess import ProcessedPlan, preprocess
 
 
-def _plan_with_job_income() -> Plan:
-    """Minimal plan with positive gross job income across the horizon."""
+def _plan_with_job_income(*, manual_is_nominal: bool | None = None) -> Plan:
+    """Minimal plan with positive gross job income across the horizon.
+
+    `manual_is_nominal` adds one manual income stream on that basis, so the
+    real/nominal correction shared by `preprocess` and `wealth_by_income_source`
+    is actually exercised (with no manual streams the correction is identically
+    zero and reconciliation passes whether or not it is applied).
+    """
     base = default_plan()
     today = date(2026, 1, 1)
     plan_start = CalendarMonthBoundary(year=today.year, month=today.month)
@@ -30,10 +37,23 @@ def _plan_with_job_income() -> Plan:
         jobs=[job],
         social_security=base.household.person1.social_security,
     )
+    manual_streams = (
+        []
+        if manual_is_nominal is None
+        else [
+            TimedStream(
+                label="rental",
+                monthly_amount=Decimal("2_000"),
+                start=plan_start,
+                is_nominal=manual_is_nominal,
+            )
+        ]
+    )
     return Plan(
         name="Composition Integration",
         household=Household(person1=person1, person2=base.household.person2),
         portfolio=Portfolio(current_savings_balance=Decimal("500_000")),
+        manual_income_streams=manual_streams,
     )
 
 
@@ -114,6 +134,7 @@ def test_wealth_by_source_sums_to_independently_discounted_combined_income():
         taxes=taxes,
         monthly_inflation=monthly_inflation,
         monthly_bond_rate=monthly_bond,
+        manual_gross_real=zeros,
     )
 
     combined_nominal = gross_job + gross_ss + taxes
@@ -159,13 +180,25 @@ def _wealth_from_processed(processed: ProcessedPlan) -> WealthBySource:
     )
 
 
-def test_wealth_bands_reconcile_with_preprocess_income_npv():
+@pytest.mark.parametrize(
+    "manual_is_nominal",
+    [
+        pytest.param(None, id="no-manual-stream"),
+        pytest.param(False, id="real-basis-manual-stream"),
+        pytest.param(True, id="nominal-basis-manual-stream"),
+    ],
+)
+def test_wealth_bands_reconcile_with_preprocess_income_npv(manual_is_nominal):
     # Spec §7.2: Σ wealth_s[m] == npv_income_without_current[m] + income_real[m]
     # when composition and preprocess share the same discount path and net total.
     # Zero-gross months (spec §7.1) omit residual taxes from composition, so only
-    # assert months where total_gross > 0.
+    # assert months where total_gross > 0. Running this across both manual-stream
+    # bases pins that composition applies the same real/nominal correction as
+    # preprocess; a band that skipped it would diverge on the real-basis case.
     today = date(2026, 1, 1)
-    processed = preprocess(_plan_with_job_income(), today=today)
+    processed = preprocess(
+        _plan_with_job_income(manual_is_nominal=manual_is_nominal), today=today
+    )
     wealth = _wealth_from_processed(processed)
 
     total_gross = (

@@ -5,13 +5,17 @@ from typing import Any, Literal
 
 import numpy as np
 from core.models import PlanningPreset
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from simulation.market_data.cache import MarketDataSource
 from simulation.market_data.inflation import InflationResolved
 from simulation.planning_returns import PlanningReturns
 
 ENGINE_VERSION = "phase3d"
+
+# Manual inflation is user-entered; every other source is a market feed, so the
+# domain is exactly `MarketDataSource` plus that one case.
+InflationSource = Literal["manual"] | MarketDataSource
 
 RAW_ARRAY_FIELDS = (
     "balance_start",
@@ -80,12 +84,30 @@ class ResolvedAssumptions(BaseModel):
     annual_bond_return: float
     annual_stock_log_variance: float
     planning_preset: PlanningPreset
-    inflation_source: Literal["manual", "live", "cache", "vendored"]
+    inflation_source: InflationSource
     inflation_observation_date: date | None = None
     sp500_source: MarketDataSource | None = None
     sp500_observation_date: date | None = None
     treasury_source: MarketDataSource | None = None
     treasury_observation_date: date | None = None
+
+    @model_validator(mode="after")
+    def _require_paired_market_provenance(self) -> ResolvedAssumptions:
+        """A feed either was consumed (source + date) or was not (both unset).
+
+        Display code reads the date whenever the source is set, so a half-set
+        pair would render as an attribute error on a `None` date rather than
+        being caught here.
+        """
+        for feed in ("sp500", "treasury"):
+            source = getattr(self, f"{feed}_source")
+            observation_date = getattr(self, f"{feed}_observation_date")
+            if (source is None) != (observation_date is None):
+                raise ValueError(
+                    f"{feed} provenance must set both source and observation "
+                    "date, or neither"
+                )
+        return self
 
 
 def build_resolved_assumptions(

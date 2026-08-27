@@ -131,28 +131,30 @@ class _LazyMarketFeeds:
         self._allow_refresh = allow_refresh
         self._now = now
         self._eod_api_key = eod_api_key
-        self.sp500_cache: SP500Resolved | None = None
-        self.treasury_cache: TreasuryYieldsResolved | None = None
+        # Public: `resolve_planning_returns` reads these directly after
+        # resolution to report which feeds a preset actually consumed.
+        self.sp500: SP500Resolved | None = None
+        self.treasury: TreasuryYieldsResolved | None = None
         self._stock_estimates_cache: StockEstimates | None = None
 
     def sp500_resolved(self) -> SP500Resolved:
-        if self.sp500_cache is None:
-            self.sp500_cache = self._sp500_resolver(
+        if self.sp500 is None:
+            self.sp500 = self._sp500_resolver(
                 today=self._today,
                 allow_refresh=self._allow_refresh,
                 now=self._now,
                 api_key=self._eod_api_key,
             )
-        return self.sp500_cache
+        return self.sp500
 
     def treasury_resolved(self) -> TreasuryYieldsResolved:
-        if self.treasury_cache is None:
-            self.treasury_cache = self._treasury_resolver(
+        if self.treasury is None:
+            self.treasury = self._treasury_resolver(
                 today=self._today,
                 allow_refresh=self._allow_refresh,
                 now=self._now,
             )
-        return self.treasury_cache
+        return self.treasury
 
     def tips_20yr(self) -> float:
         # tpaw rounds the 20yr TIPS yield to 3dp (source_rounded.bond_rates) before
@@ -219,6 +221,6 @@ def resolve_planning_returns(
         annual_stocks=annual_stocks,
         annual_bonds=annual_bonds,
         annual_stock_log_variance=variance,
-        sp500=feeds.sp500_cache,
-        treasury=feeds.treasury_cache,
+        sp500=feeds.sp500,
+        treasury=feeds.treasury,
     )

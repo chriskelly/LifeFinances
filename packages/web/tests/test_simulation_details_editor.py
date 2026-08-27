@@ -58,6 +58,38 @@ def test_parse_percentiles_field_rejects_out_of_range() -> None:
         parse_percentiles_field("5, 101")
 
 
+@pytest.mark.parametrize(
+    "invalid_field",
+    [
+        pytest.param({forms.SAMPLING_SEED: "-1"}, id="negative-seed"),
+        pytest.param(
+            {forms.BLOCK_SIZE_MONTHS: str(forms.MAX_BLOCK_SIZE_MONTHS + 1)},
+            id="block-size-past-variance-table",
+        ),
+    ],
+)
+def test_patch_simulation_details_rejects_unrunnable_sampling(
+    client: TestClient,
+    repo: PlanRepository,
+    plan_id: int,
+    invalid_field: dict[str, str],
+) -> None:
+    # These values validate as plain ints but make every later simulation raise,
+    # so they must be refused at save time rather than persisted.
+    before = repo.get_by_id(plan_id)
+    assert before is not None
+
+    response = client.patch(
+        f"{PLAN_SIMULATION_DETAILS}?plan={plan_id}",
+        data=_simulation_details_form_data() | invalid_field,
+    )
+
+    assert response.status_code == 422
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.sampling == before.sampling
+
+
 def test_patch_simulation_details_updates_sampling_and_sorts_percentiles(
     client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
