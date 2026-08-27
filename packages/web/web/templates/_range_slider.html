@@ -1,0 +1,15 @@
+{% macro range_with_value(name, min, max, step, value, display=None, suffix='') %}
+<span class="range-with-value">
+  <input
+    type="range"
+    id="{{ name }}"
+    name="{{ name }}"
+    min="{{ min }}"
+    max="{{ max }}"
+    step="{{ step }}"
+    value="{{ value }}"
+    oninput="this.nextElementSibling.value = this.value + '{{ suffix }}'"
+  >
+  <output class="range-value" for="{{ name }}">{% if display is not none %}{{ display }}{% else %}{{ value }}{{ suffix }}{% endif %}</output>
+</span>
+{% endmacro %}

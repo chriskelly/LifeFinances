@@ -1,3 +1,4 @@
+{% import "_range_slider.html" as range_slider %}
 <section class="editor-section">
   <h2>{{ sections.RISK_TITLE }}</h2>
   <form
@@ -6,20 +7,14 @@
     hx-swap="none"
   >
     <label>
-      Risk tolerance
-      <span class="range-with-value">
-        <input
-          type="range"
-          id="{{ forms.RISK_TOLERANCE_AT_20 }}"
-          name="{{ forms.RISK_TOLERANCE_AT_20 }}"
-          min="0"
-          max="{{ forms.RISK_TOLERANCE_NUM_VALUES - 1 }}"
-          step="1"
-          value="{{ plan.risk.risk_tolerance_at_20 }}"
-          oninput="this.nextElementSibling.value = this.value"
-        >
-        <output class="range-value" for="{{ forms.RISK_TOLERANCE_AT_20 }}">{{ plan.risk.risk_tolerance_at_20 }}</output>
-      </span>
+      Base Risk tolerance
+      {{ range_slider.range_with_value(
+        forms.RISK_TOLERANCE_AT_20,
+        0,
+        forms.RISK_TOLERANCE_NUM_VALUES - 1,
+        1,
+        plan.risk.risk_tolerance_at_20
+      ) }}
     </label>
     <p class="field-help">
       <span>Conservative</span>
@@ -29,13 +24,15 @@
 
     <label>
       Additional annual spending tilt
-      <input
-        type="text"
-        inputmode="decimal"
-        class="percent-input"
-        name="{{ forms.ADDITIONAL_ANNUAL_SPENDING_TILT }}"
-        value="{{ plan.risk.additional_annual_spending_tilt|percent }}"
-      >
+      {{ range_slider.range_with_value(
+        forms.ADDITIONAL_ANNUAL_SPENDING_TILT,
+        forms.PERCENT_SLIDER_MIN,
+        forms.PERCENT_SLIDER_MAX,
+        forms.PERCENT_SLIDER_STEP,
+        plan.risk.additional_annual_spending_tilt|percent_points,
+        display=plan.risk.additional_annual_spending_tilt|percent,
+        suffix='%'
+      ) }}
     </label>
 
     <details>
@@ -60,13 +57,15 @@
       </label>
       <label>
         Time preference
-        <input
-          type="text"
-          inputmode="decimal"
-          class="percent-input"
-          name="{{ forms.TIME_PREFERENCE }}"
-          value="{{ plan.risk.time_preference|percent }}"
-        >
+        {{ range_slider.range_with_value(
+          forms.TIME_PREFERENCE,
+          forms.PERCENT_SLIDER_MIN,
+          forms.PERCENT_SLIDER_MAX,
+          forms.PERCENT_SLIDER_STEP,
+          plan.risk.time_preference|percent_points,
+          display=plan.risk.time_preference|percent,
+          suffix='%'
+        ) }}
       </label>
     </details>
   </form>

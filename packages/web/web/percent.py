@@ -30,6 +30,11 @@ def format_percent(value: Decimal | int | float | str | None) -> str:
     return f"{text}%"
 
 
+def format_percent_points(value: Decimal | int | float | str | None) -> str:
+    """Format a 0–1 fraction as percent points without a trailing ``%``."""
+    return format_percent(value).removesuffix("%")
+
+
 def parse_percent(raw: str | None) -> Decimal:
     """Parse a percent-ish string (``3.5%``, ``3.5``) to a 0–1 fraction.
 
