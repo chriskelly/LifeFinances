@@ -48,6 +48,10 @@ uv sync
 uv run python scripts/init_db.py
 ```
 
+## Standalone tools
+
+Disability insurance calculator: `uv run marimo edit tools/disability_insurance.py`. Rules: `tools/AGENTS.md` (`core`/`domain` only; never `web`).
+
 ## Database inspection
 
 ```bash

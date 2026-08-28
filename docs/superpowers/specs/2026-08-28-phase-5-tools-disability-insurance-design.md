@@ -5,7 +5,7 @@
 
 **Parent:** [2026-06-12-life-finances-rebuild-design.md](./2026-06-12-life-finances-rebuild-design.md) §5, Phase 5  
 **Legacy behavior:** `life-finances-legacy` notebook `backend/standalone_tools/disability_insurance_calculator.ipynb` and feature spec under `docs/features/disability-insurance-calculator/`  
-**Phase plan:** `2026-06-12-phase-5-tools-disability-insurance.md` *(to write)*  
+**Phase plan:** [`2026-06-12-phase-5-tools-disability-insurance.md`](../plans/2026-06-12-phase-5-tools-disability-insurance.md)  
 **Index:** Phase 5 in [2026-06-12-rebuild-index.md](../plans/2026-06-12-rebuild-index.md)
 
 ---
