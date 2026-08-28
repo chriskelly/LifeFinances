@@ -391,8 +391,8 @@ def _(
         duration_years=PERSON1_DURATION_YEARS,
         age_limit=PERSON1_AGE_LIMIT,
     )
-    mo.md(person1_md)
-    return
+    person1_out = mo.md(person1_md)
+    return person1_out
 
 
 @app.cell
