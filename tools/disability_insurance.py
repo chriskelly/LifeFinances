@@ -421,9 +421,10 @@ def _(
             duration_years=PERSON2_DURATION_YEARS,
             age_limit=PERSON2_AGE_LIMIT,
         )
-        _ = mo.md(person2_md)
+        person2_out = mo.md(person2_md)
     else:
-        _ = None
+        person2_out = None
+    return person2_out
 
 
 if __name__ == "__main__":
