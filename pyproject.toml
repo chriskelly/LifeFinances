@@ -18,6 +18,7 @@ dev = [
     "life-finances-domain",
     "life-finances-simulation",
     "life-finances-web",
+    "marimo>=0.24.0",
 ]
 
 [tool.uv.sources]
