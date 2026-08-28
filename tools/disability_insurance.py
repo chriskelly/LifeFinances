@@ -391,8 +391,8 @@ def _(
         duration_years=PERSON1_DURATION_YEARS,
         age_limit=PERSON1_AGE_LIMIT,
     )
-    person1_out = mo.md(person1_md)
-    return person1_out
+    mo.md(person1_md)
+    return
 
 
 @app.cell
@@ -408,6 +408,7 @@ def _(
     timeline,
 ):
     partner = plan.household.person2
+    person2_md = ""
     if partner is not None:
         person2_md = report_person(
             label="Person 2",
@@ -421,10 +422,8 @@ def _(
             duration_years=PERSON2_DURATION_YEARS,
             age_limit=PERSON2_AGE_LIMIT,
         )
-        person2_out = mo.md(person2_md)
-    else:
-        person2_out = None
-    return person2_out
+    mo.md(person2_md)
+    return
 
 
 if __name__ == "__main__":
