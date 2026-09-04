@@ -4,6 +4,30 @@ __generated_with = "0.24.0"
 app = marimo.App(width="medium")
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md("""
+    # Disability Insurance Calculator
+
+    This notebook calculates disability insurance coverage needs by comparing
+    baseline income projections (with job income) against disability scenarios
+    (without job income). It accounts for:
+
+    - Lost job income until the employer policy window ends
+      (`age_limit` or `duration_years` from local config)
+    - Reduced Social Security benefits (including after the policy window)
+    - Reduced pension benefits (including after the policy window)
+    - Existing employer-provided disability coverage (after taxes)
+    - Remaining coverage gap in standard disability insurance format
+      (% of income for x years)
+
+    **Usage**: Copy `tools/disability_insurance.local.toml.example` to
+    `tools/disability_insurance.local.toml`, set `plan_id` and coverage knobs,
+    and keep a SQLite plan database at `data/data.db` (or `LIFE_FINANCES_DB_PATH`).
+    """)
+    return
+
+
 @app.cell
 def _():
     import tomllib
@@ -61,7 +85,15 @@ def _(mo, plan_repo):
         ),
     )
     lines = "\n".join(f"- `{row.id}`: {row.name}" for row in summaries)
-    mo.md(f"**Plans**\n\n{lines}")
+    mo.md(
+        f"""
+    ## Plans
+
+    Plans available in the SQLite database.
+
+    {lines}
+    """
+    )
     return (summaries,)
 
 
@@ -85,22 +117,29 @@ def _(helpers, mo, tomllib):
         )
 
     mo.md(
-        f"Config: `{config_source}`. "
-        f"plan_id={PLAN_ID!s}. "
-        f"person1 {PERSON1_PERCENTAGE}% "
-        f"(duration_years={PERSON1_DURATION_YEARS!s}, age_limit={PERSON1_AGE_LIMIT!s}); "
-        f"person2 {PERSON2_PERCENTAGE}% "
-        f"(duration_years={PERSON2_DURATION_YEARS!s}, age_limit={PERSON2_AGE_LIMIT!s}). "
-        "Not saved to the plan."
+        f"""
+    ## Local configuration
+
+    Load `plan_id` and coverage knobs from gitignored
+    `{helpers.LOCAL_CONFIG_PATH}` (zeros / default plan if the file is missing).
+
+    Config: `{config_source}`.
+    plan_id={PLAN_ID!s}.
+    person1 {PERSON1_PERCENTAGE}%
+    (duration_years={PERSON1_DURATION_YEARS!s}, age_limit={PERSON1_AGE_LIMIT!s});
+    person2 {PERSON2_PERCENTAGE}%
+    (duration_years={PERSON2_DURATION_YEARS!s}, age_limit={PERSON2_AGE_LIMIT!s}).
+    Not saved to the plan.
+    """
     )
     return (
-        PLAN_ID,
         PERSON1_AGE_LIMIT,
         PERSON1_DURATION_YEARS,
         PERSON1_PERCENTAGE,
         PERSON2_AGE_LIMIT,
         PERSON2_DURATION_YEARS,
         PERSON2_PERCENTAGE,
+        PLAN_ID,
     )
 
 
@@ -142,7 +181,16 @@ def _(
             )
         except ValueError as exc:
             mo.stop(True, mo.md(str(exc)))
-    mo.md(f"Using plan **{plan.name}** (`id={chosen_id}`).")
+    mo.md(
+        f"""
+    ## Plan selection
+
+    Resolve `plan_id` (or the app default) and validate person2 coverage when
+    the plan has a partner.
+
+    Using plan **{plan.name}** (`id={chosen_id}`).
+    """
+    )
     return (plan,)
 
 
@@ -167,13 +215,31 @@ def _(
             "Neither person has future job income — disability insurance is not needed."
         ),
     )
+    mo.md(
+        """
+    ## Baseline cashflows
+
+    Build the timeline, baseline monthly cashflows, and job-income projection.
+    Stops if neither person has future job income.
+    """
+    )
     return baseline, jobs, timeline
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md("""
+    ## Your disability calculation
+
+    Calculate disability insurance needs for you.
+    """)
+    return
 
 
 @app.cell
 def _(
-    PERSON1_AGE_LIMIT: int | None,
-    PERSON1_DURATION_YEARS: int | None,
+    PERSON1_AGE_LIMIT,
+    PERSON1_DURATION_YEARS,
     PERSON1_PERCENTAGE,
     baseline,
     helpers,
@@ -183,7 +249,7 @@ def _(
     timeline,
 ):
     person1_md = helpers.report_person(
-        label="Person 1",
+        label="Your results",
         person_id="person1",
         person=plan.household.person1,
         plan=plan,
@@ -199,9 +265,22 @@ def _(
 
 
 @app.cell
+def _(mo, plan):
+    person2_heading = ""
+    if plan.household.person2 is not None:
+        person2_heading = """
+    ## Your partner's disability calculation
+
+    Calculate disability insurance needs for your partner.
+    """
+    mo.md(person2_heading)
+    return
+
+
+@app.cell
 def _(
-    PERSON2_AGE_LIMIT: int | None,
-    PERSON2_DURATION_YEARS: int | None,
+    PERSON2_AGE_LIMIT,
+    PERSON2_DURATION_YEARS,
     PERSON2_PERCENTAGE,
     baseline,
     helpers,
@@ -214,7 +293,7 @@ def _(
     person2_md = ""
     if partner is not None:
         person2_md = helpers.report_person(
-            label="Person 2",
+            label="Your partner's results",
             person_id="person2",
             person=partner,
             plan=plan,

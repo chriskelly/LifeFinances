@@ -227,7 +227,7 @@ def report_person(
     _ = person
     person_gross = person_job(jobs, person_id).gross
     if series_all_zero(person_gross):
-        return f"## {label}\n\nNo future job income — disability insurance is not needed.\n"
+        return f"### {label}\n\nNo future job income — disability insurance is not needed.\n"
     disabled_plan = disable_person(plan, person_id)
     disability = build_monthly_cashflows(disabled_plan)
     need = sum_series(baseline.net_cashflow) - sum_series(disability.net_cashflow)
@@ -259,7 +259,7 @@ def report_person(
     )
     gap = max(Decimal(0), need - net_b)
     lines = [
-        f"## {label}",
+        f"### {label}",
         "",
         f"1. **Total income replacement needed:** {fmt_money(need)}",
         f"   - Baseline post-tax lifetime: {fmt_money(sum_series(baseline.net_cashflow))}",
