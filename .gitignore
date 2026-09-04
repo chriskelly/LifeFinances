@@ -6,6 +6,7 @@
 config.yml
 # Personal Marimo tool knobs (keep *.example committed)
 tools/*.local.toml
+tools/__marimo__/
 data/data.db
 data/market_cache/
 # Personal SSA statement downloads (never commit)

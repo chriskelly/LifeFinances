@@ -20,6 +20,6 @@ Needs a SQLite plan database at `data/data.db` (or `LIFE_FINANCES_DB_PATH`). If 
 
 `percentage` is on a 0–100+ scale: `60` means 60%, not `0.60`. Values over 100 are allowed; replacement is capped at 100% in the calculator. When `percentage` is greater than 0, set **only one** of `duration_years` or `age_limit`. When `percentage` is 0, omit both.
 
-If `tools/disability_insurance.local.toml` is missing, the calculator uses zeros and the default plan. That is valid.
+The committed `.example` is a worked sample (non-zero coverage). If `tools/disability_insurance.local.toml` is missing, the calculator uses zeros and the default plan. That is valid.
 
 Agent / import rules: [AGENTS.md](AGENTS.md).

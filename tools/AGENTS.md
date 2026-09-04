@@ -28,5 +28,5 @@ Standalone Marimo apps are **not** imported by `packages/` and are exempt from p
 
 1. Create `tools/<name>.py` as a Marimo app (`import marimo` + `app = marimo.App()` + `@app.cell`).
 2. Follow the import and read-only DB rules above.
-3. Document the run command in this file’s Run section.
-4. If the tool has personal knobs, add `tools/<name>.local.toml.example` and load `tools/<name>.local.toml` (ignored by `tools/*.local.toml`).
+3. Document the run command in `tools/README.md` (and keep a short pointer in this file’s Run section).
+4. If the tool has personal knobs, add `tools/<name>.local.toml.example` and load `tools/<name>.local.toml` (ignored by `tools/*.local.toml`). Put non-trivial helpers in a sibling `tools/<name>_helpers.py` so the Marimo file stays lint-clean without `# noqa`.

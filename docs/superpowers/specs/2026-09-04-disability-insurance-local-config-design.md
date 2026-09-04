@@ -36,7 +36,7 @@ Keep personal calculator knobs (plan id, coverage, later extras) out of git whil
 | Path | Git | Role |
 | ---- | --- | ---- |
 | `tools/disability_insurance.local.toml` | ignored | Personal values |
-| `tools/disability_insurance.local.toml.example` | committed | Copy target; zeros / unset `plan_id` |
+| `tools/disability_insurance.local.toml.example` | committed | Copy target; worked sample coverage / unset `plan_id` |
 | `tools/README.md` | committed | Human run + config instructions |
 | `tools/disability_insurance.py` | committed | Load TOML; no coverage / `PLAN_ID` literals |
 | `.gitignore` | committed | `tools/*.local.toml` |
@@ -70,7 +70,7 @@ age_limit = 100
 - Missing `[person1]` / `[person2]`: treat as `percentage = 0` and both windows unset.
 - **Unknown keys are ignored** (forward-compatible). Do not fail the cell for extras.
 
-Committed example uses unset `plan_id` and both people `percentage = 0` with no window keys.
+Committed example uses unset `plan_id` and a worked sample (`person1` 60% / `duration_years`, `person2` 50% / `age_limit`) so operators see realistic knobs. Missing local file still defaults to zeros.
 
 ---
 
