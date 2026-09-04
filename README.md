@@ -18,7 +18,7 @@ Working database: `data/data.db` (gitignored). Schema template: `data/data.db.bl
 
 Override DB path: `LIFE_FINANCES_DB_PATH=/path/to/data.db`
 
-Disability insurance calculator (Marimo): `uv run marimo edit tools/disability_insurance.py` — see `tools/AGENTS.md`.
+Disability insurance calculator (Marimo): `uv run marimo edit tools/disability_insurance.py` — personal knobs in gitignored `tools/*.local.toml`; see `tools/README.md`.
 
 ## Development
 

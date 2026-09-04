@@ -18,7 +18,7 @@ Working directory must be the repo root so `core.paths.default_db_path()` resolv
 
 - Import `core` and `domain` only (plus `marimo` as the host). **Never** import `web` or `simulation`.
 - Load plans with `PlanRepository.list` / `get_by_id` and `SettingsRepository.get`. **Never** `save`, `create`, `ensure_bootstrap`, or `get_or_create_default`.
-- Coverage and other tool inputs stay in the notebook. Do not add fields to `Plan` for a tool unless a later spec says so.
+- Coverage and other tool knobs live in gitignored `tools/<name>.local.toml` (committed `*.local.toml.example`). Do not add fields to `Plan` for a tool unless a later spec says so. Never commit `tools/*.local.toml`.
 
 ## Tests
 
@@ -29,3 +29,4 @@ Standalone Marimo apps are **not** imported by `packages/` and are exempt from p
 1. Create `tools/<name>.py` as a Marimo app (`import marimo` + `app = marimo.App()` + `@app.cell`).
 2. Follow the import and read-only DB rules above.
 3. Document the run command in this file’s Run section.
+4. If the tool has personal knobs, add `tools/<name>.local.toml.example` and load `tools/<name>.local.toml` (ignored by `tools/*.local.toml`).

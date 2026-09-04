@@ -4,7 +4,7 @@
 **Status:** Approved
 
 **Parent:** [2026-08-28-phase-5-tools-disability-insurance-design.md](./2026-08-28-phase-5-tools-disability-insurance-design.md)  
-**Phase plan:** *(write after spec review)*
+**Phase plan:** [`2026-09-04-disability-insurance-local-config.md`](../plans/2026-09-04-disability-insurance-local-config.md)
 
 ---
 
