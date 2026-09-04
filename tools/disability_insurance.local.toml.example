@@ -1,10 +1,17 @@
 # Copy to tools/disability_insurance.local.toml and edit. Do not commit the copy.
-# Omit plan_id to use the app default plan.
-# percentage: 0–100+ scale; 60 means 60%. Values over 100 allowed (replacement capped at 100%).
-# When percentage > 0, set only one of duration_years or age_limit.
+
+# Omit plan_id (or leave it commented) → AppSettings.default_plan_id
+# plan_id = 21
 
 [person1]
-percentage = 0
+# percentage: 0–100+ scale; 60 means 60%. Values over 100 allowed (replacement capped at 100%).
+# When percentage > 0, set only one of duration_years or age_limit.
+# When percentage is 0, omit both window keys (or leave them commented).
+percentage = 60
+duration_years = 5
+# age_limit = 65
 
 [person2]
-percentage = 0
+percentage = 50
+# duration_years = 5
+age_limit = 100
