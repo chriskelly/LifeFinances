@@ -4,6 +4,8 @@
 # LifeFinances Specific
 .worktrees/
 config.yml
+# Personal Marimo tool knobs (keep *.example committed)
+tools/*.local.toml
 data/data.db
 data/market_cache/
 # Personal SSA statement downloads (never commit)

@@ -1,0 +1,9 @@
+# Copy to disability_insurance.local.toml and edit. Do not commit the copy.
+# Omit plan_id to use the app default plan.
+# percentage: 60 means 60%. When percentage > 0, set only one of duration_years or age_limit.
+
+[person1]
+percentage = 0
+
+[person2]
+percentage = 0

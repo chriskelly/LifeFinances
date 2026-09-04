@@ -33,9 +33,7 @@ def _():
         PersonId,
         PersonJobIncome,
         Plan,
-        PlanRepository,
         ROUND_HALF_UP,
-        SettingsRepository,
         Timeline,
         build_monthly_cashflows,
         mo,
@@ -70,32 +68,38 @@ def _(mo, plan_repo):
 
 
 @app.cell
-def _(mo, plan_repo, settings_repo, summaries):
-    # Edit this. None → AppSettings.default_plan_id (same as GET /).
-    PLAN_ID: int | None = None
+def _(Decimal, mo, summaries):  # noqa: C901
+    import tomllib
+    from pathlib import Path
 
-    valid_ids = {row.id for row in summaries}
-    chosen_id = PLAN_ID if PLAN_ID is not None else settings_repo.get().default_plan_id
-    mo.stop(
-        chosen_id is None or chosen_id not in valid_ids,
-        mo.md(
-            "Set `PLAN_ID` to an id from the list above "
-            "(default plan is missing or invalid)."
-        ),
-    )
-    plan = plan_repo.get_by_id(chosen_id)
-    mo.stop(
-        plan is None,
-        mo.md(
-            f"Plan `{chosen_id}` could not be loaded. Pick another id from the list."
-        ),
-    )
-    mo.md(f"Using plan **{plan.name}** (`id={chosen_id}`).")
-    return PLAN_ID, chosen_id, plan
+    LOCAL_CONFIG_PATH = Path("tools/disability_insurance.local.toml")
 
+    def optional_int(table: object, key: str) -> int | None:
+        if not isinstance(table, dict) or key not in table:
+            return None
+        value = table[key]
+        if value is None:
+            return None
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"{key} must be an integer")
+        return value
 
-@app.cell
-def _(Decimal, mo):
+    def person_from_table(raw: object) -> tuple[Decimal, int | None, int | None]:
+        if raw is None:
+            return Decimal(0), None, None
+        if not isinstance(raw, dict):
+            raise ValueError("person1/person2 must be TOML tables")
+        percentage_raw = raw.get("percentage", 0)
+        if isinstance(percentage_raw, bool) or not isinstance(
+            percentage_raw, (int, float)
+        ):
+            raise ValueError("percentage must be a number")
+        return (
+            Decimal(str(percentage_raw)),
+            optional_int(raw, "duration_years"),
+            optional_int(raw, "age_limit"),
+        )
+
     def validate_coverage(
         *,
         percentage: Decimal,
@@ -119,28 +123,54 @@ def _(Decimal, mo):
                 f"{label}: when percentage is 0, omit duration_years and age_limit"
             )
 
-    # 60 means 60%. Partner block is ignored when the plan has no person2.
-    PERSON1_PERCENTAGE = Decimal("0")
-    PERSON1_DURATION_YEARS: int | None = None
-    PERSON1_AGE_LIMIT: int | None = None
-    PERSON2_PERCENTAGE = Decimal("0")
-    PERSON2_DURATION_YEARS: int | None = None
-    PERSON2_AGE_LIMIT: int | None = None
+    data: dict = {}
+    config_source = "defaults (file not found)"
+    if LOCAL_CONFIG_PATH.exists():
+        try:
+            data = tomllib.loads(LOCAL_CONFIG_PATH.read_text(encoding="utf-8"))
+        except tomllib.TOMLDecodeError as exc:
+            mo.stop(
+                True,
+                mo.md(f"Invalid TOML in `{LOCAL_CONFIG_PATH}`: {exc}"),
+            )
+        if not isinstance(data, dict):
+            mo.stop(True, mo.md(f"`{LOCAL_CONFIG_PATH}` must be a TOML table."))
+        config_source = str(LOCAL_CONFIG_PATH)
 
-    validate_coverage(
-        percentage=PERSON1_PERCENTAGE,
-        duration_years=PERSON1_DURATION_YEARS,
-        age_limit=PERSON1_AGE_LIMIT,
-        label="person1",
+    try:
+        PLAN_ID = optional_int(data, "plan_id")
+        PERSON1_PERCENTAGE, PERSON1_DURATION_YEARS, PERSON1_AGE_LIMIT = (
+            person_from_table(data.get("person1"))
+        )
+        PERSON2_PERCENTAGE, PERSON2_DURATION_YEARS, PERSON2_AGE_LIMIT = (
+            person_from_table(data.get("person2"))
+        )
+        validate_coverage(
+            percentage=PERSON1_PERCENTAGE,
+            duration_years=PERSON1_DURATION_YEARS,
+            age_limit=PERSON1_AGE_LIMIT,
+            label="person1",
+        )
+        validate_coverage(
+            percentage=PERSON2_PERCENTAGE,
+            duration_years=PERSON2_DURATION_YEARS,
+            age_limit=PERSON2_AGE_LIMIT,
+            label="person2",
+        )
+    except ValueError as exc:
+        mo.stop(True, mo.md(str(exc)))
+
+    mo.md(
+        f"Config: `{config_source}`. "
+        f"plan_id={PLAN_ID!s}. "
+        f"person1 {PERSON1_PERCENTAGE}% "
+        f"(duration_years={PERSON1_DURATION_YEARS!s}, age_limit={PERSON1_AGE_LIMIT!s}); "
+        f"person2 {PERSON2_PERCENTAGE}% "
+        f"(duration_years={PERSON2_DURATION_YEARS!s}, age_limit={PERSON2_AGE_LIMIT!s}). "
+        "Not saved to the plan."
     )
-    validate_coverage(
-        percentage=PERSON2_PERCENTAGE,
-        duration_years=PERSON2_DURATION_YEARS,
-        age_limit=PERSON2_AGE_LIMIT,
-        label="person2",
-    )
-    mo.md("Coverage literals validated (not saved to the plan).")
     return (
+        PLAN_ID,
         PERSON1_AGE_LIMIT,
         PERSON1_DURATION_YEARS,
         PERSON1_PERCENTAGE,
@@ -148,6 +178,28 @@ def _(Decimal, mo):
         PERSON2_DURATION_YEARS,
         PERSON2_PERCENTAGE,
     )
+
+
+@app.cell
+def _(PLAN_ID, mo, plan_repo, settings_repo, summaries):
+    valid_ids = {row.id for row in summaries}
+    chosen_id = PLAN_ID if PLAN_ID is not None else settings_repo.get().default_plan_id
+    mo.stop(
+        chosen_id is None or chosen_id not in valid_ids,
+        mo.md(
+            "Set `plan_id` in `tools/disability_insurance.local.toml` "
+            "to an id from the list above (default plan is missing or invalid)."
+        ),
+    )
+    plan = plan_repo.get_by_id(chosen_id)
+    mo.stop(
+        plan is None,
+        mo.md(
+            f"Plan `{chosen_id}` could not be loaded. Pick another id from the list."
+        ),
+    )
+    mo.md(f"Using plan **{plan.name}** (`id={chosen_id}`).")
+    return (plan,)
 
 
 @app.cell
@@ -163,7 +215,6 @@ def _(  # noqa: C901
     ROUND_HALF_UP,
     Timeline,
     build_monthly_cashflows,
-    project_job_income,
 ):
     def fmt_money(amount: Decimal) -> str:
         return f"${float(amount):,.0f}"
@@ -335,22 +386,17 @@ def _(  # noqa: C901
             )
         return "\n".join(lines)
 
-    return (
-        disable_person,
-        report_person,
-        series_all_zero,
-        sum_series,
-    )
+    return report_person, series_all_zero
 
 
 @app.cell
 def _(
+    Timeline,
     build_monthly_cashflows,
     mo,
     plan,
     project_job_income,
     series_all_zero,
-    Timeline,
 ):
     timeline = Timeline(plan)
     baseline = build_monthly_cashflows(plan)
@@ -369,8 +415,8 @@ def _(
 
 @app.cell
 def _(
-    PERSON1_AGE_LIMIT,
-    PERSON1_DURATION_YEARS,
+    PERSON1_AGE_LIMIT: int | None,
+    PERSON1_DURATION_YEARS: int | None,
     PERSON1_PERCENTAGE,
     baseline,
     jobs,
@@ -397,8 +443,8 @@ def _(
 
 @app.cell
 def _(
-    PERSON2_AGE_LIMIT,
-    PERSON2_DURATION_YEARS,
+    PERSON2_AGE_LIMIT: int | None,
+    PERSON2_DURATION_YEARS: int | None,
     PERSON2_PERCENTAGE,
     baseline,
     jobs,
