@@ -508,18 +508,20 @@ tpaw pulls daily EOD prices from [EODHD](https://eodhd.com/) for preset math (`G
 
 ### Phase 5 — Tools
 
-**Plan file:** `2026-06-12-phase-5-tools-disability-insurance.md` *(to write)*
+**Plan file:** [`2026-06-12-phase-5-tools-disability-insurance.md`](2026-06-12-phase-5-tools-disability-insurance.md)
+
+**Design spec:** [`2026-08-28-phase-5-tools-disability-insurance-design.md`](../specs/2026-08-28-phase-5-tools-disability-insurance-design.md)
 
 **Delivers:** Marimo disability insurance calculator using shared packages.
 
-**References:** Legacy `standalone_tools/disability_insurance_calculator.ipynb`, design spec §5.
+**References:** Legacy `standalone_tools/disability_insurance_calculator.ipynb`; design spec §5.
 
 **Entry criteria:** Phase 4 minimum bar met (4a + 4c + 4d + thin 4b); full 4e/4f not required.
 
 **Exit criteria:**
 
-- [ ] `tools/disability_insurance.py` runs via `uv run marimo edit …`
-- [ ] Uses `domain` + `simulation`; no `web` import
+- [ ] `tools/disability_insurance.py` runs via `uv run marimo edit tools/disability_insurance.py`
+- [ ] Uses `core` + `domain`; no `web` import; no `simulation` import
 - [ ] `tools/AGENTS.md` documents adding new tools
 
 ---

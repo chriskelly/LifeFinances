@@ -48,6 +48,10 @@ uv sync
 uv run python scripts/init_db.py
 ```
 
+## Standalone tools
+
+Disability insurance calculator: `uv run marimo edit tools/disability_insurance.py`. Rules: `tools/AGENTS.md` (`core`/`domain` only; never `web`; never `simulation`).
+
 ## Database inspection
 
 ```bash
@@ -142,7 +146,7 @@ Import defaults, thresholds, and config from production code in tests. Do not co
 
 ```
 web → simulation, domain, core
-tools → simulation, domain, core   (never import web)
+tools → domain, core   (never web; never simulation unless a later spec says so)
 simulation → domain, core
 domain → core
 core → stdlib + pydantic + sqlite
