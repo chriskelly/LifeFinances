@@ -1,0 +1,35 @@
+name: Docs specs empty
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  docs-specs-empty:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Require docs/specs empty except .gitkeep
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(git ls-files 'docs/specs/**')
+          allowed='docs/specs/.gitkeep'
+          unexpected=()
+          for f in "${files[@]+"${files[@]}"}"; do
+            if [[ "$f" != "$allowed" ]]; then
+              unexpected+=("$f")
+            fi
+          done
+          if ((${#unexpected[@]})); then
+            echo "docs/specs must contain only .gitkeep on main."
+            echo "Delete open design specs in the merge commit (or a follow-up on main). Found:"
+            printf '  %s\n' "${unexpected[@]}"
+            exit 1
+          fi
+          if [[ ! -f docs/specs/.gitkeep ]]; then
+            echo "Missing required stub docs/specs/.gitkeep"
+            exit 1
+          fi
+          echo "OK: docs/specs is empty of design files."

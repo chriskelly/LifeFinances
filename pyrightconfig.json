@@ -1,6 +1,6 @@
 {
   "include": ["packages", "scripts", "tests"],
-  "exclude": ["**/__pycache__", ".venv", "archive"],
+  "exclude": ["**/__pycache__", ".venv"],
   "pythonVersion": "3.14",
   "typeCheckingMode": "basic",
   "venvPath": ".",

@@ -18,7 +18,7 @@ Working directory must be the repo root so `core.paths.default_db_path()` resolv
 
 - Import `core` and `domain` only (plus `marimo` as the host). **Never** import `web` or `simulation`.
 - Load plans with `PlanRepository.list` / `get_by_id` and `SettingsRepository.get`. **Never** `save`, `create`, `ensure_bootstrap`, or `get_or_create_default`.
-- Coverage and other tool knobs live in gitignored `tools/<name>.local.toml` (committed `*.local.toml.example`). Do not add fields to `Plan` for a tool unless a later spec says so. Never commit `tools/*.local.toml`.
+- Coverage and other tool knobs live in gitignored `tools/<name>.local.toml` (committed `*.local.toml.example`). Do not add fields to `Plan` for a tool unless this guide says so. Never commit `tools/*.local.toml`.
 
 ## Tests
 

@@ -11,19 +11,19 @@ numerical correctness without a runnable TPAW binary to diff against.
 
 | Feature | Status | Where |
 | --- | --- | --- |
-| Risk-tolerance → RRA conversion (age glide, legacy delta) | Ported (Phase 3b) | `simulation/risk.py` |
-| Merton's formula (stock allocation + spending tilt, equity-premium/variance clamps, ∞-RRA case) | Ported (Phase 3b) | `simulation/mertons.py` |
-| Backward NPV precompute pass + `cumulative_1_plus_g_over_1_plus_r` amortization | Ported (Phase 3b) | `simulation/npv.py`, `simulation/preprocess.py` |
-| Vectorized forward monthly loop (wealth, pool carve, expected-run elasticity, contributions/withdrawals, allocation, rebalancing) | Ported (Phase 3b) | `simulation/engine.py` |
-| Raw per-run result arrays (engine-internal) | Ported (Phase 3b) | `simulation/result.py` (`RawSimulationResult`) |
-| Percentile aggregation (10th/50th/90th, etc. reduction over raw arrays) | Ported (Phase 3d) | `simulation/aggregate.py` |
-| Wealth composition (tax-prorated NPV by income source: job / SS / pension / manual) | Ported (Phase 3d) | `simulation/composition.py` |
-| Planning-returns presets (live CAPE/EOD-derived expected returns, empirical variance refinement) | Ported (Phase 3c-2) | `simulation/market_data/presets.py`, `simulation/market_data/presets_data.py` |
-| S&P + Treasury 20-yr TIPS market feeds (cache + vendored fallback) | Ported (Phase 3c-1) | `simulation/market_data/` |
-| Bootstrapped/stochastic inflation (3b uses a single resolved scalar inflation rate for the whole horizon) | Deferred | Issue #186 |
+| Risk-tolerance → RRA conversion (age glide, legacy delta) | Ported | `simulation/risk.py` |
+| Merton's formula (stock allocation + spending tilt, equity-premium/variance clamps, ∞-RRA case) | Ported | `simulation/mertons.py` |
+| Backward NPV precompute pass + `cumulative_1_plus_g_over_1_plus_r` amortization | Ported | `simulation/npv.py`, `simulation/preprocess.py` |
+| Vectorized forward monthly loop (wealth, pool carve, expected-run elasticity, contributions/withdrawals, allocation, rebalancing) | Ported | `simulation/engine.py` |
+| Raw per-run result arrays (engine-internal) | Ported | `simulation/result.py` (`RawSimulationResult`) |
+| Percentile aggregation (10th/50th/90th, etc. reduction over raw arrays) | Ported | `simulation/aggregate.py` |
+| Wealth composition (tax-prorated NPV by income source: job / SS / pension / manual) | Ported | `simulation/composition.py` |
+| Planning-returns presets (live CAPE/EOD-derived expected returns, empirical variance refinement) | Ported | `simulation/market_data/presets.py`, `simulation/market_data/presets_data.py` |
+| S&P + Treasury 20-yr TIPS market feeds (cache + vendored fallback) | Ported | `simulation/market_data/` |
+| Bootstrapped/stochastic inflation (currently a single resolved scalar inflation rate for the whole horizon) | Deferred | Issue #186 |
 | Spending ceiling/floor constraints | Removed from scope | Not planned — this rebuild's product scope removed ceiling/floor |
-| Detailed tax-bucket modeling interactions with withdrawals (traditional vs. Roth vs. taxable sequencing) | Deferred | Later phase, unscheduled |
-| Withdrawal rate from savings | Deferred | Later / if Phase 4 needs it |
+| Detailed tax-bucket modeling interactions with withdrawals (traditional vs. Roth vs. taxable sequencing) | Deferred | Unscheduled |
+| Withdrawal rate from savings | Deferred | Later / if needed |
 | Total-portfolio stock allocation series | Deferred | Later |
 | Spending-tilt result series | Deferred | Later (tilt already drives engine) |
 | Ending-balance percentile scalars | Deferred | Later |
@@ -34,12 +34,12 @@ withdrawals, savings stock allocation, plus wealth-composition bands). The engin
 still emits private `RawSimulationResult` (`num_runs × months`); aggregation
 happens in `aggregate.py` via `numpy.percentile` along the run axis. Percentiles
 default from `plan.advanced.percentiles` (`[5, 50, 95]`); the `percentiles`
-kwarg overrides. Chart UI wiring is Phase 4.
+kwarg overrides. Chart UI wiring lives in the web package.
 
 ## Numerical parity caveat
 
 TPAW runs on CUDA with mixed float32/float64 arithmetic and ChaCha8 RNG
-streams. This port uses NumPy `float64` throughout and the Phase 3a seeded RNG
+streams. This port uses NumPy `float64` throughout and the seeded RNG
 (`numpy.random.default_rng`), which is **not** bit-identical to TPAW's ChaCha8
 streams — see `simulation/market_data/bootstrap.py`'s `build_index_sequences`
 docstring, which already notes "algorithmic parity, our own determinism." We
@@ -77,13 +77,13 @@ Together, these give confidence that each individual formula matches TPAW's
 own reference values, and that the assembled pipeline behaves sensibly, even
 though no full end-to-end numerical diff against TPAW is possible.
 
-## Phase 3c-2 — planning-returns presets
+## Planning-returns presets
 
 Preset menu is at full tpaw parity: regression, conservative, 1/CAPE, historical,
 fixed-equity-premium, custom, and fixed. Expected returns come from vendored v7 CAPE
 regression + Shiller earnings, combined with live or vendored S&P 500 and 20-yr TIPS
-yields (Phase 3c-1 feeds). Variance uses the vendored block-size table scaled by
+yields (S&P + Treasury feeds). Variance uses the vendored block-size table scaled by
 `stock_volatility_scale²` — preset choice affects expected returns only, not variance
 (tpaw behavior). An expected-return glide path over the simulation horizon is
 intentionally absent: tpaw fixes planning returns at month 0; the RRA-based stock
-allocation glide shipped in Phase 3b.
+allocation glide is in `risk.py` / the engine.
