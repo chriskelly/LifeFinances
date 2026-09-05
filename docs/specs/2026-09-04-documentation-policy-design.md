@@ -147,15 +147,15 @@ This spec file (`docs/specs/2026-09-04-documentation-policy-design.md`) is the *
 
 User confirmed workflow edits.
 
-Add a job (or a first step that does not need `uv sync`) on the existing `.github/workflows/main_ci.yml` triggers (`push` to `main` and `pull_request`):
+Add a dedicated workflow `.github/workflows/docs_specs_empty.yml` that triggers **only** on `push` to `main` (leave `main_ci.yml` / `pr_ci.yml` alone):
 
 - After checkout, list **tracked** files under `docs/specs/` (e.g. `git ls-files 'docs/specs/**'`).
 - Allowed: empty list, or only `docs/specs/.gitkeep`.
-- Otherwise fail with a message that open specs must be deleted before the branch lands on `main` (PR **HEAD** must already be clean).
+- Otherwise fail with a message that open specs must be deleted on `main`.
 
-Run this independently of the Python test/lint job so a docs violation is obvious and cheap.
+No `uv` / Python needed. Do not attach this check to pull_request triggers — PRs may keep open specs for reviewer context.
 
-**Review workflow this implies:** a feature PR may contain a spec in earlier commits; CI looks at HEAD. Review implementation against the spec, then delete the spec (and recommend deleting the local plan) before merge.
+**Review workflow this implies:** a feature PR **may** include the open spec so reviewers have design context. After merge (or in the merge/follow-up commit on `main`), delete the spec (and recommend deleting the local plan) so the main-only workflow stays green.
 
 ---
 
@@ -174,5 +174,5 @@ No pytest of markdown policy. Verification for the implementation plan:
 ## 9. Error handling and edge cases
 
 - **Plan accidentally staged:** agents must unstage / not commit `docs/plans/*.md`. CI does not need to police plans if gitignore holds.
-- **Spec needed across multiple PRs:** keep the spec until the *feature* is done, not until the first PR. `main` must still be spec-empty, so either the work stays off `main` until done, or later PRs recreate a short-lived spec. Prefer one feature / one spec lifetime; split PRs should not leave a spec on `main`.
+- **Spec needed across multiple PRs:** keep the spec until the *feature* is done, not until the first PR. Specs may stay on PR branches for review. `main` must still end up spec-empty (CI enforces on push to `main`); delete the spec in the merge commit or a follow-up on `main`. Prefer one feature / one spec lifetime.
 - **Someone needs an old design:** `git log --all -- docs/superpowers/specs/` (or `git show <commit>:path`). Do not restore files “just in case”.
