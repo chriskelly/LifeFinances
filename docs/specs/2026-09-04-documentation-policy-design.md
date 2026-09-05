@@ -24,16 +24,16 @@ After this cutover:
 - New `docs/specs/` + `docs/plans/` layout and `.gitignore` rules
 - Root `AGENTS.md` policy rewrite (repo map, artifact table, phase-planning rule, stale spec pointers)
 - One-time deletion of `docs/superpowers/`, `docs/ideas/`, `docs/backlog/`, and `archive/`
-- Pointer cleanup in remaining committed files (OVERVIEWs, scripts, nested `AGENTS.md`, README) so they do not cite deleted paths
+- Pointer cleanup and **phase/spec scrub** in durable docs (`AGENTS.md`, `README.md`, `OVERVIEW.md`) plus other remaining committed pointers (e.g. scripts)
 - CI on `pull_request` and `push` to `main` that fails if `docs/specs/` has tracked files other than an allowlisted stub
 - Explicit user confirmation already given to modify `.github/workflows/`
 
 ### Out of scope
 
-- Rewriting package OVERVIEW *content* beyond dropping dead links / promoting a one-liner that would otherwise be lost
 - Creating GitHub issues for historical rebuild phases
 - Changing Cursor superpowers skills upstream; this repo’s `AGENTS.md` overrides paths and commit rules
 - Recovering deleted docs except via git history when someone explicitly asks
+- Rewriting OVERVIEW/README narrative beyond what is needed to drop phase/spec/plan references while keeping accurate behavior notes
 
 ---
 
@@ -50,6 +50,24 @@ After this cutover:
 **Promote before delete:** lasting policy or behavior notes must land in `AGENTS.md` or the relevant `OVERVIEW.md` *before* the spec is removed.
 
 Do not create `docs/features/.../Development/` chains. Do not use `archive/`.
+
+### Durable-doc ban (hard rule)
+
+These files must **never** refer to specs, plans, or rebuild **phases**:
+
+- any `AGENTS.md`
+- any `README.md`
+- any `OVERVIEW.md`
+
+Forbidden examples (scrub on cutover and do not reintroduce):
+
+- Paths like `docs/superpowers/specs/…`, `docs/specs/…-design.md`, `docs/plans/…`
+- Phrases like “See the Phase 2a design spec”, “unless a phase plan calls for…”, “Phase 3b”, “decided Phase 4c”, section titles such as `## Phase 3c-2 — …`
+- Status cells or backlog rows that encode progress as `(Phase 3d)` / `Later / if Phase 4 needs it`
+
+Allowed exception: root `AGENTS.md` **Documentation policy** may describe the *roles and paths* of the ephemeral trees (`docs/specs/`, `docs/plans/`) as policy — it must not link to or name a specific open or historical spec/plan file, and must not use phase numbering for product history.
+
+When scrubbing, keep the factual behavior (module paths, APIs, status like Ported/Deferred); drop only the phase/spec scaffolding. Prefer present-tense package status over rebuild chronology.
 
 ---
 
@@ -101,10 +119,12 @@ Replace, do not accumulate:
 | “See also” link to `docs/superpowers/specs/2026-06-28-phase-3a-plus-networked-market-data-design.md` §5 | Fold any still-needed operator facts into the existing Market data refresh section; drop the spec path. |
 | **AI artifact policy** table | **Documentation policy** table matching §2. Include: delete spec on done; recommend deleting local plans; GitHub issues for roadmap; do not create `docs/features/` chains. |
 | **Phase planning** (“load rebuild-index at session start”) | Remove. Point at GitHub issues for larger work and at `docs/specs/` only when a spec is open for the current task. |
-| Testing-policy clause “unless a phase plan calls for…” | Rephrase to durable language (e.g. unless `AGENTS.md` or an *open* spec calls for a specific integration smoke test). |
-| Package-dependency line “unless a later spec says so” | “unless an open spec or nested `AGENTS.md` says so”. |
+| Testing-policy clause “unless a phase plan calls for…” | Durable only — e.g. “unless this guide or a nested `AGENTS.md` calls for a specific integration smoke test”. Do **not** say “open spec”. |
+| Package-dependency / tools lines “unless a later spec says so” | “unless nested `AGENTS.md` says so” (or drop the hedge). |
+| Tech-stack / guardrail “Phase N+” labels (e.g. `HTMX (Phase 1+)`, `legacy import is Phase 4 script only`) | Drop phase tags; keep the factual constraint (`legacy import is the import script only`). |
+| Artifact table rows that say “Phase 2+ / Phase 3+” for OVERVIEWs | Describe the OVERVIEW’s role without phase numbers. |
 
-Nested `AGENTS.md` files that say “unless a later spec says so” get the same wording pass.
+Nested `AGENTS.md` files get the same scrub (e.g. `packages/web/AGENTS.md` “decided Phase 4c”, “### Phase 4d editors”).
 
 ---
 
@@ -116,7 +136,8 @@ Single implementation (not a gradual archive):
 2. Do **not** copy old specs/plans into `docs/specs/`. Git history is the backup.
 3. Create `docs/specs/.gitkeep`, `docs/plans/README.md` (explains gitignored `*.md` plans), and the `.gitignore` rules in §3.
 4. Grep the remaining tree for `docs/superpowers`, `archive/`, `rebuild-index`, and `docs/features/` and fix or remove those pointers. Known committed hits outside the deleted trees include `AGENTS.md`, `packages/domain/OVERVIEW.md`, `scripts/refresh_market_data.py`, and possibly nested package `AGENTS.md` / READMEs.
-5. In-flight work that still lived under `docs/superpowers/` (for example disability-insurance local config) is treated as complete or already captured in `tools/AGENTS.md` / helpers; those files die with the wipe. If durable behavior is missing from OVERVIEW/`AGENTS.md`, add it during pointer cleanup — do not keep the old spec.
+5. Scrub **all** `AGENTS.md`, `README.md`, and `OVERVIEW.md` files per the durable-doc ban (§2): remove phase labels, spec/plan paths, and “see design spec” cross-links. Example: `packages/domain/OVERVIEW.md` lines that point at `docs/superpowers/specs/2026-06-12-phase-2a-domain-core-design.md` and headings like `## Single-person households (Phase 2e)` must lose the phase/spec parts. Same for `packages/simulation/OVERVIEW.md` / `README.md` phase annotations.
+6. In-flight work that still lived under `docs/superpowers/` (for example disability-insurance local config) is treated as complete or already captured in `tools/AGENTS.md` / helpers; those files die with the wipe. If durable behavior is missing from OVERVIEW/`AGENTS.md`, add it during scrub — do not keep the old spec. Scripts may mention operator facts inline; they must not cite deleted spec paths.
 
 This spec file (`docs/specs/2026-09-04-documentation-policy-design.md`) is the *open* spec for the cutover. **The last step of the cutover PR is to delete this spec** so `main` matches the CI rule. Promote any remaining policy sentences into `AGENTS.md` first (the `AGENTS.md` rewrite in §5 is that promotion).
 
@@ -143,6 +164,7 @@ Run this independently of the Python test/lint job so a docs violation is obviou
 No pytest of markdown policy. Verification for the implementation plan:
 
 - Grep: zero remaining references to `docs/superpowers`, `archive/`, or the rebuild index in committed files (except git history).
+- Grep over `**/AGENTS.md`, `**/README.md`, `**/OVERVIEW.md`: no `docs/specs/`, `docs/plans/` (except the allowed policy description in root `AGENTS.md`), no `Phase N` / `phase plan` / `design spec` / `superpowers` phrasing.
 - `git check-ignore -v docs/plans/example.md` shows the plans ignore; `docs/plans/README.md` is not ignored.
 - CI script/step fails when a dummy spec is tracked and passes with only `.gitkeep`.
 - `AGENTS.md` repo map and documentation policy match §2–§5.
