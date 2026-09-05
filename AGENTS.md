@@ -7,7 +7,7 @@ LifeFinances is a personal finances simulator rebuilt in 2026 (Python, TPAW mont
 | Layer | Tech |
 | ----- | ---- |
 | Runtime | Python 3.14+, uv workspace |
-| Web | FastAPI, Jinja2, HTMX (Phase 1+) |
+| Web | FastAPI, Jinja2, HTMX |
 | Data | SQLite (`data/data.db`), Pydantic models in `packages/core` |
 | Simulation | TPAW engine in `packages/simulation` |
 | Tools | Marimo apps in `tools/` |
@@ -33,8 +33,8 @@ LifeFinances is a personal finances simulator rebuilt in 2026 (Python, TPAW mont
 │   ├── db_inspect.py
 │   ├── refresh_market_data.py
 │   └── import_legacy_yaml.py
-├── docs/superpowers/        # active specs and phase plans
-└── archive/                 # frozen legacy docs — ignore unless asked
+├── docs/specs/              # open designs only (delete when feature done)
+└── docs/plans/              # gitignored local implementation plans
 ```
 
 ## Working directory contract
@@ -95,8 +95,6 @@ fallbacks are under `packages/simulation/simulation/market_data/data/`. Update
 
 Exit codes: `0` success, `1` no usable observations, `2` required API key not configured in Settings.
 
-See also: `docs/superpowers/specs/2026-06-28-phase-3a-plus-networked-market-data-design.md` §5.
-
 ## Commands
 
 | Action | Command |
@@ -111,7 +109,7 @@ After substantive changes, run `make` and confirm it passes before claiming work
 
 ## Testing policy
 
-Follow TDD for every feature and bugfix. Test **our logic**, not library behavior — do not add tests that only exercise Pydantic validation, trivial getters, simple attribute defaults or framework wiring unless a phase plan calls for a specific integration smoke test.
+Follow TDD for every feature and bugfix. Test **our logic**, not library behavior — do not add tests that only exercise Pydantic validation, trivial getters, simple attribute defaults or framework wiring unless this guide or a nested `AGENTS.md` calls for a specific integration smoke test.
 
 ### Avoid fragile values
 
@@ -146,28 +144,36 @@ Import defaults, thresholds, and config from production code in tests. Do not co
 
 ```
 web → simulation, domain, core
-tools → domain, core   (never web; never simulation unless a later spec says so)
+tools → domain, core   (never web; never simulation unless nested `AGENTS.md` says so)
 simulation → domain, core
 domain → core
 core → stdlib + pydantic + sqlite
 ```
 
-## AI artifact policy
+## Documentation policy
 
 | Location | Role |
 | -------- | ---- |
-| `docs/superpowers/specs/` | Architecture spec |
-| `docs/superpowers/plans/` | Phase implementation plans |
-| `packages/simulation/OVERVIEW.md` | TPAW parity backlog (Phase 3+) |
-| `packages/domain/OVERVIEW.md` | Legacy port map (Phase 2+) |
-| `archive/` | Frozen pre-rebuild docs |
+| Root / nested `AGENTS.md` | How to work in this repo or area |
+| `packages/*/OVERVIEW.md` | Durable package context; update when shipped behavior agents must know changes |
+| `docs/specs/` | Open design specs only — commit while work is open; **delete when the feature is done** (git history is enough) |
+| `docs/plans/` | Local implementation plans — **gitignored**; after implementation, delete the plan file |
+| GitHub issues | Roadmap / larger-work tracking |
 
-Do not create new `docs/features/.../Development/plan.md` chains.
+Rules:
+
+- Do not keep completed specs or plans in the tree.
+- Do not create `docs/features/...` chains or an `archive/` docs tree.
+- Promote lasting policy into `AGENTS.md` / `OVERVIEW.md` before deleting a spec.
+- For design/review of open work, load the matching file under `docs/specs/` if present.
+- Load a plan under `docs/plans/` only when continuing implementation of that plan — not during ordinary code review.
+- Do not load historical specs/plans unless the user explicitly asks (use git history).
+- Durable docs (`AGENTS.md`, `README.md`, `OVERVIEW.md`) must not cite specific spec/plan files or rebuild phase numbers (this table's path roles are the exception).
 
 ## Hard guardrails
 
 - NEVER commit `data/data.db` or personal plan data.
-- NEVER modify `config.yml` — YAML workflow removed; legacy import is Phase 4 script only.
+- NEVER modify `config.yml` — YAML workflow removed; legacy import is the import script only (`scripts/import_legacy_yaml.py`).
 - NEVER modify files under `.github/workflows/` without explicit user confirmation.
 - NEVER edit lockfiles by hand — use `uv add` / `uv sync`.
 - NEVER import `web` from `tools/` or `simulation`.
@@ -184,7 +190,3 @@ Do not create new `docs/features/.../Development/plan.md` chains.
 
 ### Performance
 - SHOULD evaluate downstream consumers of O(n) operations to prevent O(n^2) performance, for example in calculated properties that zip/sum lists
-
-## Phase planning
-
-Load `docs/superpowers/plans/2026-06-12-rebuild-index.md` at session start; execute only the active phase plan.
