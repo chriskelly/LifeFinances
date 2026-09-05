@@ -13,13 +13,13 @@ domain.build_monthly_cashflows(plan)        # Decimal net income/taxes per month
         │  (→ float64 at the boundary)
         ▼
 preprocess(plan)                            # NEW
-  ├─ resolve_inflation(plan)                # Phase 3a (scalar monthly rate)
-  ├─ resolve_planning_returns(plan)         # Phase 3c-2 (expected stock/bond returns)
+  ├─ resolve_inflation(plan)                # scalar monthly rate
+  ├─ resolve_planning_returns(plan)         # expected stock/bond returns
   ├─ risk:    RRA-by-month + legacy RRA     # NEW  (risk.py)
   ├─ mertons: stock-alloc + spending-tilt   # NEW  (mertons.py)
   └─ npv:     backward PV pass + cumulative  # NEW  (npv.py, vectorized)
         ▼
-build_return_paths(plan, months)          # Phase 3a (per-run monthly returns)
+build_return_paths(plan, months)          # per-run monthly returns
         ▼
 simulate_monthly(processed, paths)          # vectorized forward loop (engine.py)
         ▼
@@ -43,13 +43,13 @@ and needs floating point performance.
 dollars projected forward with raises, COLAs, etc.), but the engine internally
 works in *real* terms, matching how TPAW's historical return bootstrapping
 already strips out inflation. `preprocess` resolves a single scalar monthly
-inflation rate for the whole horizon (Phase 3a) and uses it to deflate the
+inflation rate for the whole horizon and uses it to deflate the
 nominal cashflows once, at the boundary, rather than carrying inflation as a
 per-month adjustment through the rest of the pipeline. This is a deliberate
 simplification versus TPAW's stochastic/bootstrapped inflation — see
 `OVERVIEW.md` for the parity note.
 
-**Return paths.** Also from Phase 3a, `build_return_paths` produces bootstrapped
+**Return paths.** Also, `build_return_paths` produces bootstrapped
 monthly stock and bond returns for every simulated run, over the full horizon.
 These are the random inputs that make each run differ from the others; the rest
 of the pipeline is otherwise deterministic given a plan and a set of return
@@ -145,7 +145,7 @@ emits a private `RawSimulationResult` (`num_runs × months`) internally; callers
 should treat raw arrays as an engine artifact, not the public API. Wealth
 composition bands (job, Social Security, pension, manual income — tax-prorated
 remaining NPV at each month) are attached for stacked total-portfolio charts in
-Phase 4.
+the web charts UI.
 
 ## Merton's formula
 
