@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import legacy config.yml into SQLite. Full implementation: Phase 4."""
+"""Import legacy config.yml into SQLite. Not implemented yet."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("yaml_path", help="Path to legacy config.yml")
     _ = parser.parse_args()
-    print("import_legacy_yaml.py is not implemented until Phase 4.", file=sys.stderr)
+    print("import_legacy_yaml.py is not implemented yet.", file=sys.stderr)
     sys.exit(2)
 
 

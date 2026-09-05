@@ -42,7 +42,7 @@
 #   1  Fetch returned no usable observations
 #   2  Required API key not configured in Settings
 #
-# See AGENTS.md and docs/superpowers/specs/2026-06-28-phase-3a-plus-networked-market-data-design.md §5.
+# See AGENTS.md (Market data refresh).
 """Refresh live market-data cache from configured local API keys."""
 
 from __future__ import annotations
