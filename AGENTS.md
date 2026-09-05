@@ -163,6 +163,8 @@ core → stdlib + pydantic + sqlite
 Rules:
 
 - Do not keep completed specs or plans in the tree.
+- Open specs may exist on pull requests for review, but they must be deleted before or when landing on `main`; `docs_specs_empty.yml` fails pushes to `main` when `docs/specs/` contains anything other than `.gitkeep`.
+- Name open specs `docs/specs/YYYY-MM-DD-<topic>-design.md`.
 - Do not create `docs/features/...` chains or an `archive/` docs tree.
 - Promote lasting policy into `AGENTS.md` / `OVERVIEW.md` before deleting a spec.
 - For design/review of open work, load the matching file under `docs/specs/` if present.
