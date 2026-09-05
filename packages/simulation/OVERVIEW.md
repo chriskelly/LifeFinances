@@ -20,9 +20,9 @@ numerical correctness without a runnable TPAW binary to diff against.
 | Wealth composition (tax-prorated NPV by income source: job / SS / pension / manual) | Ported | `simulation/composition.py` |
 | Planning-returns presets (live CAPE/EOD-derived expected returns, empirical variance refinement) | Ported | `simulation/market_data/presets.py`, `simulation/market_data/presets_data.py` |
 | S&P + Treasury 20-yr TIPS market feeds (cache + vendored fallback) | Ported | `simulation/market_data/` |
-| Bootstrapped/stochastic inflation (3b uses a single resolved scalar inflation rate for the whole horizon) | Deferred | Issue #186 |
+| Bootstrapped/stochastic inflation (currently a single resolved scalar inflation rate for the whole horizon) | Deferred | Issue #186 |
 | Spending ceiling/floor constraints | Removed from scope | Not planned — this rebuild's product scope removed ceiling/floor |
-| Detailed tax-bucket modeling interactions with withdrawals (traditional vs. Roth vs. taxable sequencing) | Deferred | Later phase, unscheduled |
+| Detailed tax-bucket modeling interactions with withdrawals (traditional vs. Roth vs. taxable sequencing) | Deferred | Unscheduled |
 | Withdrawal rate from savings | Deferred | Later / if needed |
 | Total-portfolio stock allocation series | Deferred | Later |
 | Spending-tilt result series | Deferred | Later (tilt already drives engine) |
