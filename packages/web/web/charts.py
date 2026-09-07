@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-from typing import Any
-
 import plotly.graph_objects as go
 from simulation.result import SimulationResult
-
-from web import theme
 
 PORTFOLIO = "portfolio"
 SPENDING_TOTAL = "spending-total"
@@ -108,15 +104,8 @@ HOVERFORMAT_PERCENT = ".1%"
 TICKFORMAT_PERCENT = ".0%"
 PERCENT_Y_RANGE = (0.0, 1.0)
 
-
-def _theme_layout() -> dict[str, Any]:
-    return {
-        "paper_bgcolor": theme.BACKGROUND,
-        "plot_bgcolor": theme.BACKGROUND,
-        "font": {"color": theme.COLOR},
-        "xaxis": {"gridcolor": theme.MUTED_BORDER, "zerolinecolor": theme.MUTED_BORDER},
-        "yaxis": {"gridcolor": theme.MUTED_BORDER, "zerolinecolor": theme.MUTED_BORDER},
-    }
+# Classic Plotly blue; translucent band between outer percentiles only.
+BAND_FILLCOLOR = "rgba(31, 119, 180, 0.2)"
 
 
 def _band_figure(
@@ -148,7 +137,7 @@ def _band_figure(
                 mode="lines",
                 line={"width": 0},
                 fill="tonexty",
-                fillcolor=theme.CHART_BAND_FILL,
+                fillcolor=BAND_FILLCOLOR,
                 showlegend=False,
                 hoverinfo="skip",
                 name="band-low",
@@ -160,19 +149,13 @@ def _band_figure(
                 x=x,
                 y=series[row, :].tolist(),
                 mode="lines",
-                line={"color": theme.CHART_SERIES[row % len(theme.CHART_SERIES)]},
                 name=f"{percentile}th",
             )
         )
-    yaxis: dict[str, object] = {
-        "hoverformat": hoverformat,
-        "gridcolor": theme.MUTED_BORDER,
-        "zerolinecolor": theme.MUTED_BORDER,
-    }
+    yaxis: dict[str, object] = {"hoverformat": hoverformat}
     if lock_percent_axis:
         yaxis["range"] = list(PERCENT_Y_RANGE)
         yaxis["tickformat"] = TICKFORMAT_PERCENT
-    figure.update_layout(**_theme_layout())
     figure.update_layout(
         hovermode=_HOVERMODE,
         legend={"traceorder": "reversed"},
@@ -190,33 +173,26 @@ def _wealth_composition_figure(result: SimulationResult, chart_type: str) -> go.
             x=x,
             y=result.balance_start[row, :].tolist(),
             mode="lines",
-            line={"color": theme.CHART_SERIES[0]},
             name="Savings",
             stackgroup=_WEALTH_STACKGROUP,
             hoveron="points",
         )
     )
-    for index, (label, field) in enumerate(_WEALTH_INCOME_LAYERS, start=1):
+    for label, field in _WEALTH_INCOME_LAYERS:
         figure.add_trace(
             go.Scatter(
                 x=x,
                 y=getattr(result, field).tolist(),
                 mode="lines",
-                line={"color": theme.CHART_SERIES[index % len(theme.CHART_SERIES)]},
                 name=label,
                 stackgroup=_WEALTH_STACKGROUP,
                 hoveron="points",
             )
         )
-    figure.update_layout(**_theme_layout())
     figure.update_layout(
         hovermode=_HOVERMODE,
         legend={"traceorder": "reversed"},
-        yaxis={
-            "hoverformat": HOVERFORMAT_DOLLAR,
-            "gridcolor": theme.MUTED_BORDER,
-            "zerolinecolor": theme.MUTED_BORDER,
-        },
+        yaxis={"hoverformat": HOVERFORMAT_DOLLAR},
     )
     return figure
 

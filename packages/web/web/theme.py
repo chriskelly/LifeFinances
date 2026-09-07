@@ -34,15 +34,6 @@ SPACING = "0.875rem"  # Pico default 1rem
 FORM_SPACING_VERTICAL = "0.35rem"  # Pico default 0.75rem
 FORM_SPACING_HORIZONTAL = "0.65rem"  # Pico default 1rem
 
-CHART_BAND_FILL = "rgba(1, 114, 173, 0.2)"
-CHART_SERIES: tuple[str, ...] = (
-    PRIMARY,
-    PRIMARY_HOVER,
-    COLOR,
-    MUTED,
-    PRIMARY_HOVER_BACKGROUND,
-)
-
 PICO_LIGHT: dict[str, str] = {
     "--pico-font-size": FONT_SIZE,
     "--pico-line-height": LINE_HEIGHT,
