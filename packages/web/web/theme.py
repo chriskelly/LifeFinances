@@ -24,6 +24,16 @@ DANGER_TEXT = "rgb(136, 56.5, 53)"
 DANGER_BORDER = "rgb(183.5, 105.5, 106.5)"
 DANGER_BACKGROUND = "rgb(253, 236, 234)"
 
+# Density — Pico defaults are roomy for a dense planner UI. Tuned "slightly denser".
+# Pico fluid also grows --pico-font-size at large breakpoints; we re-set it here
+# (this <style> loads after Pico) so the size stays pinned.
+# Adjust these constants to retune; more compact examples in AGENTS.md.
+FONT_SIZE = "93.75%"  # Pico default 100% (+ larger at wide breakpoints)
+LINE_HEIGHT = "1.4"  # Pico default 1.5
+SPACING = "0.875rem"  # Pico default 1rem
+FORM_SPACING_VERTICAL = "0.5rem"  # Pico default 0.75rem
+FORM_SPACING_HORIZONTAL = "0.75rem"  # Pico default 1rem
+
 CHART_BAND_FILL = "rgba(1, 114, 173, 0.2)"
 CHART_SERIES: tuple[str, ...] = (
     PRIMARY,
@@ -34,6 +44,11 @@ CHART_SERIES: tuple[str, ...] = (
 )
 
 PICO_LIGHT: dict[str, str] = {
+    "--pico-font-size": FONT_SIZE,
+    "--pico-line-height": LINE_HEIGHT,
+    "--pico-spacing": SPACING,
+    "--pico-form-element-spacing-vertical": FORM_SPACING_VERTICAL,
+    "--pico-form-element-spacing-horizontal": FORM_SPACING_HORIZONTAL,
     "--pico-background-color": BACKGROUND,
     "--pico-color": COLOR,
     "--pico-muted-color": MUTED,
