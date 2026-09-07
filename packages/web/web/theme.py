@@ -27,7 +27,7 @@ DANGER_BACKGROUND = "rgb(253, 236, 234)"
 # Density — Pico defaults are roomy for a dense planner UI.
 # Pico fluid also grows --pico-font-size at large breakpoints; we re-set it here
 # (this <style> loads after Pico) so the size stays pinned.
-# Adjust these constants to retune; more compact examples in AGENTS.md.
+# Edit FONT_SIZE / LINE_HEIGHT / SPACING / FORM_SPACING_* to retune.
 FONT_SIZE = "87.5%"  # Pico default 100% (+ larger at wide breakpoints)
 LINE_HEIGHT = "1.4"  # Pico default 1.5
 SPACING = "0.875rem"  # Pico default 1rem

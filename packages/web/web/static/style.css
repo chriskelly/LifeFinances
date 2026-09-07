@@ -129,8 +129,18 @@ body {
   margin: 0;
 }
 
+.plan-menu-rename {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .plan-menu-rename input {
-  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.plan-menu-rename button {
+  align-self: stretch;
 }
 
 .layout {
@@ -210,28 +220,29 @@ label.partner-toggle input[type="checkbox"] {
 }
 
 .boundary-part input[name$="_year"],
-.boundary-part input[name$="_age_years"] {
-  width: 4.75rem;
+.boundary-part input[name$="_age_years"],
+.birth-month-fields input[type="number"] {
+  /* border-box width must include Pico form padding or digits clip */
+  width: calc(
+    6ch + 2 * var(--pico-form-element-spacing-horizontal) + 2 * var(--pico-border-width)
+  );
 }
 
 .boundary-part input[name$="_month"],
 .boundary-part select[name$="_month"],
-.boundary-part input[name$="_age_months"] {
-  width: 4.25rem;
+.boundary-part input[name$="_age_months"],
+.birth-month-fields select {
+  /* 3-letter month + native select chevron + Pico padding */
+  width: calc(
+    4ch + 2 * var(--pico-form-element-spacing-horizontal) + 2 * var(--pico-border-width) +
+      1rem
+  );
 }
 
 .birth-month-fields {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-}
-
-.birth-month-fields select {
-  width: 4.25rem;
-}
-
-.birth-month-fields input[type="number"] {
-  width: 4.75rem;
 }
 
 .currency-input,
