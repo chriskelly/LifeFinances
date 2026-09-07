@@ -14,10 +14,6 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  line-height: 1.5;
-  color: #1a1a1a;
-  background: #fafafa;
 }
 
 .app-header {
@@ -25,8 +21,8 @@ body {
   align-items: baseline;
   gap: 1rem;
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid #ddd;
-  background: #fff;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  background: var(--pico-background-color);
 }
 
 .app-header h1 {
@@ -42,7 +38,6 @@ body {
 
 .plan-menu summary {
   cursor: pointer;
-  color: #333;
   list-style: none;
 }
 
@@ -53,7 +48,7 @@ body {
 .plan-menu summary::after {
   content: "▾";
   margin-left: 0.35rem;
-  color: #888;
+  color: var(--pico-muted-color);
 }
 
 .plan-menu-panel {
@@ -65,10 +60,9 @@ body {
   min-width: 16rem;
   max-width: min(22rem, calc(100vw - 2rem));
   padding: 0.75rem;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background: var(--pico-background-color);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -78,7 +72,7 @@ body {
   list-style: none;
   margin: 0;
   padding: 0 0 0.5rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--pico-muted-border-color);
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -92,13 +86,12 @@ body {
 
 .plan-menu-list a {
   flex: 1;
-  color: #1a1a1a;
   text-decoration: none;
 }
 
 .plan-menu-unreadable {
   flex: 1;
-  color: #888;
+  color: var(--pico-muted-color);
   font-style: italic;
 }
 
@@ -111,13 +104,13 @@ body {
   line-height: 1.2;
   border: 1px solid transparent;
   background: transparent;
-  color: #888;
+  color: var(--pico-muted-color);
   cursor: pointer;
 }
 
 .plan-menu-row-delete button:hover:not(:disabled) {
-  color: #a00;
-  border-color: #ddd;
+  color: var(--pico-del-color);
+  border-color: var(--pico-muted-border-color);
 }
 
 .plan-menu-row-delete button:disabled {
@@ -138,7 +131,6 @@ body {
 
 .plan-menu-rename input {
   flex: 1;
-  padding: 0.3rem 0.4rem;
 }
 
 .layout {
@@ -160,9 +152,9 @@ body {
 
 .editor-section {
   padding: 1rem 1.25rem;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  background: var(--pico-background-color);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
 }
 
 .editor-section h2 {
@@ -177,8 +169,8 @@ body {
 }
 
 .person-fields {
-  border: 1px solid #eee;
-  border-radius: 4px;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
   padding: 0.75rem 1rem;
   margin: 0;
 }
@@ -186,13 +178,6 @@ body {
 .person-fields legend {
   font-weight: 600;
   padding: 0 0.25rem;
-}
-
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.9rem;
 }
 
 label.checkbox-label,
@@ -253,72 +238,55 @@ label.partner-toggle input[type="checkbox"] {
   font-variant-numeric: tabular-nums;
 }
 
-input,
-select {
-  padding: 0.4rem 0.5rem;
-  font: inherit;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-}
-
-.helper-text {
+.helper-text,
+.field-help {
   margin: 0;
   font-size: 0.85rem;
-  color: #555;
+  color: var(--pico-muted-color);
 }
 
 #results-panel {
   padding: 1rem 1.25rem;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  background: var(--pico-background-color);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
   overflow-y: auto;
   min-height: 0;
 }
 
-/* Reserve Plotly's default figure height so the empty chart div does not
-   collapse between the HTMX swap and Plotly.react on htmx:afterSettle,
-   which otherwise makes the summary jump up and back down (flicker). */
+/* Keep in sync with Plotly default figure height (see packages/web/AGENTS.md). */
 #results-chart {
   min-height: 450px;
 }
 
 .error-message {
   margin: 2rem;
-  color: #a00;
 }
 
 .form-error {
   padding: 0.6rem 0.9rem;
-  background: #fdecea;
-  border: 1px solid #f5c2c0;
-  border-radius: 4px;
-  color: #a00;
+  border: 1px solid;
+  border-radius: var(--pico-border-radius);
   font-size: 0.9rem;
 }
 
-/* Pin the global save-error banner to the top of the scrollable editor pane
-   so it stays visible no matter how far down the user has scrolled. */
 #form-error {
   position: sticky;
   top: 0;
   z-index: 5;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .results-error {
   padding: 0.75rem 1rem;
-  background: #fdecea;
-  border: 1px solid #f5c2c0;
-  border-radius: 4px;
-  color: #a00;
+  border: 1px solid;
+  border-radius: var(--pico-border-radius);
 }
 
 .results-summary,
 .results-spending {
   margin: 0.75rem 0 0;
   font-size: 0.9rem;
-  color: #444;
+  color: var(--pico-muted-color);
 }
 
 .results-spending {
