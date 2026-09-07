@@ -262,9 +262,43 @@ def test_band_chart_adds_translucent_fill_between_outer_percentiles():
     assert len(fill_traces) == 1
     fill = fill_traces[0]
     assert fill["y"] == [10.0] * horizon_months
-    assert "rgba" in fill["fillcolor"]
+    assert fill["fillcolor"] == charts.BAND_FILLCOLOR
     assert fill.get("hoverinfo") == "skip"
     assert fill.get("showlegend") is False
+
+
+def test_band_percentile_lines_leave_color_to_plotly_defaults():
+    percentiles = [5, 50, 95]
+    result = _make_result(percentiles=percentiles, horizon_months=2)
+
+    figure = charts.build_figure(result, charts.PORTFOLIO)
+
+    line_traces = [
+        trace for trace in figure["data"] if trace.get("showlegend") is not False
+    ]
+    assert len(line_traces) == len(percentiles)
+    assert all("color" not in trace.get("line", {}) for trace in line_traces)
+
+
+def test_wealth_traces_leave_color_to_plotly_defaults():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
+
+    figure = charts.build_figure(result, charts.WEALTH_COMPOSITION_MID)
+
+    assert all("color" not in trace.get("line", {}) for trace in figure["data"])
+
+
+def test_figure_layout_does_not_override_plotly_surface_chrome():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
+
+    figure = charts.build_figure(result, charts.SPENDING_TOTAL)
+    layout = figure["layout"]
+
+    assert "paper_bgcolor" not in layout
+    assert "plot_bgcolor" not in layout
+    assert "color" not in layout.get("font", {})
+    assert "gridcolor" not in layout.get("xaxis", {})
+    assert "gridcolor" not in layout.get("yaxis", {})
 
 
 def test_band_chart_omits_fill_for_single_percentile():

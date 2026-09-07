@@ -103,7 +103,9 @@ HOVERFORMAT_DOLLAR = "$,.0f"
 HOVERFORMAT_PERCENT = ".1%"
 TICKFORMAT_PERCENT = ".0%"
 PERCENT_Y_RANGE = (0.0, 1.0)
-_BAND_FILLCOLOR = "rgba(31, 119, 180, 0.2)"
+
+# Classic Plotly blue; translucent band between outer percentiles only.
+BAND_FILLCOLOR = "rgba(31, 119, 180, 0.2)"
 
 
 def _band_figure(
@@ -135,7 +137,7 @@ def _band_figure(
                 mode="lines",
                 line={"width": 0},
                 fill="tonexty",
-                fillcolor=_BAND_FILLCOLOR,
+                fillcolor=BAND_FILLCOLOR,
                 showlegend=False,
                 hoverinfo="skip",
                 name="band-low",

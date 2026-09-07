@@ -39,6 +39,7 @@ from web import (
     routes,
     sections,
     spending_summary,
+    theme,
 )
 from web.dependencies import get_repository, require_plan, resolve_default_plan_id
 from web.forms import (
@@ -90,6 +91,7 @@ logger = logging.getLogger(__name__)
 _PACKAGE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(_PACKAGE_DIR / "templates"))
 templates.env.globals["routes"] = routes
+templates.env.globals["theme"] = theme
 templates.env.globals["sections"] = sections
 templates.env.globals["forms"] = forms
 templates.env.globals["boundaries"] = boundaries

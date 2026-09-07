@@ -1,6 +1,6 @@
 # Web — Agent Guide
 
-FastAPI + Jinja2 + HTMX split-pane UI for plan editing and simulation results.
+FastAPI + Jinja2 + HTMX + Pico.css split-pane UI for plan editing and simulation results.
 
 ## Prerequisites
 
@@ -102,6 +102,17 @@ hx-swap="innerHTML"
 ```
 
 This decouples save (debounced per form) from results refresh (once per successful save). The panel reads the current chart from `#chart-select` via `hx-vals` so the selection survives the refresh.
+
+## Styling and color palette
+
+- Pico.css **2.1.1** fluid classless, pinned in `web.theme.PICO_STYLESHEET_HREF`. Load Pico, then `theme.pico_root_css()`, then `static/style.css`.
+- `<html data-theme="light">` is required in v1 so OS dark mode cannot restyle the shell while Plotly stays on its default light look.
+- **Retint UI** by editing constants in `web/theme.py` only. Do not add `--color-*` tokens. Do not put hex in templates or `style.css`.
+- **Charts** use stock Plotly series colors. The percentile band fill (`BAND_FILLCOLOR` in `web/charts.py`) is the only explicit chart color we set; do not wire chart colors through `theme.py`.
+- **Density** (overall size): edit `FONT_SIZE`, `LINE_HEIGHT`, `SPACING`, `FORM_SPACING_VERTICAL`, and `FORM_SPACING_HORIZONTAL` in `theme.py`. Shell gaps in `static/style.css` (layout/`editor-pane` padding) are separate if the page still feels roomy.
+- Live emitted Pico roles: surfaces, primary family, invalid/del, plus density tokens above. To add secondary/contrast, copy names from https://picocss.com/docs/css-variables into `PICO_LIGHT` — do not comment-dump Pico's full theme.
+- Custom CSS is for split-pane shell, plan-menu positioning, Plotly `#results-chart` min-height, HTMX error-banner layout, and JS-driven show/hide. Prefer stock Pico for forms.
+- If Pico makes plan-menu × or boundary rows unusable: try a structural HTML tweak first; then **one** named hatch (`.compact-controls`) that only changes spacing and still uses `--pico-*` for color. No ad-hoc per-widget override pile-up.
 
 ## Tests
 
