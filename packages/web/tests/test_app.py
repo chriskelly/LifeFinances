@@ -63,6 +63,7 @@ from web.sections import (
     SOCIAL_SECURITY_TITLE,
 )
 from web.spending_summary import INITIAL_SPENDING_LABEL, WORST_CASE_SPENDING_LABEL
+from web.theme import PICO_STYLESHEET_HREF
 
 from web import charts as web_charts
 
@@ -213,6 +214,17 @@ def test_home_loads_plotly_and_results_partial(
     assert "renderResultsChart" in response.text
     assert 'id="results-chart"' in response.text
     assert "results-stub" not in response.text
+
+
+def test_home_forces_light_pico_theme_from_module(
+    client: TestClient, plan_id: int
+) -> None:
+    response: httpx.Response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert 'data-theme="light"' in response.text
+    assert PICO_STYLESHEET_HREF in response.text
+    assert "--pico-primary:" in response.text
 
 
 def test_patch_portfolio_persists_balance_change(

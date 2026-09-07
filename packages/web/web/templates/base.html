@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
   <title>{% block title %}LifeFinances{% endblock %}</title>
+  <link rel="stylesheet" href="{{ theme.PICO_STYLESHEET_HREF }}">
+  <style>{{ theme.pico_root_css() | safe }}</style>
   <link rel="stylesheet" href="{{ routes.STATIC }}/style.css">
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script id="plotly-cdn" src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
