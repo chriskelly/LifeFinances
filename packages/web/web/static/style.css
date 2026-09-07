@@ -182,6 +182,7 @@ body {
 
 label.checkbox-label,
 label.partner-toggle {
+  display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
