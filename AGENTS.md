@@ -91,7 +91,11 @@ API is year-scoped). S&P `--update-vendored` uses a long `from` date (1990-01-01
 Default cache output: `data/market_cache/t10yie_daily.csv` (+ sidecar metadata). S&P and
 Treasury caches live alongside it (`sp500_close.csv`, `treasury_real_yield.csv`). Vendored
 fallbacks are under `packages/simulation/simulation/market_data/data/`. Update
-`PROVENANCE.md` before committing vendored data changes.
+`PROVENANCE.md` before committing vendored data changes. T10YIE / S&P / Treasury refreshes
+are `scripts/refresh_market_data.py`; TPAW historical-returns version bumps (CAPE
+regression, Shiller earnings, monthly returns, stock variance) follow the checklist in
+`packages/simulation/simulation/market_data/data/PROVENANCE.md` — they are not covered by
+the refresh script.
 
 Exit codes: `0` success, `1` no usable observations, `2` required API key not configured in Settings.
 

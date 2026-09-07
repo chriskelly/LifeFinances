@@ -3,11 +3,12 @@ from __future__ import annotations
 import csv
 import json
 from dataclasses import dataclass
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 
 _DATA_DIR = Path(__file__).parent / "data"
-_CAPE_REGRESSION_PATH = _DATA_DIR / "cape_regression_v7.json"
+_CAPE_REGRESSION_PATH = _DATA_DIR / "cape_regression_v8.json"
 _VARIANCE_TABLE_PATH = _DATA_DIR / "stock_log_variance_by_block.csv"
 
 # tpaw ordering: full then restricted, each [5, 10, 20, 30]-year.
@@ -27,7 +28,7 @@ REGRESSION_KEYS = (
 class CapeRegression:
     shiller_10yr_real_earnings: float
     pairs: dict[str, tuple[float, float]]  # key -> (slope, intercept)
-    effective_date: str
+    effective_date: date
 
 
 @lru_cache(maxsize=1)
@@ -38,7 +39,7 @@ def load_cape_regression() -> CapeRegression:
     return CapeRegression(
         shiller_10yr_real_earnings=float(data["shiller_10yr_real_earnings"]),
         pairs=pairs,
-        effective_date=str(data["effective_date"]),
+        effective_date=date.fromisoformat(str(data["effective_date"])),
     )
 
 

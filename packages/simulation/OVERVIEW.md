@@ -80,7 +80,7 @@ though no full end-to-end numerical diff against TPAW is possible.
 ## Planning-returns presets
 
 Preset menu is at full tpaw parity: regression, conservative, 1/CAPE, historical,
-fixed-equity-premium, custom, and fixed. Expected returns come from vendored v7 CAPE
+fixed-equity-premium, custom, and fixed. Expected returns come from vendored v8 CAPE
 regression + Shiller earnings, combined with live or vendored S&P 500 and 20-yr TIPS
 yields (S&P + Treasury feeds). Variance uses the vendored block-size table scaled by
 `stock_volatility_scale²` — preset choice affects expected returns only, not variance

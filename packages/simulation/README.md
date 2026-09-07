@@ -269,11 +269,11 @@ of the preset.
 When the preset needs live valuation (all except `fixed` and `historical`):
 
 1. **1/CAPE** — `shiller_10yr_real_earnings / sp500_close`. Earnings are
-   vendored (v7 Shiller 10-year average real earnings); price is the latest
+   vendored (v8 Shiller 10-year average real earnings); price is the latest
    S&P close at or before `today` (cache → vendored → optional live EOD).
 2. **Regression input** — \(x = \ln(1 + 1/\text{CAPE})\).
 3. **Eight linear predictions** — for each `(slope, intercept)` in
-   `cape_regression_v7.json`: `annual_log = slope × x + intercept`.
+   `cape_regression_v8.json`: `annual_log = slope × x + intercept`.
 4. **Log → simple conversion** — each `annual_log` is converted to a simple
    annual return via the shift correction (next subsection).
 5. **Aggregate** — `regression_prediction = round3(mean of all 8 simple returns)`.
@@ -286,7 +286,7 @@ Treasury resolver (cache → vendored → optional live Treasury API).
 The JSON coefficients are **not** fitted at runtime. TPAW's maintainer CLI
 (`cli_process_historical_data_part_2_derive` in the `tpaw` repo) runs eight
 separate OLS regressions on Shiller history and bakes the results into Rust
-constants; LifeFinances copies the v7 set verbatim.
+constants; LifeFinances copies the v8 set verbatim.
 
 For each fit:
 
@@ -322,7 +322,7 @@ correction is:
   = \frac{\ln(1 + \bar{r}_{\text{simple,annual}})}{12} - \bar{r}_{\text{log,monthly}}
 \]
 
-where the bars are computed from the vendored v7 historical stock series
+where the bars are computed from the vendored v8 historical stock series
 (`_shift_correction` in `presets.py`, mirroring TPAW `get_shift_correction`).
 Each regression output is then:
 

@@ -22,6 +22,13 @@ from .tpaw_preset_contract import (
     EXPECTED_HISTORICAL_STOCKS,
     EXPECTED_ONE_OVER_CAPE_ROUNDED,
     EXPECTED_REGRESSION_PREDICTION,
+    EXPECTED_SHILLER_10YR_REAL_EARNINGS,
+    EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1,
+    EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1440,
+    SEP4_2026_CONSERVATIVE_ESTIMATE,
+    SEP4_2026_ONE_OVER_CAPE,
+    SEP4_2026_REGRESSION_PREDICTION,
+    SEP4_2026_SP500_CLOSE,
     SP500_CLOSE,
 )
 
@@ -32,8 +39,11 @@ def test_loaders_feed_preset_math():
     coeffs = load_cape_regression()
     table = load_stock_log_variance_by_block()
 
+    assert coeffs.shiller_10yr_real_earnings == EXPECTED_SHILLER_10YR_REAL_EARNINGS
     assert list(coeffs.pairs.keys()) == list(REGRESSION_KEYS)
     assert set(table.keys()) == set(range(1, 1441))
+    assert table[1] == EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1
+    assert table[1440] == EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1440
 
 
 def test_one_over_cape_is_earnings_over_price():
@@ -45,8 +55,14 @@ def test_one_over_cape_is_earnings_over_price():
 
 
 def test_round3_matches_tpaw_round_p():
-    # pinned: half-away-from-zero at 3 dp
-    assert round3(0.0225) == EXPECTED_ONE_OVER_CAPE_ROUNDED
+    # pinned: half-away-from-zero at 3 dp (not a market-data golden)
+    assert round3(0.0225) == 0.023
+
+
+def test_stock_estimates_one_over_cape_matches_contract():
+    estimates = stock_estimates(sp500_close=SP500_CLOSE)
+
+    assert estimates.one_over_cape == EXPECTED_ONE_OVER_CAPE_ROUNDED
 
 
 @pytest.mark.parametrize(
@@ -84,6 +100,15 @@ def test_stock_estimates_bundle_derives_from_same_inputs():
     assert estimates.one_over_cape == round3(ooc)
     assert estimates.regression_prediction == regression_prediction(ooc)
     assert estimates.conservative_estimate == conservative_estimate(ooc)
+
+
+def test_sep4_2026_sp500_matches_live_tpaw_guide():
+    # pinned: TPAW Expected Returns guide for NYSE close 2026-09-04
+    estimates = stock_estimates(sp500_close=SEP4_2026_SP500_CLOSE)
+
+    assert estimates.one_over_cape == SEP4_2026_ONE_OVER_CAPE
+    assert estimates.regression_prediction == SEP4_2026_REGRESSION_PREDICTION
+    assert estimates.conservative_estimate == SEP4_2026_CONSERVATIVE_ESTIMATE
 
 
 def test_stock_log_variance_scales_table_entry():
