@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from simulation.result import ResolvedAssumptions, SimulationResult
 
-from web import charts
+from web import charts, theme
 
 
 def _resolved_assumptions() -> ResolvedAssumptions:
@@ -262,9 +262,49 @@ def test_band_chart_adds_translucent_fill_between_outer_percentiles():
     assert len(fill_traces) == 1
     fill = fill_traces[0]
     assert fill["y"] == [10.0] * horizon_months
-    assert "rgba" in fill["fillcolor"]
+    assert fill["fillcolor"] == theme.CHART_BAND_FILL
     assert fill.get("hoverinfo") == "skip"
     assert fill.get("showlegend") is False
+
+
+def test_band_percentile_lines_use_theme_series_colors():
+    percentiles = [5, 50, 95]
+    result = _make_result(percentiles=percentiles, horizon_months=2)
+
+    figure = charts.build_figure(result, charts.PORTFOLIO)
+
+    line_traces = [
+        trace for trace in figure["data"] if trace.get("showlegend") is not False
+    ]
+    expected_colors = [
+        theme.CHART_SERIES[index % len(theme.CHART_SERIES)]
+        for index in range(len(percentiles))
+    ]
+    assert [trace["line"]["color"] for trace in line_traces] == expected_colors
+
+
+def test_wealth_traces_use_theme_series_colors():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
+
+    figure = charts.build_figure(result, charts.WEALTH_COMPOSITION_MID)
+
+    expected_colors = [
+        theme.CHART_SERIES[index % len(theme.CHART_SERIES)]
+        for index in range(len(figure["data"]))
+    ]
+    assert [trace["line"]["color"] for trace in figure["data"]] == expected_colors
+
+
+def test_figure_layout_chrome_matches_theme_surfaces():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
+
+    figure = charts.build_figure(result, charts.SPENDING_TOTAL)
+    layout = figure["layout"]
+
+    assert layout["paper_bgcolor"] == theme.BACKGROUND
+    assert layout["plot_bgcolor"] == theme.BACKGROUND
+    assert layout["font"]["color"] == theme.COLOR
+    assert layout["xaxis"]["gridcolor"] == theme.MUTED_BORDER
 
 
 def test_band_chart_omits_fill_for_single_percentile():
