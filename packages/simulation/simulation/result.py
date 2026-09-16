@@ -7,6 +7,11 @@ import numpy as np
 from core.models import PlanningPreset
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from simulation.diagnostics import (
+    SimulationDiagnostics,
+    _eq_ndarray_model,
+    empty_diagnostics,
+)
 from simulation.market_data.cache import MarketDataSource
 from simulation.market_data.inflation import InflationResolved
 from simulation.planning_returns import PlanningReturns
@@ -33,26 +38,6 @@ _PUBLIC_ARRAY_FIELDS = (
     "wealth_pension",
     "wealth_manual",
 )
-
-
-def _eq_ndarray_model(
-    self: Any,
-    other: Any,
-    *,
-    array_fields: tuple[str, ...],
-) -> bool:
-    """Compare two same-typed models whose ndarray fields break Pydantic's `==`.
-
-    Callers guard the type check (returning `NotImplemented` on mismatch) so this
-    helper always compares two instances of the same model and returns a real bool.
-    """
-    if not all(
-        np.array_equal(getattr(self, field), getattr(other, field))
-        for field in array_fields
-    ):
-        return False
-    scalar_fields = set(type(self).model_fields) - set(array_fields)
-    return all(getattr(self, field) == getattr(other, field) for field in scalar_fields)
 
 
 class RawSimulationResult(BaseModel):
@@ -166,3 +151,16 @@ class SimulationResult(BaseModel):
         if not isinstance(other, SimulationResult):
             return NotImplemented
         return _eq_ndarray_model(self, other, array_fields=_PUBLIC_ARRAY_FIELDS)
+
+
+__all__ = [
+    "ENGINE_VERSION",
+    "InflationSource",
+    "RAW_ARRAY_FIELDS",
+    "RawSimulationResult",
+    "ResolvedAssumptions",
+    "SimulationDiagnostics",
+    "SimulationResult",
+    "build_resolved_assumptions",
+    "empty_diagnostics",
+]
