@@ -5,6 +5,7 @@ from datetime import date, datetime
 import numpy as np
 from core.defaults import default_plan
 from fastapi import FastAPI
+from simulation.diagnostics import empty_diagnostics
 from simulation.result import ResolvedAssumptions, SimulationResult
 from web.simulation_cache import CACHE_MAX_SIZE, fingerprint_plan, get_or_run_simulation
 
@@ -43,6 +44,7 @@ def _make_result() -> SimulationResult:
         wealth_pension=months.copy(),
         wealth_manual=months.copy(),
         num_runs_insufficient=0,
+        diagnostics=empty_diagnostics(months=horizon_months),
         resolved_assumptions=_resolved_assumptions(),
     )
 

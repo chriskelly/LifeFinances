@@ -2,6 +2,7 @@ from datetime import datetime
 
 import numpy as np
 import pytest
+from simulation.diagnostics import empty_diagnostics
 from simulation.result import ResolvedAssumptions, SimulationResult
 
 from web import charts
@@ -39,6 +40,7 @@ def _make_result(*, percentiles: list[int], horizon_months: int) -> SimulationRe
         wealth_pension=months.copy(),
         wealth_manual=months.copy(),
         num_runs_insufficient=0,
+        diagnostics=empty_diagnostics(months=horizon_months),
         resolved_assumptions=_resolved_assumptions(),
     )
 

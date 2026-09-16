@@ -81,6 +81,26 @@ def test_run_simulation_start_month_and_horizon_match_timeline():
     assert result.percentiles == DEFAULT_PERCENTILES
 
 
+def test_run_simulation_diagnostics_carry_expected_run_wealth() -> None:
+    plan = default_plan()
+    today = date(2026, 1, 1)
+    starting = float(plan.portfolio.current_savings_balance)
+
+    result = run_simulation(
+        plan,
+        today=today,
+        ran_at=datetime(2026, 1, 1),
+    )
+
+    months = result.horizon_months
+    assert result.diagnostics.rra_by_month.shape == (months,)
+    assert result.diagnostics.expected_savings_stock_fraction.shape == (months,)
+    assert result.diagnostics.stocks_target.shape == (months,)
+    # Month-0 scheduled wealth is starting savings + that month's income NPV + income.
+    # Fails if build_public_result still attaches empty_diagnostics (all zeros).
+    assert result.diagnostics.scheduled_wealth[0] >= starting
+
+
 def test_run_simulation_resolved_assumptions_match_fixed_preset() -> None:
     annual_inflation = 0.023
     annual_stocks = 0.051
