@@ -1,4 +1,5 @@
 import math
+from dataclasses import replace
 
 import numpy as np
 from simulation.diagnostics import (
@@ -6,6 +7,9 @@ from simulation.diagnostics import (
     empty_diagnostics,
     rra_for_diagnostics,
 )
+from simulation.engine import _savings_carve, _stock_fraction
+
+from .processed_fixtures import _flat_processed
 
 
 def test_rra_for_diagnostics_replaces_infinity_with_sentinel() -> None:
@@ -28,3 +32,69 @@ def test_empty_diagnostics_series_match_requested_horizon() -> None:
     assert diagnostics.rra_by_month.shape == (months,)
     assert diagnostics.expected_savings_stock_fraction.shape == (months,)
     assert diagnostics.legacy_stock_allocation == 0.0
+
+
+def test_savings_carve_fraction_matches_clipped_target_over_balance() -> None:
+    months = 1
+    starting_balance = 100.0
+    merton_alloc = 0.4
+    legacy_alloc = 0.2
+    processed = replace(
+        _flat_processed(months, starting_balance=starting_balance),
+        stock_allocation_total_portfolio=np.full(months, merton_alloc),
+        legacy_stock_allocation=legacy_alloc,
+        npv_income_without_current=np.array([50.0]),
+        npv_essential_without_current=np.array([10.0]),
+        npv_discretionary_without_current=np.array([20.0]),
+        legacy_npv=np.array([30.0]),
+    )
+    balance_after_withdrawals = 80.0
+
+    carve = _savings_carve(
+        processed=processed,
+        month=0,
+        balance_after_withdrawals=balance_after_withdrawals,
+        scale_discretionary=1.0,
+        scale_legacy=1.0,
+    )
+
+    expected_fraction = float(
+        np.clip(carve.stocks_target / carve.savings_balance, 0.0, 1.0)
+    )
+    assert carve.stock_fraction == expected_fraction
+    assert carve.wealth_base == carve.savings_balance + carve.income_npv
+
+
+def test_savings_carve_preserves_run_axis_for_array_inputs() -> None:
+    months = 1
+    num_runs = 3
+    merton_alloc = 0.5
+    processed = replace(
+        _flat_processed(months, starting_balance=100.0),
+        stock_allocation_total_portfolio=np.full(months, merton_alloc),
+        legacy_stock_allocation=0.0,
+        npv_income_without_current=np.zeros(months),
+        npv_essential_without_current=np.zeros(months),
+        npv_discretionary_without_current=np.zeros(months),
+        legacy_npv=np.zeros(months),
+    )
+    balance_after_withdrawals = np.array([10.0, 20.0, 30.0], dtype=np.float64)
+    scale = np.ones(num_runs, dtype=np.float64)
+
+    carve = _savings_carve(
+        processed=processed,
+        month=0,
+        balance_after_withdrawals=balance_after_withdrawals,
+        scale_discretionary=scale,
+        scale_legacy=scale,
+    )
+    fraction = _stock_fraction(
+        processed,
+        0,
+        balance_after_withdrawals=balance_after_withdrawals,
+        scale_discretionary=scale,
+        scale_legacy=scale,
+    )
+
+    assert carve.stock_fraction.shape == (num_runs,)
+    np.testing.assert_array_equal(fraction, carve.stock_fraction)
