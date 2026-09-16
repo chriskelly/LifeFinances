@@ -53,6 +53,7 @@ class RawSimulationResult(BaseModel):
     withdrawals_total: np.ndarray
     savings_stock_allocation: np.ndarray
     num_runs_insufficient: int
+    diagnostics: SimulationDiagnostics
     engine_version: str = ENGINE_VERSION
 
     def __eq__(self, other: Any) -> bool:

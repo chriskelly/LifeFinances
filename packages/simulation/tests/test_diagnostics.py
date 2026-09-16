@@ -7,7 +7,7 @@ from simulation.diagnostics import (
     empty_diagnostics,
     rra_for_diagnostics,
 )
-from simulation.engine import _savings_carve, _stock_fraction
+from simulation.engine import _savings_carve, _stock_fraction, simulate_monthly
 
 from .processed_fixtures import _flat_processed
 
@@ -98,3 +98,36 @@ def test_savings_carve_preserves_run_axis_for_array_inputs() -> None:
 
     assert carve.stock_fraction.shape == (num_runs,)
     np.testing.assert_array_equal(fraction, carve.stock_fraction)
+
+
+def test_raw_result_diagnostics_match_expected_run_horizon() -> None:
+    months = 4
+    processed = _flat_processed(months, starting_balance=1_000.0)
+    returns = np.zeros((2, months), dtype=np.float64)
+
+    raw = simulate_monthly(processed, stocks_return=returns, bonds_return=returns)
+
+    assert raw.diagnostics.scheduled_wealth.shape == (months,)
+    assert raw.diagnostics.expected_savings_stock_fraction.shape == (months,)
+    assert raw.diagnostics.essential_reserve.shape == (months,)
+    assert raw.diagnostics.discretionary_pool.shape == (months,)
+
+
+def test_diagnostics_maps_infinite_engine_rra_and_keeps_zero_merton() -> None:
+    months = 2
+    zero_merton = 0.0
+    finite_merton = 0.5
+    processed = replace(
+        _flat_processed(months, starting_balance=1_000.0),
+        rra=np.array([math.inf, 4.0], dtype=np.float64),
+        stock_allocation_total_portfolio=np.array(
+            [zero_merton, finite_merton], dtype=np.float64
+        ),
+    )
+    returns = np.zeros((1, months), dtype=np.float64)
+
+    raw = simulate_monthly(processed, stocks_return=returns, bonds_return=returns)
+
+    assert raw.diagnostics.rra_by_month[0] == RRA_INFINITE_SENTINEL
+    assert raw.diagnostics.stock_allocation_total_portfolio[0] == zero_merton
+    assert math.isinf(processed.rra[0])

@@ -4,6 +4,7 @@ import numpy as np
 from core.models import DEFAULT_PERCENTILES
 from simulation.aggregate import build_public_result
 from simulation.composition import WealthBySource
+from simulation.diagnostics import empty_diagnostics
 from simulation.result import RAW_ARRAY_FIELDS, RawSimulationResult, ResolvedAssumptions
 
 _NUM_RUNS = 3
@@ -50,6 +51,7 @@ def _raw() -> RawSimulationResult:
         withdrawals_general=_RAW_ARRAYS["withdrawals_general"],
         withdrawals_total=_RAW_ARRAYS["withdrawals_total"],
         savings_stock_allocation=_RAW_ARRAYS["savings_stock_allocation"],
+        diagnostics=empty_diagnostics(months=_MONTHS),
     )
 
 

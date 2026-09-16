@@ -14,6 +14,7 @@ from typing import cast
 
 import numpy as np
 
+from simulation.diagnostics import SimulationDiagnostics, build_diagnostics
 from simulation.npv import (
     carve_pools,
     expenses_scale_for_normal_run,
@@ -114,7 +115,7 @@ def _stock_fraction(
 
 def _expected_run(
     processed: ProcessedPlan,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, SimulationDiagnostics]:
     """Deterministic planning-return pass (tpaw's `is_expected_run` branch, scale=1).
 
     Establishes, per month, the *scheduled* wealth and the elasticities of the
@@ -127,6 +128,17 @@ def _expected_run(
     scheduled_wealth = np.zeros(months, dtype=np.float64)
     elasticity_discretionary = np.zeros(months, dtype=np.float64)
     elasticity_legacy = np.zeros(months, dtype=np.float64)
+    savings_balance = np.zeros(months, dtype=np.float64)
+    income_npv = np.zeros(months, dtype=np.float64)
+    wealth_base = np.zeros(months, dtype=np.float64)
+    essential_reserve = np.zeros(months, dtype=np.float64)
+    discretionary_reserve = np.zeros(months, dtype=np.float64)
+    legacy_reserve = np.zeros(months, dtype=np.float64)
+    discretionary_pool = np.zeros(months, dtype=np.float64)
+    legacy_pool = np.zeros(months, dtype=np.float64)
+    general_pool = np.zeros(months, dtype=np.float64)
+    stocks_target = np.zeros(months, dtype=np.float64)
+    expected_savings_stock_fraction = np.zeros(months, dtype=np.float64)
 
     stock_return = processed.monthly_planning_stocks
     bond_return = processed.monthly_planning_bonds
@@ -140,7 +152,7 @@ def _expected_run(
         scheduled_wealth[month] = wealth
 
         # Wealth-based pools (current month included), scale = 1 on the expected run.
-        discretionary_pool, legacy_pool, general_pool = carve_pools(
+        disc_pool, leg_pool, gen_pool = carve_pools(
             wealth=wealth,
             essential_reserve=(
                 processed.npv_essential_without_current[month] + current_essential
@@ -157,9 +169,7 @@ def _expected_run(
         if wealth == 0.0:
             elasticity_wealth = (2.0 * alloc + legacy_alloc) / 3.0
         else:
-            stocks = (
-                discretionary_pool + general_pool
-            ) * alloc + legacy_pool * legacy_alloc
+            stocks = (disc_pool + gen_pool) * alloc + leg_pool * legacy_alloc
             elasticity_wealth = stocks / wealth
         if elasticity_wealth != 0.0:
             elasticity_discretionary[month] = alloc / elasticity_wealth
@@ -167,7 +177,7 @@ def _expected_run(
 
         # Target withdrawals then advance the balance at planning returns.
         target_general = target_general_withdrawal(
-            general_pool=general_pool,
+            general_pool=gen_pool,
             cumulative_1_plus_g_over_1_plus_r=processed.cumulative_1_plus_g_over_1_plus_r[
                 month
             ],
@@ -177,21 +187,48 @@ def _expected_run(
         avail -= min(avail, current_discretionary)
         avail -= min(avail, target_general)
 
-        stock_fraction = float(
-            _stock_fraction(
-                processed,
-                month,
-                balance_after_withdrawals=avail,
-                scale_discretionary=1.0,
-                scale_legacy=1.0,
-            )
+        carve = _savings_carve(
+            processed=processed,
+            month=month,
+            balance_after_withdrawals=avail,
+            scale_discretionary=1.0,
+            scale_legacy=1.0,
         )
+        stock_fraction = float(carve.stock_fraction)
+        savings_balance[month] = float(carve.savings_balance)
+        income_npv[month] = float(carve.income_npv)
+        wealth_base[month] = float(carve.wealth_base)
+        essential_reserve[month] = float(carve.essential_reserve)
+        discretionary_reserve[month] = float(carve.discretionary_reserve)
+        legacy_reserve[month] = float(carve.legacy_reserve)
+        discretionary_pool[month] = float(carve.discretionary_pool)
+        legacy_pool[month] = float(carve.legacy_pool)
+        general_pool[month] = float(carve.general_pool)
+        stocks_target[month] = float(carve.stocks_target)
+        expected_savings_stock_fraction[month] = stock_fraction
         balance = avail * (
             stock_fraction * (1.0 + stock_return)
             + (1.0 - stock_fraction) * (1.0 + bond_return)
         )
 
-    return scheduled_wealth, elasticity_discretionary, elasticity_legacy
+    diagnostics = build_diagnostics(
+        processed=processed,
+        scheduled_wealth=scheduled_wealth,
+        elasticity_discretionary=elasticity_discretionary,
+        elasticity_legacy=elasticity_legacy,
+        savings_balance=savings_balance,
+        income_npv=income_npv,
+        wealth_base=wealth_base,
+        essential_reserve=essential_reserve,
+        discretionary_reserve=discretionary_reserve,
+        legacy_reserve=legacy_reserve,
+        discretionary_pool=discretionary_pool,
+        legacy_pool=legacy_pool,
+        general_pool=general_pool,
+        stocks_target=stocks_target,
+        expected_savings_stock_fraction=expected_savings_stock_fraction,
+    )
+    return scheduled_wealth, elasticity_discretionary, elasticity_legacy, diagnostics
 
 
 def simulate_monthly(
@@ -204,7 +241,7 @@ def simulate_monthly(
     ran_at = ran_at or datetime.now()
     num_runs, months = stocks_return.shape
 
-    scheduled_wealth, elast_disc, elast_legacy = _expected_run(processed)
+    scheduled_wealth, elast_disc, elast_legacy, diagnostics = _expected_run(processed)
 
     balance = np.full(num_runs, processed.starting_balance, dtype=np.float64)
     insufficient = np.zeros(num_runs, dtype=bool)
@@ -299,4 +336,5 @@ def simulate_monthly(
         withdrawals_total=w_total,
         savings_stock_allocation=savings_alloc,
         num_runs_insufficient=int(insufficient.sum()),
+        diagnostics=diagnostics,
     )
