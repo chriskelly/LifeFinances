@@ -40,7 +40,6 @@ def _composition() -> WealthBySource:
 
 
 def _raw() -> RawSimulationResult:
-    # Non-zero scheduled_wealth so copy-vs-empty cannot pass by accident.
     diagnostics = empty_diagnostics(months=_MONTHS).model_copy(
         update={"scheduled_wealth": np.arange(_MONTHS, dtype=np.float64)}
     )

@@ -7,11 +7,7 @@ import numpy as np
 from core.models import PlanningPreset
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from simulation.diagnostics import (
-    SimulationDiagnostics,
-    _eq_ndarray_model,
-    empty_diagnostics,
-)
+from simulation.diagnostics import SimulationDiagnostics, _eq_ndarray_model
 from simulation.market_data.cache import MarketDataSource
 from simulation.market_data.inflation import InflationResolved
 from simulation.planning_returns import PlanningReturns
@@ -164,5 +160,4 @@ __all__ = [
     "SimulationDiagnostics",
     "SimulationResult",
     "build_resolved_assumptions",
-    "empty_diagnostics",
 ]
