@@ -8,7 +8,9 @@ bootstrapped simple returns from Phase 3a.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
+from typing import cast
 
 import numpy as np
 
@@ -21,6 +23,71 @@ from simulation.preprocess import ProcessedPlan
 from simulation.result import RawSimulationResult
 
 _SAVINGS_FLOOR = 1e-5  # tpaw _get_stock_allocation limit as savings balance → 0
+
+# np.maximum / carve_pools / np.clip return ndarray or numpy scalars (not Python float).
+CarveValue = np.ndarray | np.floating
+
+
+@dataclass(frozen=True)
+class SavingsCarve:
+    savings_balance: CarveValue
+    income_npv: CarveValue
+    wealth_base: CarveValue
+    essential_reserve: CarveValue
+    discretionary_reserve: CarveValue
+    legacy_reserve: CarveValue
+    discretionary_pool: CarveValue
+    legacy_pool: CarveValue
+    general_pool: CarveValue
+    stocks_target: CarveValue
+    stock_fraction: CarveValue
+
+
+def _savings_carve(
+    *,
+    processed: ProcessedPlan,
+    month: int,
+    balance_after_withdrawals,
+    scale_discretionary,
+    scale_legacy,
+) -> SavingsCarve:
+    """tpaw `_get_stock_allocation` carve: pool carve on post-withdrawal savings
+    plus future income NPV (without-current-month NPVs), returning intermediates
+    and the saturated savings-portfolio stock fraction.
+    """
+    savings_balance = np.maximum(balance_after_withdrawals, _SAVINGS_FLOOR)
+    income_npv = processed.npv_income_without_current[month]
+    wealth_base = savings_balance + income_npv
+    essential_reserve = processed.npv_essential_without_current[month]
+    discretionary_reserve = (
+        processed.npv_discretionary_without_current[month] * scale_discretionary
+    )
+    legacy_reserve = processed.legacy_npv[month] * scale_legacy
+    discretionary_pool, legacy_pool, general_pool = carve_pools(
+        wealth=wealth_base,
+        essential_reserve=essential_reserve,
+        discretionary_reserve=discretionary_reserve,
+        legacy_reserve=legacy_reserve,
+    )
+    merton_alloc = processed.stock_allocation_total_portfolio[month]
+    legacy_alloc = processed.legacy_stock_allocation
+    stocks_target = (
+        legacy_pool * legacy_alloc + (discretionary_pool + general_pool) * merton_alloc
+    )
+    stock_fraction = np.clip(stocks_target / savings_balance, 0.0, 1.0)
+    return SavingsCarve(
+        savings_balance=savings_balance,
+        income_npv=income_npv,
+        wealth_base=wealth_base,
+        essential_reserve=essential_reserve,
+        discretionary_reserve=discretionary_reserve,
+        legacy_reserve=legacy_reserve,
+        discretionary_pool=cast(CarveValue, discretionary_pool),
+        legacy_pool=cast(CarveValue, legacy_pool),
+        general_pool=cast(CarveValue, general_pool),
+        stocks_target=cast(CarveValue, stocks_target),
+        stock_fraction=cast(CarveValue, stock_fraction),
+    )
 
 
 def _stock_fraction(
@@ -36,20 +103,13 @@ def _stock_fraction(
     since this month's expenses were already withdrawn. Returns the saturated
     savings-portfolio stock fraction.
     """
-    savings_balance = np.maximum(balance_after_withdrawals, _SAVINGS_FLOOR)
-    base = savings_balance + processed.npv_income_without_current[month]
-    discretionary, legacy, general = carve_pools(
-        wealth=base,
-        essential_reserve=processed.npv_essential_without_current[month],
-        discretionary_reserve=(
-            processed.npv_discretionary_without_current[month] * scale_discretionary
-        ),
-        legacy_reserve=processed.legacy_npv[month] * scale_legacy,
-    )
-    alloc = processed.stock_allocation_total_portfolio[month]
-    legacy_alloc = processed.legacy_stock_allocation
-    stocks_target = legacy * legacy_alloc + (discretionary + general) * alloc
-    return np.clip(stocks_target / savings_balance, 0.0, 1.0)
+    return _savings_carve(
+        processed=processed,
+        month=month,
+        balance_after_withdrawals=balance_after_withdrawals,
+        scale_discretionary=scale_discretionary,
+        scale_legacy=scale_legacy,
+    ).stock_fraction
 
 
 def _expected_run(
