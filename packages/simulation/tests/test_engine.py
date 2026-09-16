@@ -119,3 +119,25 @@ def test_insufficient_funds_are_flagged_and_withdrawals_stay_clamped():
     assert np.all(result.balance_start >= 0.0)
     # Nothing is ever withdrawn beyond that month's available balance + income.
     assert np.all(result.withdrawals_total[0] <= result.balance_start[0])
+
+
+def test_simulate_monthly_rejects_mismatched_bond_return_shape() -> None:
+    months = 3
+    processed = _flat_processed(months, starting_balance=100.0)
+    stocks_return = np.zeros((2, months), dtype=np.float64)
+    bonds_return = np.zeros((2, months - 1), dtype=np.float64)
+
+    with pytest.raises(ValueError, match="share shape"):
+        simulate_monthly(
+            processed, stocks_return=stocks_return, bonds_return=bonds_return
+        )
+
+
+def test_simulate_monthly_rejects_return_horizon_mismatch() -> None:
+    processed_months = 4
+    return_months = 3
+    processed = _flat_processed(processed_months, starting_balance=100.0)
+    returns = np.zeros((1, return_months), dtype=np.float64)
+
+    with pytest.raises(ValueError, match="processed.months"):
+        simulate_monthly(processed, stocks_return=returns, bonds_return=returns)

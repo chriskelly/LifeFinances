@@ -100,9 +100,8 @@ def test_build_public_result_carries_resolved_assumptions() -> None:
     assert result.resolved_assumptions == assumptions
 
 
-def test_build_public_result_copies_raw_diagnostics() -> None:
+def test_build_public_result_reuses_raw_diagnostics() -> None:
     raw = _raw()
-    expected = raw.diagnostics
 
     result = build_public_result(
         raw,
@@ -112,4 +111,4 @@ def test_build_public_result_copies_raw_diagnostics() -> None:
         resolved_assumptions=_resolved_assumptions(),
     )
 
-    assert result.diagnostics == expected
+    assert result.diagnostics is raw.diagnostics
