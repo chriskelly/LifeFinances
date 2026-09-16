@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import numpy as np
+from simulation.diagnostics import empty_diagnostics
 from simulation.result import RawSimulationResult, ResolvedAssumptions, SimulationResult
 
 
@@ -31,6 +32,7 @@ def test_raw_simulation_result_holds_per_run_arrays():
         withdrawals_total=zeros,
         savings_stock_allocation=zeros,
         num_runs_insufficient=expected_insufficient,
+        diagnostics=empty_diagnostics(months=months),
     )
 
     assert result.balance_start.shape == (num_runs, months)
@@ -51,7 +53,21 @@ def _make_result(*, balance_start: np.ndarray, num_runs_insufficient: int = 0):
         withdrawals_total=other_zeros,
         savings_stock_allocation=other_zeros,
         num_runs_insufficient=num_runs_insufficient,
+        diagnostics=empty_diagnostics(months=months),
     )
+
+
+def test_raw_results_with_differing_diagnostics_compare_unequal() -> None:
+    months = 2
+    balance_start = np.arange(1.0, 1.0 + 2 * months).reshape(2, months)
+    first = _make_result(balance_start=balance_start)
+    shifted = first.diagnostics.model_copy(
+        update={"scheduled_wealth": first.diagnostics.scheduled_wealth + 1.0}
+    )
+    second = _make_result(balance_start=balance_start)
+    second = second.model_copy(update={"diagnostics": shifted})
+
+    assert first != second
 
 
 def test_equal_results_with_matching_arrays_and_scalars_compare_equal():
