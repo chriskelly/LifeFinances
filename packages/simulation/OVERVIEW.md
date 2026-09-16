@@ -31,11 +31,12 @@ numerical correctness without a runnable TPAW binary to diff against.
 | NPV balance-sheet approx blob | Deferred | Later / skip unless needed |
 
 `run_simulation` returns a public, percentile-major `SimulationResult` (balance,
-withdrawals, savings stock allocation, plus wealth-composition bands). The engine
-still emits private `RawSimulationResult` (`num_runs × months`); aggregation
-happens in `aggregate.py` via `numpy.percentile` along the run axis. Percentiles
-default from `plan.advanced.percentiles` (`[5, 50, 95]`); the `percentiles`
-kwarg overrides. Chart UI wiring lives in the web package.
+withdrawals, savings stock allocation, wealth-composition bands, plus expected-run
+`diagnostics`). The engine still emits private `RawSimulationResult`
+(`num_runs × months`); aggregation happens in `aggregate.py` via
+`numpy.percentile` along the run axis. Percentiles default from
+`plan.advanced.percentiles` (`[5, 50, 95]`); the `percentiles` kwarg overrides.
+Chart UI wiring lives in the web package.
 
 ## Numerical parity caveat
 

@@ -7,7 +7,7 @@ import numpy as np
 from core.models import PlanningPreset
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from simulation.diagnostics import SimulationDiagnostics, _eq_ndarray_model
+from simulation.diagnostics import SimulationDiagnostics, eq_ndarray_model
 from simulation.market_data.cache import MarketDataSource
 from simulation.market_data.inflation import InflationResolved
 from simulation.planning_returns import PlanningReturns
@@ -57,7 +57,7 @@ class RawSimulationResult(BaseModel):
         # on np.ndarray fields ("truth value of an array is ambiguous").
         if not isinstance(other, RawSimulationResult):
             return NotImplemented
-        return _eq_ndarray_model(self, other, array_fields=RAW_ARRAY_FIELDS)
+        return eq_ndarray_model(self, other, array_fields=RAW_ARRAY_FIELDS)
 
 
 class ResolvedAssumptions(BaseModel):
@@ -148,7 +148,7 @@ class SimulationResult(BaseModel):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, SimulationResult):
             return NotImplemented
-        return _eq_ndarray_model(self, other, array_fields=_PUBLIC_ARRAY_FIELDS)
+        return eq_ndarray_model(self, other, array_fields=_PUBLIC_ARRAY_FIELDS)
 
 
 __all__ = [

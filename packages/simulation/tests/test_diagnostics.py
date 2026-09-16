@@ -152,16 +152,46 @@ def test_raw_result_diagnostics_match_expected_run_horizon() -> None:
 def test_raw_result_diagnostics_record_expected_run_carve_month0() -> None:
     months = 4
     starting_balance = 1_000.0
-    processed = _flat_processed(months, starting_balance=starting_balance)
+    essential_month0 = 50.0
+    discretionary_month0 = 25.0
+    income_npv_month0 = 40.0
+    essential_npv_month0 = 10.0
+    discretionary_npv_month0 = 15.0
+    legacy_npv_month0 = 20.0
+    zeros = np.zeros(months, dtype=np.float64)
+    processed = replace(
+        _flat_processed(
+            months,
+            starting_balance=starting_balance,
+            essential_real=np.array(
+                [essential_month0, 0.0, 0.0, 0.0], dtype=np.float64
+            ),
+        ),
+        discretionary_real=np.array(
+            [discretionary_month0, 0.0, 0.0, 0.0], dtype=np.float64
+        ),
+        npv_income_without_current=np.array(
+            [income_npv_month0, 0.0, 0.0, 0.0], dtype=np.float64
+        ),
+        npv_essential_without_current=np.array(
+            [essential_npv_month0, 0.0, 0.0, 0.0], dtype=np.float64
+        ),
+        npv_discretionary_without_current=np.array(
+            [discretionary_npv_month0, 0.0, 0.0, 0.0], dtype=np.float64
+        ),
+        legacy_npv=np.array([legacy_npv_month0, 0.0, 0.0, 0.0], dtype=np.float64),
+        income_real=zeros.copy(),
+    )
     returns = np.zeros((1, months), dtype=np.float64)
 
     raw = simulate_monthly(processed, stocks_return=returns, bonds_return=returns)
 
-    # Reconstruct month-0 post-withdrawal balance from the wealth carve (scale=1).
     income = float(processed.income_real[0])
-    wealth = starting_balance + float(processed.npv_income_without_current[0]) + income
-    _, _, general_pool = carve_pools(
-        wealth=wealth,
+    expected_scheduled_wealth = (
+        starting_balance + float(processed.npv_income_without_current[0]) + income
+    )
+    disc_pool, leg_pool, gen_pool = carve_pools(
+        wealth=expected_scheduled_wealth,
         essential_reserve=(
             float(processed.npv_essential_without_current[0])
             + float(processed.essential_real[0])
@@ -172,15 +202,27 @@ def test_raw_result_diagnostics_record_expected_run_carve_month0() -> None:
         ),
         legacy_reserve=float(processed.legacy_npv[0]),
     )
+    merton_alloc = float(processed.stock_allocation_total_portfolio[0])
+    legacy_alloc = processed.legacy_stock_allocation
+    stocks_for_elasticity = (
+        leg_pool * legacy_alloc + (disc_pool + gen_pool) * merton_alloc
+    )
+    elasticity_wealth = stocks_for_elasticity / expected_scheduled_wealth
+    expected_elasticity_discretionary = merton_alloc / elasticity_wealth
+    expected_elasticity_legacy = legacy_alloc / elasticity_wealth
+
     target_general = float(
         target_general_withdrawal(
-            general_pool=general_pool,
+            general_pool=gen_pool,
             cumulative_1_plus_g_over_1_plus_r=float(
                 processed.cumulative_1_plus_g_over_1_plus_r[0]
             ),
         )
     )
-    avail = starting_balance + income - target_general
+    avail = starting_balance + income
+    avail -= min(avail, float(processed.essential_real[0]))
+    avail -= min(avail, float(processed.discretionary_real[0]))
+    avail -= min(avail, target_general)
     expected = _savings_carve(
         processed=processed,
         month=0,
@@ -189,10 +231,19 @@ def test_raw_result_diagnostics_record_expected_run_carve_month0() -> None:
         scale_legacy=1.0,
     )
 
+    assert raw.diagnostics.scheduled_wealth[0] == expected_scheduled_wealth
+    assert raw.diagnostics.elasticity_discretionary[0] == float(
+        expected_elasticity_discretionary
+    )
+    assert raw.diagnostics.elasticity_legacy[0] == float(expected_elasticity_legacy)
     assert raw.diagnostics.savings_balance[0] == float(expected.savings_balance)
     assert raw.diagnostics.income_npv[0] == float(expected.income_npv)
     assert raw.diagnostics.wealth_base[0] == float(expected.wealth_base)
     assert raw.diagnostics.essential_reserve[0] == float(expected.essential_reserve)
+    assert raw.diagnostics.discretionary_reserve[0] == float(
+        expected.discretionary_reserve
+    )
+    assert raw.diagnostics.legacy_reserve[0] == float(expected.legacy_reserve)
     assert raw.diagnostics.discretionary_pool[0] == float(expected.discretionary_pool)
     assert raw.diagnostics.legacy_pool[0] == float(expected.legacy_pool)
     assert raw.diagnostics.general_pool[0] == float(expected.general_pool)
@@ -200,10 +251,8 @@ def test_raw_result_diagnostics_record_expected_run_carve_month0() -> None:
     assert raw.diagnostics.expected_savings_stock_fraction[0] == float(
         expected.stock_fraction
     )
-    assert raw.diagnostics.stock_allocation_total_portfolio[0] == float(
-        processed.stock_allocation_total_portfolio[0]
-    )
-    assert raw.diagnostics.legacy_stock_allocation == processed.legacy_stock_allocation
+    assert raw.diagnostics.stock_allocation_total_portfolio[0] == merton_alloc
+    assert raw.diagnostics.legacy_stock_allocation == legacy_alloc
 
 
 def test_build_diagnostics_detaches_ndarray_inputs() -> None:

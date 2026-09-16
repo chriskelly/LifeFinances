@@ -29,7 +29,7 @@ DIAGNOSTICS_ARRAY_FIELDS: tuple[str, ...] = (
 )
 
 
-def _eq_ndarray_model(
+def eq_ndarray_model(
     self: Any,
     other: Any,
     *,
@@ -87,11 +87,13 @@ class SimulationDiagnostics(BaseModel):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, SimulationDiagnostics):
             return NotImplemented
-        return _eq_ndarray_model(self, other, array_fields=DIAGNOSTICS_ARRAY_FIELDS)
+        return eq_ndarray_model(self, other, array_fields=DIAGNOSTICS_ARRAY_FIELDS)
 
 
 def rra_for_diagnostics(rra: np.ndarray) -> np.ndarray:
-    return np.where(np.isinf(rra), RRA_INFINITE_SENTINEL, rra).astype(np.float64)
+    out = np.array(rra, dtype=np.float64, copy=True)
+    out[np.isinf(out)] = RRA_INFINITE_SENTINEL
+    return out
 
 
 def empty_diagnostics(*, months: int) -> SimulationDiagnostics:

@@ -26,6 +26,19 @@ from simulation.result import RawSimulationResult
 _SAVINGS_FLOOR = 1e-5  # tpaw _get_stock_allocation limit as savings balance → 0
 
 
+def _stocks_from_pools(
+    *,
+    discretionary_pool: FloatOrArray,
+    legacy_pool: FloatOrArray,
+    general_pool: FloatOrArray,
+    merton_alloc: FloatOrArray,
+    legacy_alloc: float,
+) -> FloatOrArray:
+    return (
+        legacy_pool * legacy_alloc + (discretionary_pool + general_pool) * merton_alloc
+    )
+
+
 @dataclass(frozen=True)
 class SavingsCarve:
     savings_balance: FloatOrArray
@@ -69,8 +82,12 @@ def _savings_carve(
     )
     merton_alloc = processed.stock_allocation_total_portfolio[month]
     legacy_alloc = processed.legacy_stock_allocation
-    stocks_target = (
-        legacy_pool * legacy_alloc + (discretionary_pool + general_pool) * merton_alloc
+    stocks_target = _stocks_from_pools(
+        discretionary_pool=discretionary_pool,
+        legacy_pool=legacy_pool,
+        general_pool=general_pool,
+        merton_alloc=merton_alloc,
+        legacy_alloc=legacy_alloc,
     )
     stock_fraction = np.clip(stocks_target / savings_balance, 0.0, 1.0)
     return SavingsCarve(
@@ -162,7 +179,13 @@ def _expected_run(
         if wealth == 0.0:
             elasticity_wealth = (2.0 * alloc + legacy_alloc) / 3.0
         else:
-            stocks = (disc_pool + gen_pool) * alloc + leg_pool * legacy_alloc
+            stocks = _stocks_from_pools(
+                discretionary_pool=disc_pool,
+                legacy_pool=leg_pool,
+                general_pool=gen_pool,
+                merton_alloc=alloc,
+                legacy_alloc=legacy_alloc,
+            )
             elasticity_wealth = stocks / wealth
         if elasticity_wealth != 0.0:
             elasticity_discretionary[month] = alloc / elasticity_wealth
