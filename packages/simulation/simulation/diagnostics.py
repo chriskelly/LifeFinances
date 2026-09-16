@@ -50,6 +50,20 @@ def _eq_ndarray_model(
 
 
 class SimulationDiagnostics(BaseModel):
+    """Expected-run explain series for one simulation.
+
+    Two carves share this object and must not be conflated:
+
+    - Wealth path (current-month expenses included): `scheduled_wealth`,
+      `elasticity_discretionary`, `elasticity_legacy`.
+    - Savings carve (post-withdrawal, without-current NPVs): `savings_balance`
+      through `expected_savings_stock_fraction` (reserves, pools, stocks target,
+      and the planning savings-portfolio stock fraction).
+
+    `rra_by_month` / `stock_allocation_total_portfolio` / `legacy_stock_allocation`
+    are detached copies of preprocess Merton inputs (inf RRA → sentinel).
+    """
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     rra_by_month: np.ndarray
@@ -81,26 +95,10 @@ def rra_for_diagnostics(rra: np.ndarray) -> np.ndarray:
 
 
 def empty_diagnostics(*, months: int) -> SimulationDiagnostics:
-    zeros = np.zeros(months, dtype=np.float64)
-    return SimulationDiagnostics(
-        rra_by_month=zeros.copy(),
-        stock_allocation_total_portfolio=zeros.copy(),
-        legacy_stock_allocation=0.0,
-        scheduled_wealth=zeros.copy(),
-        elasticity_discretionary=zeros.copy(),
-        elasticity_legacy=zeros.copy(),
-        savings_balance=zeros.copy(),
-        income_npv=zeros.copy(),
-        wealth_base=zeros.copy(),
-        essential_reserve=zeros.copy(),
-        discretionary_reserve=zeros.copy(),
-        legacy_reserve=zeros.copy(),
-        discretionary_pool=zeros.copy(),
-        legacy_pool=zeros.copy(),
-        general_pool=zeros.copy(),
-        stocks_target=zeros.copy(),
-        expected_savings_stock_fraction=zeros.copy(),
-    )
+    zeros = {
+        field: np.zeros(months, dtype=np.float64) for field in DIAGNOSTICS_ARRAY_FIELDS
+    }
+    return SimulationDiagnostics(**zeros, legacy_stock_allocation=0.0)
 
 
 def build_diagnostics(

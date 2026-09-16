@@ -96,8 +96,6 @@ def test_run_simulation_diagnostics_carry_expected_run_wealth() -> None:
     assert result.diagnostics.rra_by_month.shape == (months,)
     assert result.diagnostics.expected_savings_stock_fraction.shape == (months,)
     assert result.diagnostics.stocks_target.shape == (months,)
-    # Month-0 scheduled wealth is starting savings + that month's income NPV + income.
-    # Fails if build_public_result still attaches empty_diagnostics (all zeros).
     assert result.diagnostics.scheduled_wealth[0] >= starting
 
 

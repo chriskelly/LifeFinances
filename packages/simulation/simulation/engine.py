@@ -10,12 +10,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import cast
 
 import numpy as np
 
 from simulation.diagnostics import SimulationDiagnostics, build_diagnostics
 from simulation.npv import (
+    FloatOrArray,
     carve_pools,
     expenses_scale_for_normal_run,
     target_general_withdrawal,
@@ -25,32 +25,29 @@ from simulation.result import RawSimulationResult
 
 _SAVINGS_FLOOR = 1e-5  # tpaw _get_stock_allocation limit as savings balance → 0
 
-# np.maximum / carve_pools / np.clip return ndarray or numpy scalars (not Python float).
-CarveValue = np.ndarray | np.floating
-
 
 @dataclass(frozen=True)
 class SavingsCarve:
-    savings_balance: CarveValue
-    income_npv: CarveValue
-    wealth_base: CarveValue
-    essential_reserve: CarveValue
-    discretionary_reserve: CarveValue
-    legacy_reserve: CarveValue
-    discretionary_pool: CarveValue
-    legacy_pool: CarveValue
-    general_pool: CarveValue
-    stocks_target: CarveValue
-    stock_fraction: CarveValue
+    savings_balance: FloatOrArray
+    income_npv: FloatOrArray
+    wealth_base: FloatOrArray
+    essential_reserve: FloatOrArray
+    discretionary_reserve: FloatOrArray
+    legacy_reserve: FloatOrArray
+    discretionary_pool: FloatOrArray
+    legacy_pool: FloatOrArray
+    general_pool: FloatOrArray
+    stocks_target: FloatOrArray
+    stock_fraction: FloatOrArray
 
 
 def _savings_carve(
     *,
     processed: ProcessedPlan,
     month: int,
-    balance_after_withdrawals,
-    scale_discretionary,
-    scale_legacy,
+    balance_after_withdrawals: FloatOrArray,
+    scale_discretionary: FloatOrArray,
+    scale_legacy: FloatOrArray,
 ) -> SavingsCarve:
     """tpaw `_get_stock_allocation` carve: pool carve on post-withdrawal savings
     plus future income NPV (without-current-month NPVs), returning intermediates
@@ -83,11 +80,11 @@ def _savings_carve(
         essential_reserve=essential_reserve,
         discretionary_reserve=discretionary_reserve,
         legacy_reserve=legacy_reserve,
-        discretionary_pool=cast(CarveValue, discretionary_pool),
-        legacy_pool=cast(CarveValue, legacy_pool),
-        general_pool=cast(CarveValue, general_pool),
-        stocks_target=cast(CarveValue, stocks_target),
-        stock_fraction=cast(CarveValue, stock_fraction),
+        discretionary_pool=discretionary_pool,
+        legacy_pool=legacy_pool,
+        general_pool=general_pool,
+        stocks_target=stocks_target,
+        stock_fraction=stock_fraction,
     )
 
 
@@ -95,15 +92,11 @@ def _stock_fraction(
     processed: ProcessedPlan,
     month: int,
     *,
-    balance_after_withdrawals,
-    scale_discretionary,
-    scale_legacy,
-):
-    """tpaw `_get_stock_allocation`: a *separate* pool carve on the post-withdrawal
-    savings balance plus future income NPV — using the without-current-month NPVs,
-    since this month's expenses were already withdrawn. Returns the saturated
-    savings-portfolio stock fraction.
-    """
+    balance_after_withdrawals: FloatOrArray,
+    scale_discretionary: FloatOrArray,
+    scale_legacy: FloatOrArray,
+) -> FloatOrArray:
+    """Savings-portfolio stock fraction from `_savings_carve` (MC months use this)."""
     return _savings_carve(
         processed=processed,
         month=month,
@@ -240,6 +233,12 @@ def simulate_monthly(
 ) -> RawSimulationResult:
     ran_at = ran_at or datetime.now()
     num_runs, months = stocks_return.shape
+    if bonds_return.shape != stocks_return.shape:
+        raise ValueError("stocks_return and bonds_return must share shape")
+    if months != processed.months:
+        raise ValueError(
+            f"return horizon ({months}) must match processed.months ({processed.months})"
+        )
 
     scheduled_wealth, elast_disc, elast_legacy, diagnostics = _expected_run(processed)
 
