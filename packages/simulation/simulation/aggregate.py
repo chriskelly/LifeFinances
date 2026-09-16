@@ -46,5 +46,6 @@ def build_public_result(
         wealth_pension=composition.pension,
         wealth_manual=composition.manual,
         num_runs_insufficient=raw.num_runs_insufficient,
+        diagnostics=raw.diagnostics,
         resolved_assumptions=resolved_assumptions,
     )

@@ -2,6 +2,7 @@
 
 from core.timeline import horizon_months, person_end_date
 
+from simulation.diagnostics import SimulationDiagnostics
 from simulation.engine import simulate_monthly
 from simulation.market_data import (
     HistoricalReturns,
@@ -21,6 +22,7 @@ __all__ = [
     "InflationResolved",
     "ResolvedAssumptions",
     "ReturnPaths",
+    "SimulationDiagnostics",
     "SimulationResult",
     "build_return_paths",
     "horizon_months",
