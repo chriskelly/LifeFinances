@@ -145,6 +145,7 @@ class SimulationResult(BaseModel):
     wealth_pension: np.ndarray
     wealth_manual: np.ndarray
     num_runs_insufficient: int
+    diagnostics: SimulationDiagnostics
     resolved_assumptions: ResolvedAssumptions
     engine_version: str = ENGINE_VERSION
 

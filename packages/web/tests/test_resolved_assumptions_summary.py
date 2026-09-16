@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from core.models import DEFAULT_PERCENTILES, PlanningPreset
 from fastapi.testclient import TestClient
+from simulation.diagnostics import empty_diagnostics
 from simulation.market_data.cache import MarketDataSource
 from simulation.result import InflationSource, ResolvedAssumptions, SimulationResult
 from web.percent import format_percent
@@ -75,6 +76,7 @@ def _make_result(assumptions: ResolvedAssumptions) -> SimulationResult:
         wealth_pension=months.copy(),
         wealth_manual=months.copy(),
         num_runs_insufficient=0,
+        diagnostics=empty_diagnostics(months=horizon),
         resolved_assumptions=assumptions,
     )
 

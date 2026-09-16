@@ -4,6 +4,7 @@ from datetime import datetime
 
 import numpy as np
 from core.models import DEFAULT_PERCENTILES
+from simulation.diagnostics import empty_diagnostics
 from simulation.result import ResolvedAssumptions, SimulationResult
 
 from web import spending_summary as spending
@@ -43,6 +44,7 @@ def _result_with_withdrawals(
         wealth_pension=months.copy(),
         wealth_manual=months.copy(),
         num_runs_insufficient=0,
+        diagnostics=empty_diagnostics(months=horizon),
         resolved_assumptions=_resolved_assumptions(),
     )
 

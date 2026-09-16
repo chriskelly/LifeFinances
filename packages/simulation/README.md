@@ -23,11 +23,11 @@ build_return_paths(plan, months)          # per-run monthly returns
         ▼
 simulate_monthly(processed, paths)          # vectorized forward loop (engine.py)
         ▼
-RawSimulationResult  (engine-internal)      # per-run arrays in result.py
+RawSimulationResult  (engine-internal)      # per-run arrays + diagnostics in result.py
         ▼
 aggregate + wealth composition            # aggregate.py, composition.py
         ▼
-SimulationResult  (percentile-major)      # public return from run_simulation
+SimulationResult  (percentile-major)      # public return; includes diagnostics
 ```
 
 ## Stage by stage
@@ -146,6 +146,15 @@ should treat raw arrays as an engine artifact, not the public API. Wealth
 composition bands (job, Social Security, pension, manual income — tax-prorated
 remaining NPV at each month) are attached for stacked total-portfolio charts in
 the web charts UI.
+
+Chart `savings_stock_allocation` is Monte Carlo percentiles across runs.
+`diagnostics.expected_savings_stock_fraction` (and the related carve / RRA /
+Merton series on `diagnostics`) is the expected/planning path from the
+deterministic expected run — not a percentile of the MC carve. Diagnostics
+`rra_by_month` uses `RRA_INFINITE_SENTINEL` in place of infinity; the engine's
+`ProcessedPlan.rra` still uses `inf`. Both raw and public results carry the same
+`diagnostics` blob from that run (`build_public_result` assigns
+`diagnostics=raw.diagnostics`).
 
 ## Merton's formula
 

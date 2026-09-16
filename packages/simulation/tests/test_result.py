@@ -118,6 +118,7 @@ def _make_public_result(*, balance_start: np.ndarray) -> SimulationResult:
         wealth_pension=wealth.copy(),
         wealth_manual=wealth.copy(),
         num_runs_insufficient=0,
+        diagnostics=empty_diagnostics(months=months),
         resolved_assumptions=_resolved_assumptions(),
     )
 
