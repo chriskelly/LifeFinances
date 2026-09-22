@@ -4,6 +4,7 @@ import numpy as np
 from core.models import DEFAULT_PERCENTILES
 from simulation.aggregate import build_public_result
 from simulation.composition import WealthBySource
+from simulation.diagnostics import empty_diagnostics
 from simulation.result import RAW_ARRAY_FIELDS, RawSimulationResult, ResolvedAssumptions
 
 _NUM_RUNS = 3
@@ -39,6 +40,9 @@ def _composition() -> WealthBySource:
 
 
 def _raw() -> RawSimulationResult:
+    diagnostics = empty_diagnostics(months=_MONTHS).model_copy(
+        update={"scheduled_wealth": np.arange(_MONTHS, dtype=np.float64)}
+    )
     return RawSimulationResult(
         ran_at=datetime(2026, 1, 1),
         horizon_months=_MONTHS,
@@ -50,6 +54,7 @@ def _raw() -> RawSimulationResult:
         withdrawals_general=_RAW_ARRAYS["withdrawals_general"],
         withdrawals_total=_RAW_ARRAYS["withdrawals_total"],
         savings_stock_allocation=_RAW_ARRAYS["savings_stock_allocation"],
+        diagnostics=diagnostics,
     )
 
 
@@ -93,3 +98,17 @@ def test_build_public_result_carries_resolved_assumptions() -> None:
         resolved_assumptions=assumptions,
     )
     assert result.resolved_assumptions == assumptions
+
+
+def test_build_public_result_reuses_raw_diagnostics() -> None:
+    raw = _raw()
+
+    result = build_public_result(
+        raw,
+        percentiles=list(DEFAULT_PERCENTILES),
+        composition=_composition(),
+        start_month=(2026, 1),
+        resolved_assumptions=_resolved_assumptions(),
+    )
+
+    assert result.diagnostics is raw.diagnostics

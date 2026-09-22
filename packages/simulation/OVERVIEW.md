@@ -15,6 +15,7 @@ numerical correctness without a runnable TPAW binary to diff against.
 | Merton's formula (stock allocation + spending tilt, equity-premium/variance clamps, ∞-RRA case) | Ported | `simulation/mertons.py` |
 | Backward NPV precompute pass + `cumulative_1_plus_g_over_1_plus_r` amortization | Ported | `simulation/npv.py`, `simulation/preprocess.py` |
 | Vectorized forward monthly loop (wealth, pool carve, expected-run elasticity, contributions/withdrawals, allocation, rebalancing) | Ported | `simulation/engine.py` |
+| Expected-run diagnostics (RRA, Merton, savings carve series) on raw + public results | Ported | `simulation/diagnostics.py`, `simulation/engine.py` |
 | Raw per-run result arrays (engine-internal) | Ported | `simulation/result.py` (`RawSimulationResult`) |
 | Percentile aggregation (10th/50th/90th, etc. reduction over raw arrays) | Ported | `simulation/aggregate.py` |
 | Wealth composition (tax-prorated NPV by income source: job / SS / pension / manual) | Ported | `simulation/composition.py` |
@@ -30,11 +31,12 @@ numerical correctness without a runnable TPAW binary to diff against.
 | NPV balance-sheet approx blob | Deferred | Later / skip unless needed |
 
 `run_simulation` returns a public, percentile-major `SimulationResult` (balance,
-withdrawals, savings stock allocation, plus wealth-composition bands). The engine
-still emits private `RawSimulationResult` (`num_runs × months`); aggregation
-happens in `aggregate.py` via `numpy.percentile` along the run axis. Percentiles
-default from `plan.advanced.percentiles` (`[5, 50, 95]`); the `percentiles`
-kwarg overrides. Chart UI wiring lives in the web package.
+withdrawals, savings stock allocation, wealth-composition bands, plus expected-run
+`diagnostics`). The engine still emits private `RawSimulationResult`
+(`num_runs × months`); aggregation happens in `aggregate.py` via
+`numpy.percentile` along the run axis. Percentiles default from
+`plan.advanced.percentiles` (`[5, 50, 95]`); the `percentiles` kwarg overrides.
+Chart UI wiring lives in the web package.
 
 ## Numerical parity caveat
 
