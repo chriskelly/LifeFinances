@@ -22,6 +22,12 @@ class PlanSummary:
     name: str
 
 
+@dataclass(frozen=True)
+class UnloadablePlan:
+    id: int
+    message: str
+
+
 @dataclass
 class PlanRepository:
     db_path: Path
@@ -33,6 +39,12 @@ class PlanRepository:
         return sqlite3.connect(self.db_path)
 
     def get_by_id(self, plan_id: int) -> Plan | None:
+        loaded = self.load_plan(plan_id)
+        if isinstance(loaded, Plan):
+            return loaded
+        return None
+
+    def load_plan(self, plan_id: int) -> Plan | UnloadablePlan | None:
         conn = self._connect()
         try:
             row = conn.execute(
@@ -45,11 +57,10 @@ class PlanRepository:
         try:
             return Plan.model_validate_json(row[0])
         except ValidationError as exc:
-            # An unloadable plan disappears from the UI entirely, so record why.
             logger.warning(
                 "Plan %s failed validation and cannot be loaded: %s", plan_id, exc
             )
-            return None
+            return UnloadablePlan(id=plan_id, message=str(exc))
 
     def save(self, plan_id: int, plan: Plan) -> None:
         payload = plan.model_dump_json()
