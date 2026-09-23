@@ -105,22 +105,31 @@ def test_diagnostics_serializes_every_array_and_legacy_allocation() -> None:
         result=result,
     )
 
+    expected_keys = {
+        "plan_id",
+        "name",
+        "legacy_stock_allocation",
+        *DIAGNOSTICS_ARRAY_FIELDS,
+    }
+    assert set(payload.keys()) == expected_keys
     assert payload["plan_id"] == plan_id
     assert payload["name"] == plan_name
-    assert payload["scheduled_wealth"] == result.diagnostics.scheduled_wealth.tolist()
     assert (
         payload["legacy_stock_allocation"] == result.diagnostics.legacy_stock_allocation
     )
-    assert all(field in payload for field in DIAGNOSTICS_ARRAY_FIELDS)
+    for field in DIAGNOSTICS_ARRAY_FIELDS:
+        assert payload[field] == getattr(result.diagnostics, field).tolist()
 
 
 def test_percentile_series_without_percentile_returns_every_row() -> None:
     result = _result()
     series = RAW_ARRAY_FIELDS[0]
+    plan_id = 1
+    plan_name = "Plan"
 
     payload = series_payload(
-        plan_id=1,
-        plan_name="Plan",
+        plan_id=plan_id,
+        plan_name=plan_name,
         result=result,
         series=series,
         month=None,
@@ -128,6 +137,9 @@ def test_percentile_series_without_percentile_returns_every_row() -> None:
     )
 
     assert not isinstance(payload, ExplainFailure)
+    assert payload["plan_id"] == plan_id
+    assert payload["name"] == plan_name
+    assert payload["series"] == series
     assert payload["month"] is None
     assert payload["rows"] == [
         {"percentile": percentile, "values": getattr(result, series)[index].tolist()}
@@ -185,12 +197,13 @@ def test_percentile_series_with_month_returns_one_cell_per_row() -> None:
 
 def test_unknown_series_lists_allowed_public_series() -> None:
     result = _result()
+    unknown_series = "not-a-series"
 
     failure = series_payload(
         plan_id=1,
         plan_name="Plan",
         result=result,
-        series="not-a-series",
+        series=unknown_series,
         month=None,
         percentile=None,
     )
@@ -199,9 +212,12 @@ def test_unknown_series_lists_allowed_public_series() -> None:
     assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == UNKNOWN_SERIES
     assert list(failure.allowed) == list(PUBLIC_ARRAY_FIELDS)
-    body = failure.body()
-    assert body["error"] == UNKNOWN_SERIES
-    assert body["allowed"] == list(PUBLIC_ARRAY_FIELDS)
+    expected_body = {
+        "error": failure.code,
+        "message": failure.message,
+        "allowed": list(failure.allowed),
+    }
+    assert failure.body() == expected_body
 
 
 def test_unknown_percentile_lists_configured_percentiles() -> None:
@@ -221,9 +237,12 @@ def test_unknown_percentile_lists_configured_percentiles() -> None:
     assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == UNKNOWN_PERCENTILE
     assert list(failure.allowed) == result.percentiles
-    body = failure.body()
-    assert body["error"] == UNKNOWN_PERCENTILE
-    assert body["allowed"] == result.percentiles
+    expected_body = {
+        "error": failure.code,
+        "message": failure.message,
+        "allowed": list(failure.allowed),
+    }
+    assert failure.body() == expected_body
 
 
 def test_horizon_series_without_percentile_returns_one_unlabeled_row() -> None:
@@ -260,8 +279,11 @@ def test_horizon_series_rejects_percentile() -> None:
     assert isinstance(failure, ExplainFailure)
     assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == PERCENTILE_NOT_APPLICABLE
-    body = failure.body()
-    assert body["error"] == PERCENTILE_NOT_APPLICABLE
+    expected_body = {
+        "error": failure.code,
+        "message": failure.message,
+    }
+    assert failure.body() == expected_body
 
 
 def test_month_equal_to_horizon_is_out_of_range() -> None:
@@ -281,7 +303,10 @@ def test_month_equal_to_horizon_is_out_of_range() -> None:
     assert failure.code == MONTH_OUT_OF_RANGE
     assert failure.min_month == 0
     assert failure.max_month == result.horizon_months - 1
-    body = failure.body()
-    assert body["error"] == MONTH_OUT_OF_RANGE
-    assert body["min"] == 0
-    assert body["max"] == result.horizon_months - 1
+    expected_body = {
+        "error": failure.code,
+        "message": failure.message,
+        "min": failure.min_month,
+        "max": failure.max_month,
+    }
+    assert failure.body() == expected_body
