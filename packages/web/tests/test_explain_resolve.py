@@ -36,9 +36,10 @@ def _insert_corrupt_plan(*, repo: PlanRepository) -> int:
 
 
 def test_resolve_plan_rejects_both_identity_params(repo: PlanRepository) -> None:
-    plan_id, _ = repo.create(name="Only")
+    plan_name = "Only"
+    plan_id, _ = repo.create(name=plan_name)
 
-    failure = resolve_plan(plan_repo=repo, plan_id=plan_id, name="Only")
+    failure = resolve_plan(plan_repo=repo, plan_id=plan_id, name=plan_name)
 
     assert isinstance(failure, ExplainFailure)
     assert failure.status_code == HTTP_BAD_REQUEST
@@ -97,7 +98,7 @@ def test_stripped_name_collision_is_ambiguous(repo: PlanRepository) -> None:
     first_id, _ = repo.create(name=first_name)
     second_id, _ = repo.create(name=second_name)
 
-    failure = resolve_plan(plan_repo=repo, plan_id=None, name="Base")
+    failure = resolve_plan(plan_repo=repo, plan_id=None, name=first_name)
 
     assert isinstance(failure, ExplainFailure)
     assert failure.status_code == HTTP_CONFLICT
@@ -123,6 +124,27 @@ def test_resolve_plan_reports_unloadable_validation_message(
     assert failure.message == loaded.message
 
 
+def test_name_resolution_ignores_unloadable_stored_names(
+    repo: PlanRepository,
+) -> None:
+    query = "Ghost"
+    conn = sqlite3.connect(repo.db_path)
+    try:
+        conn.execute(
+            "INSERT INTO plans (name, data) VALUES (?, ?)",
+            (f"{query} ", "{not-valid-plan-json"),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    failure = resolve_plan(plan_repo=repo, plan_id=None, name=query)
+
+    assert isinstance(failure, ExplainFailure)
+    assert failure.status_code == HTTP_NOT_FOUND
+    assert failure.code == PLAN_NOT_FOUND
+
+
 def test_missing_plan_id_is_not_found(repo: PlanRepository) -> None:
     missing_id = 999_999
 
@@ -137,11 +159,64 @@ def test_list_loadable_plans_skips_unloadable_and_marks_default(
     repo: PlanRepository,
 ) -> None:
     kept_name = "Kept"
+    other_name = "Other"
     kept_id, _ = repo.create(name=kept_name)
+    other_id, _ = repo.create(name=other_name)
     _insert_corrupt_plan(repo=repo)
     settings = SettingsRepository(db_path=repo.db_path)
     settings.save(settings.get().model_copy(update={"default_plan_id": kept_id}))
 
     listed = list_loadable_plans(plan_repo=repo, settings_repo=settings)
 
-    assert listed == [PlanListItem(id=kept_id, name=kept_name, is_default=True)]
+    assert listed == [
+        PlanListItem(id=kept_id, name=kept_name, is_default=True),
+        PlanListItem(id=other_id, name=other_name, is_default=False),
+    ]
+
+
+def test_explain_failure_body_includes_candidates_only() -> None:
+    code = AMBIGUOUS_PLAN
+    message = "pick one"
+    candidates = (PlanRef(id=1, name="A"), PlanRef(id=2, name="B"))
+    failure = ExplainFailure(
+        status_code=HTTP_CONFLICT,
+        code=code,
+        message=message,
+        candidates=candidates,
+    )
+
+    body = failure.body()
+
+    assert body["error"] == code
+    assert body["message"] == message
+    assert body["candidates"] == [
+        {"id": item.id, "name": item.name} for item in candidates
+    ]
+    assert "allowed" not in body
+    assert "min" not in body
+    assert "max" not in body
+
+
+def test_explain_failure_body_includes_allowed_range_without_candidates() -> None:
+    code = INVALID_QUERY
+    message = "bad request"
+    allowed = ("month", "year")
+    min_month = 1
+    max_month = 600
+    failure = ExplainFailure(
+        status_code=HTTP_BAD_REQUEST,
+        code=code,
+        message=message,
+        allowed=allowed,
+        min_month=min_month,
+        max_month=max_month,
+    )
+
+    body = failure.body()
+
+    assert body["error"] == code
+    assert body["message"] == message
+    assert body["allowed"] == list(allowed)
+    assert body["min"] == min_month
+    assert body["max"] == max_month
+    assert "candidates" not in body
