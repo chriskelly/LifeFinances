@@ -30,6 +30,12 @@ make         # both
 
 Agent conventions: `[AGENTS.md](AGENTS.md)`.
 
+## Agent skills
+
+Project skills live in `.agents/skills/`. Cursor loads that directory automatically.
+
+Claude Code loads `.claude/skills/` instead. To use the same skills there, symlink this repo's `.agents/skills/` directory to `.claude/skills/` and leave that link uncommitted (it is gitignored).
+
 ## Backup
 
 Copy `data/data.db` to back up plans. No in-app export currently.

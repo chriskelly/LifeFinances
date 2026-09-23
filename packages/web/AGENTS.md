@@ -82,6 +82,24 @@ Chart figures use `hovermode="x unified"` and `legend.traceorder="reversed"` so 
 
 **Gotcha:** `#results-chart` has a CSS `min-height` (`static/style.css`) matching Plotly's default figure height. Without it the empty chart div collapses during the HTMX swap (before `Plotly.react` runs on settle), so the summary line jumps up and back down — a flicker on every chart change. Keep the `min-height` in sync if you set an explicit figure height in `build_figure`.
 
+## Explain JSON routes
+
+Read-only GET handlers in `web/explain_routes.py` (registered from `create_app()`). Path constants in `web/routes.py`:
+
+| Constant | Path |
+| -------- | ---- |
+| `API_PLANS` | `/api/plans` |
+| `API_PLAN` | `/api/plan` |
+| `API_RESULT_SUMMARY` | `/api/result/summary` |
+| `API_RESULT_DIAGNOSTICS` | `/api/result/diagnostics` |
+| `API_RESULT_SERIES` | `/api/result/series` |
+
+Each plan-scoped route accepts exactly one of query params `plan_id` or `name` (not both, not neither). Resolution and simulation reuse `web.simulation_cache.get_or_run_simulation` — the same process-local cache as Home and Results — via `web.explain.load_cached_result`. Do not spawn a separate simulation process for these routes.
+
+Unloadable plan JSON returns JSON `422` with code `plan_unloadable` and a `message` (see `web.explain.resolve_plan`). That path intentionally does not use `require_plan`, which would surface an HTML 404 for the same row.
+
+On `/api/result/series`, Monte Carlo spending and allocation series are percentile-major; `wealth_job`, `wealth_social_security`, `wealth_pension`, and `wealth_manual` are single vectors (no percentile axis — sending `percentile` yields `percentile_not_applicable`). Agent-facing usage is documented in root `.agents/skills/explain-results/SKILL.md`.
+
 ## HTMX debounce pattern
 
 Editor forms auto-save on change with a 750ms debounce:

@@ -37,6 +37,10 @@ LifeFinances is a personal finances simulator rebuilt in 2026 (Python, TPAW mont
 └── docs/plans/              # gitignored local implementation plans
 ```
 
+## Explaining results
+
+With the dev server running, follow `.agents/skills/explain-results/SKILL.md`. It calls the local JSON routes for the cached simulation. Do not re-run the simulation in a separate process.
+
 ## Working directory contract
 
 Always run developer commands from the **repository root**. `LIFE_FINANCES_DB_PATH` overrides the default `data/data.db` location.
