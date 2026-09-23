@@ -27,7 +27,7 @@ RAW_ARRAY_FIELDS = (
     "savings_stock_allocation",
 )
 
-_PUBLIC_ARRAY_FIELDS = (
+PUBLIC_ARRAY_FIELDS = (
     *RAW_ARRAY_FIELDS,
     "wealth_job",
     "wealth_social_security",
@@ -148,12 +148,13 @@ class SimulationResult(BaseModel):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, SimulationResult):
             return NotImplemented
-        return eq_ndarray_model(self, other, array_fields=_PUBLIC_ARRAY_FIELDS)
+        return eq_ndarray_model(self, other, array_fields=PUBLIC_ARRAY_FIELDS)
 
 
 __all__ = [
     "ENGINE_VERSION",
     "InflationSource",
+    "PUBLIC_ARRAY_FIELDS",
     "RAW_ARRAY_FIELDS",
     "RawSimulationResult",
     "ResolvedAssumptions",
