@@ -9,6 +9,7 @@ from simulation.result import (
     SimulationResult,
 )
 from web.explain import (
+    HTTP_BAD_REQUEST,
     MONTH_OUT_OF_RANGE,
     PERCENTILE_NOT_APPLICABLE,
     UNKNOWN_PERCENTILE,
@@ -134,6 +135,30 @@ def test_percentile_series_without_percentile_returns_every_row() -> None:
     ]
 
 
+def test_percentile_series_with_percentile_selects_that_row() -> None:
+    result = _result()
+    series = RAW_ARRAY_FIELDS[0]
+    row_index = 1
+    chosen_percentile = result.percentiles[row_index]
+
+    payload = series_payload(
+        plan_id=1,
+        plan_name="Plan",
+        result=result,
+        series=series,
+        month=None,
+        percentile=chosen_percentile,
+    )
+
+    assert not isinstance(payload, ExplainFailure)
+    assert payload["rows"] == [
+        {
+            "percentile": chosen_percentile,
+            "values": getattr(result, series)[row_index].tolist(),
+        }
+    ]
+
+
 def test_percentile_series_with_month_returns_one_cell_per_row() -> None:
     result = _result()
     series = RAW_ARRAY_FIELDS[1]
@@ -171,8 +196,12 @@ def test_unknown_series_lists_allowed_public_series() -> None:
     )
 
     assert isinstance(failure, ExplainFailure)
+    assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == UNKNOWN_SERIES
     assert list(failure.allowed) == list(PUBLIC_ARRAY_FIELDS)
+    body = failure.body()
+    assert body["error"] == UNKNOWN_SERIES
+    assert body["allowed"] == list(PUBLIC_ARRAY_FIELDS)
 
 
 def test_unknown_percentile_lists_configured_percentiles() -> None:
@@ -189,8 +218,12 @@ def test_unknown_percentile_lists_configured_percentiles() -> None:
     )
 
     assert isinstance(failure, ExplainFailure)
+    assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == UNKNOWN_PERCENTILE
     assert list(failure.allowed) == result.percentiles
+    body = failure.body()
+    assert body["error"] == UNKNOWN_PERCENTILE
+    assert body["allowed"] == result.percentiles
 
 
 def test_horizon_series_without_percentile_returns_one_unlabeled_row() -> None:
@@ -225,7 +258,10 @@ def test_horizon_series_rejects_percentile() -> None:
     )
 
     assert isinstance(failure, ExplainFailure)
+    assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == PERCENTILE_NOT_APPLICABLE
+    body = failure.body()
+    assert body["error"] == PERCENTILE_NOT_APPLICABLE
 
 
 def test_month_equal_to_horizon_is_out_of_range() -> None:
@@ -241,6 +277,11 @@ def test_month_equal_to_horizon_is_out_of_range() -> None:
     )
 
     assert isinstance(failure, ExplainFailure)
+    assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == MONTH_OUT_OF_RANGE
     assert failure.min_month == 0
     assert failure.max_month == result.horizon_months - 1
+    body = failure.body()
+    assert body["error"] == MONTH_OUT_OF_RANGE
+    assert body["min"] == 0
+    assert body["max"] == result.horizon_months - 1
