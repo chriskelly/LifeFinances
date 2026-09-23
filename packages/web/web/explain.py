@@ -1,15 +1,21 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import numpy as np
-from core.models import Plan
+from core.models import AppSettings, Plan
 from core.repository import PlanRepository, UnloadablePlan
 from core.settings_repository import SettingsRepository
+from fastapi import FastAPI
 from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS
 from simulation.result import PUBLIC_ARRAY_FIELDS, RAW_ARRAY_FIELDS, SimulationResult
+from simulation.stub import run_simulation
 
 from web import spending_summary
+from web.simulation_cache import get_or_run_simulation
+
+logger = logging.getLogger(__name__)
 
 INVALID_QUERY = "invalid_query"
 PLAN_NOT_FOUND = "plan_not_found"
@@ -19,11 +25,37 @@ UNKNOWN_SERIES = "unknown_series"
 UNKNOWN_PERCENTILE = "unknown_percentile"
 PERCENTILE_NOT_APPLICABLE = "percentile_not_applicable"
 MONTH_OUT_OF_RANGE = "month_out_of_range"
+SIMULATION_FAILED = "simulation_failed"
 
 HTTP_BAD_REQUEST = 400
 HTTP_NOT_FOUND = 404
 HTTP_CONFLICT = 409
 HTTP_UNPROCESSABLE = 422
+
+
+def load_cached_result(
+    *,
+    app: FastAPI,
+    plan_id: int,
+    plan: Plan,
+    settings: AppSettings,
+) -> SimulationResult | ExplainFailure:
+    try:
+        return get_or_run_simulation(
+            app,
+            plan_id=plan_id,
+            plan=plan,
+            fred_api_key=settings.fred_api_key,
+            eod_api_key=settings.eod_api_key,
+            run=run_simulation,
+        )
+    except Exception as exc:
+        logger.exception("Simulation failed for plan_id=%s", plan_id)
+        return ExplainFailure(
+            status_code=HTTP_UNPROCESSABLE,
+            code=SIMULATION_FAILED,
+            message=str(exc),
+        )
 
 
 @dataclass(frozen=True)

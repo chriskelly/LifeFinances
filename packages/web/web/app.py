@@ -42,6 +42,7 @@ from web import (
     theme,
 )
 from web.dependencies import get_repository, require_plan, resolve_default_plan_id
+from web.explain_routes import register_explain_routes
 from web.forms import (
     AppSettingsForm,
     HouseholdForm,
@@ -890,6 +891,7 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
     _register_patch_routes(web_app)
     _register_plan_management_routes(web_app)
     _register_results_route(web_app)
+    register_explain_routes(web_app)
 
     return web_app
 
