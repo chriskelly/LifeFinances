@@ -18,6 +18,8 @@ from web.simulation_cache import get_or_run_simulation
 logger = logging.getLogger(__name__)
 
 INVALID_QUERY = "invalid_query"
+DB_NOT_INITIALIZED = "db_not_initialized"
+DB_NOT_INITIALIZED_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
 PLAN_NOT_FOUND = "plan_not_found"
 AMBIGUOUS_PLAN = "ambiguous_plan"
 PLAN_UNLOADABLE = "plan_unloadable"
@@ -31,6 +33,7 @@ HTTP_BAD_REQUEST = 400
 HTTP_NOT_FOUND = 404
 HTTP_CONFLICT = 409
 HTTP_UNPROCESSABLE = 422
+HTTP_SERVICE_UNAVAILABLE = 503
 
 
 def load_cached_result(
@@ -139,13 +142,9 @@ def series_payload(
     month: int | None,
     percentile: int | None,
 ) -> dict[str, object] | ExplainFailure:
-    if series not in PUBLIC_ARRAY_FIELDS:
-        return ExplainFailure(
-            status_code=HTTP_BAD_REQUEST,
-            code=UNKNOWN_SERIES,
-            message=f"Unknown series {series}",
-            allowed=PUBLIC_ARRAY_FIELDS,
-        )
+    invalid_series = validate_series(series)
+    if invalid_series is not None:
+        return invalid_series
     values = getattr(result, series)
     if month is not None and not 0 <= month < result.horizon_months:
         last = result.horizon_months - 1
@@ -178,6 +177,17 @@ def series_payload(
         "month": month,
         "rows": rows,
     }
+
+
+def validate_series(series: str) -> ExplainFailure | None:
+    if series in PUBLIC_ARRAY_FIELDS:
+        return None
+    return ExplainFailure(
+        status_code=HTTP_BAD_REQUEST,
+        code=UNKNOWN_SERIES,
+        message=f"Unknown series {series}",
+        allowed=PUBLIC_ARRAY_FIELDS,
+    )
 
 
 def _percentile_rows(

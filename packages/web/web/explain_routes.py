@@ -11,7 +11,10 @@ from fastapi import Depends, FastAPI, Query, Request
 from fastapi.responses import JSONResponse
 
 from web.explain import (
+    DB_NOT_INITIALIZED,
+    DB_NOT_INITIALIZED_MESSAGE,
     HTTP_BAD_REQUEST,
+    HTTP_SERVICE_UNAVAILABLE,
     INVALID_QUERY,
     ExplainFailure,
     diagnostics_payload,
@@ -20,6 +23,7 @@ from web.explain import (
     resolve_plan,
     series_payload,
     summary_payload,
+    validate_series,
 )
 from web.routes import (
     API_PLAN,
@@ -34,12 +38,26 @@ def _db_path(request: Request) -> Path:
     return request.app.state.db_path or default_db_path()
 
 
-def _get_repo(request: Request) -> PlanRepository:
-    return PlanRepository(db_path=_db_path(request))
+class _DatabaseNotInitialized(Exception):
+    pass
 
 
-def _get_settings_repo(request: Request) -> SettingsRepository:
-    return SettingsRepository(db_path=_db_path(request))
+def _require_db_path(request: Request) -> Path:
+    db_path = _db_path(request)
+    if not db_path.exists():
+        raise _DatabaseNotInitialized
+    return db_path
+
+
+DbPathDep = Annotated[Path, Depends(_require_db_path)]
+
+
+def _get_repo(db_path: DbPathDep) -> PlanRepository:
+    return PlanRepository(db_path=db_path)
+
+
+def _get_settings_repo(db_path: DbPathDep) -> SettingsRepository:
+    return SettingsRepository(db_path=db_path)
 
 
 RepoDep = Annotated[PlanRepository, Depends(_get_repo)]
@@ -76,6 +94,19 @@ def _scoped(
 
 
 def register_explain_routes(web_app: FastAPI) -> None:
+    @web_app.exception_handler(_DatabaseNotInitialized)
+    def database_not_initialized(
+        request: Request, exc: _DatabaseNotInitialized
+    ) -> JSONResponse:
+        del request, exc
+        return _json(
+            ExplainFailure(
+                status_code=HTTP_SERVICE_UNAVAILABLE,
+                code=DB_NOT_INITIALIZED,
+                message=DB_NOT_INITIALIZED_MESSAGE,
+            )
+        )
+
     _register_plan_routes(web_app)
     _register_result_routes(web_app)
 
@@ -177,6 +208,9 @@ def _register_result_routes(web_app: FastAPI) -> None:
                     message="series is required",
                 )
             )
+        invalid_series = validate_series(series)
+        if invalid_series is not None:
+            return _json(invalid_series)
         scoped = _scoped(
             request,
             repo,

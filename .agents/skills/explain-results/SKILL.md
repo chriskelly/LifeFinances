@@ -13,7 +13,7 @@ Base URL: `http://127.0.0.1:8000`. Read the response body on every status, inclu
 
 ## Tools
 
-All GET. Pass exactly one of `plan_id` or `name`. Do not omit both. Do not send both. This API does not choose the default plan.
+All GET. For plan-scoped routes, pass exactly one of `plan_id` or `name`. Do not omit both. Do not send both. This API does not choose the default plan.
 
 - `/api/plans` — loadable plans: `id`, `name`, `is_default`. No simulation.
 - `/api/plan` — full plan JSON.
@@ -31,6 +31,7 @@ If the user did not name a plan, call `/api/plans`, take the row with `is_defaul
 - 404 `plan_not_found`
 - 409 `ambiguous_plan` with `candidates` — ask which id
 - 422 `plan_unloadable` or `simulation_failed` — the `message` is the reason. Do not invent diagnostics.
+- 503 `db_not_initialized` — run `uv run python scripts/init_db.py`
 
 `unknown_series` and `unknown_percentile` include `allowed`. `month_out_of_range` includes `min` and `max`.
 
@@ -40,7 +41,7 @@ State the `plan_id` and `name` from the response.
 
 Grounded: every cited figure comes from these responses. Do not invent intermediates.
 
-Mechanism: read `packages/simulation/simulation/README.md` first. You may read `packages/simulation/simulation/engine.py` and `packages/simulation/simulation/preprocess.py` only when that README does not state the mechanism, or when the README conflicts with the API. Say that the mechanism came from source. If the source disagrees with the cached series, cite the cached series and say they disagree.
+Mechanism: read `packages/simulation/README.md` first. You may read `packages/simulation/simulation/engine.py` and `packages/simulation/simulation/preprocess.py` only when that README does not state the mechanism, or when the README conflicts with the API. Say that the mechanism came from source. If the source disagrees with the cached series, cite the cached series and say they disagree.
 
 Best-effort: for a question these payloads and the README do not cover, say the answer is best-effort. Do not fabricate intermediates.
 

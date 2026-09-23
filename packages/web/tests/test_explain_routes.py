@@ -7,15 +7,19 @@ from core.repository import PlanRepository
 from fastapi.testclient import TestClient
 from simulation.diagnostics import empty_diagnostics
 from simulation.result import ResolvedAssumptions, SimulationResult
+from web.app import create_app
 from web.explain import (
     AMBIGUOUS_PLAN,
+    DB_NOT_INITIALIZED,
     HTTP_BAD_REQUEST,
     HTTP_CONFLICT,
     HTTP_NOT_FOUND,
+    HTTP_SERVICE_UNAVAILABLE,
     HTTP_UNPROCESSABLE,
     INVALID_QUERY,
     PLAN_NOT_FOUND,
     SIMULATION_FAILED,
+    UNKNOWN_SERIES,
 )
 from web.routes import (
     API_PLAN,
@@ -109,13 +113,21 @@ def test_simulation_failure_returns_only_error_fields_and_is_not_cached(
     success = client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
 
     assert failure.status_code == HTTP_UNPROCESSABLE
-    assert failure.json()["error"] == SIMULATION_FAILED
-    assert failure.json()["message"] == message
-    assert "diagnostics" not in failure.json()
-    assert "spending" not in failure.json()
-    assert "rows" not in failure.json()
+    assert failure.json() == {"error": SIMULATION_FAILED, "message": message}
     assert success.status_code == HTTPStatus.OK
     assert calls["n"] == 2
+
+
+def test_plans_refuses_missing_database_without_creating_it(tmp_path) -> None:
+    missing_db_path = tmp_path / "missing.db"
+    app = create_app(db_path=missing_db_path)
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get(API_PLANS)
+
+    assert response.status_code == HTTP_SERVICE_UNAVAILABLE
+    assert response.json()["error"] == DB_NOT_INITIALIZED
+    assert not missing_db_path.exists()
 
 
 def test_plans_lists_bootstrapped_default_without_running_simulation(
@@ -186,3 +198,25 @@ def test_series_without_series_returns_invalid_query(
 
     assert response.status_code == HTTP_BAD_REQUEST
     assert response.json()["error"] == INVALID_QUERY
+
+
+def test_unknown_series_returns_before_running_simulation(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    unknown_series = "not_a_public_series"
+    calls = {"n": 0}
+
+    def run(plan, **kwargs):
+        calls["n"] += 1
+        return _make_result()
+
+    monkeypatch.setattr("web.explain.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_SERIES,
+        params={"plan_id": plan_id, "series": unknown_series},
+    )
+
+    assert response.status_code == HTTP_BAD_REQUEST
+    assert response.json()["error"] == UNKNOWN_SERIES
+    assert calls["n"] == 0
