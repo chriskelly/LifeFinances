@@ -8,20 +8,11 @@ from pathlib import Path
 from typing import Annotated
 
 from core.models import AppSettings, Household, Plan
-from core.paths import default_db_path
 from core.plan_names import untitled_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
 from domain.social_security.earnings import parse_social_security_statement_xml
-from fastapi import (
-    Depends,
-    FastAPI,
-    Form,
-    HTTPException,
-    Query,
-    Request,
-    UploadFile,
-)
+from fastapi import FastAPI, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -41,7 +32,14 @@ from web import (
     spending_summary,
     theme,
 )
-from web.dependencies import get_repository, require_plan, resolve_default_plan_id
+from web.dependencies import (
+    RepoDep,
+    SettingsRepoDep,
+    get_settings_repo,
+    require_plan,
+    resolve_db_path,
+    resolve_default_plan_id,
+)
 from web.explain_routes import register_explain_routes
 from web.forms import (
     AppSettingsForm,
@@ -180,25 +178,6 @@ def _load_simulation(
         return None, _SIMULATION_FAILURE_MESSAGE
 
 
-def _resolve_db_path(app: FastAPI) -> Path:
-    db_path = app.state.db_path
-    if db_path is None:
-        return default_db_path()
-    return db_path
-
-
-def get_repo(request: Request) -> PlanRepository:
-    return get_repository(_resolve_db_path(request.app))
-
-
-def get_settings_repo(request: Request) -> SettingsRepository:
-    return SettingsRepository(db_path=_resolve_db_path(request.app))
-
-
-RepoDep = Annotated[PlanRepository, Depends(get_repo)]
-SettingsRepoDep = Annotated[SettingsRepository, Depends(get_settings_repo)]
-
-
 def _redirect_to_plan(plan_id: int) -> RedirectResponse:
     return RedirectResponse(url=f"{HOME}?plan={plan_id}", status_code=302)
 
@@ -235,7 +214,7 @@ def _register_home_route(web_app: FastAPI) -> None:
         repo: RepoDep,
         plan: Annotated[int | None, Query()] = None,
     ) -> Response:
-        resolved_db_path = _resolve_db_path(request.app)
+        resolved_db_path = resolve_db_path(request.app)
         if not resolved_db_path.exists():
             return templates.TemplateResponse(
                 request,

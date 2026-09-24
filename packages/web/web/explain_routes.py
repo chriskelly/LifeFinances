@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from pathlib import Path
 from typing import Annotated
 
 from core.models import Plan
-from core.paths import default_db_path
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, Query, Request
 from fastapi.responses import JSONResponse
 from simulation.result import SimulationResult
 
+from web.dependencies import RepoDep, SettingsRepoDep, resolve_db_path
 from web.explain import (
     DB_NOT_INITIALIZED,
     DB_NOT_INITIALIZED_MESSAGE,
@@ -37,29 +36,15 @@ from web.routes import (
 
 
 class _DatabaseNotInitialized(Exception):
-    pass
+    """Explain routes refuse to open SQLite when the file is absent.
+
+    ``get_repo`` would otherwise let SQLite create an empty database.
+    """
 
 
-def _require_db_path(request: Request) -> Path:
-    db_path = request.app.state.db_path or default_db_path()
-    if not db_path.exists():
+def _require_initialized_database(request: Request) -> None:
+    if not resolve_db_path(request.app).exists():
         raise _DatabaseNotInitialized
-    return db_path
-
-
-DbPathDep = Annotated[Path, Depends(_require_db_path)]
-
-
-def _get_repo(db_path: DbPathDep) -> PlanRepository:
-    return PlanRepository(db_path=db_path)
-
-
-def _get_settings_repo(db_path: DbPathDep) -> SettingsRepository:
-    return SettingsRepository(db_path=db_path)
-
-
-RepoDep = Annotated[PlanRepository, Depends(_get_repo)]
-SettingsRepoDep = Annotated[SettingsRepository, Depends(_get_settings_repo)]
 
 
 def _json(result: dict[str, object] | ExplainFailure) -> JSONResponse:
@@ -105,17 +90,19 @@ def register_explain_routes(web_app: FastAPI) -> None:
             )
         )
 
-    _register_plan_routes(web_app)
-    _register_result_routes(web_app)
+    router = APIRouter(dependencies=[Depends(_require_initialized_database)])
+    _register_plan_routes(router)
+    _register_result_routes(router)
+    web_app.include_router(router)
 
 
-def _register_plan_routes(web_app: FastAPI) -> None:
-    @web_app.get(API_PLANS)
+def _register_plan_routes(router: APIRouter) -> None:
+    @router.get(API_PLANS)
     def plans(*, repo: RepoDep, settings_repo: SettingsRepoDep) -> JSONResponse:
         listed = list_loadable_plans(plan_repo=repo, settings_repo=settings_repo)
         return _json({"plans": [asdict(item) for item in listed]})
 
-    @web_app.get(API_PLAN)
+    @router.get(API_PLAN)
     def plan(
         *,
         repo: RepoDep,
@@ -135,8 +122,8 @@ def _register_plan_routes(web_app: FastAPI) -> None:
         )
 
 
-def _register_result_routes(web_app: FastAPI) -> None:
-    @web_app.get(API_RESULT_SUMMARY)
+def _register_result_routes(router: APIRouter) -> None:
+    @router.get(API_RESULT_SUMMARY)
     def summary(
         *,
         request: Request,
@@ -163,7 +150,7 @@ def _register_result_routes(web_app: FastAPI) -> None:
             )
         )
 
-    @web_app.get(API_RESULT_DIAGNOSTICS)
+    @router.get(API_RESULT_DIAGNOSTICS)
     def diagnostics(
         *,
         request: Request,
@@ -190,7 +177,7 @@ def _register_result_routes(web_app: FastAPI) -> None:
             )
         )
 
-    @web_app.get(API_RESULT_SERIES)
+    @router.get(API_RESULT_SERIES)
     def series(
         *,
         request: Request,

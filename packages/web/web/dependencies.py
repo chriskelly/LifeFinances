@@ -1,15 +1,36 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 from core.models import Plan
+from core.paths import default_db_path
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
-from fastapi import HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+
+
+def resolve_db_path(app: FastAPI) -> Path:
+    db_path = app.state.db_path
+    if db_path is None:
+        return default_db_path()
+    return db_path
 
 
 def get_repository(db_path: Path) -> PlanRepository:
     return PlanRepository(db_path=db_path)
+
+
+def get_repo(request: Request) -> PlanRepository:
+    return get_repository(resolve_db_path(request.app))
+
+
+def get_settings_repo(request: Request) -> SettingsRepository:
+    return SettingsRepository(db_path=resolve_db_path(request.app))
+
+
+RepoDep = Annotated[PlanRepository, Depends(get_repo)]
+SettingsRepoDep = Annotated[SettingsRepository, Depends(get_settings_repo)]
 
 
 def resolve_default_plan_id(
