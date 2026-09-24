@@ -10,8 +10,8 @@ WORST_CASE_SPENDING_LABEL = "Worst-case spending"
 
 @dataclass(frozen=True)
 class SpendingSummary:
-    initial: float
-    worst_case: float
+    initial: float | None
+    worst_case: float | None
 
 
 def from_result(result: SimulationResult) -> SpendingSummary:
@@ -19,7 +19,8 @@ def from_result(result: SimulationResult) -> SpendingSummary:
 
     Row 0 of every percentile array is the lowest configured percentile
     (`result.percentiles` is sorted ascending). Month 0 is identical across
-    rows, so `initial` is unambiguous.
+    rows, so `initial` is unambiguous. A zero-length horizon has no month 0,
+    so both amounts are None.
 
     `worst_case` is the smallest month on that lowest-percentile row. Percentiles
     are computed independently per month, so the row is a cross-sectional
@@ -27,6 +28,8 @@ def from_result(result: SimulationResult) -> SpendingSummary:
     follows it.
     """
     lowest_percentile_row = result.withdrawals_total[0]
+    if lowest_percentile_row.size == 0:
+        return SpendingSummary(initial=None, worst_case=None)
     return SpendingSummary(
         initial=float(lowest_percentile_row[0]),
         worst_case=float(lowest_percentile_row.min()),

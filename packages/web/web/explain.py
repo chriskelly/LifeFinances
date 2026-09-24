@@ -149,6 +149,12 @@ def series_payload(
     if invalid_series is not None:
         return invalid_series
     values = getattr(result, series)
+    if month is not None and result.horizon_months < 1:
+        return ExplainFailure(
+            status_code=HTTP_BAD_REQUEST,
+            code=MONTH_OUT_OF_RANGE,
+            message="series has no months",
+        )
     if month is not None and not 0 <= month < result.horizon_months:
         last = result.horizon_months - 1
         return ExplainFailure(

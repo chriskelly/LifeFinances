@@ -3,6 +3,7 @@ from datetime import datetime
 import numpy as np
 from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS, empty_diagnostics
 from simulation.result import (
+    HORIZON_ARRAY_FIELDS,
     PUBLIC_ARRAY_FIELDS,
     RAW_ARRAY_FIELDS,
     ResolvedAssumptions,
@@ -284,6 +285,65 @@ def test_horizon_series_rejects_percentile() -> None:
         "message": failure.message,
     }
     assert failure.body() == expected_body
+
+
+def test_empty_horizon_summary_has_no_spending_amounts() -> None:
+    result = _result()
+    plan_name = "Plan"
+    empty = result.model_copy(
+        update={
+            "horizon_months": 0,
+            "withdrawals_total": np.zeros(
+                (len(result.percentiles), 0), dtype=np.float64
+            ),
+        }
+    )
+
+    payload = summary_payload(plan_id=1, plan_name=plan_name, result=empty)
+
+    assert payload["horizon_months"] == 0
+    assert payload["spending"] == {"initial": None, "worst_case": None}
+
+
+def test_month_on_empty_horizon_does_not_invert_bounds() -> None:
+    result = _result()
+    empty = result.model_copy(update={"horizon_months": 0})
+    month = 0
+
+    failure = series_payload(
+        plan_id=1,
+        plan_name="Plan",
+        result=empty,
+        series=RAW_ARRAY_FIELDS[0],
+        month=month,
+        percentile=None,
+    )
+
+    assert isinstance(failure, ExplainFailure)
+    assert failure.code == MONTH_OUT_OF_RANGE
+    assert failure.month_bounds is None
+    assert "min" not in failure.body()
+    assert "max" not in failure.body()
+
+
+def test_horizon_series_with_month_returns_one_element_list() -> None:
+    result = _result()
+    series = HORIZON_ARRAY_FIELDS[0]
+    month = 1
+
+    payload = series_payload(
+        plan_id=1,
+        plan_name="Plan",
+        result=result,
+        series=series,
+        month=month,
+        percentile=None,
+    )
+
+    expected_values = [getattr(result, series)[month]]
+
+    assert not isinstance(payload, ExplainFailure)
+    assert payload["rows"] == [{"percentile": None, "values": expected_values}]
 
 
 def test_month_equal_to_horizon_is_out_of_range() -> None:
