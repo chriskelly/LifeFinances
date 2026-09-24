@@ -1,6 +1,7 @@
 import sqlite3
+from typing import cast
 
-from core.repository import PlanRepository, UnloadablePlan
+from core.repository import PlanRepository, PlanSummary, UnloadablePlan
 from core.settings_repository import SettingsRepository
 from web.explain import (
     AMBIGUOUS_PLAN,
@@ -208,8 +209,7 @@ def test_explain_failure_body_includes_allowed_range_without_candidates() -> Non
         code=code,
         message=message,
         allowed=allowed,
-        min_month=min_month,
-        max_month=max_month,
+        month_bounds=(min_month, max_month),
     )
 
     body = failure.body()
@@ -220,3 +220,31 @@ def test_explain_failure_body_includes_allowed_range_without_candidates() -> Non
     assert body["min"] == min_month
     assert body["max"] == max_month
     assert "candidates" not in body
+
+
+def test_name_match_reports_unloadable_when_matched_row_will_not_load() -> None:
+    stored_name = "Kept"
+    plan_id = 7
+    message = "row failed validation"
+
+    class _ReloadUnloadable:
+        def loadable_ids(self) -> set[int]:
+            return {plan_id}
+
+        def list(self) -> list[PlanSummary]:
+            return [PlanSummary(id=plan_id, name=stored_name)]
+
+        def load_plan(self, requested_id: int) -> UnloadablePlan:
+            assert requested_id == plan_id
+            return UnloadablePlan(id=requested_id, message=message)
+
+    failure = resolve_plan(
+        plan_repo=cast(PlanRepository, _ReloadUnloadable()),
+        plan_id=None,
+        name=stored_name,
+    )
+
+    assert isinstance(failure, ExplainFailure)
+    assert failure.status_code == HTTP_UNPROCESSABLE
+    assert failure.code == PLAN_UNLOADABLE
+    assert failure.message == message

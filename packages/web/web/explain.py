@@ -9,7 +9,12 @@ from core.repository import PlanRepository, UnloadablePlan
 from core.settings_repository import SettingsRepository
 from fastapi import FastAPI
 from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS
-from simulation.result import PUBLIC_ARRAY_FIELDS, RAW_ARRAY_FIELDS, SimulationResult
+from simulation.result import (
+    HORIZON_ARRAY_FIELDS,
+    PUBLIC_ARRAY_FIELDS,
+    RAW_ARRAY_FIELDS,
+    SimulationResult,
+)
 from simulation.stub import run_simulation
 
 from web import spending_summary
@@ -80,9 +85,8 @@ class ExplainFailure:
     code: str
     message: str
     candidates: tuple[PlanRef, ...] = ()
-    allowed: tuple[object, ...] = ()
-    min_month: int | None = None
-    max_month: int | None = None
+    allowed: tuple[str | int, ...] = ()
+    month_bounds: tuple[int, int] | None = None
 
     def body(self) -> dict[str, object]:
         payload: dict[str, object] = {"error": self.code, "message": self.message}
@@ -92,9 +96,8 @@ class ExplainFailure:
             ]
         if self.allowed:
             payload["allowed"] = list(self.allowed)
-        if self.min_month is not None and self.max_month is not None:
-            payload["min"] = self.min_month
-            payload["max"] = self.max_month
+        if self.month_bounds is not None:
+            payload["min"], payload["max"] = self.month_bounds
         return payload
 
 
@@ -152,8 +155,7 @@ def series_payload(
             status_code=HTTP_BAD_REQUEST,
             code=MONTH_OUT_OF_RANGE,
             message=f"month must be between 0 and {last} inclusive",
-            min_month=0,
-            max_month=last,
+            month_bounds=(0, last),
         )
     if series in RAW_ARRAY_FIELDS:
         rows = _percentile_rows(
@@ -162,11 +164,18 @@ def series_payload(
             month=month,
             percentile=percentile,
         )
-    else:
+    elif series in HORIZON_ARRAY_FIELDS:
         rows = _horizon_rows(
             values=values,
             month=month,
             percentile=percentile,
+        )
+    else:
+        return ExplainFailure(
+            status_code=HTTP_BAD_REQUEST,
+            code=UNKNOWN_SERIES,
+            message=f"Unknown series {series}",
+            allowed=PUBLIC_ARRAY_FIELDS,
         )
     if isinstance(rows, ExplainFailure):
         return rows
@@ -280,7 +289,7 @@ def _resolve_id(
         return ExplainFailure(
             status_code=HTTP_NOT_FOUND,
             code=PLAN_NOT_FOUND,
-            message=f"No loadable plan with id {plan_id}",
+            message=f"No plan with id {plan_id}",
         )
     if isinstance(loaded, UnloadablePlan):
         return ExplainFailure(
@@ -324,6 +333,12 @@ def _resolve_name(
         )
     summary = matches[0]
     loaded = plan_repo.load_plan(summary.id)
+    if isinstance(loaded, UnloadablePlan):
+        return ExplainFailure(
+            status_code=HTTP_UNPROCESSABLE,
+            code=PLAN_UNLOADABLE,
+            message=loaded.message,
+        )
     if not isinstance(loaded, Plan):
         return ExplainFailure(
             status_code=HTTP_NOT_FOUND,

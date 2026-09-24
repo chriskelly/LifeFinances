@@ -96,7 +96,7 @@ Read-only GET handlers in `web/explain_routes.py` (registered from `create_app()
 
 Each plan-scoped route accepts exactly one of query params `plan_id` or `name` (not both, not neither). Resolution and simulation reuse `web.simulation_cache.get_or_run_simulation` — the same process-local cache as Home and Results — via `web.explain.load_cached_result`. Do not spawn a separate simulation process for these routes.
 
-Unloadable plan JSON returns JSON `422` with code `plan_unloadable` and a `message` (see `web.explain.resolve_plan`). That path intentionally does not use `require_plan`, which would surface an HTML 404 for the same row.
+Unloadable plan JSON returns JSON `422` with code `plan_unloadable` and a `message` (see `web.explain.resolve_plan`). That path intentionally does not use `require_plan`, which returns JSON `404` `{"detail": "Plan not found"}` and drops the validation message.
 
 On `/api/result/series`, Monte Carlo spending and allocation series are percentile-major; `wealth_job`, `wealth_social_security`, `wealth_pension`, and `wealth_manual` are single vectors (no percentile axis — sending `percentile` yields `percentile_not_applicable`). Agent-facing usage is documented in root `.agents/skills/explain-results/SKILL.md`.
 

@@ -301,12 +301,13 @@ def test_month_equal_to_horizon_is_out_of_range() -> None:
     assert isinstance(failure, ExplainFailure)
     assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == MONTH_OUT_OF_RANGE
-    assert failure.min_month == 0
-    assert failure.max_month == result.horizon_months - 1
+    bounds = failure.month_bounds
+    assert bounds is not None
+    assert bounds == (0, result.horizon_months - 1)
     expected_body = {
         "error": failure.code,
         "message": failure.message,
-        "min": failure.min_month,
-        "max": failure.max_month,
+        "min": bounds[0],
+        "max": bounds[1],
     }
     assert failure.body() == expected_body

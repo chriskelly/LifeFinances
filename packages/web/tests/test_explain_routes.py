@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from http import HTTPStatus
 
@@ -87,33 +88,89 @@ def test_diagnostics_and_summary_share_one_cached_run(
     assert diagnostics.status_code == HTTPStatus.OK
     assert summary.status_code == HTTPStatus.OK
     assert calls["n"] == 1
+
+
+def test_diagnostics_returns_scheduled_wealth_from_the_cached_run(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+
+    def run(plan, **kwargs):
+        return result
+
+    monkeypatch.setattr("web.explain.run_simulation", run)
+
+    diagnostics = client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
+
     assert (
         diagnostics.json()["scheduled_wealth"]
         == result.diagnostics.scheduled_wealth.tolist()
     )
+
+
+def test_summary_echoes_resolved_plan_id(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    def run(plan, **kwargs):
+        return _make_result()
+
+    monkeypatch.setattr("web.explain.run_simulation", run)
+
+    summary = client.get(API_RESULT_SUMMARY, params={"plan_id": plan_id})
+
     assert summary.json()["plan_id"] == plan_id
 
 
-def test_simulation_failure_returns_only_error_fields_and_is_not_cached(
+def test_simulation_failure_returns_only_error_fields(
     client: TestClient, plan_id: int, monkeypatch
 ) -> None:
     message = "simulation exploded"
+
+    def run(plan, **kwargs):
+        raise ValueError(message)
+
+    monkeypatch.setattr("web.explain.run_simulation", run)
+
+    failure = client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
+
+    assert failure.status_code == HTTP_UNPROCESSABLE
+    assert failure.json() == {"error": SIMULATION_FAILED, "message": message}
+
+
+def test_simulation_failure_logs_traceback(
+    client: TestClient, plan_id: int, monkeypatch, caplog
+) -> None:
+    message = "simulation exploded"
+
+    def run(plan, **kwargs):
+        raise ValueError(message)
+
+    monkeypatch.setattr("web.explain.run_simulation", run)
+
+    with caplog.at_level(logging.ERROR, logger="web.explain"):
+        client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
+
+    assert message in caplog.text
+    assert "Traceback" in caplog.text
+
+
+def test_simulation_failure_is_not_cached(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
     result = _make_result()
     calls = {"n": 0}
 
     def run(plan, **kwargs):
         calls["n"] += 1
         if calls["n"] == 1:
-            raise ValueError(message)
+            raise ValueError("simulation exploded")
         return result
 
     monkeypatch.setattr("web.explain.run_simulation", run)
 
-    failure = client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
+    client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
     success = client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
 
-    assert failure.status_code == HTTP_UNPROCESSABLE
-    assert failure.json() == {"error": SIMULATION_FAILED, "message": message}
     assert success.status_code == HTTPStatus.OK
     assert calls["n"] == 2
 
@@ -130,11 +187,44 @@ def test_plans_refuses_missing_database_without_creating_it(tmp_path) -> None:
     assert not missing_db_path.exists()
 
 
-def test_plans_lists_bootstrapped_default_without_running_simulation(
-    client: TestClient, plan_id: int, repo: PlanRepository, monkeypatch
+def test_plans_on_blank_database_does_not_create_a_plan(
+    client: TestClient, db_path
+) -> None:
+    response = client.get(API_PLANS)
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {"plans": []}
+    assert PlanRepository(db_path=db_path).list() == []
+
+
+def test_summary_on_blank_database_does_not_create_a_plan(
+    client: TestClient, db_path
+) -> None:
+    missing_id = 1
+
+    response = client.get(API_RESULT_SUMMARY, params={"plan_id": missing_id})
+
+    assert response.status_code == HTTP_NOT_FOUND
+    assert PlanRepository(db_path=db_path).list() == []
+
+
+def test_plans_lists_bootstrapped_default(
+    client: TestClient, plan_id: int, repo: PlanRepository
 ) -> None:
     stored = repo.get_by_id(plan_id)
     assert stored is not None
+
+    response = client.get(API_PLANS)
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["plans"] == [
+        {"id": plan_id, "name": stored.name, "is_default": True}
+    ]
+
+
+def test_plans_does_not_run_simulation(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
     calls = {"n": 0}
 
     def run(plan, **kwargs):
@@ -143,12 +233,8 @@ def test_plans_lists_bootstrapped_default_without_running_simulation(
 
     monkeypatch.setattr("web.explain.run_simulation", run)
 
-    response = client.get(API_PLANS)
+    client.get(API_PLANS)
 
-    assert response.status_code == HTTPStatus.OK
-    assert response.json()["plans"] == [
-        {"id": plan_id, "name": stored.name, "is_default": True}
-    ]
     assert calls["n"] == 0
 
 

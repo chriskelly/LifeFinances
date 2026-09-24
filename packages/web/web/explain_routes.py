@@ -4,11 +4,13 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated
 
+from core.models import Plan
 from core.paths import default_db_path
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
 from fastapi import Depends, FastAPI, Query, Request
 from fastapi.responses import JSONResponse
+from simulation.result import SimulationResult
 
 from web.explain import (
     DB_NOT_INITIALIZED,
@@ -34,16 +36,12 @@ from web.routes import (
 )
 
 
-def _db_path(request: Request) -> Path:
-    return request.app.state.db_path or default_db_path()
-
-
 class _DatabaseNotInitialized(Exception):
     pass
 
 
 def _require_db_path(request: Request) -> Path:
-    db_path = _db_path(request)
+    db_path = request.app.state.db_path or default_db_path()
     if not db_path.exists():
         raise _DatabaseNotInitialized
     return db_path
@@ -71,13 +69,13 @@ def _json(result: dict[str, object] | ExplainFailure) -> JSONResponse:
 
 
 def _scoped(
+    *,
     request: Request,
     repo: PlanRepository,
     settings_repo: SettingsRepository,
-    *,
     plan_id: int | None,
     name: str | None,
-):
+) -> ExplainFailure | tuple[int, Plan, SimulationResult]:
     resolved = resolve_plan(plan_repo=repo, plan_id=plan_id, name=name)
     if isinstance(resolved, ExplainFailure):
         return resolved
@@ -113,12 +111,13 @@ def register_explain_routes(web_app: FastAPI) -> None:
 
 def _register_plan_routes(web_app: FastAPI) -> None:
     @web_app.get(API_PLANS)
-    def plans(repo: RepoDep, settings_repo: SettingsRepoDep) -> JSONResponse:
+    def plans(*, repo: RepoDep, settings_repo: SettingsRepoDep) -> JSONResponse:
         listed = list_loadable_plans(plan_repo=repo, settings_repo=settings_repo)
         return _json({"plans": [asdict(item) for item in listed]})
 
     @web_app.get(API_PLAN)
     def plan(
+        *,
         repo: RepoDep,
         plan_id: Annotated[int | None, Query()] = None,
         name: Annotated[str | None, Query()] = None,
@@ -139,6 +138,7 @@ def _register_plan_routes(web_app: FastAPI) -> None:
 def _register_result_routes(web_app: FastAPI) -> None:
     @web_app.get(API_RESULT_SUMMARY)
     def summary(
+        *,
         request: Request,
         repo: RepoDep,
         settings_repo: SettingsRepoDep,
@@ -146,9 +146,9 @@ def _register_result_routes(web_app: FastAPI) -> None:
         name: Annotated[str | None, Query()] = None,
     ) -> JSONResponse:
         scoped = _scoped(
-            request,
-            repo,
-            settings_repo,
+            request=request,
+            repo=repo,
+            settings_repo=settings_repo,
             plan_id=plan_id,
             name=name,
         )
@@ -165,6 +165,7 @@ def _register_result_routes(web_app: FastAPI) -> None:
 
     @web_app.get(API_RESULT_DIAGNOSTICS)
     def diagnostics(
+        *,
         request: Request,
         repo: RepoDep,
         settings_repo: SettingsRepoDep,
@@ -172,9 +173,9 @@ def _register_result_routes(web_app: FastAPI) -> None:
         name: Annotated[str | None, Query()] = None,
     ) -> JSONResponse:
         scoped = _scoped(
-            request,
-            repo,
-            settings_repo,
+            request=request,
+            repo=repo,
+            settings_repo=settings_repo,
             plan_id=plan_id,
             name=name,
         )
@@ -191,6 +192,7 @@ def _register_result_routes(web_app: FastAPI) -> None:
 
     @web_app.get(API_RESULT_SERIES)
     def series(
+        *,
         request: Request,
         repo: RepoDep,
         settings_repo: SettingsRepoDep,
@@ -212,9 +214,9 @@ def _register_result_routes(web_app: FastAPI) -> None:
         if invalid_series is not None:
             return _json(invalid_series)
         scoped = _scoped(
-            request,
-            repo,
-            settings_repo,
+            request=request,
+            repo=repo,
+            settings_repo=settings_repo,
             plan_id=plan_id,
             name=name,
         )

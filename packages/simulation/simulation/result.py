@@ -27,12 +27,16 @@ RAW_ARRAY_FIELDS = (
     "savings_stock_allocation",
 )
 
-PUBLIC_ARRAY_FIELDS = (
-    *RAW_ARRAY_FIELDS,
+HORIZON_ARRAY_FIELDS = (
     "wealth_job",
     "wealth_social_security",
     "wealth_pension",
     "wealth_manual",
+)
+
+PUBLIC_ARRAY_FIELDS = (
+    *RAW_ARRAY_FIELDS,
+    *HORIZON_ARRAY_FIELDS,
 )
 
 
@@ -154,6 +158,7 @@ class SimulationResult(BaseModel):
 __all__ = [
     "ENGINE_VERSION",
     "InflationSource",
+    "HORIZON_ARRAY_FIELDS",
     "PUBLIC_ARRAY_FIELDS",
     "RAW_ARRAY_FIELDS",
     "RawSimulationResult",
