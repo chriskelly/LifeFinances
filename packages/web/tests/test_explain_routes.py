@@ -80,7 +80,7 @@ def test_diagnostics_and_summary_share_one_cached_run(
         calls["n"] += 1
         return result
 
-    monkeypatch.setattr("web.explain.run_simulation", run)
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
 
     diagnostics = client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
     summary = client.get(API_RESULT_SUMMARY, params={"plan_id": plan_id})
@@ -98,7 +98,7 @@ def test_diagnostics_returns_scheduled_wealth_from_the_cached_run(
     def run(plan, **kwargs):
         return result
 
-    monkeypatch.setattr("web.explain.run_simulation", run)
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
 
     diagnostics = client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
 
@@ -114,7 +114,7 @@ def test_summary_echoes_resolved_plan_id(
     def run(plan, **kwargs):
         return _make_result()
 
-    monkeypatch.setattr("web.explain.run_simulation", run)
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
 
     summary = client.get(API_RESULT_SUMMARY, params={"plan_id": plan_id})
 
@@ -129,7 +129,7 @@ def test_simulation_failure_returns_only_error_fields(
     def run(plan, **kwargs):
         raise ValueError(message)
 
-    monkeypatch.setattr("web.explain.run_simulation", run)
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
 
     failure = client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
 
@@ -145,9 +145,9 @@ def test_simulation_failure_logs_traceback(
     def run(plan, **kwargs):
         raise ValueError(message)
 
-    monkeypatch.setattr("web.explain.run_simulation", run)
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
 
-    with caplog.at_level(logging.ERROR, logger="web.explain"):
+    with caplog.at_level(logging.ERROR, logger="web.simulation_cache"):
         client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
 
     assert message in caplog.text
@@ -166,7 +166,7 @@ def test_simulation_failure_is_not_cached(
             raise ValueError("simulation exploded")
         return result
 
-    monkeypatch.setattr("web.explain.run_simulation", run)
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
 
     client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
     success = client.get(API_RESULT_DIAGNOSTICS, params={"plan_id": plan_id})
@@ -231,7 +231,7 @@ def test_plans_does_not_run_simulation(
         calls["n"] += 1
         return _make_result()
 
-    monkeypatch.setattr("web.explain.run_simulation", run)
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
 
     client.get(API_PLANS)
 
@@ -296,7 +296,7 @@ def test_unknown_series_returns_before_running_simulation(
         calls["n"] += 1
         return _make_result()
 
-    monkeypatch.setattr("web.explain.run_simulation", run)
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
 
     response = client.get(
         API_RESULT_SERIES,

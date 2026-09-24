@@ -3,28 +3,32 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Annotated
 
-from core.models import Plan
-from core.repository import PlanRepository
-from core.settings_repository import SettingsRepository
 from fastapi import APIRouter, Depends, FastAPI, Query, Request
 from fastapi.responses import JSONResponse
-from simulation.result import SimulationResult
 
-from web.dependencies import RepoDep, SettingsRepoDep, resolve_db_path
+from web.dependencies import (
+    DbPathDep,
+    RepoDep,
+    SelectedPlan,
+    SettingsDep,
+    SettingsRepoDep,
+)
 from web.explain import (
     DB_NOT_INITIALIZED,
     DB_NOT_INITIALIZED_MESSAGE,
     HTTP_BAD_REQUEST,
     HTTP_SERVICE_UNAVAILABLE,
+    HTTP_UNPROCESSABLE,
     INVALID_QUERY,
-    ExplainFailure,
+    SIMULATION_FAILED,
+    ApiError,
+    ScopedResult,
     diagnostics_payload,
     list_loadable_plans,
-    load_cached_result,
+    require_known_series,
     resolve_plan,
     series_payload,
     summary_payload,
-    validate_series,
 )
 from web.routes import (
     API_PLAN,
@@ -33,64 +37,75 @@ from web.routes import (
     API_RESULT_SERIES,
     API_RESULT_SUMMARY,
 )
+from web.simulation_cache import get_or_run_simulation
 
 
-class _DatabaseNotInitialized(Exception):
-    """Explain routes refuse to open SQLite when the file is absent.
-
-    ``get_repo`` would otherwise let SQLite create an empty database.
-    """
-
-
-def _require_initialized_database(request: Request) -> None:
-    if not resolve_db_path(request.app).exists():
-        raise _DatabaseNotInitialized
+def require_initialized_database(db_path: DbPathDep) -> None:
+    if not db_path.exists():
+        raise ApiError(
+            status_code=HTTP_SERVICE_UNAVAILABLE,
+            code=DB_NOT_INITIALIZED,
+            message=DB_NOT_INITIALIZED_MESSAGE,
+        )
 
 
-def _json(result: dict[str, object] | ExplainFailure) -> JSONResponse:
-    if isinstance(result, ExplainFailure):
-        return JSONResponse(status_code=result.status_code, content=result.body())
-    return JSONResponse(status_code=200, content=result)
+def require_api_plan(
+    repo: RepoDep,
+    plan_id: Annotated[int | None, Query()] = None,
+    name: Annotated[str | None, Query()] = None,
+) -> SelectedPlan:
+    return resolve_plan(plan_repo=repo, plan_id=plan_id, name=name)
 
 
-def _scoped(
-    *,
+ApiPlanDep = Annotated[SelectedPlan, Depends(require_api_plan)]
+
+
+def require_api_result(
     request: Request,
-    repo: PlanRepository,
-    settings_repo: SettingsRepository,
-    plan_id: int | None,
-    name: str | None,
-) -> ExplainFailure | tuple[int, Plan, SimulationResult]:
-    resolved = resolve_plan(plan_repo=repo, plan_id=plan_id, name=name)
-    if isinstance(resolved, ExplainFailure):
-        return resolved
-    resolved_id, plan = resolved
-    loaded = load_cached_result(
-        app=request.app,
-        plan_id=resolved_id,
-        plan=plan,
-        settings=settings_repo.get(),
-    )
-    if isinstance(loaded, ExplainFailure):
-        return loaded
-    return resolved_id, plan, loaded
+    selected: ApiPlanDep,
+    settings: SettingsDep,
+) -> ScopedResult:
+    try:
+        result = get_or_run_simulation(
+            request.app,
+            plan_id=selected.id,
+            plan=selected.plan,
+            settings=settings,
+        )
+    except Exception as exc:
+        raise ApiError(
+            status_code=HTTP_UNPROCESSABLE,
+            code=SIMULATION_FAILED,
+            message=str(exc),
+        ) from exc
+    return ScopedResult(plan_id=selected.id, plan=selected.plan, result=result)
+
+
+ApiResultDep = Annotated[ScopedResult, Depends(require_api_result)]
+
+
+def require_series(
+    series: Annotated[str | None, Query()] = None,
+) -> str:
+    if series is None:
+        raise ApiError(
+            status_code=HTTP_BAD_REQUEST,
+            code=INVALID_QUERY,
+            message="series is required",
+        )
+    return require_known_series(series)
+
+
+SeriesDep = Annotated[str, Depends(require_series)]
 
 
 def register_explain_routes(web_app: FastAPI) -> None:
-    @web_app.exception_handler(_DatabaseNotInitialized)
-    def database_not_initialized(
-        request: Request, exc: _DatabaseNotInitialized
-    ) -> JSONResponse:
-        del request, exc
-        return _json(
-            ExplainFailure(
-                status_code=HTTP_SERVICE_UNAVAILABLE,
-                code=DB_NOT_INITIALIZED,
-                message=DB_NOT_INITIALIZED_MESSAGE,
-            )
-        )
+    @web_app.exception_handler(ApiError)
+    def api_error_handler(request: Request, exc: ApiError) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=exc.status_code, content=exc.body())
 
-    router = APIRouter(dependencies=[Depends(_require_initialized_database)])
+    router = APIRouter(dependencies=[Depends(require_initialized_database)])
     _register_plan_routes(router)
     _register_result_routes(router)
     web_app.include_router(router)
@@ -98,125 +113,39 @@ def register_explain_routes(web_app: FastAPI) -> None:
 
 def _register_plan_routes(router: APIRouter) -> None:
     @router.get(API_PLANS)
-    def plans(*, repo: RepoDep, settings_repo: SettingsRepoDep) -> JSONResponse:
+    def plans(*, repo: RepoDep, settings_repo: SettingsRepoDep) -> dict[str, object]:
         listed = list_loadable_plans(plan_repo=repo, settings_repo=settings_repo)
-        return _json({"plans": [asdict(item) for item in listed]})
+        return {"plans": [asdict(item) for item in listed]}
 
     @router.get(API_PLAN)
-    def plan(
-        *,
-        repo: RepoDep,
-        plan_id: Annotated[int | None, Query()] = None,
-        name: Annotated[str | None, Query()] = None,
-    ) -> JSONResponse:
-        resolved = resolve_plan(plan_repo=repo, plan_id=plan_id, name=name)
-        if isinstance(resolved, ExplainFailure):
-            return _json(resolved)
-        resolved_id, resolved_plan = resolved
-        return _json(
-            {
-                "plan_id": resolved_id,
-                "name": resolved_plan.name,
-                "plan": resolved_plan.model_dump(mode="json"),
-            }
-        )
+    def plan(*, selected: ApiPlanDep) -> dict[str, object]:
+        return {
+            "plan_id": selected.id,
+            "name": selected.plan.name,
+            "plan": selected.plan.model_dump(mode="json"),
+        }
 
 
 def _register_result_routes(router: APIRouter) -> None:
     @router.get(API_RESULT_SUMMARY)
-    def summary(
-        *,
-        request: Request,
-        repo: RepoDep,
-        settings_repo: SettingsRepoDep,
-        plan_id: Annotated[int | None, Query()] = None,
-        name: Annotated[str | None, Query()] = None,
-    ) -> JSONResponse:
-        scoped = _scoped(
-            request=request,
-            repo=repo,
-            settings_repo=settings_repo,
-            plan_id=plan_id,
-            name=name,
-        )
-        if isinstance(scoped, ExplainFailure):
-            return _json(scoped)
-        resolved_id, resolved_plan, result = scoped
-        return _json(
-            summary_payload(
-                plan_id=resolved_id,
-                plan_name=resolved_plan.name,
-                result=result,
-            )
-        )
+    def summary(*, scoped: ApiResultDep) -> dict[str, object]:
+        return summary_payload(scoped)
 
     @router.get(API_RESULT_DIAGNOSTICS)
-    def diagnostics(
-        *,
-        request: Request,
-        repo: RepoDep,
-        settings_repo: SettingsRepoDep,
-        plan_id: Annotated[int | None, Query()] = None,
-        name: Annotated[str | None, Query()] = None,
-    ) -> JSONResponse:
-        scoped = _scoped(
-            request=request,
-            repo=repo,
-            settings_repo=settings_repo,
-            plan_id=plan_id,
-            name=name,
-        )
-        if isinstance(scoped, ExplainFailure):
-            return _json(scoped)
-        resolved_id, resolved_plan, result = scoped
-        return _json(
-            diagnostics_payload(
-                plan_id=resolved_id,
-                plan_name=resolved_plan.name,
-                result=result,
-            )
-        )
+    def diagnostics(*, scoped: ApiResultDep) -> dict[str, object]:
+        return diagnostics_payload(scoped)
 
     @router.get(API_RESULT_SERIES)
     def series(
         *,
-        request: Request,
-        repo: RepoDep,
-        settings_repo: SettingsRepoDep,
-        plan_id: Annotated[int | None, Query()] = None,
-        name: Annotated[str | None, Query()] = None,
-        series: Annotated[str | None, Query()] = None,
+        series: SeriesDep,
+        scoped: ApiResultDep,
         month: Annotated[int | None, Query()] = None,
         percentile: Annotated[int | None, Query()] = None,
-    ) -> JSONResponse:
-        if series is None:
-            return _json(
-                ExplainFailure(
-                    status_code=HTTP_BAD_REQUEST,
-                    code=INVALID_QUERY,
-                    message="series is required",
-                )
-            )
-        invalid_series = validate_series(series)
-        if invalid_series is not None:
-            return _json(invalid_series)
-        scoped = _scoped(
-            request=request,
-            repo=repo,
-            settings_repo=settings_repo,
-            plan_id=plan_id,
-            name=name,
-        )
-        if isinstance(scoped, ExplainFailure):
-            return _json(scoped)
-        resolved_id, resolved_plan, result = scoped
-        return _json(
-            series_payload(
-                plan_id=resolved_id,
-                plan_name=resolved_plan.name,
-                result=result,
-                series=series,
-                month=month,
-                percentile=percentile,
-            )
+    ) -> dict[str, object]:
+        return series_payload(
+            scoped=scoped,
+            series=series,
+            month=month,
+            percentile=percentile,
         )

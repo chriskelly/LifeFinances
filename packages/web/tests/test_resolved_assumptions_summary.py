@@ -82,7 +82,7 @@ def _make_result(assumptions: ResolvedAssumptions) -> SimulationResult:
 
 
 def _stub_run(monkeypatch, result: SimulationResult) -> None:
-    app_module = sys.modules["web.app"]
+    app_module = sys.modules["web.simulation_cache"]
 
     def stub_run_simulation(plan, **kwargs):
         return result
@@ -91,7 +91,7 @@ def _stub_run(monkeypatch, result: SimulationResult) -> None:
 
 
 def _stub_failure(monkeypatch) -> None:
-    app_module = sys.modules["web.app"]
+    app_module = sys.modules["web.simulation_cache"]
 
     def boom_run_simulation(plan, **kwargs):
         raise RuntimeError("engine exploded")

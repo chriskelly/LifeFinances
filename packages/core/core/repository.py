@@ -96,12 +96,13 @@ class PlanRepository:
             conn.close()
         return row is not None
 
+    def list_loadable(self) -> list[PlanSummary]:
+        return [
+            summary for summary in self.list() if self.get_by_id(summary.id) is not None
+        ]
+
     def loadable_ids(self) -> set[int]:
-        return {
-            summary.id
-            for summary in self.list()
-            if self.get_by_id(summary.id) is not None
-        }
+        return {summary.id for summary in self.list_loadable()}
 
     def create(self, *, name: str) -> tuple[int, Plan]:
         plan = default_plan().model_copy(update={"name": name})

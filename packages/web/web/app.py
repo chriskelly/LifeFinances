@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-import logging
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
 
 from core.models import AppSettings, Household, Plan
+from core.paths import default_db_path
 from core.plan_names import untitled_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
@@ -18,7 +18,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from simulation.result import SimulationResult
-from simulation.stub import run_simulation
 
 from web import (
     boundaries,
@@ -33,12 +32,12 @@ from web import (
     theme,
 )
 from web.dependencies import (
+    DbPathDep,
+    PathPlanDep,
+    PlanDep,
     RepoDep,
+    SettingsDep,
     SettingsRepoDep,
-    get_settings_repo,
-    require_plan,
-    resolve_db_path,
-    resolve_default_plan_id,
 )
 from web.explain_routes import register_explain_routes
 from web.forms import (
@@ -84,8 +83,6 @@ from web.routes import (
     RESULTS,
 )
 from web.simulation_cache import get_or_run_simulation
-
-logger = logging.getLogger(__name__)
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(_PACKAGE_DIR / "templates"))
@@ -167,14 +164,11 @@ def _load_simulation(
                 request.app,
                 plan_id=plan_id,
                 plan=plan_model,
-                fred_api_key=settings.fred_api_key,
-                eod_api_key=settings.eod_api_key,
-                run=run_simulation,
+                settings=settings,
             ),
             None,
         )
     except Exception:
-        logger.exception("Simulation failed for plan_id=%s", plan_id)
         return None, _SIMULATION_FAILURE_MESSAGE
 
 
@@ -212,24 +206,25 @@ def _register_home_route(web_app: FastAPI) -> None:
     def home(
         request: Request,
         repo: RepoDep,
+        db_path: DbPathDep,
+        settings_repo: SettingsRepoDep,
         plan: Annotated[int | None, Query()] = None,
     ) -> Response:
-        resolved_db_path = resolve_db_path(request.app)
-        if not resolved_db_path.exists():
+        if not db_path.exists():
             return templates.TemplateResponse(
                 request,
                 "error.html",
                 {"message": _INIT_DB_MESSAGE},
             )
 
-        settings_repo = get_settings_repo(request)
         if plan is None:
-            default_plan_id = resolve_default_plan_id(
-                plan_repo=repo, settings_repo=settings_repo
-            )
+            default_plan_id, _ = repo.ensure_bootstrap(settings_repo=settings_repo)
             return _redirect_to_plan(default_plan_id)
 
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
+        plan_model = repo.get_by_id(plan)
+        if plan_model is None:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        plan_id = plan
         settings = settings_repo.get()
         result, simulation_error = _load_simulation(
             request,
@@ -273,68 +268,57 @@ def _register_editor_routes(web_app: FastAPI) -> None:
     @web_app.get(EDITOR_HOUSEHOLD, response_class=HTMLResponse)
     def editor_household(
         request: Request,
-        repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> HTMLResponse:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         return templates.TemplateResponse(
             request,
             "editor_household.html",
-            {"plan_id": plan_id, "plan": plan_model},
+            {"plan_id": selected.id, "plan": selected.plan},
         )
 
     @web_app.get(EDITOR_PORTFOLIO, response_class=HTMLResponse)
     def editor_portfolio(
         request: Request,
-        repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> HTMLResponse:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         return templates.TemplateResponse(
             request,
             "editor_portfolio.html",
-            {"plan_id": plan_id, "plan": plan_model},
+            {"plan_id": selected.id, "plan": selected.plan},
         )
 
     @web_app.get(EDITOR_SETTINGS, response_class=HTMLResponse)
     def editor_settings(
         request: Request,
-        repo: RepoDep,
-        settings_repo: SettingsRepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
+        settings: SettingsDep,
     ) -> HTMLResponse:
-        plan_id, _ = require_plan(plan, plan_repo=repo)
-        settings = settings_repo.get()
         return templates.TemplateResponse(
             request,
             "editor_settings.html",
-            {"plan_id": plan_id, "settings": settings},
+            {"plan_id": selected.id, "settings": settings},
         )
 
     @web_app.get(EDITOR_JOBS, response_class=HTMLResponse)
     def editor_jobs(
         request: Request,
-        repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> HTMLResponse:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         return templates.TemplateResponse(
             request,
             "editor_jobs.html",
-            {"plan_id": plan_id, "plan": plan_model},
+            {"plan_id": selected.id, "plan": selected.plan},
         )
 
     @web_app.get(EDITOR_MANUAL_INCOME, response_class=HTMLResponse)
     def editor_manual_income(
         request: Request,
-        repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> HTMLResponse:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         return templates.TemplateResponse(
             request,
             "editor_manual_income.html",
-            {"plan_id": plan_id, "plan": plan_model},
+            {"plan_id": selected.id, "plan": selected.plan},
         )
 
 
@@ -342,35 +326,32 @@ def _register_spending_routes(web_app: FastAPI) -> None:
     @web_app.get(EDITOR_SPENDING, response_class=HTMLResponse)
     def editor_spending(
         request: Request,
-        repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> HTMLResponse:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         return templates.TemplateResponse(
             request,
             "editor_spending.html",
-            {"plan_id": plan_id, "plan": plan_model},
+            {"plan_id": selected.id, "plan": selected.plan},
         )
 
     @web_app.patch(PLAN_SPENDING)
     async def patch_spending(
         request: Request,
         repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> Response:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         form = await request.form()
         try:
             updated = SpendingGoalsForm.from_form(
                 form,
                 today=date.today(),
-                existing_essential=plan_model.extra_essential_spending,
-                existing_discretionary=plan_model.extra_discretionary_spending,
-                existing_legacy_target=plan_model.legacy_target,
-            ).apply_to(plan_model)
+                existing_essential=selected.plan.extra_essential_spending,
+                existing_discretionary=selected.plan.extra_discretionary_spending,
+                existing_legacy_target=selected.plan.legacy_target,
+            ).apply_to(selected.plan)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
-        repo.save(plan_id, updated)
+        repo.save(selected.id, updated)
         return Response(status_code=200)
 
 
@@ -378,14 +359,12 @@ def _register_risk_routes(web_app: FastAPI) -> None:
     @web_app.get(EDITOR_RISK, response_class=HTMLResponse)
     def editor_risk(
         request: Request,
-        repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> HTMLResponse:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         return templates.TemplateResponse(
             request,
             "editor_risk.html",
-            {"plan_id": plan_id, "plan": plan_model},
+            {"plan_id": selected.id, "plan": selected.plan},
         )
 
     @web_app.patch(PLAN_RISK)
@@ -396,9 +375,8 @@ def _register_risk_routes(web_app: FastAPI) -> None:
         time_preference: Annotated[str, Form()],
         additional_annual_spending_tilt: Annotated[str, Form()],
         repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> Response:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
             updated = RiskForm(
                 risk_tolerance_at_20=Decimal(risk_tolerance_at_20),
@@ -408,10 +386,10 @@ def _register_risk_routes(web_app: FastAPI) -> None:
                 additional_annual_spending_tilt=percent.parse_percent(
                     additional_annual_spending_tilt
                 ),
-            ).apply_to(plan_model)
+            ).apply_to(selected.plan)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
-        repo.save(plan_id, updated)
+        repo.save(selected.id, updated)
         return Response(status_code=200)
 
 
@@ -419,24 +397,21 @@ def _register_market_assumptions_routes(web_app: FastAPI) -> None:
     @web_app.get(EDITOR_MARKET_ASSUMPTIONS, response_class=HTMLResponse)
     def editor_market_assumptions(
         request: Request,
-        repo: RepoDep,
-        settings_repo: SettingsRepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
+        settings: SettingsDep,
     ) -> HTMLResponse:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
-        settings = settings_repo.get()
         result, simulation_error = _load_simulation(
             request,
-            plan_id=plan_id,
-            plan_model=plan_model,
+            plan_id=selected.id,
+            plan_model=selected.plan,
             settings=settings,
         )
         return templates.TemplateResponse(
             request,
             "editor_market_assumptions.html",
             {
-                "plan_id": plan_id,
-                "plan": plan_model,
+                "plan_id": selected.id,
+                "plan": selected.plan,
                 "assumptions": resolved_assumptions.from_result(result),
                 "simulation_error": simulation_error,
             },
@@ -447,7 +422,7 @@ def _register_market_assumptions_routes(web_app: FastAPI) -> None:
         inflation_mode: Annotated[str, Form()],
         planning_preset: Annotated[str, Form()],
         repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
         inflation_manual_annual_rate: Annotated[str | None, Form()] = None,
         fixed_equity_premium: Annotated[str | None, Form()] = None,
         custom_stocks_base: Annotated[str | None, Form()] = None,
@@ -458,7 +433,6 @@ def _register_market_assumptions_routes(web_app: FastAPI) -> None:
         expected_annual_return_bonds: Annotated[str | None, Form()] = None,
         stock_volatility_scale: Annotated[str | None, Form()] = None,
     ) -> Response:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
             updated = MarketAssumptionsForm.model_validate(
                 {
@@ -490,10 +464,10 @@ def _register_market_assumptions_routes(web_app: FastAPI) -> None:
                         else None
                     ),
                 }
-            ).apply_to(plan_model)
+            ).apply_to(selected.plan)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
-        repo.save(plan_id, updated)
+        repo.save(selected.id, updated)
         return Response(status_code=200)
 
 
@@ -501,14 +475,12 @@ def _register_simulation_details_routes(web_app: FastAPI) -> None:
     @web_app.get(EDITOR_SIMULATION_DETAILS, response_class=HTMLResponse)
     def editor_simulation_details(
         request: Request,
-        repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> HTMLResponse:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         return templates.TemplateResponse(
             request,
             "editor_simulation_details.html",
-            {"plan_id": plan_id, "plan": plan_model},
+            {"plan_id": selected.id, "plan": selected.plan},
         )
 
     @web_app.patch(PLAN_SIMULATION_DETAILS)
@@ -518,10 +490,9 @@ def _register_simulation_details_routes(web_app: FastAPI) -> None:
         seed: Annotated[int, Form()],
         percentiles: Annotated[str, Form()],
         repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
         stagger_run_starts: Annotated[bool, Form()] = False,
     ) -> Response:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
             updated = SimulationDetailsForm(
                 block_size_months=block_size_months,
@@ -529,10 +500,10 @@ def _register_simulation_details_routes(web_app: FastAPI) -> None:
                 stagger_run_starts=stagger_run_starts,
                 seed=seed,
                 percentiles=forms.parse_percentiles_field(percentiles),
-            ).apply_to(plan_model)
+            ).apply_to(selected.plan)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
-        repo.save(plan_id, updated)
+        repo.save(selected.id, updated)
         return Response(status_code=200)
 
 
@@ -540,30 +511,27 @@ def _register_social_security_routes(web_app: FastAPI) -> None:
     @web_app.get(EDITOR_SOCIAL_SECURITY, response_class=HTMLResponse)
     def editor_social_security(
         request: Request,
-        repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> HTMLResponse:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
-        return _ss_partial(request, plan_id=plan_id, plan_model=plan_model)
+        return _ss_partial(request, plan_id=selected.id, plan_model=selected.plan)
 
     @web_app.patch(PLAN_SOCIAL_SECURITY)
     def patch_social_security(
         repo: RepoDep,
         claim_age_years: Annotated[int, Form()],
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
         person: Annotated[str, Query()] = "person1",
         claim_age_months: Annotated[int, Form()] = 0,
     ) -> Response:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
             updated = SocialSecurityForm(
                 person=boundaries.parse_person_id(person),
                 claim_age_years=claim_age_years,
                 claim_age_months=claim_age_months,
-            ).apply_to(plan_model)
+            ).apply_to(selected.plan)
         except (ValidationError, ValueError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
-        repo.save(plan_id, updated)
+        repo.save(selected.id, updated)
         return Response(status_code=200)
 
     @web_app.post(PLAN_SS_EARNINGS)
@@ -571,18 +539,17 @@ def _register_social_security_routes(web_app: FastAPI) -> None:
         request: Request,
         repo: RepoDep,
         statement: UploadFile,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
         person: Annotated[str, Query()] = "person1",
     ) -> Response:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         # Read one byte past the cap so an oversize upload is detectable without
         # materializing the whole body.
         payload = await statement.read(MAX_STATEMENT_BYTES + 1)
         if len(payload) > MAX_STATEMENT_BYTES:
             return _ss_partial(
                 request,
-                plan_id=plan_id,
-                plan_model=plan_model,
+                plan_id=selected.id,
+                plan_model=selected.plan,
                 error=STATEMENT_TOO_LARGE_MESSAGE,
             )
         raw = payload.decode("utf-8", errors="replace")
@@ -592,28 +559,28 @@ def _register_social_security_routes(web_app: FastAPI) -> None:
             # entities, so a hostile statement cannot mount an XXE or
             # billion-laughs attack. Do not swap in a DTD-processing parser.
             earnings = parse_social_security_statement_xml(raw)
-            data = plan_model.household.model_dump()
+            data = selected.plan.household.model_dump()
             if data.get(person_id) is None:
                 raise ValueError("No partner on the plan for this upload")
             data[person_id]["social_security"]["earnings_record"] = [
                 e.model_dump() for e in earnings
             ]
             household = Household.model_validate(data)
-            updated = plan_model.model_copy(update={"household": household})
+            updated = selected.plan.model_copy(update={"household": household})
         except (ValidationError, ValueError) as exc:
             # Returned as 200 so htmx swaps the re-rendered section: it ignores
             # the body of non-2xx responses, which would leave the user with
             # raw markup in the error banner instead of this partial.
             return _ss_partial(
                 request,
-                plan_id=plan_id,
-                plan_model=plan_model,
+                plan_id=selected.id,
+                plan_model=selected.plan,
                 error=_error_message(exc),
             )
-        repo.save(plan_id, updated)
+        repo.save(selected.id, updated)
         return _ss_partial(
             request,
-            plan_id=plan_id,
+            plan_id=selected.id,
             plan_model=updated,
             headers={"HX-Trigger": "planUpdated"},
         )
@@ -627,7 +594,7 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         person1_max_age_years: Annotated[int, Form()],
         filing_status: Annotated[str, Form()],
         repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
         residence_state: Annotated[str | None, Form()] = None,
         ss_pension_taxable_fraction: Annotated[str | None, Form()] = None,
         social_security_trust_factor: Annotated[str | None, Form()] = None,
@@ -636,7 +603,6 @@ def _register_patch_routes(web_app: FastAPI) -> None:
         person2_birth_year: Annotated[int | None, Form()] = None,
         person2_max_age_years: Annotated[int | None, Form()] = None,
     ) -> Response:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
             updated = HouseholdForm(
                 person1_birth_month=person1_birth_month,
@@ -654,42 +620,39 @@ def _register_patch_routes(web_app: FastAPI) -> None:
                 person2_birth_month=person2_birth_month,
                 person2_birth_year=person2_birth_year,
                 person2_max_age_years=person2_max_age_years,
-            ).apply_to(plan_model)
+            ).apply_to(selected.plan)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
-        repo.save(plan_id, updated)
+        repo.save(selected.id, updated)
         return Response(status_code=200)
 
     @web_app.patch(PLAN_PORTFOLIO)
     def patch_portfolio(
         current_savings_balance: Annotated[str, Form()],
         repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> Response:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         try:
             updated = PortfolioForm(
                 current_savings_balance=currency.parse_usd(
                     current_savings_balance,
-                    previous=plan_model.portfolio.current_savings_balance,
+                    previous=selected.plan.portfolio.current_savings_balance,
                 ),
-            ).apply_to(plan_model)
+            ).apply_to(selected.plan)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
-        repo.save(plan_id, updated)
+        repo.save(selected.id, updated)
         return Response(status_code=200)
 
     @web_app.patch(PLAN_SETTINGS)
     def patch_settings(
-        repo: RepoDep,
+        _selected: PlanDep,
         settings_repo: SettingsRepoDep,
-        plan: Annotated[int | None, Query()] = None,
         fred_api_key: Annotated[str | None, Form()] = None,
         clear_fred_api_key: Annotated[bool, Form()] = False,
         eod_api_key: Annotated[str | None, Form()] = None,
         clear_eod_api_key: Annotated[bool, Form()] = False,
     ) -> Response:
-        require_plan(plan, plan_repo=repo)
         current = settings_repo.get()
         updated = AppSettingsForm(
             fred_api_key=fred_api_key,
@@ -704,43 +667,41 @@ def _register_patch_routes(web_app: FastAPI) -> None:
     async def patch_jobs(
         request: Request,
         repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
         person: Annotated[str, Query()] = "person1",
     ) -> Response:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         form = await request.form()
         try:
             person_id = boundaries.parse_person_id(person)
-            person_model = getattr(plan_model.household, person_id)
+            person_model = getattr(selected.plan.household, person_id)
             existing_jobs = [] if person_model is None else list(person_model.jobs)
             updated = JobsForm.from_form(
                 form,
                 person=person_id,
                 today=date.today(),
                 existing_jobs=existing_jobs,
-            ).apply_to(plan_model)
+            ).apply_to(selected.plan)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
-        repo.save(plan_id, updated)
+        repo.save(selected.id, updated)
         return Response(status_code=200)
 
     @web_app.patch(PLAN_MANUAL_INCOME)
     async def patch_manual_income(
         request: Request,
         repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
     ) -> Response:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
         form = await request.form()
         try:
             updated = ManualIncomeForm.from_form(
                 form,
                 today=date.today(),
-                existing_streams=plan_model.manual_income_streams,
-            ).apply_to(plan_model)
+                existing_streams=selected.plan.manual_income_streams,
+            ).apply_to(selected.plan)
         except (ValidationError, ValueError, ArithmeticError) as exc:
             return HTMLResponse(_error_message(exc), status_code=422)
-        repo.save(plan_id, updated)
+        repo.save(selected.id, updated)
         return Response(status_code=200)
 
 
@@ -755,32 +716,29 @@ def _register_plan_management_routes(web_app: FastAPI) -> None:
         return _redirect_to_plan(new_id)
 
     @web_app.post(PLAN_DUPLICATE)
-    def duplicate_plan(repo: RepoDep, plan_id: int) -> Response:
-        require_plan(plan_id, plan_repo=repo)
-        new_id, _ = repo.duplicate(plan_id)
+    def duplicate_plan(repo: RepoDep, selected: PathPlanDep) -> Response:
+        new_id, _ = repo.duplicate(selected.id)
         return _redirect_to_plan(new_id)
 
     @web_app.post(PLAN_RENAME)
     def rename_plan(
         repo: RepoDep,
-        plan_id: int,
+        selected: PathPlanDep,
         name: Annotated[str, Form()],
     ) -> Response:
-        require_plan(plan_id, plan_repo=repo)
         try:
-            repo.rename(plan_id, name=name)
+            repo.rename(selected.id, name=name)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return _redirect_to_plan(plan_id)
+        return _redirect_to_plan(selected.id)
 
     @web_app.post(PLAN_SET_DEFAULT)
     def set_default_plan(
-        repo: RepoDep, settings_repo: SettingsRepoDep, plan_id: int
+        selected: PathPlanDep, settings_repo: SettingsRepoDep
     ) -> Response:
-        require_plan(plan_id, plan_repo=repo)
         settings = settings_repo.get()
-        settings_repo.save(settings.model_copy(update={"default_plan_id": plan_id}))
-        return _redirect_to_plan(plan_id)
+        settings_repo.save(settings.model_copy(update={"default_plan_id": selected.id}))
+        return _redirect_to_plan(selected.id)
 
     @web_app.post(PLAN_DELETE)
     def delete_plan(
@@ -808,16 +766,14 @@ def _register_results_route(web_app: FastAPI) -> None:
     @web_app.get(RESULTS, response_class=HTMLResponse)
     def results(
         request: Request,
-        repo: RepoDep,
-        plan: Annotated[int | None, Query()] = None,
+        selected: PlanDep,
+        settings: SettingsDep,
         chart: Annotated[str | None, Query()] = None,
     ) -> HTMLResponse:
-        plan_id, plan_model = require_plan(plan, plan_repo=repo)
-        settings = get_settings_repo(request).get()
         result, simulation_error = _load_simulation(
             request,
-            plan_id=plan_id,
-            plan_model=plan_model,
+            plan_id=selected.id,
+            plan_model=selected.plan,
             settings=settings,
         )
         chart_type = charts.resolve_chart_type(chart)
@@ -826,7 +782,7 @@ def _register_results_route(web_app: FastAPI) -> None:
                 request,
                 "results.html",
                 {
-                    "plan_id": plan_id,
+                    "plan_id": selected.id,
                     "result": None,
                     "chart_type": chart_type,
                     "chart_options": [],
@@ -842,7 +798,7 @@ def _register_results_route(web_app: FastAPI) -> None:
             request,
             "results.html",
             {
-                "plan_id": plan_id,
+                "plan_id": selected.id,
                 "result": result,
                 "spending": spending,
                 "chart_type": chart_type,
@@ -857,7 +813,7 @@ def _register_results_route(web_app: FastAPI) -> None:
 
 def create_app(*, db_path: Path | None = None) -> FastAPI:
     web_app = FastAPI()
-    web_app.state.db_path = db_path
+    web_app.state.db_path = db_path or default_db_path()
 
     _mount_static(web_app)
     _register_home_route(web_app)

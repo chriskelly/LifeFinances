@@ -1,6 +1,8 @@
 from datetime import datetime
 
 import numpy as np
+import pytest
+from core.defaults import default_plan
 from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS, empty_diagnostics
 from simulation.result import (
     HORIZON_ARRAY_FIELDS,
@@ -15,13 +17,21 @@ from web.explain import (
     PERCENTILE_NOT_APPLICABLE,
     UNKNOWN_PERCENTILE,
     UNKNOWN_SERIES,
-    ExplainFailure,
+    ApiError,
+    ScopedResult,
     diagnostics_payload,
     series_payload,
     summary_payload,
 )
 
 from web import spending_summary
+
+
+def _scoped(
+    result: SimulationResult, *, plan_id: int = 1, plan_name: str = "Plan"
+) -> ScopedResult:
+    plan = default_plan().model_copy(update={"name": plan_name})
+    return ScopedResult(plan_id=plan_id, plan=plan, result=result)
 
 
 def _result() -> SimulationResult:
@@ -73,7 +83,7 @@ def test_summary_serializes_public_scalar_and_spending_fields() -> None:
     plan_name = "Retirement"
     spending = spending_summary.from_result(result)
 
-    payload = summary_payload(plan_id=plan_id, plan_name=plan_name, result=result)
+    payload = summary_payload(_scoped(result, plan_id=plan_id, plan_name=plan_name))
 
     assert payload == {
         "plan_id": plan_id,
@@ -100,11 +110,7 @@ def test_diagnostics_serializes_every_array_and_legacy_allocation() -> None:
     plan_id = 18
     plan_name = "Diagnostics"
 
-    payload = diagnostics_payload(
-        plan_id=plan_id,
-        plan_name=plan_name,
-        result=result,
-    )
+    payload = diagnostics_payload(_scoped(result, plan_id=plan_id, plan_name=plan_name))
 
     expected_keys = {
         "plan_id",
@@ -129,15 +135,12 @@ def test_percentile_series_without_percentile_returns_every_row() -> None:
     plan_name = "Plan"
 
     payload = series_payload(
-        plan_id=plan_id,
-        plan_name=plan_name,
-        result=result,
+        scoped=_scoped(result, plan_id=plan_id, plan_name=plan_name),
         series=series,
         month=None,
         percentile=None,
     )
 
-    assert not isinstance(payload, ExplainFailure)
     assert payload["plan_id"] == plan_id
     assert payload["name"] == plan_name
     assert payload["series"] == series
@@ -155,15 +158,12 @@ def test_percentile_series_with_percentile_selects_that_row() -> None:
     chosen_percentile = result.percentiles[row_index]
 
     payload = series_payload(
-        plan_id=1,
-        plan_name="Plan",
-        result=result,
+        scoped=_scoped(result, plan_id=1, plan_name="Plan"),
         series=series,
         month=None,
         percentile=chosen_percentile,
     )
 
-    assert not isinstance(payload, ExplainFailure)
     assert payload["rows"] == [
         {
             "percentile": chosen_percentile,
@@ -178,15 +178,12 @@ def test_percentile_series_with_month_returns_one_cell_per_row() -> None:
     month = 2
 
     payload = series_payload(
-        plan_id=1,
-        plan_name="Plan",
-        result=result,
+        scoped=_scoped(result, plan_id=1, plan_name="Plan"),
         series=series,
         month=month,
         percentile=None,
     )
 
-    assert not isinstance(payload, ExplainFailure)
     assert payload["rows"] == [
         {
             "percentile": percentile,
@@ -200,16 +197,15 @@ def test_unknown_series_lists_allowed_public_series() -> None:
     result = _result()
     unknown_series = "not-a-series"
 
-    failure = series_payload(
-        plan_id=1,
-        plan_name="Plan",
-        result=result,
-        series=unknown_series,
-        month=None,
-        percentile=None,
-    )
+    with pytest.raises(ApiError) as raised:
+        series_payload(
+            scoped=_scoped(result),
+            series=unknown_series,
+            month=None,
+            percentile=None,
+        )
+    failure = raised.value
 
-    assert isinstance(failure, ExplainFailure)
     assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == UNKNOWN_SERIES
     assert list(failure.allowed) == list(PUBLIC_ARRAY_FIELDS)
@@ -225,16 +221,15 @@ def test_unknown_percentile_lists_configured_percentiles() -> None:
     result = _result()
     unknown_percentile = max(result.percentiles) + 1
 
-    failure = series_payload(
-        plan_id=1,
-        plan_name="Plan",
-        result=result,
-        series=RAW_ARRAY_FIELDS[0],
-        month=None,
-        percentile=unknown_percentile,
-    )
+    with pytest.raises(ApiError) as raised:
+        series_payload(
+            scoped=_scoped(result),
+            series=RAW_ARRAY_FIELDS[0],
+            month=None,
+            percentile=unknown_percentile,
+        )
+    failure = raised.value
 
-    assert isinstance(failure, ExplainFailure)
     assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == UNKNOWN_PERCENTILE
     assert list(failure.allowed) == result.percentiles
@@ -251,15 +246,12 @@ def test_horizon_series_without_percentile_returns_one_unlabeled_row() -> None:
     series = "wealth_job"
 
     payload = series_payload(
-        plan_id=1,
-        plan_name="Plan",
-        result=result,
+        scoped=_scoped(result, plan_id=1, plan_name="Plan"),
         series=series,
         month=None,
         percentile=None,
     )
 
-    assert not isinstance(payload, ExplainFailure)
     assert payload["rows"] == [
         {"percentile": None, "values": result.wealth_job.tolist()}
     ]
@@ -268,16 +260,15 @@ def test_horizon_series_without_percentile_returns_one_unlabeled_row() -> None:
 def test_horizon_series_rejects_percentile() -> None:
     result = _result()
 
-    failure = series_payload(
-        plan_id=1,
-        plan_name="Plan",
-        result=result,
-        series="wealth_job",
-        month=None,
-        percentile=result.percentiles[0],
-    )
+    with pytest.raises(ApiError) as raised:
+        series_payload(
+            scoped=_scoped(result),
+            series="wealth_job",
+            month=None,
+            percentile=result.percentiles[0],
+        )
+    failure = raised.value
 
-    assert isinstance(failure, ExplainFailure)
     assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == PERCENTILE_NOT_APPLICABLE
     expected_body = {
@@ -299,7 +290,7 @@ def test_empty_horizon_summary_has_no_spending_amounts() -> None:
         }
     )
 
-    payload = summary_payload(plan_id=1, plan_name=plan_name, result=empty)
+    payload = summary_payload(_scoped(empty, plan_name=plan_name))
 
     assert payload["horizon_months"] == 0
     assert payload["spending"] == {"initial": None, "worst_case": None}
@@ -310,16 +301,15 @@ def test_month_on_empty_horizon_does_not_invert_bounds() -> None:
     empty = result.model_copy(update={"horizon_months": 0})
     month = 0
 
-    failure = series_payload(
-        plan_id=1,
-        plan_name="Plan",
-        result=empty,
-        series=RAW_ARRAY_FIELDS[0],
-        month=month,
-        percentile=None,
-    )
+    with pytest.raises(ApiError) as raised:
+        series_payload(
+            scoped=_scoped(empty),
+            series=RAW_ARRAY_FIELDS[0],
+            month=month,
+            percentile=None,
+        )
+    failure = raised.value
 
-    assert isinstance(failure, ExplainFailure)
     assert failure.code == MONTH_OUT_OF_RANGE
     assert failure.month_bounds is None
     assert "min" not in failure.body()
@@ -332,9 +322,7 @@ def test_horizon_series_with_month_returns_one_element_list() -> None:
     month = 1
 
     payload = series_payload(
-        plan_id=1,
-        plan_name="Plan",
-        result=result,
+        scoped=_scoped(result, plan_id=1, plan_name="Plan"),
         series=series,
         month=month,
         percentile=None,
@@ -342,23 +330,21 @@ def test_horizon_series_with_month_returns_one_element_list() -> None:
 
     expected_values = [getattr(result, series)[month]]
 
-    assert not isinstance(payload, ExplainFailure)
     assert payload["rows"] == [{"percentile": None, "values": expected_values}]
 
 
 def test_month_equal_to_horizon_is_out_of_range() -> None:
     result = _result()
 
-    failure = series_payload(
-        plan_id=1,
-        plan_name="Plan",
-        result=result,
-        series=RAW_ARRAY_FIELDS[0],
-        month=result.horizon_months,
-        percentile=None,
-    )
+    with pytest.raises(ApiError) as raised:
+        series_payload(
+            scoped=_scoped(result),
+            series=RAW_ARRAY_FIELDS[0],
+            month=result.horizon_months,
+            percentile=None,
+        )
+    failure = raised.value
 
-    assert isinstance(failure, ExplainFailure)
     assert failure.status_code == HTTP_BAD_REQUEST
     assert failure.code == MONTH_OUT_OF_RANGE
     bounds = failure.month_bounds

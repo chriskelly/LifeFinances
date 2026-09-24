@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 
 import numpy as np
-from core.models import AppSettings, Plan
+from core.models import Plan
 from core.repository import PlanRepository, UnloadablePlan
 from core.settings_repository import SettingsRepository
-from fastapi import FastAPI
 from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS
 from simulation.result import (
     HORIZON_ARRAY_FIELDS,
@@ -15,12 +13,9 @@ from simulation.result import (
     RAW_ARRAY_FIELDS,
     SimulationResult,
 )
-from simulation.stub import run_simulation
 
 from web import spending_summary
-from web.simulation_cache import get_or_run_simulation
-
-logger = logging.getLogger(__name__)
+from web.dependencies import SelectedPlan
 
 INVALID_QUERY = "invalid_query"
 DB_NOT_INITIALIZED = "db_not_initialized"
@@ -41,31 +36,6 @@ HTTP_UNPROCESSABLE = 422
 HTTP_SERVICE_UNAVAILABLE = 503
 
 
-def load_cached_result(
-    *,
-    app: FastAPI,
-    plan_id: int,
-    plan: Plan,
-    settings: AppSettings,
-) -> SimulationResult | ExplainFailure:
-    try:
-        return get_or_run_simulation(
-            app,
-            plan_id=plan_id,
-            plan=plan,
-            fred_api_key=settings.fred_api_key,
-            eod_api_key=settings.eod_api_key,
-            run=run_simulation,
-        )
-    except Exception as exc:
-        logger.exception("Simulation failed for plan_id=%s", plan_id)
-        return ExplainFailure(
-            status_code=HTTP_UNPROCESSABLE,
-            code=SIMULATION_FAILED,
-            message=str(exc),
-        )
-
-
 @dataclass(frozen=True)
 class PlanRef:
     id: int
@@ -80,7 +50,14 @@ class PlanListItem:
 
 
 @dataclass(frozen=True)
-class ExplainFailure:
+class ScopedResult:
+    plan_id: int
+    plan: Plan
+    result: SimulationResult
+
+
+@dataclass
+class ApiError(Exception):
     status_code: int
     code: str
     message: str
@@ -101,13 +78,12 @@ class ExplainFailure:
         return payload
 
 
-def summary_payload(
-    *, plan_id: int, plan_name: str, result: SimulationResult
-) -> dict[str, object]:
-    spending = spending_summary.from_result(result)
+def summary_payload(scoped: ScopedResult) -> dict[str, object]:
+    spending = spending_summary.from_result(scoped.result)
+    result = scoped.result
     return {
-        "plan_id": plan_id,
-        "name": plan_name,
+        "plan_id": scoped.plan_id,
+        "name": scoped.plan.name,
         "ran_at": result.ran_at.isoformat(),
         "horizon_months": result.horizon_months,
         "num_runs": result.num_runs,
@@ -122,13 +98,11 @@ def summary_payload(
     }
 
 
-def diagnostics_payload(
-    *, plan_id: int, plan_name: str, result: SimulationResult
-) -> dict[str, object]:
-    diagnostics = result.diagnostics
+def diagnostics_payload(scoped: ScopedResult) -> dict[str, object]:
+    diagnostics = scoped.result.diagnostics
     payload: dict[str, object] = {
-        "plan_id": plan_id,
-        "name": plan_name,
+        "plan_id": scoped.plan_id,
+        "name": scoped.plan.name,
         "legacy_stock_allocation": diagnostics.legacy_stock_allocation,
     }
     for field in DIAGNOSTICS_ARRAY_FIELDS:
@@ -138,26 +112,23 @@ def diagnostics_payload(
 
 def series_payload(
     *,
-    plan_id: int,
-    plan_name: str,
-    result: SimulationResult,
+    scoped: ScopedResult,
     series: str,
     month: int | None,
     percentile: int | None,
-) -> dict[str, object] | ExplainFailure:
-    invalid_series = validate_series(series)
-    if invalid_series is not None:
-        return invalid_series
+) -> dict[str, object]:
+    require_known_series(series)
+    result = scoped.result
     values = getattr(result, series)
     if month is not None and result.horizon_months < 1:
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_BAD_REQUEST,
             code=MONTH_OUT_OF_RANGE,
             message="series has no months",
         )
     if month is not None and not 0 <= month < result.horizon_months:
         last = result.horizon_months - 1
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_BAD_REQUEST,
             code=MONTH_OUT_OF_RANGE,
             message=f"month must be between 0 and {last} inclusive",
@@ -177,27 +148,25 @@ def series_payload(
             percentile=percentile,
         )
     else:
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_BAD_REQUEST,
             code=UNKNOWN_SERIES,
             message=f"Unknown series {series}",
             allowed=PUBLIC_ARRAY_FIELDS,
         )
-    if isinstance(rows, ExplainFailure):
-        return rows
     return {
-        "plan_id": plan_id,
-        "name": plan_name,
+        "plan_id": scoped.plan_id,
+        "name": scoped.plan.name,
         "series": series,
         "month": month,
         "rows": rows,
     }
 
 
-def validate_series(series: str) -> ExplainFailure | None:
+def require_known_series(series: str) -> str:
     if series in PUBLIC_ARRAY_FIELDS:
-        return None
-    return ExplainFailure(
+        return series
+    raise ApiError(
         status_code=HTTP_BAD_REQUEST,
         code=UNKNOWN_SERIES,
         message=f"Unknown series {series}",
@@ -211,19 +180,19 @@ def _percentile_rows(
     values: np.ndarray,
     month: int | None,
     percentile: int | None,
-) -> list[dict[str, object]] | ExplainFailure:
+) -> list[dict[str, object]]:
     if percentile is None:
         row_indexes = range(len(result.percentiles))
     else:
         try:
             row_indexes = (result.percentiles.index(percentile),)
         except ValueError:
-            return ExplainFailure(
+            raise ApiError(
                 status_code=HTTP_BAD_REQUEST,
                 code=UNKNOWN_PERCENTILE,
                 message=f"Unknown percentile {percentile}",
                 allowed=tuple(result.percentiles),
-            )
+            ) from None
     return [
         {
             "percentile": result.percentiles[row_index],
@@ -242,9 +211,9 @@ def _horizon_rows(
     values: np.ndarray,
     month: int | None,
     percentile: int | None,
-) -> list[dict[str, object]] | ExplainFailure:
+) -> list[dict[str, object]]:
     if percentile is not None:
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_BAD_REQUEST,
             code=PERCENTILE_NOT_APPLICABLE,
             message="percentile does not apply to this series",
@@ -256,7 +225,6 @@ def _horizon_rows(
 def list_loadable_plans(
     *, plan_repo: PlanRepository, settings_repo: SettingsRepository
 ) -> list[PlanListItem]:
-    loadable = plan_repo.loadable_ids()
     default_id = settings_repo.get().default_plan_id
     return [
         PlanListItem(
@@ -264,8 +232,7 @@ def list_loadable_plans(
             name=summary.name,
             is_default=summary.id == default_id,
         )
-        for summary in plan_repo.list()
-        if summary.id in loadable
+        for summary in plan_repo.list_loadable()
     ]
 
 
@@ -274,9 +241,9 @@ def resolve_plan(
     plan_repo: PlanRepository,
     plan_id: int | None,
     name: str | None,
-) -> tuple[int, Plan] | ExplainFailure:
+) -> SelectedPlan:
     if (plan_id is None) == (name is None):
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_BAD_REQUEST,
             code=INVALID_QUERY,
             message="Provide exactly one of plan_id or name",
@@ -287,49 +254,41 @@ def resolve_plan(
     return _resolve_name(plan_repo=plan_repo, name=name)
 
 
-def _resolve_id(
-    *, plan_repo: PlanRepository, plan_id: int
-) -> tuple[int, Plan] | ExplainFailure:
+def _resolve_id(*, plan_repo: PlanRepository, plan_id: int) -> SelectedPlan:
     loaded = plan_repo.load_plan(plan_id)
     if loaded is None:
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_NOT_FOUND,
             code=PLAN_NOT_FOUND,
             message=f"No plan with id {plan_id}",
         )
     if isinstance(loaded, UnloadablePlan):
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_UNPROCESSABLE,
             code=PLAN_UNLOADABLE,
             message=loaded.message,
         )
-    return plan_id, loaded
+    return SelectedPlan(id=plan_id, plan=loaded)
 
 
-def _resolve_name(
-    *, plan_repo: PlanRepository, name: str
-) -> tuple[int, Plan] | ExplainFailure:
+def _resolve_name(*, plan_repo: PlanRepository, name: str) -> SelectedPlan:
     query = name.strip()
     if not query:
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_BAD_REQUEST,
             code=INVALID_QUERY,
             message="name must be non-empty",
         )
-    loadable = plan_repo.loadable_ids()
-    matches = [
-        summary
-        for summary in plan_repo.list()
-        if summary.id in loadable and summary.name.strip() == query
-    ]
+    loadable = plan_repo.list_loadable()
+    matches = [summary for summary in loadable if summary.name.strip() == query]
     if not matches:
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_NOT_FOUND,
             code=PLAN_NOT_FOUND,
             message=f"No loadable plan named {query}",
         )
     if len(matches) > 1:
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_CONFLICT,
             code=AMBIGUOUS_PLAN,
             message="More than one plan matches that name",
@@ -340,15 +299,15 @@ def _resolve_name(
     summary = matches[0]
     loaded = plan_repo.load_plan(summary.id)
     if isinstance(loaded, UnloadablePlan):
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_UNPROCESSABLE,
             code=PLAN_UNLOADABLE,
             message=loaded.message,
         )
     if not isinstance(loaded, Plan):
-        return ExplainFailure(
+        raise ApiError(
             status_code=HTTP_NOT_FOUND,
             code=PLAN_NOT_FOUND,
             message=f"No loadable plan named {query}",
         )
-    return summary.id, loaded
+    return SelectedPlan(id=summary.id, plan=loaded)

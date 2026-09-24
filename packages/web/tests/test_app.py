@@ -644,7 +644,7 @@ def test_real_run_passes_stored_keys_with_live_refresh_enabled(
         AppSettings(fred_api_key=expected_fred_key, eod_api_key=expected_eod_key)
     )
 
-    app_module = sys.modules["web.app"]
+    app_module = sys.modules["web.simulation_cache"]
     real_run_simulation = app_module.run_simulation
     captured: dict = {}
 
@@ -724,7 +724,7 @@ def test_results_caches_simulation_until_plan_changes(
 ) -> None:
     import sys
 
-    app_module = sys.modules["web.app"]
+    app_module = sys.modules["web.simulation_cache"]
     real_run_simulation = app_module.run_simulation
     call_count = {"n": 0}
 
@@ -761,7 +761,7 @@ def test_results_reruns_simulation_after_settings_key_change(
 ) -> None:
     import sys
 
-    app_module = sys.modules["web.app"]
+    app_module = sys.modules["web.simulation_cache"]
     real_run_simulation = app_module.run_simulation
     call_count = {"n": 0}
 
@@ -798,7 +798,7 @@ def test_home_and_results_share_simulation_cache(
 ) -> None:
     import sys
 
-    app_module = sys.modules["web.app"]
+    app_module = sys.modules["web.simulation_cache"]
     real_run_simulation = app_module.run_simulation
     call_count = {"n": 0}
 
@@ -822,7 +822,7 @@ def test_results_shows_message_when_simulation_fails(
     import logging
     import sys
 
-    app_module = sys.modules["web.app"]
+    app_module = sys.modules["web.simulation_cache"]
     failure_detail = "engine exploded"
 
     def boom_run_simulation(plan, **kwargs):
@@ -830,7 +830,7 @@ def test_results_shows_message_when_simulation_fails(
 
     monkeypatch.setattr(app_module, "run_simulation", boom_run_simulation)
 
-    with caplog.at_level(logging.ERROR, logger="web.app"):
+    with caplog.at_level(logging.ERROR, logger="web.simulation_cache"):
         response = client.get(f"{RESULTS}?plan={plan_id}&chart={web_charts.PORTFOLIO}")
 
     assert response.status_code == 200
@@ -851,7 +851,7 @@ def test_home_shows_simulation_failure_in_results_panel(
 ) -> None:
     import sys
 
-    app_module = sys.modules["web.app"]
+    app_module = sys.modules["web.simulation_cache"]
     failure_detail = "preprocess broke"
 
     def boom_run_simulation(plan, **kwargs):

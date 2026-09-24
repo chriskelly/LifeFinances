@@ -1,8 +1,10 @@
 import sqlite3
 from typing import cast
 
+import pytest
 from core.repository import PlanRepository, PlanSummary, UnloadablePlan
 from core.settings_repository import SettingsRepository
+from web.dependencies import SelectedPlan
 from web.explain import (
     AMBIGUOUS_PLAN,
     HTTP_BAD_REQUEST,
@@ -12,7 +14,7 @@ from web.explain import (
     INVALID_QUERY,
     PLAN_NOT_FOUND,
     PLAN_UNLOADABLE,
-    ExplainFailure,
+    ApiError,
     PlanListItem,
     PlanRef,
     list_loadable_plans,
@@ -40,27 +42,27 @@ def test_resolve_plan_rejects_both_identity_params(repo: PlanRepository) -> None
     plan_name = "Only"
     plan_id, _ = repo.create(name=plan_name)
 
-    failure = resolve_plan(plan_repo=repo, plan_id=plan_id, name=plan_name)
+    with pytest.raises(ApiError) as raised:
+        resolve_plan(plan_repo=repo, plan_id=plan_id, name=plan_name)
 
-    assert isinstance(failure, ExplainFailure)
-    assert failure.status_code == HTTP_BAD_REQUEST
-    assert failure.code == INVALID_QUERY
+    assert raised.value.status_code == HTTP_BAD_REQUEST
+    assert raised.value.code == INVALID_QUERY
 
 
 def test_resolve_plan_rejects_neither_identity_param(repo: PlanRepository) -> None:
-    failure = resolve_plan(plan_repo=repo, plan_id=None, name=None)
+    with pytest.raises(ApiError) as raised:
+        resolve_plan(plan_repo=repo, plan_id=None, name=None)
 
-    assert isinstance(failure, ExplainFailure)
-    assert failure.status_code == HTTP_BAD_REQUEST
-    assert failure.code == INVALID_QUERY
+    assert raised.value.status_code == HTTP_BAD_REQUEST
+    assert raised.value.code == INVALID_QUERY
 
 
 def test_resolve_plan_rejects_blank_name(repo: PlanRepository) -> None:
-    failure = resolve_plan(plan_repo=repo, plan_id=None, name="   ")
+    with pytest.raises(ApiError) as raised:
+        resolve_plan(plan_repo=repo, plan_id=None, name="   ")
 
-    assert isinstance(failure, ExplainFailure)
-    assert failure.status_code == HTTP_BAD_REQUEST
-    assert failure.code == INVALID_QUERY
+    assert raised.value.status_code == HTTP_BAD_REQUEST
+    assert raised.value.code == INVALID_QUERY
 
 
 def test_resolve_plan_by_exact_name(repo: PlanRepository) -> None:
@@ -69,7 +71,7 @@ def test_resolve_plan_by_exact_name(repo: PlanRepository) -> None:
 
     resolved = resolve_plan(plan_repo=repo, plan_id=None, name=stored_name)
 
-    assert resolved == (plan_id, created)
+    assert resolved == SelectedPlan(id=plan_id, plan=created)
 
 
 def test_name_match_strips_query_and_stored_name(repo: PlanRepository) -> None:
@@ -79,18 +81,18 @@ def test_name_match_strips_query_and_stored_name(repo: PlanRepository) -> None:
 
     resolved = resolve_plan(plan_repo=repo, plan_id=None, name=query)
 
-    assert resolved == (plan_id, created)
+    assert resolved == SelectedPlan(id=plan_id, plan=created)
 
 
 def test_name_match_is_case_sensitive(repo: PlanRepository) -> None:
     stored_name = "Base"
     repo.create(name=stored_name)
 
-    failure = resolve_plan(plan_repo=repo, plan_id=None, name=stored_name.lower())
+    with pytest.raises(ApiError) as raised:
+        resolve_plan(plan_repo=repo, plan_id=None, name=stored_name.lower())
 
-    assert isinstance(failure, ExplainFailure)
-    assert failure.status_code == HTTP_NOT_FOUND
-    assert failure.code == PLAN_NOT_FOUND
+    assert raised.value.status_code == HTTP_NOT_FOUND
+    assert raised.value.code == PLAN_NOT_FOUND
 
 
 def test_stripped_name_collision_is_ambiguous(repo: PlanRepository) -> None:
@@ -99,9 +101,10 @@ def test_stripped_name_collision_is_ambiguous(repo: PlanRepository) -> None:
     first_id, _ = repo.create(name=first_name)
     second_id, _ = repo.create(name=second_name)
 
-    failure = resolve_plan(plan_repo=repo, plan_id=None, name=first_name)
+    with pytest.raises(ApiError) as raised:
+        resolve_plan(plan_repo=repo, plan_id=None, name=first_name)
 
-    assert isinstance(failure, ExplainFailure)
+    failure = raised.value
     assert failure.status_code == HTTP_CONFLICT
     assert failure.code == AMBIGUOUS_PLAN
     assert failure.candidates == (
@@ -117,9 +120,10 @@ def test_resolve_plan_reports_unloadable_validation_message(
     loaded = repo.load_plan(corrupt_id)
     assert isinstance(loaded, UnloadablePlan)
 
-    failure = resolve_plan(plan_repo=repo, plan_id=corrupt_id, name=None)
+    with pytest.raises(ApiError) as raised:
+        resolve_plan(plan_repo=repo, plan_id=corrupt_id, name=None)
 
-    assert isinstance(failure, ExplainFailure)
+    failure = raised.value
     assert failure.status_code == HTTP_UNPROCESSABLE
     assert failure.code == PLAN_UNLOADABLE
     assert failure.message == loaded.message
@@ -139,21 +143,21 @@ def test_name_resolution_ignores_unloadable_stored_names(
     finally:
         conn.close()
 
-    failure = resolve_plan(plan_repo=repo, plan_id=None, name=query)
+    with pytest.raises(ApiError) as raised:
+        resolve_plan(plan_repo=repo, plan_id=None, name=query)
 
-    assert isinstance(failure, ExplainFailure)
-    assert failure.status_code == HTTP_NOT_FOUND
-    assert failure.code == PLAN_NOT_FOUND
+    assert raised.value.status_code == HTTP_NOT_FOUND
+    assert raised.value.code == PLAN_NOT_FOUND
 
 
 def test_missing_plan_id_is_not_found(repo: PlanRepository) -> None:
     missing_id = 999_999
 
-    failure = resolve_plan(plan_repo=repo, plan_id=missing_id, name=None)
+    with pytest.raises(ApiError) as raised:
+        resolve_plan(plan_repo=repo, plan_id=missing_id, name=None)
 
-    assert isinstance(failure, ExplainFailure)
-    assert failure.status_code == HTTP_NOT_FOUND
-    assert failure.code == PLAN_NOT_FOUND
+    assert raised.value.status_code == HTTP_NOT_FOUND
+    assert raised.value.code == PLAN_NOT_FOUND
 
 
 def test_list_loadable_plans_skips_unloadable_and_marks_default(
@@ -175,11 +179,11 @@ def test_list_loadable_plans_skips_unloadable_and_marks_default(
     ]
 
 
-def test_explain_failure_body_includes_candidates_only() -> None:
+def test_api_error_body_includes_candidates_only() -> None:
     code = AMBIGUOUS_PLAN
     message = "pick one"
     candidates = (PlanRef(id=1, name="A"), PlanRef(id=2, name="B"))
-    failure = ExplainFailure(
+    failure = ApiError(
         status_code=HTTP_CONFLICT,
         code=code,
         message=message,
@@ -198,13 +202,13 @@ def test_explain_failure_body_includes_candidates_only() -> None:
     assert "max" not in body
 
 
-def test_explain_failure_body_includes_allowed_range_without_candidates() -> None:
+def test_api_error_body_includes_allowed_range_without_candidates() -> None:
     code = INVALID_QUERY
     message = "bad request"
     allowed = ("month", "year")
     min_month = 1
     max_month = 600
-    failure = ExplainFailure(
+    failure = ApiError(
         status_code=HTTP_BAD_REQUEST,
         code=code,
         message=message,
@@ -228,23 +232,21 @@ def test_name_match_reports_unloadable_when_matched_row_will_not_load() -> None:
     message = "row failed validation"
 
     class _ReloadUnloadable:
-        def loadable_ids(self) -> set[int]:
-            return {plan_id}
-
-        def list(self) -> list[PlanSummary]:
+        def list_loadable(self) -> list[PlanSummary]:
             return [PlanSummary(id=plan_id, name=stored_name)]
 
         def load_plan(self, requested_id: int) -> UnloadablePlan:
             assert requested_id == plan_id
             return UnloadablePlan(id=requested_id, message=message)
 
-    failure = resolve_plan(
-        plan_repo=cast(PlanRepository, _ReloadUnloadable()),
-        plan_id=None,
-        name=stored_name,
-    )
+    with pytest.raises(ApiError) as raised:
+        resolve_plan(
+            plan_repo=cast(PlanRepository, _ReloadUnloadable()),
+            plan_id=None,
+            name=stored_name,
+        )
 
-    assert isinstance(failure, ExplainFailure)
+    failure = raised.value
     assert failure.status_code == HTTP_UNPROCESSABLE
     assert failure.code == PLAN_UNLOADABLE
     assert failure.message == message
