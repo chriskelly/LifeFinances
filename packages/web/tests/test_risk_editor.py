@@ -56,7 +56,7 @@ def test_patch_risk_round_trips_visible_fields(
 def test_patch_risk_round_trips_advanced_fields(
     client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
-    delta_at_max_age = Decimal("-2")
+    delta_at_max_age = Decimal("2")
     legacy_delta = Decimal("3")
     time_preference = Decimal("0.02")
 
@@ -216,6 +216,21 @@ def test_patch_risk_accepts_slider_style_tilt_without_percent_suffix(
     saved = repo.get_by_id(plan_id)
     assert saved is not None
     assert saved.risk.additional_annual_spending_tilt == tilt
+
+
+def test_editor_shows_default_max_age_decrease(
+    client: TestClient, plan_id: int
+) -> None:
+    # Pinned: TPAW's displayed default decrease is 2.
+    expected_decrease = Decimal(2)
+
+    response = client.get(f"{EDITOR_RISK}?plan={plan_id}")
+    body = unescape(response.text)
+    field_at = body.index(f'name="{forms.DELTA_AT_MAX_AGE}"')
+
+    assert response.status_code == 200
+    assert "Risk tolerance decrease by max age" in body
+    assert f'value="{expected_decrease}"' in body[field_at : field_at + 80]
 
 
 def test_editor_risk_get_advanced_details_contains_field_names(

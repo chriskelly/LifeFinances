@@ -51,6 +51,12 @@ bit-identical output against a running TPAW instance. Differences at the level
 of floating-point rounding (float32 vs. float64) or RNG stream identity are
 expected and are not treated as bugs.
 
+One stored-sign difference is intentional. `delta_at_max_age` is the decrease
+shown in the editor. The age glide subtracts it from risk tolerance between
+age 20 and max age (`simulation/risk.py`). TPAW stores the negation of that
+displayed decrease and adds it (`at20 + deltaAtMaxAge` in `process_risk.rs`,
+default `-2`).
+
 ## Testing approach: doctest-golden values
 
 There is no runnable TPAW binary in this repo to diff full simulation runs
