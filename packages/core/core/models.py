@@ -23,7 +23,8 @@ MAX_BLOCK_SIZE_MONTHS = 1_440
 DEFAULT_PERCENTILES = [5, 50, 95]
 
 DEFAULT_RISK_TOLERANCE_AT_20 = Decimal(12)  # tpaw default test plan "Moderate"
-DEFAULT_DELTA_AT_MAX_AGE = Decimal(0)
+# TPAW displays a default decrease of 2 (it stores that as deltaAtMaxAge -2).
+DEFAULT_DELTA_AT_MAX_AGE = Decimal(2)
 DEFAULT_LEGACY_DELTA_FROM_AT_20 = Decimal(0)
 DEFAULT_TIME_PREFERENCE = Decimal(0)
 DEFAULT_ADDITIONAL_ANNUAL_SPENDING_TILT = Decimal(0)

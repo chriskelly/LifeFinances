@@ -180,7 +180,7 @@ def test_age_glide_rra_tracks_person_with_latest_end_date_not_highest_max_age():
     plan.household.person2 = PersonHousehold(
         birth_month=1, birth_year=1990, max_age_years=85
     )
-    plan.risk.delta_at_max_age = Decimal(-10)
+    plan.risk.delta_at_max_age = Decimal(10)
     today = date(2026, 1, 1)
     person2 = plan.household.person2
     person2_current_age_months = (today.year - person2.birth_year) * 12 + (

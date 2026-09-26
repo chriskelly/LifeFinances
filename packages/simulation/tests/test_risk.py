@@ -35,7 +35,7 @@ def test_rra_is_monotonic_decreasing_in_tolerance():
 
 
 def test_rra_by_month_flat_when_no_age_delta():
-    config = RiskConfig()  # delta_at_max_age == 0
+    config = RiskConfig(delta_at_max_age=Decimal(0))
     num_months = 12
 
     result = rra_by_month(
@@ -45,6 +45,44 @@ def test_rra_by_month_flat_when_no_age_delta():
     expected = risk_tolerance_to_rra(float(config.risk_tolerance_at_20))
     assert result.shape == (num_months,)
     assert np.allclose(result, expected)
+
+
+def test_default_decrease_of_two_lowers_tolerance_at_max_age():
+    # Pinned: TPAW's displayed default decrease is 2 (stored there as -2).
+    expected_decrease = Decimal(2)
+    config = RiskConfig()
+    max_age_months = 100 * 12
+
+    rra_at_max_age = rra_by_month(
+        config,
+        num_months=1,
+        current_age_months=max_age_months,
+        max_age_months=max_age_months,
+    )[0]
+
+    assert config.delta_at_max_age == expected_decrease
+    tolerance_at_max_age = float(config.risk_tolerance_at_20 - expected_decrease)
+    assert rra_at_max_age == risk_tolerance_to_rra(tolerance_at_max_age)
+
+
+def test_negative_decrease_raises_tolerance_at_max_age():
+    risk_tolerance_at_20 = Decimal(12)
+    decrease = Decimal(-4)
+    config = RiskConfig(
+        risk_tolerance_at_20=risk_tolerance_at_20,
+        delta_at_max_age=decrease,
+    )
+    max_age_months = 100 * 12
+
+    rra_at_max_age = rra_by_month(
+        config,
+        num_months=1,
+        current_age_months=max_age_months,
+        max_age_months=max_age_months,
+    )[0]
+
+    tolerance_at_max_age = float(risk_tolerance_at_20 - decrease)
+    assert rra_at_max_age == risk_tolerance_to_rra(tolerance_at_max_age)
 
 
 def test_legacy_rra_uses_legacy_delta():
