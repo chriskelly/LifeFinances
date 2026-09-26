@@ -23,7 +23,8 @@ MAX_BLOCK_SIZE_MONTHS = 1_440
 DEFAULT_PERCENTILES = [5, 50, 95]
 
 DEFAULT_RISK_TOLERANCE_AT_20 = Decimal(12)  # tpaw default test plan "Moderate"
-# TPAW displays a default decrease of 2 (it stores that as deltaAtMaxAge -2).
+# Decrease subtracted from tolerance between age 20 and max age.
+# TPAW stores the negation of this displayed decrease (deltaAtMaxAge -2) and adds it.
 DEFAULT_DELTA_AT_MAX_AGE = Decimal(2)
 DEFAULT_LEGACY_DELTA_FROM_AT_20 = Decimal(0)
 DEFAULT_TIME_PREFERENCE = Decimal(0)
@@ -110,6 +111,7 @@ class InflationConfig(BaseModel):
 
 class RiskConfig(BaseModel):
     risk_tolerance_at_20: Decimal = Field(default=DEFAULT_RISK_TOLERANCE_AT_20, ge=0)
+    # Decrease from age 20 to max age. The engine subtracts this; legacy_delta_from_at_20 is added.
     delta_at_max_age: Decimal = DEFAULT_DELTA_AT_MAX_AGE
     legacy_delta_from_at_20: Decimal = DEFAULT_LEGACY_DELTA_FROM_AT_20
     time_preference: Decimal = DEFAULT_TIME_PREFERENCE

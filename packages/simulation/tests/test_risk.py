@@ -85,6 +85,54 @@ def test_negative_decrease_raises_tolerance_at_max_age():
     assert rra_at_max_age == risk_tolerance_to_rra(tolerance_at_max_age)
 
 
+def test_decrease_glides_linearly_from_age_20():
+    risk_tolerance_at_20 = Decimal(12)
+    decrease = Decimal(4)
+    config = RiskConfig(
+        risk_tolerance_at_20=risk_tolerance_at_20,
+        delta_at_max_age=decrease,
+    )
+    age_20_months = 20 * 12
+    max_age_months = 100 * 12
+    halfway_months = age_20_months + (max_age_months - age_20_months) // 2
+
+    rra_at_20 = rra_by_month(
+        config,
+        num_months=1,
+        current_age_months=age_20_months,
+        max_age_months=max_age_months,
+    )[0]
+    rra_halfway = rra_by_month(
+        config,
+        num_months=1,
+        current_age_months=halfway_months,
+        max_age_months=max_age_months,
+    )[0]
+
+    assert rra_at_20 == risk_tolerance_to_rra(float(risk_tolerance_at_20))
+    halfway_tolerance = float(risk_tolerance_at_20 - decrease / 2)
+    assert rra_halfway == risk_tolerance_to_rra(halfway_tolerance)
+
+
+def test_decrease_past_tolerance_floors_at_zero():
+    risk_tolerance_at_20 = Decimal(12)
+    decrease = risk_tolerance_at_20 + Decimal(3)
+    config = RiskConfig(
+        risk_tolerance_at_20=risk_tolerance_at_20,
+        delta_at_max_age=decrease,
+    )
+    max_age_months = 100 * 12
+
+    rra_at_max_age = rra_by_month(
+        config,
+        num_months=1,
+        current_age_months=max_age_months,
+        max_age_months=max_age_months,
+    )[0]
+
+    assert rra_at_max_age == risk_tolerance_to_rra(0.0)
+
+
 def test_legacy_rra_uses_legacy_delta():
     risk_tolerance_at_20 = Decimal(12)
     legacy_delta_from_at_20 = Decimal(-4)
