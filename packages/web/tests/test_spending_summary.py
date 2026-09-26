@@ -49,6 +49,16 @@ def _result_with_withdrawals(
     )
 
 
+def test_empty_horizon_has_no_spending_month() -> None:
+    percentile_count = len(DEFAULT_PERCENTILES)
+    withdrawals = np.zeros((percentile_count, 0), dtype=np.float64)
+
+    summary = spending.from_result(_result_with_withdrawals(withdrawals))
+
+    assert summary.initial is None
+    assert summary.worst_case is None
+
+
 def test_initial_spending_is_month_zero_of_total_withdrawals() -> None:
     initial = 4_200.0
     withdrawals = np.array(

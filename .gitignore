@@ -188,4 +188,5 @@ cython_debug/
 .idea/
 
 .claude/settings.local.json
+.claude/skills/
 flask_session/*
