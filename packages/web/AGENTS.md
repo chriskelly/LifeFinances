@@ -2,6 +2,8 @@
 
 FastAPI + Jinja2 + HTMX + Pico.css split-pane UI for plan editing and simulation results.
 
+Explain JSON payload fields are documented in `OVERVIEW.md`.
+
 ## Prerequisites
 
 Run from the **repository root**. Initialize the database before starting the dev server:
