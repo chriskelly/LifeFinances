@@ -19,7 +19,7 @@ All GET. For plan-scoped routes, pass exactly one of `plan_id` or `name`. Do not
 - `/api/plan` — full plan JSON.
 - `/api/result/summary` — scalars, resolved assumptions, initial and worst-case spending. No arrays.
 - `/api/result/diagnostics` — full expected-run diagnostics.
-- `/api/result/series?series=&month=&percentile=` — one Monte Carlo series. `percentile` is the configured value (for example 50), not a row index. Omit `percentile` to get every configured percentile in one response. Omit `month` for the whole horizon. `values` is always a list.
+- `/api/result/series?series=&month=&percentile=` — one Monte Carlo series. `percentile` is the configured value (for example 50), not a row index. On percentile-shaped series (`balance_start`, withdrawals, `savings_stock_allocation`), omit `percentile` to get every configured percentile in one response. Omit `month` for the whole horizon. `values` is always a list.
 
 Field names and meanings are in `packages/web/OVERVIEW.md`. Read that file before calling a series or quoting a field. Do not send an unknown `series` to discover the names.
 

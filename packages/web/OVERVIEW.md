@@ -11,13 +11,14 @@ restate those equations.
 ## Series
 
 Real monthly dollars, except `savings_stock_allocation`, which is a fraction of
-savings. Month 0 is the summary `start_month`. Omit `percentile` on a
-withdrawal or allocation series to get every configured percentile in one
+savings. Month 0 is the summary `start_month`. `balance_start`, the three
+withdrawal series, and `savings_stock_allocation` are Monte Carlo
+percentile-major: omit `percentile` to get every configured percentile in one
 response. The four `wealth_*` series have no percentile axis.
 
 | Name | Meaning |
 | --- | --- |
-| `balance_start` | Savings at the start of the month, before that month's income, withdrawals, and returns. Month 0 is the plan's current savings. |
+| `balance_start` | Savings at the start of the month, before that month's income, withdrawals, and returns. Month 0 is the plan's current savings. Monte Carlo percentiles. |
 | `withdrawals_essential` | Amount withdrawn that month for essential spending. |
 | `withdrawals_discretionary` | Amount withdrawn that month for discretionary spending. |
 | `withdrawals_general` | Amount withdrawn that month for general spending. |
@@ -52,8 +53,8 @@ explain route and are omitted here.
 | `resolved_assumptions.sp500_observation_date` | Date of that S&P close. Null when unused. |
 | `resolved_assumptions.treasury_source` | Source of the Treasury real yield. Null when the preset does not use one. |
 | `resolved_assumptions.treasury_observation_date` | Date of that yield. Null when unused. |
-| `spending.initial` | Total withdrawals at month 0. |
-| `spending.worst_case` | Smallest month on the lowest configured percentile of `withdrawals_total`. Each month's percentile is computed on its own, so the row is an envelope across months. |
+| `spending.initial` | Total withdrawals at month 0. Null when the horizon has no months. |
+| `spending.worst_case` | Smallest month on the lowest configured percentile of `withdrawals_total`. Each month's percentile is computed on its own, so the row is an envelope across months. Null when the horizon has no months. |
 
 ## Diagnostics
 
@@ -69,7 +70,7 @@ which is a single scalar). Real dollars, except fractions and risk aversion.
 | `scheduled_wealth` | Expected-path wealth that discretionary and legacy spending are scaled against. Savings, plus the present value of future income, plus the current month's income, before this month's withdrawals. |
 | `elasticity_discretionary` | Coefficient in the discretionary spending scale `max(0, (wealth / scheduled_wealth - 1) * elasticity + 1)`. On the expected path, wealth equals scheduled wealth, so the scale is 1. The coefficient itself varies by month. |
 | `elasticity_legacy` | Same coefficient for the legacy goal. |
-| `savings_balance` | Savings after that month's withdrawals on the expected path. Month 0 differs from series `balance_start`, which is the balance before that month's income and withdrawals. |
+| `savings_balance` | Post-withdrawal savings on the expected path, floored away from zero for allocation math. Month 0 differs from series `balance_start`, which is the balance before that month's income and withdrawals. |
 | `income_npv` | Present value of future income, excluding the current month. |
 | `wealth_base` | `savings_balance` plus `income_npv`. |
 | `essential_reserve` | Present value set aside for remaining essential spending, excluding the current month. |
