@@ -19,7 +19,9 @@ All GET. For plan-scoped routes, pass exactly one of `plan_id` or `name`. Do not
 - `/api/plan` — full plan JSON.
 - `/api/result/summary` — scalars, resolved assumptions, initial and worst-case spending. No arrays.
 - `/api/result/diagnostics` — full expected-run diagnostics.
-- `/api/result/series?series=&month=&percentile=` — one Monte Carlo series. `percentile` is the configured value (for example 50), not a row index. Omit `month` for the whole horizon. `values` is always a list.
+- `/api/result/series?series=&month=&percentile=` — one Monte Carlo series. `percentile` is the configured value (for example 50), not a row index. On percentile-shaped series (`balance_start`, withdrawals, `savings_stock_allocation`), omit `percentile` to get every configured percentile in one response. Omit `month` for the whole horizon. `values` is always a list.
+
+Field names and meanings are in `packages/web/OVERVIEW.md`. Read that file before calling a series or quoting a field. Do not send an unknown `series` to discover the names.
 
 If the user did not name a plan, call `/api/plans`, take the row with `is_default` true, and pass that `plan_id` on later calls. If none is default, ask which plan.
 
@@ -47,4 +49,6 @@ Best-effort: for a question these payloads and the README do not cover, say the 
 
 Allocation: chart bands are Monte Carlo percentiles. The diagnostics spine is the expected/planning path. `expected_savings_stock_fraction` is that path. `savings_stock_allocation` on the series route is the percentile chart. Do not treat them as the same number.
 
-Do not mutate the plan. Do not tell the user to change inputs as part of this skill.
+Do not mutate the plan.
+
+What-if: the cached simulation is the plan as saved. Cite figures from that result. You may describe the direction of a change from `packages/simulation/README.md` when you label it best-effort, and you must not invent numbers for the changed plan. Do not suggest copying, editing, or re-running a plan. Do not ask which input the user would change.
