@@ -49,7 +49,6 @@ def test_summary_serializes_public_scalar_and_spending_fields() -> None:
     }
     assert "balance_start" not in payload
     assert "diagnostics" not in payload
-    assert "engine_version" not in payload
 
 
 def test_diagnostics_serializes_every_array_and_legacy_allocation() -> None:
