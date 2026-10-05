@@ -11,7 +11,6 @@ from core.models import (
 )
 from core.timeline import Timeline
 from simulation.presets import stock_log_variance
-from simulation.result import ENGINE_VERSION
 
 from simulation import run_simulation
 
@@ -27,7 +26,6 @@ def test_run_simulation_returns_percentile_major_series():
         ran_at=datetime(2026, 1, 1),
     )
 
-    assert result.engine_version == ENGINE_VERSION
     assert result.percentiles == percentiles
     assert result.num_runs == plan.sampling.num_runs
     assert result.balance_start.shape == (len(percentiles), result.horizon_months)

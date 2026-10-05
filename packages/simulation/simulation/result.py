@@ -12,8 +12,6 @@ from simulation.market_data.cache import MarketDataSource
 from simulation.market_data.inflation import InflationResolved
 from simulation.planning_returns import PlanningReturns
 
-ENGINE_VERSION = "phase3d"
-
 # Manual inflation is user-entered; every other source is a market feed, so the
 # domain is exactly `MarketDataSource` plus that one case.
 InflationSource = Literal["manual"] | MarketDataSource
@@ -54,7 +52,6 @@ class RawSimulationResult(BaseModel):
     savings_stock_allocation: np.ndarray
     num_runs_insufficient: int
     diagnostics: SimulationDiagnostics
-    engine_version: str = ENGINE_VERSION
 
     def __eq__(self, other: Any) -> bool:
         # Pydantic's generated __eq__ compares fields with `==`, which raises
@@ -147,7 +144,6 @@ class SimulationResult(BaseModel):
     num_runs_insufficient: int
     diagnostics: SimulationDiagnostics
     resolved_assumptions: ResolvedAssumptions
-    engine_version: str = ENGINE_VERSION
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, SimulationResult):
@@ -156,7 +152,6 @@ class SimulationResult(BaseModel):
 
 
 __all__ = [
-    "ENGINE_VERSION",
     "InflationSource",
     "HORIZON_ARRAY_FIELDS",
     "PUBLIC_ARRAY_FIELDS",
