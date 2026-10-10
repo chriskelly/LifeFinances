@@ -79,6 +79,23 @@ Mirror that:
 - Add `market_data/data/bond_empirical_stats_by_block.csv`: same columns.
 - Extract from `v8_empirical_stats_by_block_size_{stocks,bonds}.rs` (index 0 dummy dropped).
 
+Consumers to update (enumerated):
+
+- `market_data/presets_data.py` — `_VARIANCE_TABLE_PATH` → the two new paths;
+  `load_stock_log_variance_by_block` → `load_empirical_stats_by_block(asset)` (the stock
+  planning variance reads the stock table's variance column). Not re-exported via
+  `market_data/__init__.py`, so no package `__init__` change.
+- `simulation/presets.py` — import + `stock_log_variance` reads the stock table.
+- `tests/test_presets.py` — imports/uses `load_stock_log_variance_by_block`.
+- `tests/tpaw_preset_contract.py` — `EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1` /
+  `..._BLOCK_1440` endpoint pins.
+- `packages/simulation/README.md` (§Planning returns, `variance_by_block[...]`) and
+  `packages/simulation/OVERVIEW.md`.
+- `market_data/data/PROVENANCE.md` — the artifact section and bump-checklist step 3.
+- `packages/core/tests/test_sampling_inflation_config.py` — comment referencing the
+  `stock_log_variance` vendored bound.
+- This spec.
+
 ### 2. Loaders (`market_data/presets_data.py`)
 
 - `load_empirical_stats_by_block(asset)` → per-asset `dict[int, (mean, variance)]`.
@@ -103,15 +120,24 @@ The existing `presets.py::_shift_correction` is the `block_size=None, scale=1` c
 (`unadjusted` = the series' own annualized non-log mean); refactor it to call the
 generalized helper so preset-menu behavior is unchanged.
 
+**Load-bearing invariant:** `unadjusted_annual_non_log_mean` is the *per-block table
+mean*, **not** the mean of the series being adjusted. The two differ materially at small
+blocks (v8 block 1 = `0.0811` vs series `0.0874`) and only coincide to the 6th decimal at
+block 60 — so a series-mean substitution is a silent bug at other block sizes. A test must
+pin this at a non-default block size (see §Testing).
+
 ### 4. Sampling integration (`market_data/bootstrap.py`, `stub.py`)
 
-- `build_return_paths` adjusts each series **before** indexing:
-  - stocks: target = planning `annual_stocks`; `unadjusted` = stock block mean for
-    `sampling.block_size_months`; scale = `planning_returns.stock_volatility_scale`.
-  - bonds: target = planning `annual_bonds`; `unadjusted` = bond block mean; scale = `1.0`
+- `build_return_paths` gains a **required** keyword `planning: PlanningReturns` (the
+  resolved planning returns). Block size comes from `plan.sampling.block_size_months`;
+  scales are `plan.planning_returns.stock_volatility_scale` (stocks) and `1.0` (bonds).
+- It adjusts each series **before** indexing:
+  - stocks: target = planning `annual_stocks`; `unadjusted` = stock block mean.
+  - bonds: target = planning `annual_bonds`; `unadjusted` = bond block mean; scale `1.0`
     (TPAW's `historical_returns_adjustment.standard_deviation.bonds.scale.log` default;
     LF has no per-plan bond scale).
-- `stub.run_simulation` already has `processed.planning_resolved`; pass it through.
+- Callers to update: `stub.run_simulation` (pass `processed.planning_resolved`),
+  `tests/market_data/test_bootstrap.py` (3 calls), `tests/market_data/test_public_api.py`.
 - `ReturnPaths.stocks_log`/`bonds_log` become the adjusted log series, so
   `stocks_log_to_simple()` yields the adjusted simple returns (matching TPAW's
   `non_log_series`).
@@ -119,16 +145,20 @@ generalized helper so preset-menu behavior is unchanged.
 
 ### 5. Testing (TDD)
 
-- Unit — mean: after `adjust_log_returns`, the adjusted series' annualized non-log mean
-  ≈ target (±1e-3), mirroring TPAW's `adjust_log_returns_historical`.
-- Unit — scale: adjusted std = original std × `scale`, mirroring `test_adjust_log_returns_scale`.
-- Golden parity (pinned from the captured TPAW response), v8 stocks @ block 60, target
-  0.052, scale 1: adjusted annualized non-log mean ≈ `0.051998595423815172`, source ≈
-  `0.087367319635084567`; bonds source `0.027723` → adjusted `0.0322008`.
-- Integration: `build_return_paths` sampled series' annual non-log mean ≈ planning
+No committed TPAW-response goldens or fixtures — the captured comparison is a one-time
+manual check (§Verification). Tests assert behavior/properties using production constants:
+
+- Mean: after `adjust_log_returns`, the adjusted series' annualized non-log mean ≈ target
+  (±1e-3), mirroring TPAW's `adjust_log_returns_historical`.
+- Scale: adjusted std = original std × `scale`, mirroring `test_adjust_log_returns_scale`.
+- Block-size invariant: at a non-default block size (e.g. 1, where the per-block mean
+  differs materially from the series mean), the adjusted log mean equals
+  `ln(1+target)/12 − shift_correction(block_mean, series_log_mean, scale)` computed from the
+  production table — fails if the series mean is substituted for the block mean.
+- Integration: `build_return_paths`'s sampled series' annual non-log mean ≈ planning
   target; update `test_build_return_paths_gathers_both_assets_with_metadata` (it currently
   pins "sampled values are members of the raw series").
-- `test_presets.py` goldens must stay green.
+- `test_presets.py` goldens must stay green (preset-menu correction unchanged).
 
 ### 6. Docs / provenance
 
@@ -139,9 +169,10 @@ generalized helper so preset-menu behavior is unchanged.
 
 ## Verification
 
-Re-run the captured-TPAW comparison (plan 22 vs the saved `/3/simulate` response). Expect
-the mid-horizon median gap to fall from ~29% to within a few percent (RNG/float residual),
-and the sampled stocks/bonds annual non-log means to equal 5.2% / 3.2%. Run `make` from the
+The property/integration tests above, plus a **one-time manual check** against the captured
+TPAW response (plan 22 vs `/3/simulate`): expect the mid-horizon median gap to fall from
+~29% to within a few percent (RNG/float residual), and the sampled stocks/bonds annual
+non-log means to equal 5.2% / 3.2%. No fixture or golden is committed. Run `make` from the
 repo root.
 
 ## Risks / notes
@@ -150,5 +181,6 @@ repo root.
   pins on that filename/endpoints.
 - TPAW precomputes the block-size stats via a 500k-run bootstrap with a fixed seed; LF
   cannot reproduce it (different RNG), so the tables must be vendored verbatim.
-- The adjustment is a no-op when target = the series' own mean (e.g. the `historical`
-  preset), so that path needs no special-casing.
+- The adjustment is only *approximately* a no-op when target = the series' own mean (e.g.
+  the `historical` preset): it is exact only when the per-block mean equals the series mean.
+  TPAW does not special-case `historical`, so neither should we.
