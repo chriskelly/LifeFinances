@@ -97,7 +97,8 @@ Treasury caches live alongside it (`sp500_close.csv`, `treasury_real_yield.csv`)
 fallbacks are under `packages/simulation/simulation/market_data/data/`. Update
 `PROVENANCE.md` before committing vendored data changes. T10YIE / S&P / Treasury refreshes
 are `scripts/refresh_market_data.py`; TPAW historical-returns version bumps (CAPE
-regression, Shiller earnings, monthly returns, stock variance) follow the checklist in
+regression, Shiller earnings, monthly returns, per-asset empirical stats — mean and
+variance for stocks and bonds) follow the checklist in
 `packages/simulation/simulation/market_data/data/PROVENANCE.md` — they are not covered by
 the refresh script.
 

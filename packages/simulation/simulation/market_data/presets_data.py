@@ -58,6 +58,9 @@ class EmpiricalStats(NamedTuple):
 def load_empirical_stats_by_block(
     asset: Literal["stocks", "bonds"],
 ) -> dict[int, EmpiricalStats]:
+    if asset not in _ASSET_TABLE_PATHS:
+        known = ", ".join(sorted(_ASSET_TABLE_PATHS))
+        raise ValueError(f"unknown asset {asset!r} (known assets: {known})")
     table: dict[int, EmpiricalStats] = {}
     with _ASSET_TABLE_PATHS[asset].open(newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):

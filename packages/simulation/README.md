@@ -19,7 +19,7 @@ preprocess(plan)
   ├─ mertons: stock-alloc + spending-tilt   (mertons.py)
   └─ npv:     backward PV pass + cumulative  (npv.py, vectorized)
         ▼
-build_return_paths(plan, months)          # per-run monthly returns
+build_return_paths(plan, planning, months)  # per-run monthly returns
         ▼
 simulate_monthly(processed, paths)          # vectorized forward loop (engine.py)
         ▼

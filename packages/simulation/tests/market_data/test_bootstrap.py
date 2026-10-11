@@ -215,3 +215,31 @@ def test_adjusted_historical_returns_uses_plan_block_size():
     )
 
     assert adjusted.stocks_log.mean() == pytest.approx(expected_log_mean)
+
+
+# TPAW's adjust_log_returns_monte_carlo asserts the target on the series the
+# Monte Carlo actually indexes. Many runs over a long horizon pin the sampled
+# annual non-log mean; abs=5e-3 is ~10% of the 5% stock target and well below
+# the 3% stocks/bonds gap, so a wrong target or a swapped asset fails.
+@pytest.mark.parametrize("asset", ["stocks", "bonds"])
+def test_sampled_return_paths_match_planning_target(asset):
+    plan = _fixed_returns_plan(stocks=0.05, bonds=0.02)
+    plan.sampling = SamplingConfig(num_runs=1000, block_size_months=60, seed=7)
+    planning = resolve_planning_returns(plan)
+
+    paths = build_return_paths(plan, planning=planning, months_per_run=600)
+
+    target = planning.annual_stocks if asset == "stocks" else planning.annual_bonds
+    sampled = paths.stocks_log if asset == "stocks" else paths.bonds_log
+    assert historical_annual_return(sampled.ravel()) == pytest.approx(target, abs=5e-3)
+
+
+def test_adjusted_historical_returns_rejects_unknown_block_size():
+    plan = _fixed_returns_plan(stocks=0.05, bonds=0.02)
+    planning = resolve_planning_returns(plan)
+    # Resolve planning first (it reads the same table), then push sampling past
+    # the vendored bound so only the sampling path's guard can fire.
+    plan.sampling = plan.sampling.model_copy(update={"block_size_months": 99999})
+
+    with pytest.raises(ValueError, match="block size"):
+        adjusted_historical_returns(plan, planning=planning)

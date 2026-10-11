@@ -139,6 +139,11 @@ def test_stock_log_variance_rejects_unknown_block_size():
         stock_log_variance(block_size_months=99999, volatility_scale=1.0)
 
 
+def test_load_empirical_stats_rejects_unknown_asset():
+    with pytest.raises(ValueError, match="unknown asset"):
+        load_empirical_stats_by_block("equities")  # type: ignore[arg-type]
+
+
 def test_core_block_size_bound_matches_vendored_table():
     # `core` cannot import `simulation`, so `SamplingConfig.block_size_months`
     # duplicates the table's upper bound. Pin them together here: a plan that
