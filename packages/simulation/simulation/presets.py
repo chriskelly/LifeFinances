@@ -10,7 +10,7 @@ import numpy as np
 from simulation.market_data import load_historical_returns
 from simulation.market_data.presets_data import (
     load_cape_regression,
-    load_stock_log_variance_by_block,
+    load_empirical_stats_by_block,
 )
 
 
@@ -117,10 +117,10 @@ def historical_bond_return() -> float:
 
 
 def stock_log_variance(*, block_size_months: int, volatility_scale: float) -> float:
-    table = load_stock_log_variance_by_block()
+    table = load_empirical_stats_by_block("stocks")
     if block_size_months not in table:
         raise ValueError(
             f"no vendored stock log variance for block size {block_size_months} "
             f"(table covers {min(table)}..{max(table)})"
         )
-    return table[block_size_months] * volatility_scale**2
+    return table[block_size_months].variance * volatility_scale**2

@@ -257,9 +257,10 @@ Implementation lives in `presets.py` (pure math) and `planning_returns.py`
 
 `Plan.planning_returns.preset` selects how expected returns are derived. The
 engine fixes these values at month 0 for the whole horizon (TPAW does not
-glide expected returns). Stock log-variance is always
-`variance_by_block[block_size_months] × stock_volatility_scale²`, independent
-of the preset.
+glide expected returns). Stock log-variance is always the vendored
+empirical-stats-by-block table's variance column,
+`load_empirical_stats_by_block("stocks")[block_size_months].variance ×
+stock_volatility_scale²`, independent of the preset.
 
 | Preset | Stocks | Bonds |
 | ------ | ------ | ----- |

@@ -3,9 +3,9 @@
 ## Bump historical-returns version (TPAW → LifeFinances)
 
 When live TPAW ships a new `vN` historical-returns bundle (Shiller earnings + CAPE
-regressions + monthly returns + block-size variance), update the three vendored
-artifacts below. This is **not** covered by `scripts/refresh_market_data.py`
-(that script only refreshes T10YIE / S&P / Treasury).
+regressions + monthly returns + block-size empirical stats (mean + variance), both
+assets), update the vendored artifacts below. This is **not** covered by
+`scripts/refresh_market_data.py` (that script only refreshes T10YIE / S&P / Treasury).
 
 Prerequisite: read sources from `tpaw` at the commit that introduced `vN`
 (usually `origin/main`).
@@ -20,10 +20,13 @@ Prerequisite: read sources from `tpaw` at the commit that introduced `vN`
    for `shiller_10yr_real_earnings`, `shiller_window`, and
    `effective_timestamp_ms`. Write `cape_regression_vN.json` (same schema as the
    previous file). Delete the previous `cape_regression_v*.json`.
-3. **Stock log-variance table** — parse
-   `vN_empirical_stats_by_block_size_stocks.rs` (`EmpiricalStats32::new(mean,
-   variance)`); keep the **variance** (2nd arg); **drop index 0**; write
-   `stock_log_variance_by_block.csv` with rows `block_size` 1..1440.
+3. **Empirical-stats-by-block tables** — parse
+   `vN_empirical_stats_by_block_size_stocks.rs` and
+   `vN_empirical_stats_by_block_size_bonds.rs` (`EmpiricalStats32::new(mean,
+   variance)`); keep **both** columns (mean and variance) for **both** assets;
+   **drop index 0**; write `stock_empirical_stats_by_block.csv` and
+   `bond_empirical_stats_by_block.csv` with rows `block_size` 1..1440. Delete the
+   previous `stock_log_variance_by_block.csv`.
 4. **Loaders** — point `returns.py` (`_DEFAULT_RETURNS_CSV`, effective-date
    constant) and `presets_data.py` (`_CAPE_REGRESSION_PATH`) at the new filenames.
 5. **Docs** — update this file’s artifact sections, plus `packages/simulation/README.md`
@@ -34,8 +37,8 @@ Prerequisite: read sources from `tpaw` at the commit that introduced `vN`
    (`stock_estimates(sp500_close=…)` vs live TPAW guide numbers).
 7. Run `make` from the repo root.
 
-Do **not** vendor `vN_raw_cape_series.json`, bond variance, or the Rust monthly
-non-log array (the CSV is LifeFinances’ source of truth; `ln(1+r)` happens at load).
+Do **not** vendor `vN_raw_cape_series.json` or the Rust monthly non-log array (the
+CSV is LifeFinances’ source of truth; `ln(1+r)` happens at load).
 
 ## v8_real_monthly_returns.csv
 
@@ -95,13 +98,17 @@ non-log array (the CSV is LifeFinances’ source of truth; `ln(1+r)` happens at 
 - **Use:** `regression_prediction` / `conservative_estimate` / `1/CAPE` presets.
 - **Attribution:** TPAW by Ben Mathew (https://tpawplanner.com); earnings from Robert Shiller's dataset.
 
-## stock_log_variance_by_block.csv
+## stock_empirical_stats_by_block.csv / bond_empirical_stats_by_block.csv
 
-- **Source:** TPAW simulator-rust `v8_empirical_stats_by_block_size_stocks.rs`
-  (`annual_log_returns_variance` column; `annual_non_log_returns_mean` not vendored).
+- **Source:** TPAW simulator-rust `v8_empirical_stats_by_block_size_stocks.rs` and
+  `v8_empirical_stats_by_block_size_bonds.rs` (both the `annual_non_log_returns_mean`
+  and `annual_log_returns_variance` columns are vendored).
 - **Version:** v8 (effective 2026-07-27).
 - **Generation (upstream):** 500,000-run block-bootstrap, 600 months/run, staggered
   starts, fixed seed — precomputed by tpaw, copied verbatim (index 0 dummy dropped).
-- **Columns:** `block_size` (1..1440 months), `annual_log_returns_variance`.
-- **Use:** planning stock variance = `table[sampling.block_size_months] × stock_volatility_scale²`.
+- **Columns:** `block_size` (1..1440 months), `annual_non_log_returns_mean`,
+  `annual_log_returns_variance`.
+- **Use:** planning stock variance =
+  `load_empirical_stats_by_block("stocks")[sampling.block_size_months].variance × stock_volatility_scale²`.
+  The `annual_non_log_returns_mean` column feeds the log-return sampling adjustment.
 - **Attribution:** TPAW by Ben Mathew (https://tpawplanner.com).
