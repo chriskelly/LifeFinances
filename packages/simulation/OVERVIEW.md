@@ -21,6 +21,7 @@ numerical correctness without a runnable TPAW binary to diff against.
 | Wealth composition (tax-prorated NPV by income source: job / SS / pension / manual) | Ported | `simulation/composition.py` |
 | Planning-returns presets (live CAPE/EOD-derived expected returns, empirical variance refinement) | Ported | `simulation/market_data/presets.py`, `simulation/market_data/presets_data.py` |
 | S&P + Treasury 20-yr TIPS market feeds (cache + vendored fallback) | Ported | `simulation/market_data/` |
+| Historical-returns adjustment (rescale bootstrapped returns to the planning expected return: block-size shift correction, log-volatility scaling) | Ported | `simulation/market_data/bootstrap.py`, `simulation/presets.py` |
 | Bootstrapped/stochastic inflation (currently a single resolved scalar inflation rate for the whole horizon) | Deferred | Issue #186 |
 | Spending ceiling/floor constraints | Removed from scope | Not planned — this rebuild's product scope removed ceiling/floor |
 | Detailed tax-bucket modeling interactions with withdrawals (traditional vs. Roth vs. taxable sequencing) | Deferred | Unscheduled |
@@ -50,6 +51,16 @@ sequence — validated against TPAW's own published test/doctest values, not
 bit-identical output against a running TPAW instance. Differences at the level
 of floating-point rounding (float32 vs. float64) or RNG stream identity are
 expected and are not treated as bugs.
+
+Bootstrapped return paths match TPAW's historical-returns adjustment.
+`market_data/bootstrap.py::adjusted_historical_returns` rescales the vendored
+monthly log series (via `presets.adjust_log_returns`) so its expected annual
+non-log return equals the planning expected return, using the per-block
+empirical mean for the shift correction and scaling stocks' deviations by
+`stock_volatility_scale` (bonds at `1.0`). This mirrors TPAW's
+`process_historical_returns.rs` → `adjust_log_returns_detailed` and its
+`adjust_log_returns_historical` test. The deterministic expected run uses
+planning returns and is unaffected.
 
 One stored-sign difference is intentional. `delta_at_max_age` is the decrease
 shown in the editor. The age glide subtracts it from risk tolerance between

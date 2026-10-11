@@ -51,9 +51,14 @@ simplification versus TPAW's stochastic/bootstrapped inflation — see
 
 **Return paths.** Also, `build_return_paths` produces bootstrapped
 monthly stock and bond returns for every simulated run, over the full horizon.
-These are the random inputs that make each run differ from the others; the rest
-of the pipeline is otherwise deterministic given a plan and a set of return
-paths.
+Before indexing runs, it rescales the vendored historical series so its
+expected annual non-log return equals the *planning* (expected) return — a
+block-size-specific shift correction, with stocks' spread scaled by
+`stock_volatility_scale` and bonds left at scale `1.0` — matching TPAW. These
+adjusted returns are the random inputs that make each run differ from the
+others; the rest of the pipeline is otherwise deterministic given a plan and a
+set of return paths. The deterministic "expected run" still uses planning
+returns directly and is unaffected by this adjustment.
 
 **Planning returns (expected).** Separate from the bootstrapped return paths,
 `resolve_planning_returns` (`planning_returns.py`) produces the *expected*

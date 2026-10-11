@@ -7,11 +7,11 @@ from functools import lru_cache
 
 import numpy as np
 
-from simulation.market_data import load_historical_returns
 from simulation.market_data.presets_data import (
     load_cape_regression,
     load_empirical_stats_by_block,
 )
+from simulation.market_data.returns import load_historical_returns
 
 
 def round3(value: float) -> float:
