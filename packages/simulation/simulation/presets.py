@@ -34,11 +34,49 @@ def _annualized_non_log_mean(log_returns: np.ndarray) -> float:
     return float(np.mean(np.expm1(annualized_log)))
 
 
+def shift_correction(
+    *,
+    unadjusted_annual_non_log_mean: float,
+    series_log_mean: float,
+    log_volatility_scale: float,
+) -> float:
+    # tpaw: the block-size rescaling correction, scaled quadratically by the
+    # log-volatility scale.
+    return (
+        math.log1p(unadjusted_annual_non_log_mean) / 12.0 - series_log_mean
+    ) * log_volatility_scale**2
+
+
+def adjust_log_returns(
+    *,
+    log_returns: np.ndarray,
+    target_annual_non_log: float,
+    unadjusted_annual_non_log_mean: float,
+    log_volatility_scale: float,
+) -> np.ndarray:
+    # tpaw adjust_log_returns: shift the historical series so its annualized
+    # non-log mean matches the target, then scale deviations by the
+    # log-volatility scale. The block-size table mean (not the series mean) sets
+    # the correction, so the series mean is computed once and reused.
+    series_log_mean = float(np.mean(log_returns))
+    correction = shift_correction(
+        unadjusted_annual_non_log_mean=unadjusted_annual_non_log_mean,
+        series_log_mean=series_log_mean,
+        log_volatility_scale=log_volatility_scale,
+    )
+    target_monthly_log_mean = math.log1p(target_annual_non_log) / 12.0 - correction
+    return (
+        target_monthly_log_mean + (log_returns - series_log_mean) * log_volatility_scale
+    )
+
+
 def _shift_correction(log_returns: np.ndarray) -> float:
     # block_size=None, scale=1.0 (the preset-menu correction).
-    monthly_log_mean = float(np.mean(log_returns))
-    annualized_non_log = _annualized_non_log_mean(log_returns)
-    return math.log1p(annualized_non_log) / 12.0 - monthly_log_mean
+    return shift_correction(
+        unadjusted_annual_non_log_mean=historical_annual_return(log_returns),
+        series_log_mean=float(np.mean(log_returns)),
+        log_volatility_scale=1.0,
+    )
 
 
 def _annual_non_log_from_annual_log(annual_log_mean: float, correction: float) -> float:
