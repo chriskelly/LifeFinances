@@ -53,8 +53,10 @@ def manual_stream_real_adjustment(
     """Difference between honoring each manual stream's own real/nominal basis
     and naively deflating the domain-computed manual total uniformly.
 
-    Shared by `preprocess.py` (net cashflow) and `wealth_by_income_source`
-    below (manual wealth band) so both apply the identical correction.
+    Shared by `preprocess.py` (net cashflow) and `real_net_income_by_source`
+    below (net-income flows; also the manual wealth band, via
+    `wealth_by_income_source`) so every consumer applies the identical
+    correction.
     """
     return manual_gross_real - gross_manual / deflator
 

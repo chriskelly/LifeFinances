@@ -171,8 +171,10 @@ def build_diagnostics(
             expected_savings_stock_fraction, dtype=np.float64
         ).copy(),
         net_income_total=np.asarray(processed.income_real, dtype=np.float64).copy(),
-        net_income_job=real_nets["job"],
-        net_income_social_security=real_nets["social_security"],
-        net_income_pension=real_nets["pension"],
-        net_income_manual=real_nets["manual"],
+        net_income_job=np.asarray(real_nets["job"], dtype=np.float64).copy(),
+        net_income_social_security=np.asarray(
+            real_nets["social_security"], dtype=np.float64
+        ).copy(),
+        net_income_pension=np.asarray(real_nets["pension"], dtype=np.float64).copy(),
+        net_income_manual=np.asarray(real_nets["manual"], dtype=np.float64).copy(),
     )

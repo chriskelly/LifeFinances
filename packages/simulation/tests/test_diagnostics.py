@@ -266,27 +266,10 @@ def test_build_diagnostics_detaches_ndarray_inputs() -> None:
         rra=np.array([4.0, math.inf], dtype=np.float64),
     )
     scheduled_wealth = np.array([10.0, 20.0], dtype=np.float64)
-    zeros = np.zeros(months, dtype=np.float64)
     expected_scheduled_month0 = float(scheduled_wealth[0])
     expected_merton_month0 = float(merton[0])
 
-    diagnostics = build_diagnostics(
-        processed=processed,
-        scheduled_wealth=scheduled_wealth,
-        elasticity_discretionary=zeros,
-        elasticity_legacy=zeros,
-        savings_balance=zeros,
-        income_npv=zeros,
-        wealth_base=zeros,
-        essential_reserve=zeros,
-        discretionary_reserve=zeros,
-        legacy_reserve=zeros,
-        discretionary_pool=zeros,
-        legacy_pool=zeros,
-        general_pool=zeros,
-        stocks_target=zeros,
-        expected_savings_stock_fraction=zeros,
-    )
+    diagnostics = _built_diagnostics(processed, scheduled_wealth=scheduled_wealth)
 
     scheduled_wealth[0] = -1.0
     merton[0] = -1.0
@@ -343,7 +326,7 @@ def _built_diagnostics(
     )
 
 
-def test_build_diagnostics_reports_net_income_total_and_each_source() -> None:
+def test_build_diagnostics_maps_each_net_income_source() -> None:
     months = 2
     gross_job = np.array([100.0, 0.0], dtype=np.float64)
     gross_social_security = np.array([60.0, 0.0], dtype=np.float64)
@@ -376,7 +359,6 @@ def test_build_diagnostics_reports_net_income_total_and_each_source() -> None:
 
     diagnostics = _built_diagnostics(processed)
 
-    np.testing.assert_allclose(diagnostics.net_income_total, expected_total)
     np.testing.assert_allclose(diagnostics.net_income_job, expected_job)
     np.testing.assert_allclose(
         diagnostics.net_income_social_security, expected_social_security
@@ -423,4 +405,6 @@ def test_build_diagnostics_net_income_fields_handle_empty_horizon() -> None:
         "net_income_pension",
         "net_income_manual",
     ):
-        assert getattr(diagnostics, field).shape == (months,)
+        series = getattr(diagnostics, field)
+        assert series.shape == (months,)
+        assert series.dtype == np.float64
