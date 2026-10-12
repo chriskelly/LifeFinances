@@ -40,7 +40,12 @@ def run_simulation(
         fred_api_key=fred_api_key,
         eod_api_key=eod_api_key,
     )
-    paths = build_return_paths(plan, months_per_run=processed.months, today=today)
+    paths = build_return_paths(
+        plan,
+        planning=processed.planning_resolved,
+        months_per_run=processed.months,
+        today=today,
+    )
     raw = simulate_monthly(
         processed,
         stocks_return=paths.stocks_log_to_simple(),

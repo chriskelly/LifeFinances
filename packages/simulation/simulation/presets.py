@@ -7,11 +7,11 @@ from functools import lru_cache
 
 import numpy as np
 
-from simulation.market_data import load_historical_returns
 from simulation.market_data.presets_data import (
+    empirical_stats,
     load_cape_regression,
-    load_stock_log_variance_by_block,
 )
+from simulation.market_data.returns import load_historical_returns
 
 
 def round3(value: float) -> float:
@@ -34,11 +34,50 @@ def _annualized_non_log_mean(log_returns: np.ndarray) -> float:
     return float(np.mean(np.expm1(annualized_log)))
 
 
+def shift_correction(
+    *,
+    unadjusted_annual_non_log_mean: float,
+    series_log_mean: float,
+    log_volatility_scale: float,
+) -> float:
+    # tpaw: the block-size rescaling correction, scaled quadratically by the
+    # log-volatility scale.
+    return (
+        math.log1p(unadjusted_annual_non_log_mean) / 12.0 - series_log_mean
+    ) * log_volatility_scale**2
+
+
+def adjust_log_returns(
+    *,
+    log_returns: np.ndarray,
+    target_annual_non_log: float,
+    unadjusted_annual_non_log_mean: float,
+    log_volatility_scale: float,
+) -> np.ndarray:
+    # tpaw adjust_log_returns: shift the series so the *block-bootstrapped*
+    # annualized non-log mean matches the target (the per-block table mean is the
+    # bootstrap's own mean; the whole-series annualized mean matches only when
+    # the table mean equals the series mean). Deviations scale by the
+    # log-volatility scale. The series mean is computed once and reused.
+    series_log_mean = float(np.mean(log_returns))
+    correction = shift_correction(
+        unadjusted_annual_non_log_mean=unadjusted_annual_non_log_mean,
+        series_log_mean=series_log_mean,
+        log_volatility_scale=log_volatility_scale,
+    )
+    target_monthly_log_mean = math.log1p(target_annual_non_log) / 12.0 - correction
+    return (
+        target_monthly_log_mean + (log_returns - series_log_mean) * log_volatility_scale
+    )
+
+
 def _shift_correction(log_returns: np.ndarray) -> float:
     # block_size=None, scale=1.0 (the preset-menu correction).
-    monthly_log_mean = float(np.mean(log_returns))
-    annualized_non_log = _annualized_non_log_mean(log_returns)
-    return math.log1p(annualized_non_log) / 12.0 - monthly_log_mean
+    return shift_correction(
+        unadjusted_annual_non_log_mean=historical_annual_return(log_returns),
+        series_log_mean=float(np.mean(log_returns)),
+        log_volatility_scale=1.0,
+    )
 
 
 def _annual_non_log_from_annual_log(annual_log_mean: float, correction: float) -> float:
@@ -117,10 +156,9 @@ def historical_bond_return() -> float:
 
 
 def stock_log_variance(*, block_size_months: int, volatility_scale: float) -> float:
-    table = load_stock_log_variance_by_block()
-    if block_size_months not in table:
-        raise ValueError(
-            f"no vendored stock log variance for block size {block_size_months} "
-            f"(table covers {min(table)}..{max(table)})"
-        )
-    return table[block_size_months] * volatility_scale**2
+    return (
+        empirical_stats(
+            asset="stocks", block_size=block_size_months
+        ).annual_log_variance
+        * volatility_scale**2
+    )

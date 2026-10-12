@@ -19,7 +19,7 @@ preprocess(plan)
   ├─ mertons: stock-alloc + spending-tilt   (mertons.py)
   └─ npv:     backward PV pass + cumulative  (npv.py, vectorized)
         ▼
-build_return_paths(plan, months)          # per-run monthly returns
+build_return_paths(plan, planning=…, months_per_run=…)  # per-run monthly returns
         ▼
 simulate_monthly(processed, paths)          # vectorized forward loop (engine.py)
         ▼
@@ -51,9 +51,16 @@ simplification versus TPAW's stochastic/bootstrapped inflation — see
 
 **Return paths.** Also, `build_return_paths` produces bootstrapped
 monthly stock and bond returns for every simulated run, over the full horizon.
-These are the random inputs that make each run differ from the others; the rest
-of the pipeline is otherwise deterministic given a plan and a set of return
-paths.
+Before indexing runs, it rescales the vendored historical series so the
+*block-bootstrapped* annualized non-log mean equals the *planning* (expected)
+return — a block-size-specific shift correction (the per-block table mean is the
+bootstrap's own mean, so the whole-series annualized mean matches only where the
+table mean equals the series mean), with stocks' spread scaled by
+`stock_volatility_scale` and bonds left at scale `1.0` — matching TPAW. These
+adjusted returns are the random inputs that make each run differ from the
+others; the rest of the pipeline is otherwise deterministic given a plan and a
+set of return paths. The deterministic "expected run" still uses planning
+returns directly and is unaffected by this adjustment.
 
 **Planning returns (expected).** Separate from the bootstrapped return paths,
 `resolve_planning_returns` (`planning_returns.py`) produces the *expected*
@@ -257,9 +264,10 @@ Implementation lives in `presets.py` (pure math) and `planning_returns.py`
 
 `Plan.planning_returns.preset` selects how expected returns are derived. The
 engine fixes these values at month 0 for the whole horizon (TPAW does not
-glide expected returns). Stock log-variance is always
-`variance_by_block[block_size_months] × stock_volatility_scale²`, independent
-of the preset.
+glide expected returns). Stock log-variance is always the vendored
+empirical-stats-by-block table's variance column,
+`empirical_stats(asset="stocks", block_size=block_size_months).annual_log_variance ×
+stock_volatility_scale²`, independent of the preset.
 
 | Preset | Stocks | Bonds |
 | ------ | ------ | ----- |

@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+import dataclasses
 from datetime import date
+from typing import TYPE_CHECKING
 
 import numpy as np
 from core.models import Plan
 from pydantic import BaseModel, ConfigDict
 
-from simulation.market_data.returns import load_historical_returns
+from simulation.market_data.presets_data import empirical_stats
+from simulation.market_data.returns import HistoricalReturns, load_historical_returns
+from simulation.presets import adjust_log_returns
+
+if TYPE_CHECKING:
+    from simulation.planning_returns import PlanningReturns
 
 
 class ReturnPaths(BaseModel):
@@ -58,14 +65,46 @@ def build_index_sequences(
     return sequences
 
 
+def adjusted_historical_returns(
+    plan: Plan, *, planning: PlanningReturns
+) -> HistoricalReturns:
+    # TPAW rescales the vendored history so its expected annual non-log return
+    # equals the planning (expected) return before any Monte Carlo indexing. The
+    # shift correction uses the per-block table mean (not the series mean), and
+    # stocks' spread is scaled by the plan's log-volatility scale; bonds use 1.0.
+    hist = load_historical_returns()
+    block_size = plan.sampling.block_size_months
+    scale = float(plan.planning_returns.stock_volatility_scale)
+    adjusted_stocks = adjust_log_returns(
+        log_returns=hist.stocks_log,
+        target_annual_non_log=planning.annual_stocks,
+        unadjusted_annual_non_log_mean=empirical_stats(
+            asset="stocks", block_size=block_size
+        ).annual_non_log_mean,
+        log_volatility_scale=scale,
+    )
+    adjusted_bonds = adjust_log_returns(
+        log_returns=hist.bonds_log,
+        target_annual_non_log=planning.annual_bonds,
+        unadjusted_annual_non_log_mean=empirical_stats(
+            asset="bonds", block_size=block_size
+        ).annual_non_log_mean,
+        log_volatility_scale=1.0,
+    )
+    return dataclasses.replace(
+        hist, stocks_log=adjusted_stocks, bonds_log=adjusted_bonds
+    )
+
+
 def build_return_paths(
     plan: Plan,
     *,
+    planning: PlanningReturns,
     months_per_run: int,
     today: date | None = None,
 ) -> ReturnPaths:
     _ = today  # reserved: per-run inflation/return paths may key off today later
-    hist = load_historical_returns()
+    hist = adjusted_historical_returns(plan, planning=planning)
     sampling = plan.sampling
     sequences = build_index_sequences(
         seed=sampling.seed,

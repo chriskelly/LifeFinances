@@ -4,7 +4,7 @@ from simulation.market_data import load_historical_returns
 from simulation.market_data.presets_data import (
     REGRESSION_KEYS,
     load_cape_regression,
-    load_stock_log_variance_by_block,
+    load_empirical_stats_by_block,
 )
 from simulation.presets import (
     conservative_estimate,
@@ -37,13 +37,28 @@ SHILLER = load_cape_regression().shiller_10yr_real_earnings
 
 def test_loaders_feed_preset_math():
     coeffs = load_cape_regression()
-    table = load_stock_log_variance_by_block()
 
     assert coeffs.shiller_10yr_real_earnings == EXPECTED_SHILLER_10YR_REAL_EARNINGS
     assert list(coeffs.pairs.keys()) == list(REGRESSION_KEYS)
-    assert set(table.keys()) == set(range(1, 1441))
-    assert table[1] == EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1
-    assert table[1440] == EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1440
+
+
+@pytest.mark.parametrize("asset", ["stocks", "bonds"])
+def test_empirical_stats_tables_cover_every_block_size(asset):
+    table = load_empirical_stats_by_block(asset)
+
+    assert set(table) == set(range(1, MAX_BLOCK_SIZE_MONTHS + 1))
+
+
+def test_stock_variance_matches_vendored_block_endpoints():
+    # pinned: intentional contract test for the vendored v8 table.
+    table = load_empirical_stats_by_block("stocks")
+
+    assert table[1].annual_log_variance == pytest.approx(
+        EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1
+    )
+    assert table[MAX_BLOCK_SIZE_MONTHS].annual_log_variance == pytest.approx(
+        EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1440
+    )
 
 
 def test_one_over_cape_is_earnings_over_price():
@@ -112,13 +127,15 @@ def test_sep4_2026_sp500_matches_live_tpaw_guide():
 
 
 def test_stock_log_variance_scales_table_entry():
-    block_size = 60
-    scale = 2.0
-    table = load_stock_log_variance_by_block()
+    block_size_months = 60
+    volatility_scale = 2.0
+    variance = load_empirical_stats_by_block("stocks")[
+        block_size_months
+    ].annual_log_variance
 
-    assert stock_log_variance(block_size_months=block_size, volatility_scale=scale) == (
-        table[block_size] * scale**2
-    )
+    assert stock_log_variance(
+        block_size_months=block_size_months, volatility_scale=volatility_scale
+    ) == pytest.approx(variance * volatility_scale**2)
 
 
 def test_stock_log_variance_rejects_unknown_block_size():
@@ -126,13 +143,18 @@ def test_stock_log_variance_rejects_unknown_block_size():
         stock_log_variance(block_size_months=99999, volatility_scale=1.0)
 
 
+def test_load_empirical_stats_rejects_unknown_asset():
+    with pytest.raises(ValueError, match="unknown asset"):
+        load_empirical_stats_by_block("equities")  # type: ignore[arg-type]
+
+
 def test_core_block_size_bound_matches_vendored_table():
     # `core` cannot import `simulation`, so `SamplingConfig.block_size_months`
     # duplicates the table's upper bound. Pin them together here: a plan that
     # validates must always find a vendored variance entry.
-    table = load_stock_log_variance_by_block()
+    table = load_empirical_stats_by_block("stocks")
 
     assert max(table) == MAX_BLOCK_SIZE_MONTHS
     assert stock_log_variance(
         block_size_months=MAX_BLOCK_SIZE_MONTHS, volatility_scale=1.0
-    ) == pytest.approx(table[MAX_BLOCK_SIZE_MONTHS])
+    ) == pytest.approx(table[MAX_BLOCK_SIZE_MONTHS].annual_log_variance)
