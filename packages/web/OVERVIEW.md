@@ -62,6 +62,12 @@ The expected path only, one value per month (except `legacy_stock_allocation`,
 which is a single scalar). Real dollars, except fractions and risk aversion.
 `plan_id` and `name` are omitted.
 
+`net_income_*` are per-month income **flows**; `income_npv` and the `wealth_*`
+series are present **values** of future income. The four `net_income_<source>`
+fields sum to `net_income_total` in months with positive gross income; in a month
+with no gross income the split is zero and any residual tax is not attributed to
+a source.
+
 | Name | Meaning |
 | --- | --- |
 | `legacy_stock_allocation` | Merton stock weight for the legacy goal. One value for the whole horizon. |
@@ -81,3 +87,8 @@ which is a single scalar). Real dollars, except fractions and risk aversion.
 | `general_pool` | Wealth left for general spending after essential, discretionary, and legacy reserves are carved out. |
 | `stocks_target` | Dollar amount of stocks implied by the discretionary, legacy, and general pools. |
 | `expected_savings_stock_fraction` | `stocks_target / savings_balance`, clamped to the range 0 through 1. |
+| `net_income_total` | Post-tax (net) income for the month, in real dollars. A **monthly flow**, not a present value. |
+| `net_income_job` | Job portion of `net_income_total` for the month. |
+| `net_income_social_security` | Social Security portion of `net_income_total` for the month. |
+| `net_income_pension` | Pension portion of `net_income_total` for the month. |
+| `net_income_manual` | Manual-income portion of `net_income_total` for the month, including the manual streams' own real/nominal basis. |

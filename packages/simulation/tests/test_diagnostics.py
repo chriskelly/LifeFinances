@@ -314,3 +314,107 @@ def test_diagnostics_maps_infinite_engine_rra_and_keeps_zero_merton() -> None:
     assert raw.diagnostics.rra_by_month[0] == RRA_INFINITE_SENTINEL
     assert raw.diagnostics.stock_allocation_total_portfolio[0] == zero_merton
     assert math.isinf(processed.rra[0])
+
+
+def _built_diagnostics(processed, *, scheduled_wealth=None):
+    zeros = np.zeros(processed.months, dtype=np.float64)
+    return build_diagnostics(
+        processed=processed,
+        scheduled_wealth=zeros if scheduled_wealth is None else scheduled_wealth,
+        elasticity_discretionary=zeros,
+        elasticity_legacy=zeros,
+        savings_balance=zeros,
+        income_npv=zeros,
+        wealth_base=zeros,
+        essential_reserve=zeros,
+        discretionary_reserve=zeros,
+        legacy_reserve=zeros,
+        discretionary_pool=zeros,
+        legacy_pool=zeros,
+        general_pool=zeros,
+        stocks_target=zeros,
+        expected_savings_stock_fraction=zeros,
+    )
+
+
+def test_build_diagnostics_reports_net_income_total_and_each_source() -> None:
+    months = 2
+    gross_job = np.array([100.0, 0.0], dtype=np.float64)
+    gross_social_security = np.array([60.0, 0.0], dtype=np.float64)
+    gross_pension = np.array([20.0, 0.0], dtype=np.float64)
+    gross_manual = np.array([20.0, 0.0], dtype=np.float64)
+    taxes = np.array([-40.0, 0.0], dtype=np.float64)
+    # A nominal-basis manual stream, so manual_gross_real differs from
+    # gross_manual at the month-0 deflator of 1.0.
+    manual_gross_real = np.array([35.0, 0.0], dtype=np.float64)
+    # Hand-computed month-0 flows (gross 200, tax share by source = gross / 200):
+    #   job 100-20=80; ss 60-12=48; pension 20-4=16; manual (20-4) + (35-20) = 31.
+    expected_job = np.array([80.0, 0.0], dtype=np.float64)
+    expected_social_security = np.array([48.0, 0.0], dtype=np.float64)
+    expected_pension = np.array([16.0, 0.0], dtype=np.float64)
+    expected_manual = np.array([31.0, 0.0], dtype=np.float64)
+    expected_total = (
+        expected_job + expected_social_security + expected_pension + expected_manual
+    )
+    processed = replace(
+        _flat_processed(months, starting_balance=1_000.0),
+        income_real=expected_total,
+        gross_job=gross_job,
+        gross_social_security=gross_social_security,
+        gross_pension=gross_pension,
+        gross_manual=gross_manual,
+        manual_gross_real=manual_gross_real,
+        taxes=taxes,
+        monthly_inflation=0.02,
+    )
+
+    diagnostics = _built_diagnostics(processed)
+
+    np.testing.assert_allclose(diagnostics.net_income_total, expected_total)
+    np.testing.assert_allclose(diagnostics.net_income_job, expected_job)
+    np.testing.assert_allclose(
+        diagnostics.net_income_social_security, expected_social_security
+    )
+    np.testing.assert_allclose(diagnostics.net_income_pension, expected_pension)
+    np.testing.assert_allclose(diagnostics.net_income_manual, expected_manual)
+
+
+def test_build_diagnostics_net_income_total_keeps_residual_tax_when_sources_drop_it() -> (
+    None
+):
+    months = 1
+    zeros = np.zeros(months, dtype=np.float64)
+    residual_tax = np.array([-5.0], dtype=np.float64)  # pinned contract value
+    processed = replace(
+        _flat_processed(months, starting_balance=1_000.0),
+        income_real=residual_tax,  # preprocess keeps the tax in the total
+        gross_job=zeros.copy(),
+        taxes=residual_tax,
+    )
+
+    diagnostics = _built_diagnostics(processed)
+
+    sources = (
+        diagnostics.net_income_job
+        + diagnostics.net_income_social_security
+        + diagnostics.net_income_pension
+        + diagnostics.net_income_manual
+    )
+    np.testing.assert_allclose(diagnostics.net_income_total, residual_tax)
+    np.testing.assert_allclose(sources, zeros)
+
+
+def test_build_diagnostics_net_income_fields_handle_empty_horizon() -> None:
+    months = 0
+    processed = _flat_processed(months, starting_balance=1_000.0)
+
+    diagnostics = _built_diagnostics(processed)
+
+    for field in (
+        "net_income_total",
+        "net_income_job",
+        "net_income_social_security",
+        "net_income_pension",
+        "net_income_manual",
+    ):
+        assert getattr(diagnostics, field).shape == (months,)
