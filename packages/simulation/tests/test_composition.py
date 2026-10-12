@@ -10,6 +10,7 @@ from core.streams import CalendarMonthBoundary, TimedStream
 from simulation.composition import (
     WealthBySource,
     prorate_net_income_by_source,
+    real_net_income_by_source,
     wealth_by_income_source,
 )
 from simulation.preprocess import ProcessedPlan, preprocess
@@ -165,6 +166,73 @@ def test_proration_zero_gross_months_stay_zero_across_horizon():
 
     for series in nets.values():
         np.testing.assert_allclose(series, zeros)
+
+
+def test_real_net_income_by_source_sums_to_real_net_cashflow():
+    months = 3
+    gross_job = np.array([100.0, 100.0, 0.0], dtype=np.float64)
+    gross_social_security = np.array([0.0, 60.0, 50.0], dtype=np.float64)
+    gross_pension = np.array([0.0, 20.0, 0.0], dtype=np.float64)
+    gross_manual = np.array([0.0, 20.0, 0.0], dtype=np.float64)
+    # Month 1 tax is 25% of its gross — a deliberately large share.
+    taxes = np.array([-30.0, -50.0, -5.0], dtype=np.float64)
+    monthly_inflation = 0.02
+    manual_gross_real = np.zeros(months, dtype=np.float64)
+    total_gross = gross_job + gross_social_security + gross_pension + gross_manual
+
+    flows = real_net_income_by_source(
+        gross_job=gross_job,
+        gross_social_security=gross_social_security,
+        gross_pension=gross_pension,
+        gross_manual=gross_manual,
+        taxes=taxes,
+        monthly_inflation=monthly_inflation,
+        manual_gross_real=manual_gross_real,
+    )
+
+    deflator = (1.0 + monthly_inflation) ** np.arange(months, dtype=np.float64)
+    # Real net cashflow (== preprocess's income_real): deflated net, plus the
+    # manual streams' own real/nominal basis correction.
+    expected_total = (total_gross + taxes) / deflator + (
+        manual_gross_real - gross_manual / deflator
+    )
+    summed = (
+        flows["job"] + flows["social_security"] + flows["pension"] + flows["manual"]
+    )
+    positive_gross = total_gross > 0.0
+    assert np.any(positive_gross)
+    np.testing.assert_allclose(summed[positive_gross], expected_total[positive_gross])
+
+
+def test_real_net_income_by_source_applies_manual_real_adjustment():
+    # Only manual income, so all tax lands on the manual source, and a nominal
+    # basis makes manual_gross_real differ from gross_manual / deflator.
+    months = 2
+    gross_manual = np.array([120.0, 120.0], dtype=np.float64)
+    zeros = np.zeros(months, dtype=np.float64)
+    taxes = np.array([-30.0, -30.0], dtype=np.float64)
+    monthly_inflation = 0.02
+    manual_gross_real = np.array([150.0, 150.0], dtype=np.float64)
+    total_gross = gross_manual
+
+    flows = real_net_income_by_source(
+        gross_job=zeros,
+        gross_social_security=zeros.copy(),
+        gross_pension=zeros.copy(),
+        gross_manual=gross_manual,
+        taxes=taxes,
+        monthly_inflation=monthly_inflation,
+        manual_gross_real=manual_gross_real,
+    )
+
+    deflator = (1.0 + monthly_inflation) ** np.arange(months, dtype=np.float64)
+    share_manual = gross_manual / total_gross
+    expected_manual = (gross_manual + taxes * share_manual) / deflator + (
+        manual_gross_real - gross_manual / deflator
+    )
+    np.testing.assert_allclose(flows["manual"], expected_manual)
+    for key in ("job", "social_security", "pension"):
+        np.testing.assert_allclose(flows[key], zeros)
 
 
 def _wealth_from_processed(processed: ProcessedPlan) -> WealthBySource:

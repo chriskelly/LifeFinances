@@ -59,6 +59,41 @@ def manual_stream_real_adjustment(
     return manual_gross_real - gross_manual / deflator
 
 
+def real_net_income_by_source(
+    *,
+    gross_job: np.ndarray,
+    gross_social_security: np.ndarray,
+    gross_pension: np.ndarray,
+    gross_manual: np.ndarray,
+    taxes: np.ndarray,
+    monthly_inflation: float,
+    manual_gross_real: np.ndarray,
+) -> dict[str, np.ndarray]:
+    """Real (inflation-deflated) monthly net income split by source.
+
+    The four returned flows sum to the real net cashflow (gross income plus
+    domain-signed taxes), with each month's tax prorated by gross share. The
+    manual flow also honors each stream's own real/nominal basis via
+    `manual_stream_real_adjustment`. Shared with `build_diagnostics`.
+    """
+    nets = prorate_net_income_by_source(
+        gross_job=gross_job,
+        gross_social_security=gross_social_security,
+        gross_pension=gross_pension,
+        gross_manual=gross_manual,
+        taxes=taxes,
+    )
+    months = gross_job.shape[0]
+    deflator = (1.0 + monthly_inflation) ** np.arange(months, dtype=np.float64)
+    real_nets = {key: nets[key] / deflator for key in _SOURCE_KEYS}
+    real_nets["manual"] = real_nets["manual"] + manual_stream_real_adjustment(
+        manual_gross_real=manual_gross_real,
+        gross_manual=gross_manual,
+        deflator=deflator,
+    )
+    return real_nets
+
+
 def wealth_by_income_source(
     *,
     gross_job: np.ndarray,
@@ -70,22 +105,16 @@ def wealth_by_income_source(
     monthly_bond_rate: float,
     manual_gross_real: np.ndarray,
 ) -> WealthBySource:
-    nets = prorate_net_income_by_source(
+    real_nets = real_net_income_by_source(
         gross_job=gross_job,
         gross_social_security=gross_social_security,
         gross_pension=gross_pension,
         gross_manual=gross_manual,
         taxes=taxes,
-    )
-    months = gross_job.shape[0]
-    deflator = (1.0 + monthly_inflation) ** np.arange(months, dtype=np.float64)
-    one_over = 1.0 / (1.0 + monthly_bond_rate)
-    real_nets = {key: nets[key] / deflator for key in _SOURCE_KEYS}
-    real_nets["manual"] = real_nets["manual"] + manual_stream_real_adjustment(
+        monthly_inflation=monthly_inflation,
         manual_gross_real=manual_gross_real,
-        gross_manual=gross_manual,
-        deflator=deflator,
     )
+    one_over = 1.0 / (1.0 + monthly_bond_rate)
     bands = {
         key: backward_npv_including_current(real_nets[key], one_over_1_plus_r=one_over)
         for key in _SOURCE_KEYS
