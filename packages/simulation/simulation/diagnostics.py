@@ -58,7 +58,7 @@ def eq_ndarray_model(
 class SimulationDiagnostics(BaseModel):
     """Expected-run explain series for one simulation.
 
-    Two carves share this object and must not be conflated:
+    Three groups of series share this object and must not be conflated:
 
     - Wealth path (current-month expenses included): `scheduled_wealth`,
       `elasticity_discretionary`, `elasticity_legacy`.

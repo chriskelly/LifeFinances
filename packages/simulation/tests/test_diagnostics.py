@@ -4,6 +4,7 @@ from dataclasses import replace
 import numpy as np
 from simulation.diagnostics import (
     RRA_INFINITE_SENTINEL,
+    SimulationDiagnostics,
     build_diagnostics,
     empty_diagnostics,
     rra_for_diagnostics,
@@ -15,6 +16,7 @@ from simulation.engine import (
     simulate_monthly,
 )
 from simulation.npv import carve_pools, target_general_withdrawal
+from simulation.preprocess import ProcessedPlan
 
 from .processed_fixtures import _flat_processed
 
@@ -316,7 +318,11 @@ def test_diagnostics_maps_infinite_engine_rra_and_keeps_zero_merton() -> None:
     assert math.isinf(processed.rra[0])
 
 
-def _built_diagnostics(processed, *, scheduled_wealth=None):
+def _built_diagnostics(
+    processed: ProcessedPlan,
+    *,
+    scheduled_wealth: np.ndarray | None = None,
+) -> SimulationDiagnostics:
     zeros = np.zeros(processed.months, dtype=np.float64)
     return build_diagnostics(
         processed=processed,

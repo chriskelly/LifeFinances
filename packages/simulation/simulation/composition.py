@@ -72,9 +72,12 @@ def real_net_income_by_source(
     """Real (inflation-deflated) monthly net income split by source.
 
     The four returned flows sum to the real net cashflow (gross income plus
-    domain-signed taxes), with each month's tax prorated by gross share. The
-    manual flow also honors each stream's own real/nominal basis via
-    `manual_stream_real_adjustment`. Shared with `build_diagnostics`.
+    domain-signed taxes), with each month's tax prorated by gross share — exactly
+    where that month's total gross income is positive; in a zero-gross month
+    `prorate_net_income_by_source` yields zero flows and any residual tax is not
+    attributed. The manual flow also honors each stream's own real/nominal basis
+    via `manual_stream_real_adjustment`. Shared by `wealth_by_income_source` and
+    `build_diagnostics`.
     """
     nets = prorate_net_income_by_source(
         gross_job=gross_job,
