@@ -53,8 +53,10 @@ def test_stock_variance_matches_vendored_block_endpoints():
     # pinned: intentional contract test for the vendored v8 table.
     table = load_empirical_stats_by_block("stocks")
 
-    assert table[1].variance == pytest.approx(EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1)
-    assert table[MAX_BLOCK_SIZE_MONTHS].variance == pytest.approx(
+    assert table[1].annual_log_variance == pytest.approx(
+        EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1
+    )
+    assert table[MAX_BLOCK_SIZE_MONTHS].annual_log_variance == pytest.approx(
         EXPECTED_STOCK_LOG_VARIANCE_BLOCK_1440
     )
 
@@ -127,7 +129,9 @@ def test_sep4_2026_sp500_matches_live_tpaw_guide():
 def test_stock_log_variance_scales_table_entry():
     block_size_months = 60
     volatility_scale = 2.0
-    variance = load_empirical_stats_by_block("stocks")[block_size_months].variance
+    variance = load_empirical_stats_by_block("stocks")[
+        block_size_months
+    ].annual_log_variance
 
     assert stock_log_variance(
         block_size_months=block_size_months, volatility_scale=volatility_scale
@@ -153,4 +157,4 @@ def test_core_block_size_bound_matches_vendored_table():
     assert max(table) == MAX_BLOCK_SIZE_MONTHS
     assert stock_log_variance(
         block_size_months=MAX_BLOCK_SIZE_MONTHS, volatility_scale=1.0
-    ) == pytest.approx(table[MAX_BLOCK_SIZE_MONTHS].variance)
+    ) == pytest.approx(table[MAX_BLOCK_SIZE_MONTHS].annual_log_variance)

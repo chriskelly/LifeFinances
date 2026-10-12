@@ -2,7 +2,7 @@ import math
 
 import pytest
 from core.models import DEFAULT_BLOCK_SIZE_MONTHS
-from simulation.market_data.presets_data import load_empirical_stats_by_block
+from simulation.market_data.presets_data import empirical_stats
 from simulation.market_data.returns import load_historical_returns
 from simulation.presets import (
     adjust_log_returns,
@@ -14,7 +14,9 @@ from simulation.presets import (
 def test_adjust_log_returns_targets_annualized_non_log_mean():
     series = load_historical_returns().stocks_log
     target = 0.05
-    block_mean = load_empirical_stats_by_block("stocks")[DEFAULT_BLOCK_SIZE_MONTHS].mean
+    block_mean = empirical_stats(
+        asset="stocks", block_size=DEFAULT_BLOCK_SIZE_MONTHS
+    ).annual_non_log_mean
 
     adjusted = adjust_log_returns(
         log_returns=series,
@@ -29,7 +31,9 @@ def test_adjust_log_returns_targets_annualized_non_log_mean():
 def test_adjust_log_returns_scales_standard_deviation():
     series = load_historical_returns().stocks_log
     scale = 0.5
-    block_mean = load_empirical_stats_by_block("stocks")[DEFAULT_BLOCK_SIZE_MONTHS].mean
+    block_mean = empirical_stats(
+        asset="stocks", block_size=DEFAULT_BLOCK_SIZE_MONTHS
+    ).annual_non_log_mean
 
     adjusted = adjust_log_returns(
         log_returns=series,
@@ -62,9 +66,7 @@ def test_shift_correction_scales_quadratically_with_log_volatility_scale():
 def test_adjust_log_returns_correction_uses_block_mean_not_series_mean():
     series = load_historical_returns().stocks_log
     target = 0.05
-    block_mean = load_empirical_stats_by_block("stocks")[
-        1
-    ].mean  # differs from series mean
+    block_mean = empirical_stats(asset="stocks", block_size=1).annual_non_log_mean
     series_log_mean = float(series.mean())
     series_annual_non_log = historical_annual_return(series)
     # guards the test's discriminating power: block mean != series annual non-log mean

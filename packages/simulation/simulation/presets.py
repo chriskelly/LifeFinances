@@ -8,8 +8,8 @@ from functools import lru_cache
 import numpy as np
 
 from simulation.market_data.presets_data import (
+    empirical_stats,
     load_cape_regression,
-    load_empirical_stats_by_block,
 )
 from simulation.market_data.returns import load_historical_returns
 
@@ -54,10 +54,11 @@ def adjust_log_returns(
     unadjusted_annual_non_log_mean: float,
     log_volatility_scale: float,
 ) -> np.ndarray:
-    # tpaw adjust_log_returns: shift the historical series so its annualized
-    # non-log mean matches the target, then scale deviations by the
-    # log-volatility scale. The block-size table mean (not the series mean) sets
-    # the correction, so the series mean is computed once and reused.
+    # tpaw adjust_log_returns: shift the series so the *block-bootstrapped*
+    # annualized non-log mean matches the target (the per-block table mean is the
+    # bootstrap's own mean; the whole-series annualized mean matches only when
+    # the table mean equals the series mean). Deviations scale by the
+    # log-volatility scale. The series mean is computed once and reused.
     series_log_mean = float(np.mean(log_returns))
     correction = shift_correction(
         unadjusted_annual_non_log_mean=unadjusted_annual_non_log_mean,
@@ -155,10 +156,9 @@ def historical_bond_return() -> float:
 
 
 def stock_log_variance(*, block_size_months: int, volatility_scale: float) -> float:
-    table = load_empirical_stats_by_block("stocks")
-    if block_size_months not in table:
-        raise ValueError(
-            f"no vendored stock log variance for block size {block_size_months} "
-            f"(table covers {min(table)}..{max(table)})"
-        )
-    return table[block_size_months].variance * volatility_scale**2
+    return (
+        empirical_stats(
+            asset="stocks", block_size=block_size_months
+        ).annual_log_variance
+        * volatility_scale**2
+    )

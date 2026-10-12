@@ -12,7 +12,7 @@ from simulation.market_data.bootstrap import (
     build_index_sequences,
     build_return_paths,
 )
-from simulation.market_data.presets_data import load_empirical_stats_by_block
+from simulation.market_data.presets_data import empirical_stats
 from simulation.market_data.returns import load_historical_returns
 from simulation.planning_returns import resolve_planning_returns
 from simulation.presets import historical_annual_return, shift_correction
@@ -200,21 +200,32 @@ def test_adjusted_historical_returns_scales_only_stocks_spread_by_stock_volatili
     assert adjusted.bonds_log.std(ddof=1) == pytest.approx(raw.bonds_log.std(ddof=1))
 
 
-def test_adjusted_historical_returns_uses_plan_block_size():
+@pytest.mark.parametrize("asset", ["stocks", "bonds"])
+def test_adjusted_historical_returns_uses_plan_block_size(asset):
     plan = _fixed_returns_plan(stocks=0.05, bonds=0.02)
     plan.sampling = plan.sampling.model_copy(update={"block_size_months": 1})
     planning = resolve_planning_returns(plan)
     raw = load_historical_returns()
-    block_mean = load_empirical_stats_by_block("stocks")[1].mean
 
     adjusted = adjusted_historical_returns(plan, planning=planning)
-    expected_log_mean = math.log1p(planning.annual_stocks) / 12.0 - shift_correction(
-        unadjusted_annual_non_log_mean=block_mean,
-        series_log_mean=float(raw.stocks_log.mean()),
-        log_volatility_scale=float(plan.planning_returns.stock_volatility_scale),
+
+    target = planning.annual_stocks if asset == "stocks" else planning.annual_bonds
+    raw_log = raw.stocks_log if asset == "stocks" else raw.bonds_log
+    adjusted_log = adjusted.stocks_log if asset == "stocks" else adjusted.bonds_log
+    scale = (
+        float(plan.planning_returns.stock_volatility_scale)
+        if asset == "stocks"
+        else 1.0
+    )
+    expected_log_mean = math.log1p(target) / 12.0 - shift_correction(
+        unadjusted_annual_non_log_mean=empirical_stats(
+            asset=asset, block_size=1
+        ).annual_non_log_mean,
+        series_log_mean=float(raw_log.mean()),
+        log_volatility_scale=scale,
     )
 
-    assert adjusted.stocks_log.mean() == pytest.approx(expected_log_mean)
+    assert adjusted_log.mean() == pytest.approx(expected_log_mean)
 
 
 # TPAW's adjust_log_returns_monte_carlo asserts the target on the series the

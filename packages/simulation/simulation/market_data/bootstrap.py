@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import dataclasses
 from datetime import date
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 from core.models import Plan
 from pydantic import BaseModel, ConfigDict
 
-from simulation.market_data.presets_data import (
-    EmpiricalStats,
-    load_empirical_stats_by_block,
-)
+from simulation.market_data.presets_data import empirical_stats
 from simulation.market_data.returns import HistoricalReturns, load_historical_returns
 from simulation.presets import adjust_log_returns
 
@@ -68,18 +65,6 @@ def build_index_sequences(
     return sequences
 
 
-def _block_stats(asset: Literal["stocks", "bonds"], block_size: int) -> EmpiricalStats:
-    # Same guard style as presets.stock_log_variance: a plan block size outside
-    # the vendored table is a ValueError, not a bare KeyError.
-    table = load_empirical_stats_by_block(asset)
-    if block_size not in table:
-        raise ValueError(
-            f"no vendored {asset} empirical stats for block size {block_size} "
-            f"(table covers {min(table)}..{max(table)})"
-        )
-    return table[block_size]
-
-
 def adjusted_historical_returns(
     plan: Plan, *, planning: PlanningReturns
 ) -> HistoricalReturns:
@@ -93,13 +78,17 @@ def adjusted_historical_returns(
     adjusted_stocks = adjust_log_returns(
         log_returns=hist.stocks_log,
         target_annual_non_log=planning.annual_stocks,
-        unadjusted_annual_non_log_mean=_block_stats("stocks", block_size).mean,
+        unadjusted_annual_non_log_mean=empirical_stats(
+            asset="stocks", block_size=block_size
+        ).annual_non_log_mean,
         log_volatility_scale=scale,
     )
     adjusted_bonds = adjust_log_returns(
         log_returns=hist.bonds_log,
         target_annual_non_log=planning.annual_bonds,
-        unadjusted_annual_non_log_mean=_block_stats("bonds", block_size).mean,
+        unadjusted_annual_non_log_mean=empirical_stats(
+            asset="bonds", block_size=block_size
+        ).annual_non_log_mean,
         log_volatility_scale=1.0,
     )
     return dataclasses.replace(

@@ -109,6 +109,6 @@ CSV is LifeFinances’ source of truth; `ln(1+r)` happens at load).
 - **Columns:** `block_size` (1..1440 months), `annual_non_log_returns_mean`,
   `annual_log_returns_variance`.
 - **Use:** planning stock variance =
-  `load_empirical_stats_by_block("stocks")[sampling.block_size_months].variance × stock_volatility_scale²`.
+  `empirical_stats(asset="stocks", block_size=sampling.block_size_months).annual_log_variance × stock_volatility_scale²`.
   The `annual_non_log_returns_mean` column feeds the log-return sampling adjustment.
 - **Attribution:** TPAW by Ben Mathew (https://tpawplanner.com).

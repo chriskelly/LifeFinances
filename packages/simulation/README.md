@@ -19,7 +19,7 @@ preprocess(plan)
   ├─ mertons: stock-alloc + spending-tilt   (mertons.py)
   └─ npv:     backward PV pass + cumulative  (npv.py, vectorized)
         ▼
-build_return_paths(plan, planning, months)  # per-run monthly returns
+build_return_paths(plan, planning=…, months_per_run=…)  # per-run monthly returns
         ▼
 simulate_monthly(processed, paths)          # vectorized forward loop (engine.py)
         ▼
@@ -51,9 +51,11 @@ simplification versus TPAW's stochastic/bootstrapped inflation — see
 
 **Return paths.** Also, `build_return_paths` produces bootstrapped
 monthly stock and bond returns for every simulated run, over the full horizon.
-Before indexing runs, it rescales the vendored historical series so its
-expected annual non-log return equals the *planning* (expected) return — a
-block-size-specific shift correction, with stocks' spread scaled by
+Before indexing runs, it rescales the vendored historical series so the
+*block-bootstrapped* annualized non-log mean equals the *planning* (expected)
+return — a block-size-specific shift correction (the per-block table mean is the
+bootstrap's own mean, so the whole-series annualized mean matches only where the
+table mean equals the series mean), with stocks' spread scaled by
 `stock_volatility_scale` and bonds left at scale `1.0` — matching TPAW. These
 adjusted returns are the random inputs that make each run differ from the
 others; the rest of the pipeline is otherwise deterministic given a plan and a
@@ -264,7 +266,7 @@ Implementation lives in `presets.py` (pure math) and `planning_returns.py`
 engine fixes these values at month 0 for the whole horizon (TPAW does not
 glide expected returns). Stock log-variance is always the vendored
 empirical-stats-by-block table's variance column,
-`load_empirical_stats_by_block("stocks")[block_size_months].variance ×
+`empirical_stats(asset="stocks", block_size=block_size_months).annual_log_variance ×
 stock_volatility_scale²`, independent of the preset.
 
 | Preset | Stocks | Bonds |
