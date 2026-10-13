@@ -8,9 +8,10 @@ and tax-adjusted cashflows. Depends only on `core`. Never imports `web`.
 Income and spending sources are built from `core.streams.TimedStream` and
 projected with `core.timeline.project_stream`.
 
-- **Real vs nominal:** `is_nominal=False` => today's dollars, inflation
-  applied by the simulation layer, growth is a real raise. `is_nominal=True` =>
-  fixed nominal dollars, inflation not applied, growth is a nominal raise.
+- **Real vs nominal:** `is_nominal=False` => today's dollars, consumed as-is by
+  the simulation layer (no inflation conversion), growth is a real raise.
+  `is_nominal=True` => fixed nominal dollars, deflated to today's dollars by the
+  simulation layer, growth is a nominal raise.
 - **Future-dated nominal anchoring is NOT supported** — only add a
   3-way mode when a consumer needs it.
 - **Composition:** features that modify income over a sub-window

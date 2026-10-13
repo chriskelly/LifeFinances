@@ -44,21 +44,22 @@ class WealthBySource:
     manual: np.ndarray
 
 
-def manual_stream_real_adjustment(
+def manual_stream_basis_adjustment(
     *,
     manual_gross_real: np.ndarray,
     gross_manual: np.ndarray,
-    deflator: np.ndarray,
 ) -> np.ndarray:
-    """Difference between honoring each manual stream's own real/nominal basis
-    and naively deflating the domain-computed manual total uniformly.
+    """Delta that converts the domain's own-basis manual total to real
+    (today's-dollars): `manual_gross_real - gross_manual`.
 
-    Shared by `preprocess.py` (net cashflow) and `real_net_income_by_source`
-    below (net-income flows; also the manual wealth band, via
-    `wealth_by_income_source`) so every consumer applies the identical
-    correction.
+    Job, Social Security, and pension income are already today's-dollars real,
+    so they are used as-is; manual income streams carry their own `is_nominal`
+    basis and are the only ones that need converting. Shared by `preprocess.py`
+    (net cashflow) and `real_net_income_by_source` below (net-income flows; also
+    the manual wealth band, via `wealth_by_income_source`) so every consumer
+    applies the identical correction.
     """
-    return manual_gross_real - gross_manual / deflator
+    return manual_gross_real - gross_manual
 
 
 def real_net_income_by_source(
@@ -68,18 +69,21 @@ def real_net_income_by_source(
     gross_pension: np.ndarray,
     gross_manual: np.ndarray,
     taxes: np.ndarray,
-    monthly_inflation: float,
     manual_gross_real: np.ndarray,
 ) -> dict[str, np.ndarray]:
-    """Real (inflation-deflated) monthly net income split by source.
+    """Real monthly net income split by source.
 
-    The four returned flows sum to the real net cashflow (gross income plus
-    domain-signed taxes), with each month's tax prorated by gross share — exactly
-    where that month's total gross income is positive; in a zero-gross month
-    `prorate_net_income_by_source` yields zero flows and any residual tax is not
-    attributed. The manual flow also honors each stream's own real/nominal basis
-    via `manual_stream_real_adjustment`. Shared by `wealth_by_income_source` and
-    `build_diagnostics`.
+    The domain produces today's-dollars (real) amounts for job, Social Security,
+    and pension, so they are not deflated. Taxes are computed on that real income
+    with a constant real bracket set and pass through too — except that a manual
+    stream declared nominal is taxed on its nominal face amount, which this
+    split does not re-base. The four returned flows sum to the real net cashflow
+    (gross income plus domain-signed taxes), with each month's tax prorated by
+    gross share — exactly where that month's total gross income is positive; in
+    a zero-gross month `prorate_net_income_by_source` yields zero flows and any
+    residual tax is not attributed. The manual flow honors each stream's own
+    real/nominal basis via `manual_stream_basis_adjustment`. Shared by
+    `wealth_by_income_source` and `build_diagnostics`.
     """
     nets = prorate_net_income_by_source(
         gross_job=gross_job,
@@ -88,15 +92,11 @@ def real_net_income_by_source(
         gross_manual=gross_manual,
         taxes=taxes,
     )
-    months = gross_job.shape[0]
-    deflator = (1.0 + monthly_inflation) ** np.arange(months, dtype=np.float64)
-    real_nets = {key: nets[key] / deflator for key in _SOURCE_KEYS}
-    real_nets["manual"] = real_nets["manual"] + manual_stream_real_adjustment(
+    nets["manual"] = nets["manual"] + manual_stream_basis_adjustment(
         manual_gross_real=manual_gross_real,
         gross_manual=gross_manual,
-        deflator=deflator,
     )
-    return real_nets
+    return nets
 
 
 def wealth_by_income_source(
@@ -106,7 +106,6 @@ def wealth_by_income_source(
     gross_pension: np.ndarray,
     gross_manual: np.ndarray,
     taxes: np.ndarray,
-    monthly_inflation: float,
     monthly_bond_rate: float,
     manual_gross_real: np.ndarray,
 ) -> WealthBySource:
@@ -116,7 +115,6 @@ def wealth_by_income_source(
         gross_pension=gross_pension,
         gross_manual=gross_manual,
         taxes=taxes,
-        monthly_inflation=monthly_inflation,
         manual_gross_real=manual_gross_real,
     )
     one_over = 1.0 / (1.0 + monthly_bond_rate)

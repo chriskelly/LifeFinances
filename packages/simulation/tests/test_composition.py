@@ -123,7 +123,6 @@ def test_wealth_by_source_sums_to_independently_discounted_combined_income():
     gross_ss = np.array([0.0, 0.0, 50.0, 50.0], dtype=np.float64)
     zeros = np.zeros(months, dtype=np.float64)
     taxes = np.array([-20.0, -20.0, -5.0, -5.0], dtype=np.float64)
-    monthly_inflation = 0.02  # nonzero so the deflator is actually exercised
     monthly_bond = 0.01
     one_over = 1.0 / (1.0 + monthly_bond)
 
@@ -133,14 +132,11 @@ def test_wealth_by_source_sums_to_independently_discounted_combined_income():
         gross_pension=zeros,
         gross_manual=zeros,
         taxes=taxes,
-        monthly_inflation=monthly_inflation,
         monthly_bond_rate=monthly_bond,
         manual_gross_real=zeros,
     )
 
-    combined_nominal = gross_job + gross_ss + taxes
-    deflator = (1.0 + monthly_inflation) ** np.arange(months, dtype=np.float64)
-    combined_real = combined_nominal / deflator
+    combined_real = gross_job + gross_ss + taxes
     expected_total = _npv_including_current_closed_form(
         combined_real, one_over=one_over
     )
@@ -176,7 +172,6 @@ def test_real_net_income_by_source_sums_to_real_net_cashflow():
     gross_manual = np.array([0.0, 20.0, 0.0], dtype=np.float64)
     # Month 1 tax is 25% of its gross — a deliberately large share.
     taxes = np.array([-30.0, -50.0, -5.0], dtype=np.float64)
-    monthly_inflation = 0.02
     manual_gross_real = np.zeros(months, dtype=np.float64)
     total_gross = gross_job + gross_social_security + gross_pension + gross_manual
 
@@ -186,16 +181,13 @@ def test_real_net_income_by_source_sums_to_real_net_cashflow():
         gross_pension=gross_pension,
         gross_manual=gross_manual,
         taxes=taxes,
-        monthly_inflation=monthly_inflation,
         manual_gross_real=manual_gross_real,
     )
 
-    deflator = (1.0 + monthly_inflation) ** np.arange(months, dtype=np.float64)
-    # Real net cashflow (== preprocess's income_real): deflated net, plus the
-    # manual streams' own real/nominal basis correction.
-    expected_total = (total_gross + taxes) / deflator + (
-        manual_gross_real - gross_manual / deflator
-    )
+    # Real net cashflow (== preprocess's income_real): the domain already
+    # produces today's-dollars amounts, so no deflation — only the manual
+    # streams' own real/nominal basis correction.
+    expected_total = (total_gross + taxes) + (manual_gross_real - gross_manual)
     summed = (
         flows["job"] + flows["social_security"] + flows["pension"] + flows["manual"]
     )
@@ -204,14 +196,13 @@ def test_real_net_income_by_source_sums_to_real_net_cashflow():
     np.testing.assert_allclose(summed[positive_gross], expected_total[positive_gross])
 
 
-def test_real_net_income_by_source_applies_manual_real_adjustment():
+def test_real_net_income_by_source_applies_manual_basis_adjustment():
     # Only manual income, so all tax lands on the manual source, and a nominal
-    # basis makes manual_gross_real differ from gross_manual / deflator.
+    # basis makes manual_gross_real differ from the own-basis gross_manual.
     months = 2
     gross_manual = np.array([120.0, 120.0], dtype=np.float64)
     zeros = np.zeros(months, dtype=np.float64)
     taxes = np.array([-30.0, -30.0], dtype=np.float64)
-    monthly_inflation = 0.02
     manual_gross_real = np.array([150.0, 150.0], dtype=np.float64)
     total_gross = gross_manual
 
@@ -221,14 +212,12 @@ def test_real_net_income_by_source_applies_manual_real_adjustment():
         gross_pension=zeros.copy(),
         gross_manual=gross_manual,
         taxes=taxes,
-        monthly_inflation=monthly_inflation,
         manual_gross_real=manual_gross_real,
     )
 
-    deflator = (1.0 + monthly_inflation) ** np.arange(months, dtype=np.float64)
     share_manual = gross_manual / total_gross
-    expected_manual = (gross_manual + taxes * share_manual) / deflator + (
-        manual_gross_real - gross_manual / deflator
+    expected_manual = (gross_manual + taxes * share_manual) + (
+        manual_gross_real - gross_manual
     )
     np.testing.assert_allclose(flows["manual"], expected_manual)
     for key in ("job", "social_security", "pension"):
@@ -242,7 +231,6 @@ def _wealth_from_processed(processed: ProcessedPlan) -> WealthBySource:
         gross_pension=processed.gross_pension,
         gross_manual=processed.gross_manual,
         taxes=processed.taxes,
-        monthly_inflation=processed.monthly_inflation,
         monthly_bond_rate=processed.monthly_planning_bonds,
         manual_gross_real=processed.manual_gross_real,
     )

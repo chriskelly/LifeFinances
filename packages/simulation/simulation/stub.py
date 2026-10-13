@@ -59,7 +59,6 @@ def run_simulation(
         gross_pension=processed.gross_pension,
         gross_manual=processed.gross_manual,
         taxes=processed.taxes,
-        monthly_inflation=processed.monthly_inflation,
         monthly_bond_rate=processed.monthly_planning_bonds,
         manual_gross_real=processed.manual_gross_real,
     )

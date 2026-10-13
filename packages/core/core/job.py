@@ -24,8 +24,9 @@ class FormulaPension(BaseModel):
     """Defined-benefit pension formula attached to a job.
 
     Benefit = service_credit_years x age_factor x final_compensation.
-    All dollar amounts are real today's dollars; inflation is applied by the
-    simulation layer on the projected benefit stream.
+    All dollar amounts are real today's dollars; the simulation consumes the
+    projected benefit stream as-is (no inflation conversion), and
+    `benefit_real_growth_rate` is a real growth rate.
     """
 
     service_start: Boundary
