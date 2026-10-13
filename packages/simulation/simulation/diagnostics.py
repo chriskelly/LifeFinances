@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
+from simulation.composition import real_net_income_by_source
 from simulation.preprocess import ProcessedPlan
 
 RRA_INFINITE_SENTINEL = 1e300
@@ -26,6 +27,11 @@ DIAGNOSTICS_ARRAY_FIELDS: tuple[str, ...] = (
     "general_pool",
     "stocks_target",
     "expected_savings_stock_fraction",
+    "net_income_total",
+    "net_income_job",
+    "net_income_social_security",
+    "net_income_pension",
+    "net_income_manual",
 )
 
 
@@ -52,13 +58,16 @@ def eq_ndarray_model(
 class SimulationDiagnostics(BaseModel):
     """Expected-run explain series for one simulation.
 
-    Two carves share this object and must not be conflated:
+    Three groups of series share this object and must not be conflated:
 
     - Wealth path (current-month expenses included): `scheduled_wealth`,
       `elasticity_discretionary`, `elasticity_legacy`.
     - Savings carve (post-withdrawal, without-current NPVs): `savings_balance`
       through `expected_savings_stock_fraction` (reserves, pools, stocks target,
       and the planning savings-portfolio stock fraction).
+    - Monthly net-income flows (post-tax, real): `net_income_total` and the
+      `net_income_job` / `net_income_social_security` / `net_income_pension` /
+      `net_income_manual` breakdown. Flows, not present values.
 
     `rra_by_month` / `stock_allocation_total_portfolio` / `legacy_stock_allocation`
     are detached copies of preprocess Merton inputs (inf RRA → sentinel).
@@ -83,6 +92,11 @@ class SimulationDiagnostics(BaseModel):
     general_pool: np.ndarray
     stocks_target: np.ndarray
     expected_savings_stock_fraction: np.ndarray
+    net_income_total: np.ndarray
+    net_income_job: np.ndarray
+    net_income_social_security: np.ndarray
+    net_income_pension: np.ndarray
+    net_income_manual: np.ndarray
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, SimulationDiagnostics):
@@ -121,6 +135,15 @@ def build_diagnostics(
     stocks_target: np.ndarray,
     expected_savings_stock_fraction: np.ndarray,
 ) -> SimulationDiagnostics:
+    real_nets = real_net_income_by_source(
+        gross_job=processed.gross_job,
+        gross_social_security=processed.gross_social_security,
+        gross_pension=processed.gross_pension,
+        gross_manual=processed.gross_manual,
+        taxes=processed.taxes,
+        monthly_inflation=processed.monthly_inflation,
+        manual_gross_real=processed.manual_gross_real,
+    )
     return SimulationDiagnostics(
         rra_by_month=rra_for_diagnostics(processed.rra),
         stock_allocation_total_portfolio=np.asarray(
@@ -147,4 +170,11 @@ def build_diagnostics(
         expected_savings_stock_fraction=np.asarray(
             expected_savings_stock_fraction, dtype=np.float64
         ).copy(),
+        net_income_total=np.asarray(processed.income_real, dtype=np.float64).copy(),
+        net_income_job=np.asarray(real_nets["job"], dtype=np.float64).copy(),
+        net_income_social_security=np.asarray(
+            real_nets["social_security"], dtype=np.float64
+        ).copy(),
+        net_income_pension=np.asarray(real_nets["pension"], dtype=np.float64).copy(),
+        net_income_manual=np.asarray(real_nets["manual"], dtype=np.float64).copy(),
     )

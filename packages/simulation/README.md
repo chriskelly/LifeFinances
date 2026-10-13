@@ -161,7 +161,12 @@ deterministic expected run — not a percentile of the MC carve. Diagnostics
 `rra_by_month` uses `RRA_INFINITE_SENTINEL` in place of infinity; the engine's
 `ProcessedPlan.rra` still uses `inf`. Both raw and public results carry the same
 `diagnostics` blob from that run (`build_public_result` assigns
-`diagnostics=raw.diagnostics`).
+`diagnostics=raw.diagnostics`). Diagnostics also carry the expected path's
+monthly post-tax income as real per-month **flows** (not present values):
+the `net_income_total` flow equals `ProcessedPlan.income_real`; the four
+`net_income_job` / `net_income_social_security` / `net_income_pension` /
+`net_income_manual` flows sum to it where total gross income is positive. Both
+are distinct from the `income_npv` / `wealth_*` present values.
 
 ## Merton's formula
 
