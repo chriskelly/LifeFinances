@@ -333,8 +333,8 @@ def test_build_diagnostics_maps_each_net_income_source() -> None:
     gross_pension = np.array([20.0, 0.0], dtype=np.float64)
     gross_manual = np.array([20.0, 0.0], dtype=np.float64)
     taxes = np.array([-40.0, 0.0], dtype=np.float64)
-    # A nominal-basis manual stream, so manual_gross_real differs from
-    # gross_manual at the month-0 deflator of 1.0.
+    # Arbitrary own-basis inputs (gross_manual != manual_gross_real) so the
+    # manual basis adjustment is actually exercised.
     manual_gross_real = np.array([35.0, 0.0], dtype=np.float64)
     # Hand-computed month-0 flows (gross 200, tax share by source = gross / 200):
     #   job 100-20=80; ss 60-12=48; pension 20-4=16; manual (20-4) + (35-20) = 31.
@@ -354,7 +354,6 @@ def test_build_diagnostics_maps_each_net_income_source() -> None:
         gross_manual=gross_manual,
         manual_gross_real=manual_gross_real,
         taxes=taxes,
-        monthly_inflation=0.02,
     )
 
     diagnostics = _built_diagnostics(processed)

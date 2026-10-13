@@ -141,7 +141,6 @@ def build_diagnostics(
         gross_pension=processed.gross_pension,
         gross_manual=processed.gross_manual,
         taxes=processed.taxes,
-        monthly_inflation=processed.monthly_inflation,
         manual_gross_real=processed.manual_gross_real,
     )
     return SimulationDiagnostics(

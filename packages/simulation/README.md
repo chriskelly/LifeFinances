@@ -39,15 +39,21 @@ these to `float64` the moment they cross into simulation code — Decimal
 precision matters for tax/income logic, but the downstream math is array-oriented
 and needs floating point performance.
 
-**Inflation and the shift to real terms.** Domain cashflows are nominal (today's
-dollars projected forward with raises, COLAs, etc.), but the engine internally
-works in *real* terms, matching how TPAW's historical return bootstrapping
-already strips out inflation. `preprocess` resolves a single scalar monthly
-inflation rate for the whole horizon and uses it to deflate the
-nominal cashflows once, at the boundary, rather than carrying inflation as a
-per-month adjustment through the rest of the pipeline. This is a deliberate
-simplification versus TPAW's stochastic/bootstrapped inflation — see
-`OVERVIEW.md` for the parity note.
+**Inflation and the shift to real terms.** Domain job, Social Security, and
+pension cashflows are already in *today's dollars* (real): a job's
+`annual_raise` and a pension's `benefit_real_growth_rate` are real growth
+rates, and taxes are computed on real income with a constant real bracket set
+(the one exception is a manual stream declared nominal, which the domain taxes
+on its nominal face amount). Only manual income streams and extra-spending
+streams can be *nominal* (`is_nominal=True`), and the engine works entirely in
+real terms, matching how TPAW's historical return bootstrapping already strips
+out inflation. `preprocess` resolves a single scalar monthly inflation rate for
+the whole horizon and uses it to deflate those genuinely nominal streams once,
+at the boundary, rather than carrying inflation as a per-month adjustment
+through the rest of the pipeline. Real income therefore passes through
+undeflated — its growth is a real raise, not an inflation-adjusted one. This is
+a deliberate simplification versus TPAW's stochastic/bootstrapped inflation —
+see `OVERVIEW.md` for the parity note.
 
 **Return paths.** Also, `build_return_paths` produces bootstrapped
 monthly stock and bond returns for every simulated run, over the full horizon.

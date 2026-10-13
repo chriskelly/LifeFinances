@@ -4,7 +4,8 @@ from decimal import Decimal
 import numpy as np
 import pytest
 from core.defaults import default_plan
-from core.models import InflationConfig, PersonHousehold
+from core.job import Job
+from core.models import Household, InflationConfig, PersonHousehold, Plan
 from core.streams import CalendarMonthBoundary, TimedStream
 from simulation.market_data.inflation import annual_to_monthly
 from simulation.preprocess import ProcessedPlan, preprocess
@@ -128,6 +129,77 @@ def test_nominal_manual_income_is_deflated() -> None:
 
     assert processed.income_real[sample_month] == pytest.approx(expected)
     assert processed.manual_gross_real[sample_month] == pytest.approx(expected)
+
+
+def _job_only_plan(
+    *,
+    annual_income: Decimal,
+    annual_raise: Decimal,
+    annual_inflation: Decimal,
+) -> Plan:
+    base = default_plan()
+    today = date(2026, 1, 1)
+    start = CalendarMonthBoundary(year=today.year, month=today.month)
+    person1 = PersonHousehold(
+        birth_month=base.household.person1.birth_month,
+        birth_year=base.household.person1.birth_year,
+        max_age_years=base.household.person1.max_age_years,
+        jobs=[
+            Job(
+                annual_income=annual_income,
+                annual_raise=annual_raise,
+                start=start,
+                social_security_eligible=False,
+            )
+        ],
+    )
+    return Plan(
+        name="Job Only",
+        household=Household(person1=person1),
+        portfolio=base.portfolio,
+        inflation=InflationConfig(mode="manual", manual_annual_rate=annual_inflation),
+    )
+
+
+def test_real_job_income_is_flat_when_annual_raise_is_zero() -> None:
+    # A job with no real raise (annual_raise=0) keeps constant today's-dollars
+    # income, so real net income must not drift with inflation.
+    annual_inflation = Decimal("0.05")
+    plan = _job_only_plan(
+        annual_income=Decimal("120_000"),
+        annual_raise=Decimal("0"),
+        annual_inflation=annual_inflation,
+    )
+    today = date(2026, 1, 1)
+    sample_month = 36
+
+    processed = preprocess(plan, today=today)
+
+    assert processed.income_real[0] > 0
+    assert processed.income_real[sample_month] == pytest.approx(
+        processed.income_real[0]
+    )
+
+
+def test_real_job_income_grows_at_annual_raise() -> None:
+    # `annual_raise` is an above-inflation (real) raise: even with inflation
+    # higher than the raise, real net income grows at the raise rate.
+    annual_raise = Decimal("0.03")
+    plan = _job_only_plan(
+        annual_income=Decimal("120_000"),
+        annual_raise=annual_raise,
+        annual_inflation=Decimal("0.05"),
+    )
+    today = date(2026, 1, 1)
+    sample_month = 36
+    years = sample_month // 12
+
+    processed = preprocess(plan, today=today)
+
+    expected_ratio = float((Decimal(1) + annual_raise) ** years)
+    assert processed.income_real[sample_month] / processed.income_real[0] == (
+        pytest.approx(expected_ratio, rel=0.03)
+    )
 
 
 def test_preprocess_shapes_and_basic_invariants():

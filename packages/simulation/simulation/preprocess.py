@@ -18,7 +18,7 @@ from core.streams import TimedStream
 from core.timeline import Timeline, person_end_date, project_stream
 
 from domain import build_monthly_cashflows
-from simulation.composition import manual_stream_real_adjustment
+from simulation.composition import manual_stream_basis_adjustment
 from simulation.market_data import resolve_inflation
 from simulation.market_data.inflation import InflationResolved
 from simulation.mertons import effective_mertons
@@ -47,8 +47,9 @@ class ProcessedPlan:
     # "expected run" balance trajectory that establishes scheduled wealth.
     monthly_planning_stocks: float
     monthly_planning_bonds: float
-    # Composition inputs (nominal gross/tax series + inflation for wealth bands).
-    monthly_inflation: float
+    # Composition inputs: job/SS/pension/tax series are today's-dollars real;
+    # gross_manual is the domain's own-basis manual total and manual_gross_real
+    # is its real counterpart.
     gross_job: np.ndarray
     gross_social_security: np.ndarray
     gross_pension: np.ndarray
@@ -135,18 +136,19 @@ def preprocess(
             "total loss or worse (1 + rate <= 0); cannot compound monthly"
         )
 
-    # Real conversion: divide month t nominal by (1 + monthly_inflation) ** t.
-    # Manual streams honor is_nominal per stream (same contract as extra spending).
+    # The domain produces job, Social Security, pension, and tax amounts in
+    # today's dollars (real), so they are used as-is; only manual income streams
+    # carry their own real/nominal basis and need converting. The deflator below
+    # is used for genuinely nominal streams (manual income, extra spending).
     deflator = (1.0 + inflation.monthly) ** np.arange(months, dtype=np.float64)
-    income_nominal = _decimal_series_to_float64(cashflows.net_cashflow)
+    net_cashflow = _decimal_series_to_float64(cashflows.net_cashflow)
     gross_manual = _decimal_series_to_float64(cashflows.gross_manual)
     manual_gross_real = _sum_streams_real(
         plan.manual_income_streams, timeline, deflator=deflator
     )
-    income_real = income_nominal / deflator + manual_stream_real_adjustment(
+    income_real = net_cashflow + manual_stream_basis_adjustment(
         manual_gross_real=manual_gross_real,
         gross_manual=gross_manual,
-        deflator=deflator,
     )
     essential_real = _sum_streams_real(
         plan.extra_essential_spending, timeline, deflator=deflator
@@ -260,7 +262,6 @@ def preprocess(
         cumulative_1_plus_g_over_1_plus_r=cumulative,
         monthly_planning_stocks=monthly_stocks,
         monthly_planning_bonds=monthly_bonds,
-        monthly_inflation=inflation.monthly,
         gross_job=_decimal_series_to_float64(cashflows.gross_job),
         gross_social_security=_decimal_series_to_float64(
             cashflows.gross_social_security
