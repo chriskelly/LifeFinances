@@ -26,6 +26,7 @@ from web.explain import (
     diagnostics_payload,
     list_loadable_plans,
     require_known_series,
+    resolve_diagnostics_fields,
     resolve_plan,
     series_payload,
     summary_payload,
@@ -99,6 +100,15 @@ def require_series(
 SeriesDep = Annotated[str, Depends(require_series)]
 
 
+def require_diagnostics_fields(
+    fields: Annotated[list[str] | None, Query()] = None,
+) -> tuple[str, ...]:
+    return resolve_diagnostics_fields(fields)
+
+
+DiagnosticsFieldsDep = Annotated[tuple[str, ...], Depends(require_diagnostics_fields)]
+
+
 def register_explain_routes(web_app: FastAPI) -> None:
     @web_app.exception_handler(ApiError)
     def api_error_handler(request: Request, exc: ApiError) -> JSONResponse:
@@ -132,8 +142,13 @@ def _register_result_routes(router: APIRouter) -> None:
         return summary_payload(scoped)
 
     @router.get(API_RESULT_DIAGNOSTICS)
-    def diagnostics(*, scoped: ApiResultDep) -> dict[str, object]:
-        return diagnostics_payload(scoped)
+    def diagnostics(
+        *,
+        fields: DiagnosticsFieldsDep,
+        scoped: ApiResultDep,
+        month: Annotated[int | None, Query()] = None,
+    ) -> dict[str, object]:
+        return diagnostics_payload(scoped=scoped, month=month, fields=fields)
 
     @router.get(API_RESULT_SERIES)
     def series(

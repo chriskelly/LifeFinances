@@ -1,10 +1,15 @@
+from collections.abc import Iterable
 from datetime import datetime
 
 import numpy as np
 from core.defaults import default_plan
-from simulation.diagnostics import empty_diagnostics
+from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS, empty_diagnostics
 from simulation.result import ResolvedAssumptions, SimulationResult
 from web.explain import ScopedResult
+
+
+def fields_in_source_order(requested: Iterable[str]) -> list[str]:
+    return [field for field in DIAGNOSTICS_ARRAY_FIELDS if field in set(requested)]
 
 
 def scoped_result(

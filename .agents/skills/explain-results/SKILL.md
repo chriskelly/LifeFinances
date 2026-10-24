@@ -18,7 +18,7 @@ All GET. For plan-scoped routes, pass exactly one of `plan_id` or `name`. Do not
 - `/api/plans` — loadable plans: `id`, `name`, `is_default`. No simulation.
 - `/api/plan` — full plan JSON.
 - `/api/result/summary` — scalars, resolved assumptions, initial and worst-case spending. No arrays.
-- `/api/result/diagnostics` — full expected-run diagnostics.
+- `/api/result/diagnostics?month=<index>&fields=<name>[,<name>...]` — expected-run diagnostics. `month` is a zero-based horizon index (0 is the Summary's `start_month`) that slices every array to one element and adds `month`; `fields` selects array fields, comma-separated or repeated. Omitting both returns the whole horizon and every field. Valid names, ordering, and always-returned keys are in `packages/web/OVERVIEW.md`.
 - `/api/result/series?series=&month=&percentile=` — one Monte Carlo series. `percentile` is the configured value (for example 50), not a row index. On percentile-shaped series (`balance_start`, withdrawals, `savings_stock_allocation`), omit `percentile` to get every configured percentile in one response. Omit `month` for the whole horizon. `values` is always a list.
 
 Field names and meanings are in `packages/web/OVERVIEW.md`. Read that file before calling a series or quoting a field. Do not send an unknown `series` to discover the names.
@@ -29,13 +29,13 @@ If the user did not name a plan, call `/api/plans`, take the row with `is_defaul
 
 ## Errors
 
-- 400 `invalid_query`, `unknown_series`, `unknown_percentile`, `percentile_not_applicable`, `month_out_of_range`
+- 400 `invalid_query`, `unknown_series`, `unknown_field`, `unknown_percentile`, `percentile_not_applicable`, `month_out_of_range`
 - 404 `plan_not_found`
 - 409 `ambiguous_plan` with `candidates` — ask which id
 - 422 `plan_unloadable` or `simulation_failed` — the `message` is the reason. Do not invent diagnostics.
 - 503 `db_not_initialized` — run `uv run python scripts/init_db.py`
 
-`unknown_series` and `unknown_percentile` include `allowed`. `month_out_of_range` includes `min` and `max`.
+`unknown_series`, `unknown_field`, and `unknown_percentile` include `allowed`. `month_out_of_range` includes `min` and `max`.
 
 ## How to answer
 
