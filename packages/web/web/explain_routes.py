@@ -132,8 +132,13 @@ def _register_result_routes(router: APIRouter) -> None:
         return summary_payload(scoped)
 
     @router.get(API_RESULT_DIAGNOSTICS)
-    def diagnostics(*, scoped: ApiResultDep) -> dict[str, object]:
-        return diagnostics_payload(scoped)
+    def diagnostics(
+        *,
+        scoped: ApiResultDep,
+        month: Annotated[int | None, Query()] = None,
+        fields: Annotated[list[str] | None, Query()] = None,
+    ) -> dict[str, object]:
+        return diagnostics_payload(scoped=scoped, month=month, fields=fields)
 
     @router.get(API_RESULT_SERIES)
     def series(

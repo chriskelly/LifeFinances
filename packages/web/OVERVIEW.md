@@ -62,6 +62,12 @@ The expected path only, one value per month (except `legacy_stock_allocation`,
 which is a single scalar). Real dollars, except fractions and risk aversion.
 `plan_id` and `name` are omitted.
 
+`month=<int>` slices every array to that month, as a one-element list, and adds
+`month` to the envelope. `fields` selects named arrays (comma-separated,
+repeated, or both); order follows the table below, and `plan_id`, `name`, and
+`legacy_stock_allocation` are always returned. An unknown field is a 400
+`unknown_field` with `allowed`. Neither parameter leaves the payload unchanged.
+
 `net_income_*` are per-month income **flows**; `income_npv` and the `wealth_*`
 series are present **values** of future income. The four `net_income_<source>`
 fields sum to `net_income_total` in months with positive gross income; in a month

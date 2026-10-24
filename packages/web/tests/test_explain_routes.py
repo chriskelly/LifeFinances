@@ -6,7 +6,7 @@ import numpy as np
 from core.models import Plan
 from core.repository import PlanRepository
 from fastapi.testclient import TestClient
-from simulation.diagnostics import empty_diagnostics
+from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS, empty_diagnostics
 from simulation.result import ResolvedAssumptions, SimulationResult
 from web.app import create_app
 from web.explain import (
@@ -20,6 +20,7 @@ from web.explain import (
     INVALID_QUERY,
     PLAN_NOT_FOUND,
     SIMULATION_FAILED,
+    UNKNOWN_FIELD,
     UNKNOWN_SERIES,
 )
 from web.routes import (
@@ -306,3 +307,103 @@ def test_unknown_series_returns_before_running_simulation(
     assert response.status_code == HTTP_BAD_REQUEST
     assert response.json()["error"] == UNKNOWN_SERIES
     assert calls["n"] == 0
+
+
+def test_diagnostics_month_slices_the_cached_arrays(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+    month = 1
+
+    def run(plan, **kwargs):
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_DIAGNOSTICS,
+        params={"plan_id": plan_id, "month": month},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.json()
+    assert body["month"] == month
+    assert body["scheduled_wealth"] == [result.diagnostics.scheduled_wealth[month]]
+
+
+def test_diagnostics_repeated_fields_params_select_arrays(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+    requested = (DIAGNOSTICS_ARRAY_FIELDS[0], DIAGNOSTICS_ARRAY_FIELDS[1])
+
+    def run(plan, **kwargs):
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_DIAGNOSTICS,
+        params={"plan_id": plan_id, "fields": list(requested)},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.json()
+    expected_fields = [
+        field for field in DIAGNOSTICS_ARRAY_FIELDS if field in requested
+    ]
+    assert list(body) == [
+        "plan_id",
+        "name",
+        "legacy_stock_allocation",
+        *expected_fields,
+    ]
+
+
+def test_diagnostics_comma_fields_param_selects_arrays(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+    requested = (DIAGNOSTICS_ARRAY_FIELDS[0], DIAGNOSTICS_ARRAY_FIELDS[1])
+
+    def run(plan, **kwargs):
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_DIAGNOSTICS,
+        params={"plan_id": plan_id, "fields": ",".join(requested)},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.json()
+    expected_fields = [
+        field for field in DIAGNOSTICS_ARRAY_FIELDS if field in requested
+    ]
+    assert [
+        field for field in body if field in DIAGNOSTICS_ARRAY_FIELDS
+    ] == expected_fields
+
+
+def test_diagnostics_unknown_field_returns_400_with_allowed(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+    unknown = "not_a_diagnostics_field"
+
+    def run(plan, **kwargs):
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_DIAGNOSTICS,
+        params={"plan_id": plan_id, "fields": unknown},
+    )
+
+    assert response.status_code == HTTP_BAD_REQUEST
+    body = response.json()
+    assert body["error"] == UNKNOWN_FIELD
+    assert body["allowed"] == list(DIAGNOSTICS_ARRAY_FIELDS)
+    assert unknown in body["message"]
