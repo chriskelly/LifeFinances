@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS
+from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS, empty_diagnostics
 from simulation.result import (
     HORIZON_ARRAY_FIELDS,
     PUBLIC_ARRAY_FIELDS,
@@ -21,6 +21,7 @@ from web.explain import (
 
 from web import spending_summary
 
+from .explain_fixtures import fields_in_source_order
 from .explain_fixtures import sample_simulation_result as _result
 from .explain_fixtures import scoped_result as _scoped
 
@@ -327,8 +328,20 @@ def test_diagnostics_month_slices_every_array_to_one_element() -> None:
     payload = diagnostics_payload(_scoped(result), month=month)
 
     assert payload["month"] == month
+    assert (
+        payload["legacy_stock_allocation"] == result.diagnostics.legacy_stock_allocation
+    )
     for field in DIAGNOSTICS_ARRAY_FIELDS:
         assert payload[field] == [getattr(result.diagnostics, field)[month]]
+
+
+def test_diagnostics_month_zero_slices_the_first_element() -> None:
+    result = _result()
+
+    payload = diagnostics_payload(_scoped(result), month=0)
+
+    for field in DIAGNOSTICS_ARRAY_FIELDS:
+        assert payload[field] == [getattr(result.diagnostics, field)[0]]
 
 
 def test_diagnostics_fields_selects_only_named_arrays_in_source_order() -> None:
@@ -338,9 +351,7 @@ def test_diagnostics_fields_selects_only_named_arrays_in_source_order() -> None:
 
     payload = diagnostics_payload(_scoped(result), fields=fields)
 
-    expected_fields = [
-        field for field in DIAGNOSTICS_ARRAY_FIELDS if field in requested
-    ]
+    expected_fields = fields_in_source_order(requested)
     assert list(payload) == [
         "plan_id",
         "name",
@@ -356,9 +367,7 @@ def test_diagnostics_fields_accepts_comma_separated_tokens() -> None:
 
     payload = diagnostics_payload(_scoped(result), fields=fields)
 
-    expected_fields = [
-        field for field in DIAGNOSTICS_ARRAY_FIELDS if field in requested
-    ]
+    expected_fields = fields_in_source_order(requested)
     assert [
         field for field in payload if field in DIAGNOSTICS_ARRAY_FIELDS
     ] == expected_fields
@@ -408,11 +417,13 @@ def test_diagnostics_unknown_field_is_rejected_with_allowed_list() -> None:
     assert unknown in failure.message
 
 
-def test_diagnostics_month_out_of_range_reports_bounds() -> None:
+@pytest.mark.parametrize("case", ["negative", "at_horizon"])
+def test_diagnostics_month_out_of_range_reports_bounds(case: str) -> None:
     result = _result()
+    month = -1 if case == "negative" else result.horizon_months
 
     with pytest.raises(ApiError) as raised:
-        diagnostics_payload(_scoped(result), month=result.horizon_months)
+        diagnostics_payload(_scoped(result), month=month)
     failure = raised.value
 
     assert failure.status_code == HTTP_BAD_REQUEST
@@ -427,7 +438,12 @@ def test_diagnostics_month_out_of_range_reports_bounds() -> None:
 
 
 def test_diagnostics_month_on_empty_horizon_has_no_bounds() -> None:
-    empty = _result().model_copy(update={"horizon_months": 0})
+    empty = _result().model_copy(
+        update={
+            "horizon_months": 0,
+            "diagnostics": empty_diagnostics(months=0),
+        }
+    )
 
     with pytest.raises(ApiError) as raised:
         diagnostics_payload(_scoped(empty), month=0)

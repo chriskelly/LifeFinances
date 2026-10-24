@@ -63,11 +63,14 @@ which is a single scalar). Real dollars, except fractions and risk aversion.
 `plan_id` and `name` are omitted from the table below; the payload always
 includes them.
 
-`month=<int>` slices every array to that month, as a one-element list, and adds
-`month` to the envelope. `fields` selects named arrays (comma-separated,
-repeated, or both); order follows the table below, and `plan_id`, `name`, and
-`legacy_stock_allocation` are always returned. An unknown field is a 400
-`unknown_field` with `allowed`. Neither parameter leaves the payload unchanged.
+`month=<int>` is a zero-based index into the horizon; month 0 is the Summary's
+`start_month`. It slices every array to that month as a one-element list and
+adds `month` to the envelope. `fields` selects named arrays (comma-separated,
+repeated, or both); valid tokens are only the array names in the table below —
+`plan_id`, `name`, and `legacy_stock_allocation` are always returned and cannot
+be selected. Output order follows the table. An unknown field is a 400
+`unknown_field` with `allowed`. Omitted together, the parameters leave the
+payload unchanged.
 
 `net_income_*` are per-month income **flows**; `income_npv` and the `wealth_*`
 series are present **values** of future income. The four `net_income_<source>`

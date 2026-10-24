@@ -118,20 +118,22 @@ def diagnostics_payload(
     }
     if month is not None:
         payload["month"] = month
-    for field in _requested_diagnostics_fields(fields):
-        values = getattr(diagnostics, field)
-        payload[field] = values.tolist() if month is None else [values[month]]
+    for field in resolve_diagnostics_fields(fields):
+        payload[field] = _month_values(values=getattr(diagnostics, field), month=month)
     return payload
 
 
-def _requested_diagnostics_fields(fields: Sequence[str] | None) -> tuple[str, ...]:
+def resolve_diagnostics_fields(fields: Sequence[str] | None) -> tuple[str, ...]:
     """Resolve requested diagnostics arrays into canonical source order.
 
     Accepts both repeated query values and comma-separated tokens. Missing,
-    empty, and all-blank input means every array field.
+    empty, and all-blank input means every array field. Raises ApiError for an
+    unknown name so the route can reject it before running a simulation.
     """
     if fields is None:
         return DIAGNOSTICS_ARRAY_FIELDS
+    if isinstance(fields, str):
+        fields = [fields]
     requested: set[str] = set()
     for raw in fields:
         for token in raw.split(","):
@@ -157,7 +159,12 @@ def require_month(
     horizon_months: int,
     subject: str,
 ) -> None:
-    """Shared month guard for explain result routes; #227 extends it with ranges."""
+    """Reject an out-of-range month; series and diagnostics share this guard.
+
+    A None month is a no-op. Otherwise the month must be a zero-based index in
+    ``[0, horizon_months - 1]``. A horizon below one month reports the range
+    error without bounds, because there is no valid index to advertise.
+    """
     if month is None:
         return
     if horizon_months < 1:
@@ -174,6 +181,10 @@ def require_month(
             message=f"month must be between 0 and {last} inclusive",
             month_bounds=(0, last),
         )
+
+
+def _month_values(*, values: np.ndarray, month: int | None) -> list[float]:
+    return values.tolist() if month is None else [values[month]]
 
 
 def series_payload(
@@ -249,11 +260,7 @@ def _percentile_rows(
     return [
         {
             "percentile": result.percentiles[row_index],
-            "values": (
-                values[row_index].tolist()
-                if month is None
-                else [values[row_index, month]]
-            ),
+            "values": _month_values(values=values[row_index], month=month),
         }
         for row_index in row_indexes
     ]
@@ -271,7 +278,7 @@ def _horizon_rows(
             code=PERCENTILE_NOT_APPLICABLE,
             message="percentile does not apply to this series",
         )
-    serialized = values.tolist() if month is None else [values[month]]
+    serialized = _month_values(values=values, month=month)
     return [{"percentile": None, "values": serialized}]
 
 
