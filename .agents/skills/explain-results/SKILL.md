@@ -35,7 +35,7 @@ If the user did not name a plan, call `/api/plans`, take the row with `is_defaul
 - 422 `plan_unloadable` or `simulation_failed` — the `message` is the reason. Do not invent diagnostics.
 - 503 `db_not_initialized` — run `uv run python scripts/init_db.py`
 
-`unknown_series`, `unknown_field`, and `unknown_percentile` include `allowed`. `month_out_of_range` includes `min` and `max`.
+`unknown_series`, `unknown_field`, and `unknown_percentile` include `allowed`. `month_out_of_range` includes `min` and `max` when the horizon has months; a zero-month horizon omits them.
 
 ## How to answer
 

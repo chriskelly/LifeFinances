@@ -106,6 +106,12 @@ def diagnostics_payload(
     month: int | None = None,
     fields: Sequence[str] | None = None,
 ) -> dict[str, object]:
+    """Build the diagnostics JSON.
+
+    ``fields`` accepts raw query values; the route validates them first with
+    ``resolve_diagnostics_fields``, and resolving that canonical tuple here is
+    idempotent.
+    """
     result = scoped.result
     diagnostics = result.diagnostics
     require_month(

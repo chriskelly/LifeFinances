@@ -368,9 +368,40 @@ def test_diagnostics_fields_accepts_comma_separated_tokens() -> None:
     payload = diagnostics_payload(_scoped(result), fields=fields)
 
     expected_fields = fields_in_source_order(requested)
-    assert [
-        field for field in payload if field in DIAGNOSTICS_ARRAY_FIELDS
-    ] == expected_fields
+    assert list(payload) == [
+        "plan_id",
+        "name",
+        "legacy_stock_allocation",
+        *expected_fields,
+    ]
+    for field in expected_fields:
+        assert payload[field] == getattr(result.diagnostics, field).tolist()
+
+
+def test_diagnostics_bare_string_fields_are_accepted() -> None:
+    result = _result()
+    requested = (DIAGNOSTICS_ARRAY_FIELDS[0], DIAGNOSTICS_ARRAY_FIELDS[2])
+    fields = f"{requested[0]},{requested[1]}"
+
+    payload = diagnostics_payload(_scoped(result), fields=fields)
+
+    assert list(payload) == [
+        "plan_id",
+        "name",
+        "legacy_stock_allocation",
+        *fields_in_source_order(requested),
+    ]
+
+
+def test_diagnostics_bare_blank_string_returns_every_array() -> None:
+    payload = diagnostics_payload(_scoped(_result()), fields="")
+
+    assert list(payload) == [
+        "plan_id",
+        "name",
+        "legacy_stock_allocation",
+        *DIAGNOSTICS_ARRAY_FIELDS,
+    ]
 
 
 def test_diagnostics_blank_fields_returns_every_array() -> None:

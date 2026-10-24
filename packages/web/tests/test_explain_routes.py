@@ -411,6 +411,93 @@ def test_unknown_field_returns_400_before_running_simulation(
     assert calls["n"] == 0
 
 
+def test_missing_plan_wins_over_unknown_field(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    calls = {"n": 0}
+
+    def run(plan, **kwargs):
+        calls["n"] += 1
+        return _make_result()
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+    missing_id = plan_id + 999_999
+
+    response = client.get(
+        API_RESULT_DIAGNOSTICS,
+        params={"plan_id": missing_id, "fields": "not_a_diagnostics_field"},
+    )
+
+    assert response.status_code == HTTP_NOT_FOUND
+    assert response.json()["error"] == PLAN_NOT_FOUND
+    assert calls["n"] == 0
+
+
+def test_diagnostics_mixed_comma_and_repeated_fields_params(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+    first = DIAGNOSTICS_ARRAY_FIELDS[0]
+    second = DIAGNOSTICS_ARRAY_FIELDS[2]
+    third = DIAGNOSTICS_ARRAY_FIELDS[4]
+    requested = (first, second, third)
+
+    def run(plan, **kwargs):
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_DIAGNOSTICS,
+        params=[
+            ("plan_id", plan_id),
+            ("fields", f"{first},{second}"),
+            ("fields", third),
+        ],
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.json()
+    expected_fields = fields_in_source_order(requested)
+    assert list(body) == [
+        "plan_id",
+        "name",
+        "legacy_stock_allocation",
+        *expected_fields,
+    ]
+    for field in expected_fields:
+        assert body[field] == getattr(result.diagnostics, field).tolist()
+
+
+def test_diagnostics_blank_fields_param_returns_every_array(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+
+    def run(plan, **kwargs):
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_DIAGNOSTICS,
+        params={"plan_id": plan_id, "fields": ""},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.json()
+    assert list(body) == [
+        "plan_id",
+        "name",
+        "legacy_stock_allocation",
+        *DIAGNOSTICS_ARRAY_FIELDS,
+    ]
+    assert (
+        body[DIAGNOSTICS_ARRAY_FIELDS[0]]
+        == getattr(result.diagnostics, DIAGNOSTICS_ARRAY_FIELDS[0]).tolist()
+    )
+
+
 def test_diagnostics_month_and_fields_combine_over_http(
     client: TestClient, plan_id: int, monkeypatch
 ) -> None:
@@ -457,7 +544,7 @@ def test_diagnostics_month_out_of_range_returns_bounds(
     )
 
     assert response.status_code == HTTP_BAD_REQUEST
-    # Pinned: the message wording is part of the documented 400 contract.
+    # Pinned: catches accidental drift in the month_out_of_range wording.
     assert response.json() == {
         "error": MONTH_OUT_OF_RANGE,
         "message": f"month must be between 0 and {last_month} inclusive",

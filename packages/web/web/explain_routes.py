@@ -144,6 +144,9 @@ def _register_result_routes(router: APIRouter) -> None:
     @router.get(API_RESULT_DIAGNOSTICS)
     def diagnostics(
         *,
+        # Order matters: plan errors (404/409/422) keep precedence, unknown
+        # fields are rejected before the simulation runs.
+        _selected: ApiPlanDep,
         fields: DiagnosticsFieldsDep,
         scoped: ApiResultDep,
         month: Annotated[int | None, Query()] = None,
