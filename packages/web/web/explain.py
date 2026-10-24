@@ -191,7 +191,7 @@ def require_month(
 
 
 def _month_values(*, values: np.ndarray, month: int | None) -> list[float]:
-    return values.tolist() if month is None else [values[month]]
+    return values.tolist() if month is None else [float(values[month])]
 
 
 def series_payload(

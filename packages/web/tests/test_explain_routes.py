@@ -365,7 +365,7 @@ def test_diagnostics_comma_fields_param_selects_arrays(
     client: TestClient, plan_id: int, monkeypatch
 ) -> None:
     result = _make_result()
-    requested = (DIAGNOSTICS_ARRAY_FIELDS[0], DIAGNOSTICS_ARRAY_FIELDS[1])
+    requested = (DIAGNOSTICS_ARRAY_FIELDS[1], DIAGNOSTICS_ARRAY_FIELDS[0])
 
     def run(plan, **kwargs):
         return result
