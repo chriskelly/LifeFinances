@@ -18,6 +18,7 @@ from web.explain import (
     HTTP_SERVICE_UNAVAILABLE,
     HTTP_UNPROCESSABLE,
     INVALID_QUERY,
+    MONTH_OUT_OF_RANGE,
     PLAN_NOT_FOUND,
     SIMULATION_FAILED,
     UNKNOWN_FIELD,
@@ -407,3 +408,28 @@ def test_diagnostics_unknown_field_returns_400_with_allowed(
     assert body["error"] == UNKNOWN_FIELD
     assert body["allowed"] == list(DIAGNOSTICS_ARRAY_FIELDS)
     assert unknown in body["message"]
+
+
+def test_diagnostics_month_out_of_range_returns_bounds(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+    last_month = result.horizon_months - 1
+
+    def run(plan, **kwargs):
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_DIAGNOSTICS,
+        params={"plan_id": plan_id, "month": result.horizon_months},
+    )
+
+    assert response.status_code == HTTP_BAD_REQUEST
+    assert response.json() == {
+        "error": MONTH_OUT_OF_RANGE,
+        "message": f"month must be between 0 and {last_month} inclusive",
+        "min": 0,
+        "max": last_month,
+    }

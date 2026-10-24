@@ -60,7 +60,8 @@ explain route and are omitted here.
 
 The expected path only, one value per month (except `legacy_stock_allocation`,
 which is a single scalar). Real dollars, except fractions and risk aversion.
-`plan_id` and `name` are omitted.
+`plan_id` and `name` are omitted from the table below; the payload always
+includes them.
 
 `month=<int>` slices every array to that month, as a one-element list, and adds
 `month` to the envelope. `fields` selects named arrays (comma-separated,
