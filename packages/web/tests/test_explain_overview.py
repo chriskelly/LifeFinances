@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS, SimulationDiagnostics
 from simulation.result import PUBLIC_ARRAY_FIELDS
 from web.explain import diagnostics_payload, summary_payload
 
@@ -64,3 +65,9 @@ def test_diagnostics_names_match_flattened_diagnostics_payload() -> None:
         )
     )
     assert overview_table_names(markdown=markdown, heading="Diagnostics") == expected
+
+
+def test_diagnostics_array_fields_match_model_fields() -> None:
+    assert set(DIAGNOSTICS_ARRAY_FIELDS) == set(SimulationDiagnostics.model_fields) - {
+        "legacy_stock_allocation"
+    }

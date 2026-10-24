@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -24,6 +25,7 @@ PLAN_NOT_FOUND = "plan_not_found"
 AMBIGUOUS_PLAN = "ambiguous_plan"
 PLAN_UNLOADABLE = "plan_unloadable"
 UNKNOWN_SERIES = "unknown_series"
+UNKNOWN_FIELD = "unknown_field"
 UNKNOWN_PERCENTILE = "unknown_percentile"
 PERCENTILE_NOT_APPLICABLE = "percentile_not_applicable"
 MONTH_OUT_OF_RANGE = "month_out_of_range"
@@ -98,16 +100,98 @@ def summary_payload(scoped: ScopedResult) -> dict[str, object]:
     }
 
 
-def diagnostics_payload(scoped: ScopedResult) -> dict[str, object]:
-    diagnostics = scoped.result.diagnostics
+def diagnostics_payload(
+    scoped: ScopedResult,
+    *,
+    month: int | None = None,
+    fields: Sequence[str] | None = None,
+) -> dict[str, object]:
+    """Build the diagnostics JSON.
+
+    ``fields`` accepts raw query tokens or an already-resolved canonical tuple;
+    it re-resolves so direct callers get the same 400 ``unknown_field`` and so
+    fields are validated before ``month`` on every path.
+    """
+    result = scoped.result
+    diagnostics = result.diagnostics
+    resolved_fields = resolve_diagnostics_fields(fields)
+    require_month(
+        month=month, horizon_months=result.horizon_months, subject="diagnostics"
+    )
     payload: dict[str, object] = {
         "plan_id": scoped.plan_id,
         "name": scoped.plan.name,
         "legacy_stock_allocation": diagnostics.legacy_stock_allocation,
     }
-    for field in DIAGNOSTICS_ARRAY_FIELDS:
-        payload[field] = getattr(diagnostics, field).tolist()
+    if month is not None:
+        payload["month"] = month
+    for field in resolved_fields:
+        payload[field] = _month_values(values=getattr(diagnostics, field), month=month)
     return payload
+
+
+def resolve_diagnostics_fields(fields: Sequence[str] | None) -> tuple[str, ...]:
+    """Resolve requested diagnostics arrays into canonical source order.
+
+    Accepts both repeated query values and comma-separated tokens. Missing,
+    empty, and all-blank input means every array field. Raises ApiError for an
+    unknown name so the route can reject it before running a simulation.
+    """
+    if fields is None:
+        return DIAGNOSTICS_ARRAY_FIELDS
+    if isinstance(fields, str):
+        fields = [fields]
+    requested: set[str] = set()
+    for raw in fields:
+        for token in raw.split(","):
+            name = token.strip()
+            if not name:
+                continue
+            if name not in DIAGNOSTICS_ARRAY_FIELDS:
+                raise ApiError(
+                    status_code=HTTP_BAD_REQUEST,
+                    code=UNKNOWN_FIELD,
+                    message=f"Unknown field {name}",
+                    allowed=DIAGNOSTICS_ARRAY_FIELDS,
+                )
+            requested.add(name)
+    if not requested:
+        return DIAGNOSTICS_ARRAY_FIELDS
+    return tuple(field for field in DIAGNOSTICS_ARRAY_FIELDS if field in requested)
+
+
+def require_month(
+    *,
+    month: int | None,
+    horizon_months: int,
+    subject: str,
+) -> None:
+    """Reject an out-of-range month; series and diagnostics share this guard.
+
+    A None month is a no-op. Otherwise the month must be a zero-based index in
+    ``[0, horizon_months - 1]``. A horizon below one month reports the range
+    error without bounds, because there is no valid index to advertise.
+    """
+    if month is None:
+        return
+    if horizon_months < 1:
+        raise ApiError(
+            status_code=HTTP_BAD_REQUEST,
+            code=MONTH_OUT_OF_RANGE,
+            message=f"{subject} has no months",
+        )
+    if not 0 <= month < horizon_months:
+        last = horizon_months - 1
+        raise ApiError(
+            status_code=HTTP_BAD_REQUEST,
+            code=MONTH_OUT_OF_RANGE,
+            message=f"month must be between 0 and {last} inclusive",
+            month_bounds=(0, last),
+        )
+
+
+def _month_values(*, values: np.ndarray, month: int | None) -> list[float]:
+    return values.tolist() if month is None else [float(values[month])]
 
 
 def series_payload(
@@ -120,20 +204,7 @@ def series_payload(
     require_known_series(series)
     result = scoped.result
     values = getattr(result, series)
-    if month is not None and result.horizon_months < 1:
-        raise ApiError(
-            status_code=HTTP_BAD_REQUEST,
-            code=MONTH_OUT_OF_RANGE,
-            message="series has no months",
-        )
-    if month is not None and not 0 <= month < result.horizon_months:
-        last = result.horizon_months - 1
-        raise ApiError(
-            status_code=HTTP_BAD_REQUEST,
-            code=MONTH_OUT_OF_RANGE,
-            message=f"month must be between 0 and {last} inclusive",
-            month_bounds=(0, last),
-        )
+    require_month(month=month, horizon_months=result.horizon_months, subject="series")
     if series in RAW_ARRAY_FIELDS:
         rows = _percentile_rows(
             result=result,
@@ -196,11 +267,7 @@ def _percentile_rows(
     return [
         {
             "percentile": result.percentiles[row_index],
-            "values": (
-                values[row_index].tolist()
-                if month is None
-                else [values[row_index, month]]
-            ),
+            "values": _month_values(values=values[row_index], month=month),
         }
         for row_index in row_indexes
     ]
@@ -218,7 +285,7 @@ def _horizon_rows(
             code=PERCENTILE_NOT_APPLICABLE,
             message="percentile does not apply to this series",
         )
-    serialized = values.tolist() if month is None else [values[month]]
+    serialized = _month_values(values=values, month=month)
     return [{"percentile": None, "values": serialized}]
 
 

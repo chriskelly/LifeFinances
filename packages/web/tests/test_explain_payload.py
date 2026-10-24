@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS
+from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS, empty_diagnostics
 from simulation.result import (
     HORIZON_ARRAY_FIELDS,
     PUBLIC_ARRAY_FIELDS,
@@ -10,6 +10,7 @@ from web.explain import (
     HTTP_BAD_REQUEST,
     MONTH_OUT_OF_RANGE,
     PERCENTILE_NOT_APPLICABLE,
+    UNKNOWN_FIELD,
     UNKNOWN_PERCENTILE,
     UNKNOWN_SERIES,
     ApiError,
@@ -20,6 +21,7 @@ from web.explain import (
 
 from web import spending_summary
 
+from .explain_fixtures import diagnostics_envelope, fields_in_source_order
 from .explain_fixtures import sample_simulation_result as _result
 from .explain_fixtures import scoped_result as _scoped
 
@@ -58,13 +60,6 @@ def test_diagnostics_serializes_every_array_and_legacy_allocation() -> None:
 
     payload = diagnostics_payload(_scoped(result, plan_id=plan_id, plan_name=plan_name))
 
-    expected_keys = {
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *DIAGNOSTICS_ARRAY_FIELDS,
-    }
-    assert set(payload.keys()) == expected_keys
     assert payload["plan_id"] == plan_id
     assert payload["name"] == plan_name
     assert (
@@ -303,3 +298,159 @@ def test_month_equal_to_horizon_is_out_of_range() -> None:
         "max": bounds[1],
     }
     assert failure.body() == expected_body
+
+
+def test_diagnostics_without_parameters_keeps_envelope_and_array_order() -> None:
+    result = _result()
+
+    payload = diagnostics_payload(_scoped(result))
+
+    assert list(payload) == diagnostics_envelope(fields=DIAGNOSTICS_ARRAY_FIELDS)
+    assert "month" not in payload
+
+
+def test_diagnostics_month_slices_every_array_to_one_element() -> None:
+    result = _result()
+    month = 2
+
+    payload = diagnostics_payload(_scoped(result), month=month)
+
+    assert payload["month"] == month
+    assert (
+        payload["legacy_stock_allocation"] == result.diagnostics.legacy_stock_allocation
+    )
+    for field in DIAGNOSTICS_ARRAY_FIELDS:
+        assert payload[field] == [getattr(result.diagnostics, field)[month]]
+
+
+def test_diagnostics_month_zero_slices_the_first_element() -> None:
+    result = _result()
+
+    payload = diagnostics_payload(_scoped(result), month=0)
+
+    for field in DIAGNOSTICS_ARRAY_FIELDS:
+        assert payload[field] == [getattr(result.diagnostics, field)[0]]
+
+
+def test_diagnostics_fields_selects_only_named_arrays_in_source_order() -> None:
+    result = _result()
+    requested = (DIAGNOSTICS_ARRAY_FIELDS[2], DIAGNOSTICS_ARRAY_FIELDS[0])
+    fields = [requested[0], requested[1], requested[0]]
+
+    payload = diagnostics_payload(_scoped(result), fields=fields)
+
+    expected_fields = fields_in_source_order(requested)
+    assert list(payload) == diagnostics_envelope(fields=expected_fields)
+
+
+def test_diagnostics_fields_accepts_comma_separated_tokens() -> None:
+    result = _result()
+    requested = (DIAGNOSTICS_ARRAY_FIELDS[0], DIAGNOSTICS_ARRAY_FIELDS[3])
+    fields = [f" {requested[0]} , {requested[1]} "]
+
+    payload = diagnostics_payload(_scoped(result), fields=fields)
+
+    expected_fields = fields_in_source_order(requested)
+    assert list(payload) == diagnostics_envelope(fields=expected_fields)
+    for field in expected_fields:
+        assert payload[field] == getattr(result.diagnostics, field).tolist()
+
+
+def test_diagnostics_bare_string_fields_are_accepted() -> None:
+    result = _result()
+    requested = (DIAGNOSTICS_ARRAY_FIELDS[0], DIAGNOSTICS_ARRAY_FIELDS[2])
+    fields = f"{requested[0]},{requested[1]}"
+
+    payload = diagnostics_payload(_scoped(result), fields=fields)
+
+    assert list(payload) == diagnostics_envelope(
+        fields=fields_in_source_order(requested)
+    )
+
+
+def test_diagnostics_bare_blank_string_returns_every_array() -> None:
+    payload = diagnostics_payload(_scoped(_result()), fields="")
+
+    assert list(payload) == diagnostics_envelope(fields=DIAGNOSTICS_ARRAY_FIELDS)
+
+
+def test_diagnostics_blank_fields_returns_every_array() -> None:
+    result = _result()
+
+    payload = diagnostics_payload(_scoped(result), fields=["", " , "])
+
+    assert list(payload) == diagnostics_envelope(fields=DIAGNOSTICS_ARRAY_FIELDS)
+
+
+def test_diagnostics_month_and_fields_combine() -> None:
+    result = _result()
+    month = 1
+    field = DIAGNOSTICS_ARRAY_FIELDS[1]
+
+    payload = diagnostics_payload(_scoped(result), month=month, fields=[field])
+
+    assert payload[field] == [getattr(result.diagnostics, field)[month]]
+    assert list(payload) == diagnostics_envelope(fields=[field], month=month)
+
+
+def test_diagnostics_unknown_field_is_rejected_with_allowed_list() -> None:
+    unknown = "not_a_diagnostics_field"
+
+    with pytest.raises(ApiError) as raised:
+        diagnostics_payload(_scoped(_result()), fields=[unknown])
+    failure = raised.value
+
+    assert failure.status_code == HTTP_BAD_REQUEST
+    assert failure.code == UNKNOWN_FIELD
+    assert failure.allowed == DIAGNOSTICS_ARRAY_FIELDS
+    assert failure.body()["allowed"] == list(DIAGNOSTICS_ARRAY_FIELDS)
+    assert unknown in failure.message
+
+
+def test_diagnostics_unknown_field_wins_over_out_of_range_month() -> None:
+    unknown = "not_a_diagnostics_field"
+
+    with pytest.raises(ApiError) as raised:
+        diagnostics_payload(_scoped(_result()), month=-1, fields=[unknown])
+    failure = raised.value
+
+    assert failure.code == UNKNOWN_FIELD
+    assert unknown in failure.message
+
+
+@pytest.mark.parametrize("case", ["negative", "at_horizon"])
+def test_diagnostics_month_out_of_range_reports_bounds(case: str) -> None:
+    result = _result()
+    month = -1 if case == "negative" else result.horizon_months
+
+    with pytest.raises(ApiError) as raised:
+        diagnostics_payload(_scoped(result), month=month)
+    failure = raised.value
+
+    assert failure.status_code == HTTP_BAD_REQUEST
+    assert failure.code == MONTH_OUT_OF_RANGE
+    assert failure.month_bounds == (0, result.horizon_months - 1)
+    assert failure.body() == {
+        "error": MONTH_OUT_OF_RANGE,
+        "message": failure.message,
+        "min": 0,
+        "max": result.horizon_months - 1,
+    }
+
+
+def test_diagnostics_month_on_empty_horizon_has_no_bounds() -> None:
+    empty = _result().model_copy(
+        update={
+            "horizon_months": 0,
+            "diagnostics": empty_diagnostics(months=0),
+        }
+    )
+
+    with pytest.raises(ApiError) as raised:
+        diagnostics_payload(_scoped(empty), month=0)
+    failure = raised.value
+
+    assert failure.code == MONTH_OUT_OF_RANGE
+    assert failure.month_bounds is None
+    assert "min" not in failure.body()
+    assert "max" not in failure.body()

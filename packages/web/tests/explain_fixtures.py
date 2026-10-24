@@ -1,10 +1,25 @@
+from collections.abc import Iterable
 from datetime import datetime
 
 import numpy as np
 from core.defaults import default_plan
-from simulation.diagnostics import empty_diagnostics
+from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS, empty_diagnostics
 from simulation.result import ResolvedAssumptions, SimulationResult
 from web.explain import ScopedResult
+
+
+def fields_in_source_order(requested: Iterable[str]) -> list[str]:
+    wanted = set(requested)
+    return [field for field in DIAGNOSTICS_ARRAY_FIELDS if field in wanted]
+
+
+def diagnostics_envelope(
+    *, fields: Iterable[str], month: int | None = None
+) -> list[str]:
+    keys = ["plan_id", "name", "legacy_stock_allocation"]
+    if month is not None:
+        keys.append("month")
+    return [*keys, *fields]
 
 
 def scoped_result(
