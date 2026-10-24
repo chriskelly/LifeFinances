@@ -18,7 +18,7 @@ All GET. For plan-scoped routes, pass exactly one of `plan_id` or `name`. Do not
 - `/api/plans` — loadable plans: `id`, `name`, `is_default`. No simulation.
 - `/api/plan` — full plan JSON.
 - `/api/result/summary` — scalars, resolved assumptions, initial and worst-case spending. No arrays.
-- `/api/result/diagnostics?month=<index>&fields=<name>[,<name>...]` — expected-run diagnostics. `month` is a zero-based horizon index (0 is the Summary's `start_month`) that slices every array to one element and adds `month`; `fields` selects array fields, comma-separated or repeated. Omitting both returns the whole horizon and every field. Valid names, ordering, and always-returned keys are in `packages/web/OVERVIEW.md`.
+- `/api/result/diagnostics?month=<index>&fields=<name>[,<name>...]` — expected-run diagnostics. `month` is a zero-based horizon index (0 is the Summary's `start_month`) that slices every array to one element and adds `month`; `fields` selects array fields, comma-separated or repeated (`fields=a,b` and `fields=a&fields=b` are equivalent). Omitting both returns the whole horizon and every field. Valid names, ordering, and always-returned keys are in `packages/web/OVERVIEW.md`.
 - `/api/result/series?series=&month=&percentile=` — one Monte Carlo series. `percentile` is the configured value (for example 50), not a row index. On percentile-shaped series (`balance_start`, withdrawals, `savings_stock_allocation`), omit `percentile` to get every configured percentile in one response. Omit `month` for the whole horizon. `values` is always a list.
 
 Field names and meanings are in `packages/web/OVERVIEW.md`. Read that file before calling a series or quoting a field. Do not send an unknown `series` to discover the names.
@@ -37,6 +37,8 @@ If the user did not name a plan, call `/api/plans`, take the row with `is_defaul
 - 503 `db_not_initialized` — run `uv run python scripts/init_db.py`
 
 `unknown_series`, `unknown_field`, and `unknown_percentile` include `allowed`. `month_out_of_range` includes `min` and `max` when the horizon has months; a zero-month horizon omits them.
+
+Validation order is plan, then `fields`, then the simulation, then `month`. Only the first failure is reported, so fix one parameter and retry.
 
 ## How to answer
 

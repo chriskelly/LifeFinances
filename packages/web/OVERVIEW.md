@@ -65,10 +65,11 @@ includes them.
 
 `month=<int>` is a zero-based index into the horizon; month 0 is the Summary's
 `start_month`. It slices every array to that month as a one-element list and
-adds `month` to the envelope. `fields` selects named arrays (comma-separated,
-repeated, or both); valid tokens are only the array names in the table below —
-`plan_id`, `name`, and `legacy_stock_allocation` are always returned and cannot
-be selected. Output order follows the table. An unknown field is a 400
+adds `month` to the envelope. `fields` selects named arrays: `?fields=a,b`,
+`?fields=a&fields=b`, or both. Tokens are trimmed, empty tokens are ignored, and
+duplicates are dropped. Valid tokens are only the array names in the table below
+— `plan_id`, `name`, and `legacy_stock_allocation` are always returned and
+cannot be selected. Output order follows the table. An unknown field is a 400
 `unknown_field` with `allowed`. Blank `fields` (including `?fields=`) selects
 every array. An out-of-range `month` returns 400 `month_out_of_range` with `min`
 and `max`; a zero-month horizon omits them. Omitted together, the parameters
@@ -82,7 +83,7 @@ a source.
 
 | Name | Meaning |
 | --- | --- |
-| `legacy_stock_allocation` | Merton stock weight for the legacy goal. One value for the whole horizon. |
+| `legacy_stock_allocation` | Merton stock weight for the legacy goal. One value for the whole horizon. Always returned; not a `fields` token. |
 | `rra_by_month` | Relative risk aversion. Infinity is stored as `1e300`. |
 | `stock_allocation_total_portfolio` | Merton stock weight of total wealth. |
 | `scheduled_wealth` | Expected-path wealth that discretionary and legacy spending are scaled against. Savings, plus the present value of future income, plus the current month's income, before this month's withdrawals. |
