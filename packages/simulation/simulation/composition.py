@@ -1,12 +1,46 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 
 from simulation.npv import backward_npv_including_current
 
-_SOURCE_KEYS = ("job", "social_security", "pension", "manual")
+
+@dataclass(frozen=True)
+class NetIncomeBySource:
+    """Monthly net income flows by source: one float64 array per source.
+
+    Each array holds one value per month. These are flows, not present values.
+    No basis normalisation happens here: `prorate_net_income_by_source` returns
+    each input's own basis, while `real_net_income_by_source` returns today's
+    dollars (job, Social Security, and pension are already real; manual streams
+    are re-based via `manual_stream_basis_adjustment`).
+    """
+
+    job: np.ndarray
+    social_security: np.ndarray
+    pension: np.ndarray
+    manual: np.ndarray
+
+
+def _prorated_net(
+    *,
+    gross: np.ndarray,
+    total_gross: np.ndarray,
+    taxes: np.ndarray,
+) -> np.ndarray:
+    """One source's net flow: its gross plus its gross share of the taxes.
+
+    The share is taken over total gross income, so a month with no gross income
+    at all contributes zero and drops any residual tax.
+    """
+    positive = total_gross > 0.0
+    share = np.zeros_like(total_gross, dtype=np.float64)
+    share[positive] = gross[positive] / total_gross[positive]
+    net = np.zeros_like(total_gross, dtype=np.float64)
+    net[positive] = gross[positive] + taxes[positive] * share[positive]
+    return net
 
 
 def prorate_net_income_by_source(
@@ -16,24 +50,31 @@ def prorate_net_income_by_source(
     gross_pension: np.ndarray,
     gross_manual: np.ndarray,
     taxes: np.ndarray,
-) -> dict[str, np.ndarray]:
+) -> NetIncomeBySource:
     """Split net income by source. `taxes` are domain-signed (non-positive)."""
-    gross = {
-        "job": gross_job,
-        "social_security": gross_social_security,
-        "pension": gross_pension,
-        "manual": gross_manual,
-    }
     total_gross = gross_job + gross_social_security + gross_pension + gross_manual
-    nets: dict[str, np.ndarray] = {}
-    for key in _SOURCE_KEYS:
-        net = np.zeros_like(total_gross, dtype=np.float64)
-        positive = total_gross > 0.0
-        share = np.zeros_like(total_gross, dtype=np.float64)
-        share[positive] = gross[key][positive] / total_gross[positive]
-        net[positive] = gross[key][positive] + taxes[positive] * share[positive]
-        nets[key] = net
-    return nets
+    return NetIncomeBySource(
+        job=_prorated_net(
+            gross=gross_job,
+            total_gross=total_gross,
+            taxes=taxes,
+        ),
+        social_security=_prorated_net(
+            gross=gross_social_security,
+            total_gross=total_gross,
+            taxes=taxes,
+        ),
+        pension=_prorated_net(
+            gross=gross_pension,
+            total_gross=total_gross,
+            taxes=taxes,
+        ),
+        manual=_prorated_net(
+            gross=gross_manual,
+            total_gross=total_gross,
+            taxes=taxes,
+        ),
+    )
 
 
 @dataclass(frozen=True)
@@ -70,7 +111,7 @@ def real_net_income_by_source(
     gross_manual: np.ndarray,
     taxes: np.ndarray,
     manual_gross_real: np.ndarray,
-) -> dict[str, np.ndarray]:
+) -> NetIncomeBySource:
     """Real monthly net income split by source.
 
     The domain produces today's-dollars (real) amounts for job, Social Security,
@@ -85,18 +126,18 @@ def real_net_income_by_source(
     real/nominal basis via `manual_stream_basis_adjustment`. Shared by
     `wealth_by_income_source` and `build_diagnostics`.
     """
-    nets = prorate_net_income_by_source(
+    prorated = prorate_net_income_by_source(
         gross_job=gross_job,
         gross_social_security=gross_social_security,
         gross_pension=gross_pension,
         gross_manual=gross_manual,
         taxes=taxes,
     )
-    nets["manual"] = nets["manual"] + manual_stream_basis_adjustment(
+    adjustment = manual_stream_basis_adjustment(
         manual_gross_real=manual_gross_real,
         gross_manual=gross_manual,
     )
-    return nets
+    return replace(prorated, manual=prorated.manual + adjustment)
 
 
 def wealth_by_income_source(
@@ -118,13 +159,15 @@ def wealth_by_income_source(
         manual_gross_real=manual_gross_real,
     )
     one_over = 1.0 / (1.0 + monthly_bond_rate)
-    bands = {
-        key: backward_npv_including_current(real_nets[key], one_over_1_plus_r=one_over)
-        for key in _SOURCE_KEYS
-    }
     return WealthBySource(
-        job=bands["job"],
-        social_security=bands["social_security"],
-        pension=bands["pension"],
-        manual=bands["manual"],
+        job=backward_npv_including_current(real_nets.job, one_over_1_plus_r=one_over),
+        social_security=backward_npv_including_current(
+            real_nets.social_security, one_over_1_plus_r=one_over
+        ),
+        pension=backward_npv_including_current(
+            real_nets.pension, one_over_1_plus_r=one_over
+        ),
+        manual=backward_npv_including_current(
+            real_nets.manual, one_over_1_plus_r=one_over
+        ),
     )

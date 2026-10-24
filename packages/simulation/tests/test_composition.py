@@ -8,6 +8,7 @@ from core.job import Job
 from core.models import Household, PersonHousehold, Plan, Portfolio
 from core.streams import CalendarMonthBoundary, TimedStream
 from simulation.composition import (
+    NetIncomeBySource,
     WealthBySource,
     prorate_net_income_by_source,
     real_net_income_by_source,
@@ -95,7 +96,7 @@ def test_prorated_nets_sum_to_net_cashflow_when_gross_positive():
         taxes=taxes,
     )
 
-    summed = nets["job"] + nets["social_security"] + nets["pension"] + nets["manual"]
+    summed = nets.job + nets.social_security + nets.pension + nets.manual
     np.testing.assert_allclose(summed, net_cashflow)
 
 
@@ -111,7 +112,7 @@ def test_proration_zero_gross_month_yields_zero_nets():
         taxes=taxes,
     )
 
-    for series in nets.values():
+    for series in (nets.job, nets.social_security, nets.pension, nets.manual):
         np.testing.assert_allclose(series, zeros)
 
 
@@ -160,7 +161,7 @@ def test_proration_zero_gross_months_stay_zero_across_horizon():
         taxes=taxes,
     )
 
-    for series in nets.values():
+    for series in (nets.job, nets.social_security, nets.pension, nets.manual):
         np.testing.assert_allclose(series, zeros)
 
 
@@ -188,9 +189,7 @@ def test_real_net_income_by_source_sums_to_real_net_cashflow():
     # produces today's-dollars amounts, so no deflation — only the manual
     # streams' own real/nominal basis correction.
     expected_total = (total_gross + taxes) + (manual_gross_real - gross_manual)
-    summed = (
-        flows["job"] + flows["social_security"] + flows["pension"] + flows["manual"]
-    )
+    summed = flows.job + flows.social_security + flows.pension + flows.manual
     positive_gross = total_gross > 0.0
     assert np.any(positive_gross)
     np.testing.assert_allclose(summed[positive_gross], expected_total[positive_gross])
@@ -219,9 +218,51 @@ def test_real_net_income_by_source_applies_manual_basis_adjustment():
     expected_manual = (gross_manual + taxes * share_manual) + (
         manual_gross_real - gross_manual
     )
-    np.testing.assert_allclose(flows["manual"], expected_manual)
-    for key in ("job", "social_security", "pension"):
-        np.testing.assert_allclose(flows[key], zeros)
+    np.testing.assert_allclose(flows.manual, expected_manual)
+    for series in (flows.job, flows.social_security, flows.pension):
+        np.testing.assert_allclose(series, zeros)
+
+
+def test_both_income_helpers_return_net_income_by_source():
+    gross_job = np.array([100.0], dtype=np.float64)
+    zeros = np.zeros(1, dtype=np.float64)
+    taxes = np.array([-10.0], dtype=np.float64)
+
+    prorated = prorate_net_income_by_source(
+        gross_job=gross_job,
+        gross_social_security=zeros.copy(),
+        gross_pension=zeros.copy(),
+        gross_manual=zeros.copy(),
+        taxes=taxes,
+    )
+    real = real_net_income_by_source(
+        gross_job=gross_job,
+        gross_social_security=zeros.copy(),
+        gross_pension=zeros.copy(),
+        gross_manual=zeros.copy(),
+        taxes=taxes,
+        manual_gross_real=zeros.copy(),
+    )
+
+    assert type(prorated) is type(real) is NetIncomeBySource
+    np.testing.assert_allclose(prorated.job, gross_job + taxes)
+    np.testing.assert_allclose(real.job, prorated.job)
+
+
+def test_proration_attributes_each_net_flow_to_its_source():
+    # Total gross 100, tax -10, so each source keeps its gross minus a 10% share.
+    nets = prorate_net_income_by_source(
+        gross_job=np.array([40.0], dtype=np.float64),
+        gross_social_security=np.array([30.0], dtype=np.float64),
+        gross_pension=np.array([20.0], dtype=np.float64),
+        gross_manual=np.array([10.0], dtype=np.float64),
+        taxes=np.array([-10.0], dtype=np.float64),
+    )
+
+    np.testing.assert_allclose(nets.job, np.array([36.0]))
+    np.testing.assert_allclose(nets.social_security, np.array([27.0]))
+    np.testing.assert_allclose(nets.pension, np.array([18.0]))
+    np.testing.assert_allclose(nets.manual, np.array([9.0]))
 
 
 def _wealth_from_processed(processed: ProcessedPlan) -> WealthBySource:
