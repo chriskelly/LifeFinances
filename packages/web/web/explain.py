@@ -114,6 +114,7 @@ def diagnostics_payload(
     """
     result = scoped.result
     diagnostics = result.diagnostics
+    resolved_fields = resolve_diagnostics_fields(fields)
     require_month(
         month=month, horizon_months=result.horizon_months, subject="diagnostics"
     )
@@ -124,7 +125,7 @@ def diagnostics_payload(
     }
     if month is not None:
         payload["month"] = month
-    for field in resolve_diagnostics_fields(fields):
+    for field in resolved_fields:
         payload[field] = _month_values(values=getattr(diagnostics, field), month=month)
     return payload
 

@@ -448,6 +448,17 @@ def test_diagnostics_unknown_field_is_rejected_with_allowed_list() -> None:
     assert unknown in failure.message
 
 
+def test_diagnostics_unknown_field_wins_over_out_of_range_month() -> None:
+    unknown = "not_a_diagnostics_field"
+
+    with pytest.raises(ApiError) as raised:
+        diagnostics_payload(_scoped(_result()), month=-1, fields=[unknown])
+    failure = raised.value
+
+    assert failure.code == UNKNOWN_FIELD
+    assert unknown in failure.message
+
+
 @pytest.mark.parametrize("case", ["negative", "at_horizon"])
 def test_diagnostics_month_out_of_range_reports_bounds(case: str) -> None:
     result = _result()

@@ -101,8 +101,10 @@ SeriesDep = Annotated[str, Depends(require_series)]
 
 
 def require_diagnostics_fields(
+    _selected: ApiPlanDep,
     fields: Annotated[list[str] | None, Query()] = None,
 ) -> tuple[str, ...]:
+    """Validate fields after the plan, before the simulation dependency runs."""
     return resolve_diagnostics_fields(fields)
 
 
@@ -144,9 +146,6 @@ def _register_result_routes(router: APIRouter) -> None:
     @router.get(API_RESULT_DIAGNOSTICS)
     def diagnostics(
         *,
-        # Order matters: plan errors (404/409/422) keep precedence, unknown
-        # fields are rejected before the simulation runs.
-        _selected: ApiPlanDep,
         fields: DiagnosticsFieldsDep,
         scoped: ApiResultDep,
         month: Annotated[int | None, Query()] = None,
