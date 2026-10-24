@@ -9,7 +9,17 @@ from web.explain import ScopedResult
 
 
 def fields_in_source_order(requested: Iterable[str]) -> list[str]:
-    return [field for field in DIAGNOSTICS_ARRAY_FIELDS if field in set(requested)]
+    wanted = set(requested)
+    return [field for field in DIAGNOSTICS_ARRAY_FIELDS if field in wanted]
+
+
+def diagnostics_envelope(
+    *, fields: Iterable[str], month: int | None = None
+) -> list[str]:
+    keys = ["plan_id", "name", "legacy_stock_allocation"]
+    if month is not None:
+        keys.append("month")
+    return [*keys, *fields]
 
 
 def scoped_result(

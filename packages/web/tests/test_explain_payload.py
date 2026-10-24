@@ -21,7 +21,7 @@ from web.explain import (
 
 from web import spending_summary
 
-from .explain_fixtures import fields_in_source_order
+from .explain_fixtures import diagnostics_envelope, fields_in_source_order
 from .explain_fixtures import sample_simulation_result as _result
 from .explain_fixtures import scoped_result as _scoped
 
@@ -60,13 +60,6 @@ def test_diagnostics_serializes_every_array_and_legacy_allocation() -> None:
 
     payload = diagnostics_payload(_scoped(result, plan_id=plan_id, plan_name=plan_name))
 
-    expected_keys = {
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *DIAGNOSTICS_ARRAY_FIELDS,
-    }
-    assert set(payload.keys()) == expected_keys
     assert payload["plan_id"] == plan_id
     assert payload["name"] == plan_name
     assert (
@@ -312,12 +305,7 @@ def test_diagnostics_without_parameters_keeps_envelope_and_array_order() -> None
 
     payload = diagnostics_payload(_scoped(result))
 
-    assert list(payload) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *DIAGNOSTICS_ARRAY_FIELDS,
-    ]
+    assert list(payload) == diagnostics_envelope(fields=DIAGNOSTICS_ARRAY_FIELDS)
     assert "month" not in payload
 
 
@@ -352,12 +340,7 @@ def test_diagnostics_fields_selects_only_named_arrays_in_source_order() -> None:
     payload = diagnostics_payload(_scoped(result), fields=fields)
 
     expected_fields = fields_in_source_order(requested)
-    assert list(payload) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *expected_fields,
-    ]
+    assert list(payload) == diagnostics_envelope(fields=expected_fields)
 
 
 def test_diagnostics_fields_accepts_comma_separated_tokens() -> None:
@@ -368,12 +351,7 @@ def test_diagnostics_fields_accepts_comma_separated_tokens() -> None:
     payload = diagnostics_payload(_scoped(result), fields=fields)
 
     expected_fields = fields_in_source_order(requested)
-    assert list(payload) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *expected_fields,
-    ]
+    assert list(payload) == diagnostics_envelope(fields=expected_fields)
     for field in expected_fields:
         assert payload[field] == getattr(result.diagnostics, field).tolist()
 
@@ -385,23 +363,15 @@ def test_diagnostics_bare_string_fields_are_accepted() -> None:
 
     payload = diagnostics_payload(_scoped(result), fields=fields)
 
-    assert list(payload) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *fields_in_source_order(requested),
-    ]
+    assert list(payload) == diagnostics_envelope(
+        fields=fields_in_source_order(requested)
+    )
 
 
 def test_diagnostics_bare_blank_string_returns_every_array() -> None:
     payload = diagnostics_payload(_scoped(_result()), fields="")
 
-    assert list(payload) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *DIAGNOSTICS_ARRAY_FIELDS,
-    ]
+    assert list(payload) == diagnostics_envelope(fields=DIAGNOSTICS_ARRAY_FIELDS)
 
 
 def test_diagnostics_blank_fields_returns_every_array() -> None:
@@ -409,12 +379,7 @@ def test_diagnostics_blank_fields_returns_every_array() -> None:
 
     payload = diagnostics_payload(_scoped(result), fields=["", " , "])
 
-    assert list(payload) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *DIAGNOSTICS_ARRAY_FIELDS,
-    ]
+    assert list(payload) == diagnostics_envelope(fields=DIAGNOSTICS_ARRAY_FIELDS)
 
 
 def test_diagnostics_month_and_fields_combine() -> None:
@@ -425,13 +390,7 @@ def test_diagnostics_month_and_fields_combine() -> None:
     payload = diagnostics_payload(_scoped(result), month=month, fields=[field])
 
     assert payload[field] == [getattr(result.diagnostics, field)[month]]
-    assert list(payload) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        "month",
-        field,
-    ]
+    assert list(payload) == diagnostics_envelope(fields=[field], month=month)
 
 
 def test_diagnostics_unknown_field_is_rejected_with_allowed_list() -> None:

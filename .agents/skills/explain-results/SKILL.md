@@ -38,7 +38,7 @@ If the user did not name a plan, call `/api/plans`, take the row with `is_defaul
 
 `unknown_series`, `unknown_field`, and `unknown_percentile` include `allowed`. `month_out_of_range` includes `min` and `max` when the horizon has months; a zero-month horizon omits them.
 
-Validation order is plan, then `fields`, then the simulation, then `month`. Only the first failure is reported, so fix one parameter and retry.
+After the `db_not_initialized` check, validation order is plan, then `fields`, then the simulation, then `month`. Only the first failure is reported, so fix one parameter and retry.
 
 ## How to answer
 

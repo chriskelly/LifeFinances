@@ -108,9 +108,9 @@ def diagnostics_payload(
 ) -> dict[str, object]:
     """Build the diagnostics JSON.
 
-    ``fields`` accepts raw query values; the route validates them first with
-    ``resolve_diagnostics_fields``, and resolving that canonical tuple here is
-    idempotent.
+    ``fields`` accepts raw query tokens or an already-resolved canonical tuple;
+    it re-resolves so direct callers get the same 400 ``unknown_field`` and so
+    fields are validated before ``month`` on every path.
     """
     result = scoped.result
     diagnostics = result.diagnostics

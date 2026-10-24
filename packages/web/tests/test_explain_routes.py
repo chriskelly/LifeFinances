@@ -32,7 +32,7 @@ from web.routes import (
     API_RESULT_SUMMARY,
 )
 
-from .explain_fixtures import fields_in_source_order
+from .explain_fixtures import diagnostics_envelope, fields_in_source_order
 
 
 def _make_result() -> SimulationResult:
@@ -353,12 +353,7 @@ def test_diagnostics_repeated_fields_params_select_arrays(
     assert response.status_code == HTTPStatus.OK
     body = response.json()
     expected_fields = fields_in_source_order(requested)
-    assert list(body) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *expected_fields,
-    ]
+    assert list(body) == diagnostics_envelope(fields=expected_fields)
 
 
 def test_diagnostics_comma_fields_param_selects_arrays(
@@ -380,12 +375,7 @@ def test_diagnostics_comma_fields_param_selects_arrays(
     assert response.status_code == HTTPStatus.OK
     body = response.json()
     expected_fields = fields_in_source_order(requested)
-    assert list(body) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *expected_fields,
-    ]
+    assert list(body) == diagnostics_envelope(fields=expected_fields)
     for field in expected_fields:
         assert body[field] == getattr(result.diagnostics, field).tolist()
 
@@ -393,12 +383,11 @@ def test_diagnostics_comma_fields_param_selects_arrays(
 def test_diagnostics_comma_fields_rejects_unknown_token(
     client: TestClient, plan_id: int, monkeypatch
 ) -> None:
-    result = _make_result()
     unknown = "not_a_diagnostics_field"
     fields = f"{DIAGNOSTICS_ARRAY_FIELDS[0]},{unknown}"
 
     def run(plan, **kwargs):
-        return result
+        return _make_result()
 
     monkeypatch.setattr("web.simulation_cache.run_simulation", run)
 
@@ -415,13 +404,12 @@ def test_diagnostics_comma_fields_rejects_unknown_token(
 def test_unknown_field_returns_400_before_running_simulation(
     client: TestClient, plan_id: int, monkeypatch
 ) -> None:
-    result = _make_result()
     unknown = "not_a_diagnostics_field"
     calls = {"n": 0}
 
     def run(plan, **kwargs):
         calls["n"] += 1
-        return result
+        return _make_result()
 
     monkeypatch.setattr("web.simulation_cache.run_simulation", run)
 
@@ -486,12 +474,7 @@ def test_diagnostics_mixed_comma_and_repeated_fields_params(
     assert response.status_code == HTTPStatus.OK
     body = response.json()
     expected_fields = fields_in_source_order(requested)
-    assert list(body) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *expected_fields,
-    ]
+    assert list(body) == diagnostics_envelope(fields=expected_fields)
     for field in expected_fields:
         assert body[field] == getattr(result.diagnostics, field).tolist()
 
@@ -513,12 +496,7 @@ def test_diagnostics_blank_fields_param_returns_every_array(
 
     assert response.status_code == HTTPStatus.OK
     body = response.json()
-    assert list(body) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        *DIAGNOSTICS_ARRAY_FIELDS,
-    ]
+    assert list(body) == diagnostics_envelope(fields=DIAGNOSTICS_ARRAY_FIELDS)
     assert (
         body[DIAGNOSTICS_ARRAY_FIELDS[0]]
         == getattr(result.diagnostics, DIAGNOSTICS_ARRAY_FIELDS[0]).tolist()
@@ -545,13 +523,7 @@ def test_diagnostics_month_and_fields_combine_over_http(
     assert response.status_code == HTTPStatus.OK
     body = response.json()
     assert body[field] == [getattr(result.diagnostics, field)[month]]
-    assert list(body) == [
-        "plan_id",
-        "name",
-        "legacy_stock_allocation",
-        "month",
-        field,
-    ]
+    assert list(body) == diagnostics_envelope(fields=[field], month=month)
 
 
 def test_diagnostics_month_out_of_range_returns_bounds(
@@ -583,11 +555,10 @@ def test_diagnostics_month_out_of_range_returns_bounds(
 def test_unknown_field_wins_over_out_of_range_month(
     client: TestClient, plan_id: int, monkeypatch
 ) -> None:
-    result = _make_result()
     unknown = "not_a_diagnostics_field"
 
     def run(plan, **kwargs):
-        return result
+        return _make_result()
 
     monkeypatch.setattr("web.simulation_cache.run_simulation", run)
 
@@ -672,3 +643,20 @@ def test_diagnostics_month_on_empty_horizon_returns_no_bounds(
     assert body["error"] == MONTH_OUT_OF_RANGE
     assert "min" not in body
     assert "max" not in body
+
+
+def test_simulation_failure_wins_over_out_of_range_month(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    def run(plan, **kwargs):
+        raise RuntimeError("simulation boom")
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_DIAGNOSTICS,
+        params={"plan_id": plan_id, "month": -1},
+    )
+
+    assert response.status_code == HTTP_UNPROCESSABLE
+    assert response.json()["error"] == SIMULATION_FAILED

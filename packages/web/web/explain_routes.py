@@ -101,10 +101,15 @@ SeriesDep = Annotated[str, Depends(require_series)]
 
 
 def require_diagnostics_fields(
-    _selected: ApiPlanDep,
+    _plan_gate: ApiPlanDep,
     fields: Annotated[list[str] | None, Query()] = None,
 ) -> tuple[str, ...]:
-    """Validate fields after the plan, before the simulation dependency runs."""
+    """Validate fields after plan resolution, before the simulation runs.
+
+    ``_plan_gate`` is intentionally unused: it forces plan resolution (and its
+    404/409/422 errors) ahead of field validation. Removing it would move those
+    errors behind a 400 ``unknown_field``.
+    """
     return resolve_diagnostics_fields(fields)
 
 
