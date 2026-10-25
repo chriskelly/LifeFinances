@@ -14,6 +14,12 @@ uv run uvicorn web.app:app --reload --host 127.0.0.1 --port 8000
 
 Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/). Run all commands from the repository root.
 
+**macOS:** double-click `LifeFinances.command` in Finder to do all of the above in one step —
+it prepares the database, starts the server, and opens the browser. Logs appear in the Terminal
+window it opens; press Ctrl+C there to stop the server. If the app is already running on port
+8000, it just opens the browser instead of starting a second copy; if another program holds
+port 8000, it uses the first free port up to 8010.
+
 Working database: `data/data.db` (gitignored). Schema template: `data/data.db.blank`.
 
 Override DB path: `LIFE_FINANCES_DB_PATH=/path/to/data.db`
