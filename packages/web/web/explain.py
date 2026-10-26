@@ -16,6 +16,7 @@ from simulation.result import (
 )
 
 from web import spending_summary
+from web.calendar_months import month_labels
 from web.dependencies import SelectedPlan
 
 INVALID_QUERY = "invalid_query"
@@ -29,6 +30,7 @@ UNKNOWN_FIELD = "unknown_field"
 UNKNOWN_PERCENTILE = "unknown_percentile"
 PERCENTILE_NOT_APPLICABLE = "percentile_not_applicable"
 MONTH_OUT_OF_RANGE = "month_out_of_range"
+INVALID_RANGE = "invalid_range"
 SIMULATION_FAILED = "simulation_failed"
 
 HTTP_BAD_REQUEST = 400
@@ -125,8 +127,11 @@ def diagnostics_payload(
     }
     if month is not None:
         payload["month"] = month
+    first, last = _month_span(month=month, horizon_months=result.horizon_months)
     for field in resolved_fields:
-        payload[field] = _month_values(values=getattr(diagnostics, field), month=month)
+        payload[field] = _month_slice(
+            values=getattr(diagnostics, field), first=first, last=last
+        )
     return payload
 
 
@@ -174,24 +179,100 @@ def require_month(
     """
     if month is None:
         return
+    bounds = _month_bounds(horizon_months=horizon_months, subject=subject)
+    _require_in_bounds(param="month", value=month, bounds=bounds)
+
+
+def _month_bounds(*, horizon_months: int, subject: str) -> tuple[int, int]:
+    """Inclusive zero-based month bounds, or an error when there are no months."""
     if horizon_months < 1:
         raise ApiError(
             status_code=HTTP_BAD_REQUEST,
             code=MONTH_OUT_OF_RANGE,
             message=f"{subject} has no months",
         )
-    if not 0 <= month < horizon_months:
-        last = horizon_months - 1
+    return 0, horizon_months - 1
+
+
+def _month_span(*, month: int | None, horizon_months: int) -> tuple[int, int]:
+    """Inclusive span for one month, or for the whole horizon.
+
+    An empty horizon yields ``(0, -1)`` so slicing produces empty lists rather
+    than an error, matching the no-range payload.
+    """
+    return (month, month) if month is not None else (0, horizon_months - 1)
+
+
+def require_month_selection(
+    *,
+    month: int | None,
+    month_from: int | None,
+    month_to: int | None,
+) -> None:
+    """Reject ``month`` combined with a range bound, or an inverted range.
+
+    Both checks are horizon-independent, so routes can reject them before
+    running a simulation.
+    """
+    if month is not None and (month_from is not None or month_to is not None):
         raise ApiError(
             status_code=HTTP_BAD_REQUEST,
-            code=MONTH_OUT_OF_RANGE,
-            message=f"month must be between 0 and {last} inclusive",
-            month_bounds=(0, last),
+            code=INVALID_QUERY,
+            message="Provide either month or a month_from/month_to range, not both",
+        )
+    _require_month_range_order(month_from=month_from, month_to=month_to)
+
+
+def _require_month_range_order(*, month_from: int | None, month_to: int | None) -> None:
+    """Reject an inverted range."""
+    if month_from is not None and month_to is not None and month_from > month_to:
+        raise ApiError(
+            status_code=HTTP_BAD_REQUEST,
+            code=INVALID_RANGE,
+            message="month_from must be less than or equal to month_to",
         )
 
 
-def _month_values(*, values: np.ndarray, month: int | None) -> list[float]:
-    return values.tolist() if month is None else [float(values[month])]
+def require_month_range(
+    *,
+    month_from: int | None,
+    month_to: int | None,
+    horizon_months: int,
+    subject: str,
+) -> tuple[int, int]:
+    """Resolve optional inclusive range bounds against the horizon.
+
+    A missing bound defaults to the first or last month. Both the range order
+    and each supplied bound are validated, so a direct payload caller and the
+    route dependency reject the same requests.
+    """
+    _require_month_range_order(month_from=month_from, month_to=month_to)
+    bounds = _month_bounds(horizon_months=horizon_months, subject=subject)
+    if month_from is not None:
+        _require_in_bounds(param="month_from", value=month_from, bounds=bounds)
+    if month_to is not None:
+        _require_in_bounds(param="month_to", value=month_to, bounds=bounds)
+    first, last = bounds
+    return (
+        first if month_from is None else month_from,
+        last if month_to is None else month_to,
+    )
+
+
+def _require_in_bounds(*, param: str, value: int, bounds: tuple[int, int]) -> None:
+    first, last = bounds
+    if not first <= value <= last:
+        raise ApiError(
+            status_code=HTTP_BAD_REQUEST,
+            code=MONTH_OUT_OF_RANGE,
+            message=f"{param} must be between {first} and {last} inclusive",
+            month_bounds=bounds,
+        )
+
+
+def _month_slice(*, values: np.ndarray, first: int, last: int) -> list[float]:
+    """Inclusive month slice as a list; ``last < first`` yields an empty list."""
+    return values[first : last + 1].tolist()
 
 
 def series_payload(
@@ -200,22 +281,37 @@ def series_payload(
     series: str,
     month: int | None,
     percentile: int | None,
+    month_from: int | None = None,
+    month_to: int | None = None,
 ) -> dict[str, object]:
     require_known_series(series)
+    require_month_selection(month=month, month_from=month_from, month_to=month_to)
     result = scoped.result
     values = getattr(result, series)
     require_month(month=month, horizon_months=result.horizon_months, subject="series")
+    requested_range = month_from is not None or month_to is not None
+    if requested_range:
+        first, last = require_month_range(
+            month_from=month_from,
+            month_to=month_to,
+            horizon_months=result.horizon_months,
+            subject="series",
+        )
+    else:
+        first, last = _month_span(month=month, horizon_months=result.horizon_months)
     if series in RAW_ARRAY_FIELDS:
         rows = _percentile_rows(
             result=result,
             values=values,
-            month=month,
+            first=first,
+            last=last,
             percentile=percentile,
         )
     elif series in HORIZON_ARRAY_FIELDS:
         rows = _horizon_rows(
             values=values,
-            month=month,
+            first=first,
+            last=last,
             percentile=percentile,
         )
     else:
@@ -225,13 +321,20 @@ def series_payload(
             message=f"Unknown series {series}",
             allowed=PUBLIC_ARRAY_FIELDS,
         )
-    return {
+    payload: dict[str, object] = {
         "plan_id": scoped.plan_id,
         "name": scoped.plan.name,
         "series": series,
         "month": month,
-        "rows": rows,
     }
+    if requested_range:
+        payload["month_from"] = first
+        payload["month_to"] = last
+    payload["labels"] = month_labels(result.start_month, result.horizon_months)[
+        first : last + 1
+    ]
+    payload["rows"] = rows
+    return payload
 
 
 def require_known_series(series: str) -> str:
@@ -249,7 +352,8 @@ def _percentile_rows(
     *,
     result: SimulationResult,
     values: np.ndarray,
-    month: int | None,
+    first: int,
+    last: int,
     percentile: int | None,
 ) -> list[dict[str, object]]:
     if percentile is None:
@@ -267,7 +371,7 @@ def _percentile_rows(
     return [
         {
             "percentile": result.percentiles[row_index],
-            "values": _month_values(values=values[row_index], month=month),
+            "values": _month_slice(values=values[row_index], first=first, last=last),
         }
         for row_index in row_indexes
     ]
@@ -276,7 +380,8 @@ def _percentile_rows(
 def _horizon_rows(
     *,
     values: np.ndarray,
-    month: int | None,
+    first: int,
+    last: int,
     percentile: int | None,
 ) -> list[dict[str, object]]:
     if percentile is not None:
@@ -285,7 +390,7 @@ def _horizon_rows(
             code=PERCENTILE_NOT_APPLICABLE,
             message="percentile does not apply to this series",
         )
-    serialized = _month_values(values=values, month=month)
+    serialized = _month_slice(values=values, first=first, last=last)
     return [{"percentile": None, "values": serialized}]
 
 

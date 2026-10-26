@@ -64,18 +64,6 @@ def test_all_chart_types_resolve_to_themselves():
         assert charts.resolve_chart_type(chart_type) == chart_type
 
 
-def test_month_labels_length_matches_horizon():
-    horizon = 5
-    labels = charts.month_labels((2026, 1), horizon)
-    assert len(labels) == horizon
-
-
-def test_month_labels_start_and_year_rollover():
-    start_year, start_month = 2026, 11
-    labels = charts.month_labels((start_year, start_month), 3)
-    assert labels == ["2026-11", "2026-12", "2027-01"]
-
-
 def test_wealth_index_three_percentiles_maps_low_mid_high():
     n = 3
     assert charts.wealth_percentile_index(charts.WEALTH_COMPOSITION_LOW, n) == 0

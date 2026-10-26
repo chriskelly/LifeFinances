@@ -6,8 +6,11 @@ from simulation.result import (
     PUBLIC_ARRAY_FIELDS,
     RAW_ARRAY_FIELDS,
 )
+from web.calendar_months import month_labels
 from web.explain import (
     HTTP_BAD_REQUEST,
+    INVALID_QUERY,
+    INVALID_RANGE,
     MONTH_OUT_OF_RANGE,
     PERCENTILE_NOT_APPLICABLE,
     UNKNOWN_FIELD,
@@ -448,6 +451,280 @@ def test_diagnostics_month_on_empty_horizon_has_no_bounds() -> None:
 
     with pytest.raises(ApiError) as raised:
         diagnostics_payload(_scoped(empty), month=0)
+    failure = raised.value
+
+    assert failure.code == MONTH_OUT_OF_RANGE
+    assert failure.month_bounds is None
+    assert "min" not in failure.body()
+    assert "max" not in failure.body()
+
+
+def test_series_without_parameters_adds_only_labels() -> None:
+    result = _result()
+    series = RAW_ARRAY_FIELDS[0]
+    plan_id = 7
+    plan_name = "Pinned"
+
+    payload = series_payload(
+        scoped=_scoped(result, plan_id=plan_id, plan_name=plan_name),
+        series=series,
+        month=None,
+        percentile=None,
+    )
+
+    assert payload == {
+        "plan_id": plan_id,
+        "name": plan_name,
+        "series": series,
+        "month": None,
+        "labels": month_labels(result.start_month, result.horizon_months),
+        "rows": [
+            {
+                "percentile": percentile,
+                "values": getattr(result, series)[index].tolist(),
+            }
+            for index, percentile in enumerate(result.percentiles)
+        ],
+    }
+    assert list(payload) == ["plan_id", "name", "series", "month", "labels", "rows"]
+
+
+def test_series_labels_cross_the_year_boundary() -> None:
+    # Pinned contract: labels are ISO YYYY-MM, not zero-padded indexes.
+    result = _result().model_copy(update={"start_month": (2026, 11)})
+
+    payload = series_payload(
+        scoped=_scoped(result),
+        series=HORIZON_ARRAY_FIELDS[0],
+        month=None,
+        percentile=None,
+    )
+
+    assert payload["labels"] == ["2026-11", "2026-12", "2027-01", "2027-02"]
+
+
+def test_series_with_month_returns_one_label() -> None:
+    result = _result()
+    month = 1
+    all_labels = month_labels(result.start_month, result.horizon_months)
+
+    payload = series_payload(
+        scoped=_scoped(result),
+        series=RAW_ARRAY_FIELDS[0],
+        month=month,
+        percentile=None,
+    )
+
+    assert payload["labels"] == [all_labels[month]]
+    assert "month_from" not in payload
+    assert "month_to" not in payload
+
+
+@pytest.mark.parametrize(
+    ("month_from", "month_to"),
+    [(1, 2), (None, 2), (1, None)],
+)
+def test_series_range_slices_labels_and_every_percentile_row(
+    month_from: int | None, month_to: int | None
+) -> None:
+    result = _result()
+    series = RAW_ARRAY_FIELDS[0]
+    all_labels = month_labels(result.start_month, result.horizon_months)
+    first = 0 if month_from is None else month_from
+    last = result.horizon_months - 1 if month_to is None else month_to
+
+    payload = series_payload(
+        scoped=_scoped(result),
+        series=series,
+        month=None,
+        percentile=None,
+        month_from=month_from,
+        month_to=month_to,
+    )
+
+    assert payload["month"] is None
+    assert payload["month_from"] == first
+    assert payload["month_to"] == last
+    assert payload["labels"] == all_labels[first : last + 1]
+    assert payload["rows"] == [
+        {
+            "percentile": percentile,
+            "values": getattr(result, series)[index, first : last + 1].tolist(),
+        }
+        for index, percentile in enumerate(result.percentiles)
+    ]
+
+
+def test_series_range_labels_are_pinned_by_calendar_month() -> None:
+    # Pinned contract: ranged labels are the same ISO strings as the full payload,
+    # sliced inclusively, so a client can index them without recomputing.
+    result = _result().model_copy(update={"start_month": (2026, 9)})
+
+    payload = series_payload(
+        scoped=_scoped(result),
+        series=HORIZON_ARRAY_FIELDS[0],
+        month=None,
+        percentile=None,
+        month_from=1,
+        month_to=2,
+    )
+
+    assert payload["labels"] == ["2026-10", "2026-11"]
+
+
+def test_series_without_parameters_on_empty_horizon_has_empty_lists() -> None:
+    empty = _result().model_copy(update={"horizon_months": 0})
+
+    payload = series_payload(
+        scoped=_scoped(empty),
+        series=RAW_ARRAY_FIELDS[0],
+        month=None,
+        percentile=None,
+    )
+
+    assert payload["labels"] == []
+    assert payload["rows"] == [
+        {"percentile": percentile, "values": []} for percentile in empty.percentiles
+    ]
+
+
+def test_series_range_applies_to_horizon_series() -> None:
+    result = _result()
+    series = HORIZON_ARRAY_FIELDS[0]
+
+    payload = series_payload(
+        scoped=_scoped(result),
+        series=series,
+        month=None,
+        percentile=None,
+        month_from=1,
+        month_to=2,
+    )
+
+    assert payload["rows"] == [
+        {"percentile": None, "values": getattr(result, series)[1:3].tolist()}
+    ]
+    assert (
+        payload["labels"]
+        == month_labels(result.start_month, result.horizon_months)[1:3]
+    )
+
+
+def test_series_range_combines_with_percentile() -> None:
+    result = _result()
+    series = RAW_ARRAY_FIELDS[0]
+    row_index = 1
+    percentile = result.percentiles[row_index]
+
+    payload = series_payload(
+        scoped=_scoped(result),
+        series=series,
+        month=None,
+        percentile=percentile,
+        month_from=1,
+        month_to=2,
+    )
+
+    assert payload["rows"] == [
+        {
+            "percentile": percentile,
+            "values": getattr(result, series)[row_index, 1:3].tolist(),
+        }
+    ]
+
+
+@pytest.mark.parametrize("extra", [{"month_from": 1}, {"month_to": 2}])
+def test_series_rejects_month_combined_with_a_range(
+    extra: dict[str, int],
+) -> None:
+    result = _result()
+
+    with pytest.raises(ApiError) as raised:
+        series_payload(
+            scoped=_scoped(result),
+            series=RAW_ARRAY_FIELDS[0],
+            month=1,
+            percentile=None,
+            **extra,
+        )
+    failure = raised.value
+
+    assert failure.status_code == HTTP_BAD_REQUEST
+    assert failure.code == INVALID_QUERY
+    # Pinned: user-facing prose that names the two valid shapes.
+    assert failure.body() == {
+        "error": INVALID_QUERY,
+        "message": "Provide either month or a month_from/month_to range, not both",
+    }
+
+
+def test_series_rejects_inverted_month_range() -> None:
+    result = _result()
+
+    with pytest.raises(ApiError) as raised:
+        series_payload(
+            scoped=_scoped(result),
+            series=RAW_ARRAY_FIELDS[0],
+            month=None,
+            percentile=None,
+            month_from=2,
+            month_to=1,
+        )
+    failure = raised.value
+
+    assert failure.status_code == HTTP_BAD_REQUEST
+    assert failure.code == INVALID_RANGE
+    assert failure.month_bounds is None
+    assert failure.body() == {"error": failure.code, "message": failure.message}
+
+
+@pytest.mark.parametrize(
+    ("param", "edge"),
+    [
+        ("month_from", "below"),
+        ("month_from", "above"),
+        ("month_to", "below"),
+        ("month_to", "above"),
+    ],
+)
+def test_series_range_bound_out_of_range_reports_bounds(param: str, edge: str) -> None:
+    result = _result()
+    last_month = result.horizon_months - 1
+    value = -1 if edge == "below" else result.horizon_months
+
+    with pytest.raises(ApiError) as raised:
+        series_payload(
+            scoped=_scoped(result),
+            series=RAW_ARRAY_FIELDS[0],
+            month=None,
+            percentile=None,
+            **{param: value},
+        )
+    failure = raised.value
+
+    assert failure.status_code == HTTP_BAD_REQUEST
+    assert failure.code == MONTH_OUT_OF_RANGE
+    assert failure.month_bounds == (0, last_month)
+    assert param in failure.message
+    assert failure.body() == {
+        "error": MONTH_OUT_OF_RANGE,
+        "message": failure.message,
+        "min": 0,
+        "max": last_month,
+    }
+
+
+def test_series_range_on_empty_horizon_has_no_bounds() -> None:
+    empty = _result().model_copy(update={"horizon_months": 0})
+
+    with pytest.raises(ApiError) as raised:
+        series_payload(
+            scoped=_scoped(empty),
+            series=RAW_ARRAY_FIELDS[0],
+            month=None,
+            percentile=None,
+            month_from=0,
+        )
     failure = raised.value
 
     assert failure.code == MONTH_OUT_OF_RANGE
