@@ -555,6 +555,35 @@ def test_series_range_slices_labels_and_every_percentile_row(
     ]
 
 
+def test_series_range_width_one_matches_the_single_month_slice() -> None:
+    result = _result()
+    series = RAW_ARRAY_FIELDS[0]
+    month = 2
+    all_labels = month_labels(result.start_month, result.horizon_months)
+
+    width_one = series_payload(
+        scoped=_scoped(result),
+        series=series,
+        month=None,
+        percentile=None,
+        month_from=month,
+        month_to=month,
+    )
+    single = series_payload(
+        scoped=_scoped(result),
+        series=series,
+        month=month,
+        percentile=None,
+    )
+
+    assert width_one["month_from"] == month
+    assert width_one["month_to"] == month
+    assert width_one["month"] is None
+    assert width_one["labels"] == [all_labels[month]]
+    assert width_one["rows"] == single["rows"]
+    assert single["month"] == month
+
+
 def test_series_range_labels_are_pinned_by_calendar_month() -> None:
     # Pinned contract: ranged labels are the same ISO strings as the full payload,
     # sliced inclusively, so a client can index them without recomputing.

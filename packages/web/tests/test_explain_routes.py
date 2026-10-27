@@ -3,6 +3,7 @@ from datetime import datetime
 from http import HTTPStatus
 
 import numpy as np
+import pytest
 from core.models import Plan
 from core.repository import PlanRepository
 from fastapi.testclient import TestClient
@@ -746,8 +747,9 @@ def test_series_range_slices_values_and_echoes_bounds(
     ]
 
 
-def test_series_duplicate_month_params_report_one_validation_detail(
-    client: TestClient, plan_id: int, monkeypatch
+@pytest.mark.parametrize("param", ["month", "month_from", "month_to"])
+def test_series_non_integer_month_params_report_one_validation_detail(
+    client: TestClient, plan_id: int, monkeypatch, param: str
 ) -> None:
     # Regression: declaring the month params in both the dependency and the
     # handler made FastAPI report each bad value twice.
@@ -758,13 +760,13 @@ def test_series_duplicate_month_params_report_one_validation_detail(
 
     response = client.get(
         API_RESULT_SERIES,
-        params={"plan_id": plan_id, "series": RAW_ARRAY_FIELDS[0], "month": "abc"},
+        params={"plan_id": plan_id, "series": RAW_ARRAY_FIELDS[0], param: "abc"},
     )
 
     assert response.status_code == HTTP_UNPROCESSABLE
     details = response.json()["detail"]
     assert len(details) == 1
-    assert details[0]["loc"] == ["query", "month"]
+    assert details[0]["loc"] == ["query", param]
 
 
 def test_series_month_with_range_fails_before_running_simulation(
@@ -814,6 +816,33 @@ def test_series_inverted_range_fails_before_running_simulation(
             "plan_id": plan_id,
             "series": RAW_ARRAY_FIELDS[0],
             "month_from": 1,
+            "month_to": 0,
+        },
+    )
+
+    assert response.status_code == HTTP_BAD_REQUEST
+    assert response.json()["error"] == INVALID_RANGE
+    assert calls["n"] == 0
+
+
+def test_series_inversion_wins_over_out_of_range_bounds(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+    calls = {"n": 0}
+
+    def run(plan, **kwargs):
+        calls["n"] += 1
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_SERIES,
+        params={
+            "plan_id": plan_id,
+            "series": RAW_ARRAY_FIELDS[0],
+            "month_from": result.horizon_months,
             "month_to": 0,
         },
     )
