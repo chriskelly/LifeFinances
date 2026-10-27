@@ -3,6 +3,8 @@ from __future__ import annotations
 import plotly.graph_objects as go
 from simulation.result import SimulationResult
 
+from web.calendar_months import month_labels
+
 PORTFOLIO = "portfolio"
 SPENDING_TOTAL = "spending-total"
 ASSET_ALLOCATION_SAVINGS = "asset-allocation-savings-portfolio"
@@ -26,18 +28,6 @@ def resolve_chart_type(raw: str | None) -> str:
     if raw in CHART_TYPES:
         return raw
     return DEFAULT_CHART
-
-
-def month_labels(start_month: tuple[int, int], horizon_months: int) -> list[str]:
-    year, month = start_month
-    labels: list[str] = []
-    for _ in range(horizon_months):
-        labels.append(f"{year:04d}-{month:02d}")
-        month += 1
-        if month > 12:
-            month = 1
-            year += 1
-    return labels
 
 
 _WEALTH_CHART_TYPES = frozenset(

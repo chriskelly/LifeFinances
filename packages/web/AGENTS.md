@@ -102,7 +102,7 @@ Unloadable plan JSON returns JSON `422` with code `plan_unloadable` and a `messa
 
 On `/api/result/diagnostics`, optional `month` and `fields` slice the payload. `fields` is validated before the simulation runs, so unknown fields return `400 unknown_field` without a run; names, ordering, and error shapes are documented in `OVERVIEW.md`.
 
-On `/api/result/series`, Monte Carlo spending and allocation series are percentile-major; `wealth_job`, `wealth_social_security`, `wealth_pension`, and `wealth_manual` are single vectors (no percentile axis — sending `percentile` yields `percentile_not_applicable`). Agent-facing usage is documented in root `.agents/skills/explain-results/SKILL.md`.
+On `/api/result/series`, Monte Carlo spending and allocation series are percentile-major; `wealth_job`, `wealth_social_security`, `wealth_pension`, and `wealth_manual` are single vectors (no percentile axis — sending `percentile` yields `percentile_not_applicable`). Every response carries `labels`: one ISO `YYYY-MM` calendar month per returned month, aligned with each row's `values`, derived from `result.start_month` (`web.calendar_months.month_labels`). `month_from`/`month_to` are inclusive horizon indices resolved by `require_month_range`; a conflict with `month` or an inverted range fails in `require_series_month_selection` before the simulation runs. Agent-facing usage is documented in root `.agents/skills/explain-results/SKILL.md`; payload and error semantics in `OVERVIEW.md`.
 
 ## HTMX debounce pattern
 

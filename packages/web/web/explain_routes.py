@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, FastAPI, Query, Request
@@ -26,6 +26,7 @@ from web.explain import (
     diagnostics_payload,
     list_loadable_plans,
     require_known_series,
+    require_month_selection,
     resolve_diagnostics_fields,
     resolve_plan,
     series_payload,
@@ -116,6 +117,36 @@ def require_diagnostics_fields(
 DiagnosticsFieldsDep = Annotated[tuple[str, ...], Depends(require_diagnostics_fields)]
 
 
+@dataclass(frozen=True)
+class MonthSelection:
+    month: int | None = None
+    month_from: int | None = None
+    month_to: int | None = None
+
+
+def require_series_month_selection(
+    _plan_gate: ApiPlanDep,
+    month: Annotated[int | None, Query()] = None,
+    month_from: Annotated[int | None, Query()] = None,
+    month_to: Annotated[int | None, Query()] = None,
+) -> MonthSelection:
+    """Validate the month selection after plan resolution, before the simulation.
+
+    Returns the parsed selection so the handler does not declare the same query
+    parameters twice, which would duplicate framework 422 details.
+
+    ``_plan_gate`` is intentionally unused: it forces plan resolution (and its
+    404/409/422 errors) ahead of month validation, matching diagnostics.
+    """
+    require_month_selection(month=month, month_from=month_from, month_to=month_to)
+    return MonthSelection(month=month, month_from=month_from, month_to=month_to)
+
+
+SeriesMonthSelectionDep = Annotated[
+    MonthSelection, Depends(require_series_month_selection)
+]
+
+
 def register_explain_routes(web_app: FastAPI) -> None:
     @web_app.exception_handler(ApiError)
     def api_error_handler(request: Request, exc: ApiError) -> JSONResponse:
@@ -161,13 +192,15 @@ def _register_result_routes(router: APIRouter) -> None:
     def series(
         *,
         series: SeriesDep,
+        selection: SeriesMonthSelectionDep,
         scoped: ApiResultDep,
-        month: Annotated[int | None, Query()] = None,
         percentile: Annotated[int | None, Query()] = None,
     ) -> dict[str, object]:
         return series_payload(
             scoped=scoped,
             series=series,
-            month=month,
+            month=selection.month,
             percentile=percentile,
+            month_from=selection.month_from,
+            month_to=selection.month_to,
         )

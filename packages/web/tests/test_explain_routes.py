@@ -3,12 +3,14 @@ from datetime import datetime
 from http import HTTPStatus
 
 import numpy as np
+import pytest
 from core.models import Plan
 from core.repository import PlanRepository
 from fastapi.testclient import TestClient
 from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS, empty_diagnostics
-from simulation.result import ResolvedAssumptions, SimulationResult
+from simulation.result import RAW_ARRAY_FIELDS, ResolvedAssumptions, SimulationResult
 from web.app import create_app
+from web.calendar_months import month_labels
 from web.explain import (
     AMBIGUOUS_PLAN,
     DB_NOT_INITIALIZED,
@@ -18,6 +20,7 @@ from web.explain import (
     HTTP_SERVICE_UNAVAILABLE,
     HTTP_UNPROCESSABLE,
     INVALID_QUERY,
+    INVALID_RANGE,
     MONTH_OUT_OF_RANGE,
     PLAN_NOT_FOUND,
     SIMULATION_FAILED,
@@ -660,3 +663,220 @@ def test_simulation_failure_wins_over_out_of_range_month(
 
     assert response.status_code == HTTP_UNPROCESSABLE
     assert response.json()["error"] == SIMULATION_FAILED
+
+
+def test_series_without_parameters_returns_the_pinned_envelope(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+    series = RAW_ARRAY_FIELDS[0]
+
+    def run(plan, **kwargs):
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_SERIES,
+        params={"plan_id": plan_id, "series": series},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.json()
+    assert list(body) == ["plan_id", "name", "series", "month", "labels", "rows"]
+    assert body["month"] is None
+    assert "month_from" not in body
+    assert "month_to" not in body
+    assert body["labels"] == month_labels(result.start_month, result.horizon_months)
+
+
+def test_series_range_slices_values_and_echoes_bounds(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+    series = RAW_ARRAY_FIELDS[0]
+    month_from, month_to = 0, 1
+    # Distinct per-cell values so a wrong slice offset cannot pass on zeros.
+    distinct = np.arange(
+        1.0, 1.0 + len(result.percentiles) * result.horizon_months
+    ).reshape(len(result.percentiles), result.horizon_months)
+    result = result.model_copy(update={series: distinct})
+
+    def run(plan, **kwargs):
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_SERIES,
+        params={
+            "plan_id": plan_id,
+            "series": series,
+            "month_from": month_from,
+            "month_to": month_to,
+        },
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.json()
+    assert list(body) == [
+        "plan_id",
+        "name",
+        "series",
+        "month",
+        "month_from",
+        "month_to",
+        "labels",
+        "rows",
+    ]
+    assert body["month"] is None
+    assert body["month_from"] == month_from
+    assert body["month_to"] == month_to
+    assert (
+        body["labels"]
+        == month_labels(result.start_month, result.horizon_months)[
+            month_from : month_to + 1
+        ]
+    )
+    assert body["rows"] == [
+        {
+            "percentile": percentile,
+            "values": distinct[index, month_from : month_to + 1].tolist(),
+        }
+        for index, percentile in enumerate(result.percentiles)
+    ]
+
+
+@pytest.mark.parametrize("param", ["month", "month_from", "month_to"])
+def test_series_non_integer_month_params_report_one_validation_detail(
+    client: TestClient, plan_id: int, monkeypatch, param: str
+) -> None:
+    # Regression: declaring the month params in both the dependency and the
+    # handler made FastAPI report each bad value twice.
+    def run(plan, **kwargs):
+        return _make_result()
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_SERIES,
+        params={"plan_id": plan_id, "series": RAW_ARRAY_FIELDS[0], param: "abc"},
+    )
+
+    assert response.status_code == HTTP_UNPROCESSABLE
+    details = response.json()["detail"]
+    assert len(details) == 1
+    assert details[0]["loc"] == ["query", param]
+
+
+def test_series_month_with_range_fails_before_running_simulation(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    calls = {"n": 0}
+
+    def run(plan, **kwargs):
+        calls["n"] += 1
+        return _make_result()
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_SERIES,
+        params={
+            "plan_id": plan_id,
+            "series": RAW_ARRAY_FIELDS[0],
+            "month": 0,
+            "month_from": 0,
+        },
+    )
+
+    assert response.status_code == HTTP_BAD_REQUEST
+    # Pinned: the message must name both valid shapes, not forbid month_from+month_to.
+    assert response.json() == {
+        "error": INVALID_QUERY,
+        "message": "Provide either month or a month_from/month_to range, not both",
+    }
+    assert calls["n"] == 0
+
+
+def test_series_inverted_range_fails_before_running_simulation(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    calls = {"n": 0}
+
+    def run(plan, **kwargs):
+        calls["n"] += 1
+        return _make_result()
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_SERIES,
+        params={
+            "plan_id": plan_id,
+            "series": RAW_ARRAY_FIELDS[0],
+            "month_from": 1,
+            "month_to": 0,
+        },
+    )
+
+    assert response.status_code == HTTP_BAD_REQUEST
+    assert response.json()["error"] == INVALID_RANGE
+    assert calls["n"] == 0
+
+
+def test_series_inversion_wins_over_out_of_range_bounds(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+    calls = {"n": 0}
+
+    def run(plan, **kwargs):
+        calls["n"] += 1
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_SERIES,
+        params={
+            "plan_id": plan_id,
+            "series": RAW_ARRAY_FIELDS[0],
+            "month_from": result.horizon_months,
+            "month_to": 0,
+        },
+    )
+
+    assert response.status_code == HTTP_BAD_REQUEST
+    assert response.json()["error"] == INVALID_RANGE
+    assert calls["n"] == 0
+
+
+def test_series_month_from_at_horizon_returns_bounds(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    result = _make_result()
+    last_month = result.horizon_months - 1
+
+    def run(plan, **kwargs):
+        return result
+
+    monkeypatch.setattr("web.simulation_cache.run_simulation", run)
+
+    response = client.get(
+        API_RESULT_SERIES,
+        params={
+            "plan_id": plan_id,
+            "series": RAW_ARRAY_FIELDS[0],
+            "month_from": result.horizon_months,
+        },
+    )
+
+    assert response.status_code == HTTP_BAD_REQUEST
+    # Pinned: catches accidental drift in the range wording.
+    assert response.json() == {
+        "error": MONTH_OUT_OF_RANGE,
+        "message": f"month_from must be between 0 and {last_month} inclusive",
+        "min": 0,
+        "max": last_month,
+    }
