@@ -63,6 +63,12 @@ empirical mean for the shift correction and scaling stocks' deviations by
 preset-menu correction in `presets._shift_correction`). The deterministic
 expected run uses planning returns and is unaffected.
 
+The block size and volatility scale are read from the resolved `PlanningReturns`
+snapshot rather than directly from `Plan`, so the adjustment targets and the
+index sequences use the same values. `build_return_paths` raises `ValueError`
+when its `plan` and `planning` arguments disagree on `block_size_months` or
+`stock_volatility_scale` — resolve planning from the same plan you pass in.
+
 One stored-sign difference is intentional. `delta_at_max_age` is the decrease
 shown in the editor. The age glide subtracts it from risk tolerance between
 age 20 and max age (`simulation/risk.py`). TPAW stores the negation of that

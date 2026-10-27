@@ -65,23 +65,21 @@ def build_index_sequences(
     return sequences
 
 
-def adjusted_historical_returns(
-    plan: Plan, *, planning: PlanningReturns
-) -> HistoricalReturns:
+def adjusted_historical_returns(*, planning: PlanningReturns) -> HistoricalReturns:
     # TPAW rescales the vendored history so its expected annual non-log return
     # equals the planning (expected) return before any Monte Carlo indexing. The
     # shift correction uses the per-block table mean (not the series mean), and
-    # stocks' spread is scaled by the plan's log-volatility scale; bonds use 1.0.
+    # stocks' spread is scaled by the resolved log-volatility scale; bonds use
+    # 1.0.
     hist = load_historical_returns()
-    block_size = plan.sampling.block_size_months
-    scale = float(plan.planning_returns.stock_volatility_scale)
+    block_size = planning.block_size_months
     adjusted_stocks = adjust_log_returns(
         log_returns=hist.stocks_log,
         target_annual_non_log=planning.annual_stocks,
         unadjusted_annual_non_log_mean=empirical_stats(
             asset="stocks", block_size=block_size
         ).annual_non_log_mean,
-        log_volatility_scale=scale,
+        log_volatility_scale=float(planning.stock_volatility_scale),
     )
     adjusted_bonds = adjust_log_returns(
         log_returns=hist.bonds_log,
@@ -96,6 +94,28 @@ def adjusted_historical_returns(
     )
 
 
+def _require_matched_inputs(plan: Plan, *, planning: PlanningReturns) -> None:
+    # Block size and volatility scale must agree between the plan and the resolved
+    # planning snapshot: a pair that disagrees used to silently build paths
+    # against the wrong targets, so fail before any work is done. The targets
+    # themselves are trusted from `planning`.
+    plan_block_size = plan.sampling.block_size_months
+    if plan_block_size != planning.block_size_months:
+        raise ValueError(
+            "build_return_paths: plan.sampling.block_size_months="
+            f"{plan_block_size} does not match planning.block_size_months="
+            f"{planning.block_size_months}; resolve planning from the same plan"
+        )
+    plan_scale = float(plan.planning_returns.stock_volatility_scale)
+    planning_scale = float(planning.stock_volatility_scale)
+    if plan_scale != planning_scale:
+        raise ValueError(
+            "build_return_paths: plan.planning_returns.stock_volatility_scale="
+            f"{plan_scale} does not match planning.stock_volatility_scale="
+            f"{planning_scale}; resolve planning from the same plan"
+        )
+
+
 def build_return_paths(
     plan: Plan,
     *,
@@ -104,13 +124,15 @@ def build_return_paths(
     today: date | None = None,
 ) -> ReturnPaths:
     _ = today  # reserved: per-run inflation/return paths may key off today later
-    hist = adjusted_historical_returns(plan, planning=planning)
+    _require_matched_inputs(plan, planning=planning)
+    hist = adjusted_historical_returns(planning=planning)
     sampling = plan.sampling
+    block_size = planning.block_size_months
     sequences = build_index_sequences(
         seed=sampling.seed,
         num_runs=sampling.num_runs,
         months_per_run=months_per_run,
-        block_size=sampling.block_size_months,
+        block_size=block_size,
         length=hist.length,
         stagger_run_starts=sampling.stagger_run_starts,
     )
@@ -118,7 +140,7 @@ def build_return_paths(
         stocks_log=hist.stocks_log[sequences],
         bonds_log=hist.bonds_log[sequences],
         seed=sampling.seed,
-        block_size=sampling.block_size_months,
+        block_size=block_size,
         num_runs=sampling.num_runs,
         months_per_run=months_per_run,
     )

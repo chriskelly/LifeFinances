@@ -1,4 +1,5 @@
 import numpy as np
+from core.models import DEFAULT_BLOCK_SIZE_MONTHS
 from simulation.market_data.inflation import InflationResolved, annual_to_monthly
 from simulation.planning_returns import PlanningReturns
 from simulation.preprocess import ProcessedPlan
@@ -16,6 +17,8 @@ def _resolver_fixtures() -> tuple[InflationResolved, PlanningReturns]:
             annual_stocks=0.05,
             annual_bonds=0.02,
             annual_stock_log_variance=0.03,
+            block_size_months=DEFAULT_BLOCK_SIZE_MONTHS,
+            stock_volatility_scale=1.0,
         ),
     )
 

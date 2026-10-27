@@ -3,6 +3,7 @@ from core.models import MAX_BLOCK_SIZE_MONTHS
 from simulation.market_data import load_historical_returns
 from simulation.market_data.presets_data import (
     REGRESSION_KEYS,
+    empirical_stats,
     load_cape_regression,
     load_empirical_stats_by_block,
 )
@@ -47,6 +48,13 @@ def test_empirical_stats_tables_cover_every_block_size(asset):
     table = load_empirical_stats_by_block(asset)
 
     assert set(table) == set(range(1, MAX_BLOCK_SIZE_MONTHS + 1))
+
+
+def test_empirical_stats_rejects_unknown_block_size():
+    unknown_block_size = MAX_BLOCK_SIZE_MONTHS + 1
+
+    with pytest.raises(ValueError, match="no vendored stocks empirical stats"):
+        empirical_stats(asset="stocks", block_size=unknown_block_size)
 
 
 def test_stock_variance_matches_vendored_block_endpoints():

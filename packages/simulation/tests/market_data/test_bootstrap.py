@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import dataclasses
+import hashlib
 import math
+from decimal import Decimal
 
 import numpy as np
 import pytest
 from core.defaults import default_plan
-from core.models import Plan, SamplingConfig
+from core.models import DEFAULT_BLOCK_SIZE_MONTHS, Plan, SamplingConfig
 from simulation.market_data.bootstrap import (
     ReturnPaths,
     adjusted_historical_returns,
@@ -129,7 +132,7 @@ def test_build_return_paths_gathers_both_assets_with_metadata() -> None:
 
     paths = build_return_paths(plan, planning=planning, months_per_run=months)
 
-    adjusted = adjusted_historical_returns(plan, planning=planning)
+    adjusted = adjusted_historical_returns(planning=planning)
     assert isinstance(paths, ReturnPaths)
     assert paths.stocks_log.shape == (plan.sampling.num_runs, months)
     assert paths.bonds_log.shape == (plan.sampling.num_runs, months)
@@ -153,15 +156,44 @@ def test_build_return_paths_is_deterministic_under_same_seed() -> None:
     assert np.array_equal(a.bonds_log, b.bonds_log)
 
 
+def test_default_sampling_paths_match_pinned_digest() -> None:
+    # Pinned at e3fe5bd, before the single-source change: paths under the default
+    # sampling config must stay bit-identical. Returns are the fixed preset
+    # literals so the pin does not depend on live/cached market feeds. Re-pin
+    # only for a deliberate change to the sampler, the vendored history, the
+    # adjustment, or the fixed preset literals (then say why).
+    plan = _fixed_returns_plan(stocks=0.05, bonds=0.02)
+    months_per_run = 24
+    expected_stocks_digest = (
+        "7c9df40f2c5e7cff51bb07b5d78a42062b0dc023bd3c82b369d6be6e7dde9481"
+    )
+    expected_bonds_digest = (
+        "e5f29fd07f133aa259ef90e4308cd86455ad7e3959f2e8a8d606a511edd9687e"
+    )
+
+    paths = build_return_paths(
+        plan,
+        planning=resolve_planning_returns(plan),
+        months_per_run=months_per_run,
+    )
+
+    assert hashlib.sha256(paths.stocks_log.tobytes()).hexdigest() == (
+        expected_stocks_digest
+    )
+    assert hashlib.sha256(paths.bonds_log.tobytes()).hexdigest() == (
+        expected_bonds_digest
+    )
+
+
 # Whole-series proxy for TPAW's "sampled mean = target" guarantee; valid at the
 # default block size (block-60 mean ~= series mean). Non-default block sizes are
-# covered by test_adjusted_historical_returns_uses_plan_block_size.
+# covered by test_adjusted_historical_returns_uses_resolved_block_size.
 @pytest.mark.parametrize("asset", ["stocks", "bonds"])
 def test_adjusted_historical_returns_match_planning_target(asset):
     plan = _fixed_returns_plan(stocks=0.05, bonds=0.02)
     planning = resolve_planning_returns(plan)
 
-    adjusted = adjusted_historical_returns(plan, planning=planning)
+    adjusted = adjusted_historical_returns(planning=planning)
 
     target = planning.annual_stocks if asset == "stocks" else planning.annual_bonds
     series = adjusted.stocks_log if asset == "stocks" else adjusted.bonds_log
@@ -176,7 +208,7 @@ def test_adjusted_historical_returns_historical_preset_is_approximately_unchange
     planning = resolve_planning_returns(plan)
     raw = load_historical_returns()
 
-    adjusted = adjusted_historical_returns(plan, planning=planning)
+    adjusted = adjusted_historical_returns(planning=planning)
 
     assert historical_annual_return(adjusted.stocks_log) == pytest.approx(
         historical_annual_return(raw.stocks_log), abs=1e-3
@@ -192,7 +224,7 @@ def test_adjusted_historical_returns_scales_only_stocks_spread_by_stock_volatili
     planning = resolve_planning_returns(plan)
     raw = load_historical_returns()
 
-    adjusted = adjusted_historical_returns(plan, planning=planning)
+    adjusted = adjusted_historical_returns(planning=planning)
 
     assert adjusted.stocks_log.std(ddof=1) == pytest.approx(
         raw.stocks_log.std(ddof=1) * scale
@@ -201,25 +233,21 @@ def test_adjusted_historical_returns_scales_only_stocks_spread_by_stock_volatili
 
 
 @pytest.mark.parametrize("asset", ["stocks", "bonds"])
-def test_adjusted_historical_returns_uses_plan_block_size(asset):
+def test_adjusted_historical_returns_uses_resolved_block_size(asset):
     plan = _fixed_returns_plan(stocks=0.05, bonds=0.02)
     plan.sampling = plan.sampling.model_copy(update={"block_size_months": 1})
     planning = resolve_planning_returns(plan)
     raw = load_historical_returns()
 
-    adjusted = adjusted_historical_returns(plan, planning=planning)
+    adjusted = adjusted_historical_returns(planning=planning)
 
     target = planning.annual_stocks if asset == "stocks" else planning.annual_bonds
     raw_log = raw.stocks_log if asset == "stocks" else raw.bonds_log
     adjusted_log = adjusted.stocks_log if asset == "stocks" else adjusted.bonds_log
-    scale = (
-        float(plan.planning_returns.stock_volatility_scale)
-        if asset == "stocks"
-        else 1.0
-    )
+    scale = planning.stock_volatility_scale if asset == "stocks" else 1.0
     expected_log_mean = math.log1p(target) / 12.0 - shift_correction(
         unadjusted_annual_non_log_mean=empirical_stats(
-            asset=asset, block_size=1
+            asset=asset, block_size=planning.block_size_months
         ).annual_non_log_mean,
         series_log_mean=float(raw_log.mean()),
         log_volatility_scale=scale,
@@ -245,12 +273,61 @@ def test_sampled_return_paths_match_planning_target(asset):
     assert historical_annual_return(sampled.ravel()) == pytest.approx(target, abs=5e-3)
 
 
-def test_adjusted_historical_returns_rejects_unknown_block_size():
+def test_build_return_paths_rejects_block_size_mismatch():
+    # Resolve planning first, then change the plan's sampling: the two inputs now
+    # disagree, which used to silently shift the adjustment targets.
+    mutated_block_size = 1
+    plan = _fixed_returns_plan(stocks=0.05, bonds=0.02)
+    assert plan.sampling.block_size_months == DEFAULT_BLOCK_SIZE_MONTHS
+    planning = resolve_planning_returns(plan)
+    plan.sampling = plan.sampling.model_copy(
+        update={"block_size_months": mutated_block_size}
+    )
+
+    with pytest.raises(ValueError, match="does not match") as excinfo:
+        build_return_paths(plan, planning=planning, months_per_run=12)
+
+    message = str(excinfo.value)
+    assert f"plan.sampling.block_size_months={mutated_block_size}" in message
+    assert f"planning.block_size_months={planning.block_size_months}" in message
+
+
+def test_build_return_paths_rejects_volatility_scale_mismatch():
     plan = _fixed_returns_plan(stocks=0.05, bonds=0.02)
     planning = resolve_planning_returns(plan)
-    # Resolve planning first (it reads the same table), then push sampling past
-    # the vendored bound so only the sampling path's guard can fire.
-    plan.sampling = plan.sampling.model_copy(update={"block_size_months": 99999})
+    mutated_scale = Decimal("0.5")
+    plan.planning_returns = plan.planning_returns.model_copy(
+        update={"stock_volatility_scale": mutated_scale}
+    )
 
-    with pytest.raises(ValueError, match="block size"):
-        adjusted_historical_returns(plan, planning=planning)
+    with pytest.raises(ValueError, match="does not match") as excinfo:
+        build_return_paths(plan, planning=planning, months_per_run=12)
+
+    message = str(excinfo.value)
+    assert (
+        f"plan.planning_returns.stock_volatility_scale={float(mutated_scale)}"
+        in message
+    )
+    assert (
+        f"planning.stock_volatility_scale={planning.stock_volatility_scale}" in message
+    )
+
+
+@pytest.mark.parametrize("hand_built", [False, True], ids=["resolved", "hand-built"])
+def test_build_return_paths_accepts_decimal_scale(hand_built: bool):
+    # The editor stores a Decimal scale on the plan; resolution narrows it to a
+    # float, and a hand-built PlanningReturns can carry the Decimal directly.
+    # Both shapes must pass the guard and reach the adjustment.
+    scale = Decimal("0.1")
+    months_per_run = 12
+    plan = _fixed_returns_plan(stocks=0.05, bonds=0.02)
+    plan.planning_returns = plan.planning_returns.model_copy(
+        update={"stock_volatility_scale": scale}
+    )
+    planning = resolve_planning_returns(plan)
+    if hand_built:
+        planning = dataclasses.replace(planning, stock_volatility_scale=scale)
+
+    paths = build_return_paths(plan, planning=planning, months_per_run=months_per_run)
+
+    assert paths.stocks_log.shape == (plan.sampling.num_runs, months_per_run)
