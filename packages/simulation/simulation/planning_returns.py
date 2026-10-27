@@ -52,6 +52,11 @@ class PlanningReturns:
     annual_stocks: float
     annual_bonds: float
     annual_stock_log_variance: float
+    # Carried alongside the targets so the bootstrap adjustment and the index
+    # sequences read block size and volatility scale from the same resolved
+    # source (see build_return_paths' mismatch guard).
+    block_size_months: int
+    stock_volatility_scale: float
     sp500: SP500Resolved | None = None
     treasury: TreasuryYieldsResolved | None = None
 
@@ -213,14 +218,18 @@ def resolve_planning_returns(
         tips_20yr=feeds.tips_20yr,
     )
 
+    block_size_months = plan.sampling.block_size_months
+    volatility_scale = float(config.stock_volatility_scale)
     variance = stock_log_variance(
-        block_size_months=plan.sampling.block_size_months,
-        volatility_scale=float(config.stock_volatility_scale),
+        block_size_months=block_size_months,
+        volatility_scale=volatility_scale,
     )
     return PlanningReturns(
         annual_stocks=annual_stocks,
         annual_bonds=annual_bonds,
         annual_stock_log_variance=variance,
+        block_size_months=block_size_months,
+        stock_volatility_scale=volatility_scale,
         sp500=feeds.sp500,
         treasury=feeds.treasury,
     )

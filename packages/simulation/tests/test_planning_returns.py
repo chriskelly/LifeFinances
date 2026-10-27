@@ -232,6 +232,20 @@ def test_variance_uses_block_size_table_and_scale():
     assert result.annual_stock_log_variance == expected_variance
 
 
+def test_resolved_returns_carry_block_size_and_scale():
+    scale = Decimal("1.5")
+    block_size = 12
+    plan = default_plan()
+    plan.planning_returns.preset = "fixed"
+    plan.planning_returns.stock_volatility_scale = scale
+    plan.sampling = plan.sampling.model_copy(update={"block_size_months": block_size})
+
+    result = resolve_planning_returns(plan, today=TODAY)
+
+    assert result.block_size_months == block_size
+    assert result.stock_volatility_scale == float(scale)
+
+
 def test_regression_preset_retains_both_market_sources() -> None:
     sp500_date = date(2026, 4, 1)
     treasury_date = date(2026, 4, 2)

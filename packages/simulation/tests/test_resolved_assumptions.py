@@ -1,7 +1,7 @@
 from datetime import date
 
 import pytest
-from core.models import PlanningPreset
+from core.models import DEFAULT_BLOCK_SIZE_MONTHS, PlanningPreset
 from pydantic import ValidationError
 from simulation.market_data import (
     InflationResolved,
@@ -29,6 +29,8 @@ def test_snapshot_uses_exact_resolver_values() -> None:
         annual_stocks=annual_stocks,
         annual_bonds=annual_bonds,
         annual_stock_log_variance=annual_variance,
+        block_size_months=DEFAULT_BLOCK_SIZE_MONTHS,
+        stock_volatility_scale=1.0,
     )
 
     snapshot = build_resolved_assumptions(
@@ -65,6 +67,8 @@ def test_snapshot_carries_only_present_market_provenance() -> None:
         annual_stocks=0.051,
         annual_bonds=0.018,
         annual_stock_log_variance=0.031,
+        block_size_months=DEFAULT_BLOCK_SIZE_MONTHS,
+        stock_volatility_scale=1.0,
         sp500=sp500,
         treasury=treasury,
     )

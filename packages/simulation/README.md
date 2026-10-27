@@ -66,7 +66,9 @@ table mean equals the series mean), with stocks' spread scaled by
 adjusted returns are the random inputs that make each run differ from the
 others; the rest of the pipeline is otherwise deterministic given a plan and a
 set of return paths. The deterministic "expected run" still uses planning
-returns directly and is unaffected by this adjustment.
+returns directly and is unaffected by this adjustment. Block size and
+volatility scale are read from the resolved `PlanningReturns` snapshot; see
+`OVERVIEW.md` for the plan/planning mismatch guard.
 
 **Planning returns (expected).** Separate from the bootstrapped return paths,
 `resolve_planning_returns` (`planning_returns.py`) produces the *expected*
