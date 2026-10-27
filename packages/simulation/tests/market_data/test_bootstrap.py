@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import hashlib
 import math
 from decimal import Decimal
 
@@ -18,7 +17,11 @@ from simulation.market_data.bootstrap import (
 from simulation.market_data.presets_data import empirical_stats
 from simulation.market_data.returns import load_historical_returns
 from simulation.planning_returns import resolve_planning_returns
-from simulation.presets import historical_annual_return, shift_correction
+from simulation.presets import (
+    adjust_log_returns,
+    historical_annual_return,
+    shift_correction,
+)
 
 
 def _fixed_returns_plan(*, stocks: float, bonds: float) -> Plan:
@@ -156,33 +159,46 @@ def test_build_return_paths_is_deterministic_under_same_seed() -> None:
     assert np.array_equal(a.bonds_log, b.bonds_log)
 
 
-def test_default_sampling_paths_match_pinned_digest() -> None:
-    # Pinned at e3fe5bd, before the single-source change: paths under the default
-    # sampling config must stay bit-identical. Returns are the fixed preset
-    # literals so the pin does not depend on live/cached market feeds. Re-pin
-    # only for a deliberate change to the sampler, the vendored history, the
-    # adjustment, or the fixed preset literals (then say why).
+def test_build_return_paths_matches_the_plan_derived_computation() -> None:
+    # The pre-change computation read block size and scale from the plan and the
+    # targets from planning. For a matched pair the output must stay identical to
+    # that path. Compared in-process rather than against a pinned hash: platform
+    # float means can differ in the last bits, so a stored digest is not portable.
     plan = _fixed_returns_plan(stocks=0.05, bonds=0.02)
+    planning = resolve_planning_returns(plan)
     months_per_run = 24
-    expected_stocks_digest = (
-        "7c9df40f2c5e7cff51bb07b5d78a42062b0dc023bd3c82b369d6be6e7dde9481"
-    )
-    expected_bonds_digest = (
-        "e5f29fd07f133aa259ef90e4308cd86455ad7e3959f2e8a8d606a511edd9687e"
-    )
+    raw = load_historical_returns()
+    block_size = plan.sampling.block_size_months
 
-    paths = build_return_paths(
-        plan,
-        planning=resolve_planning_returns(plan),
+    stocks_log = adjust_log_returns(
+        log_returns=raw.stocks_log,
+        target_annual_non_log=planning.annual_stocks,
+        unadjusted_annual_non_log_mean=empirical_stats(
+            asset="stocks", block_size=block_size
+        ).annual_non_log_mean,
+        log_volatility_scale=float(plan.planning_returns.stock_volatility_scale),
+    )
+    bonds_log = adjust_log_returns(
+        log_returns=raw.bonds_log,
+        target_annual_non_log=planning.annual_bonds,
+        unadjusted_annual_non_log_mean=empirical_stats(
+            asset="bonds", block_size=block_size
+        ).annual_non_log_mean,
+        log_volatility_scale=1.0,
+    )
+    sequences = build_index_sequences(
+        seed=plan.sampling.seed,
+        num_runs=plan.sampling.num_runs,
         months_per_run=months_per_run,
+        block_size=block_size,
+        length=raw.length,
+        stagger_run_starts=plan.sampling.stagger_run_starts,
     )
 
-    assert hashlib.sha256(paths.stocks_log.tobytes()).hexdigest() == (
-        expected_stocks_digest
-    )
-    assert hashlib.sha256(paths.bonds_log.tobytes()).hexdigest() == (
-        expected_bonds_digest
-    )
+    paths = build_return_paths(plan, planning=planning, months_per_run=months_per_run)
+
+    assert np.array_equal(paths.stocks_log, stocks_log[sequences])
+    assert np.array_equal(paths.bonds_log, bonds_log[sequences])
 
 
 # Whole-series proxy for TPAW's "sampled mean = target" guarantee; valid at the
