@@ -17,24 +17,29 @@ percentile-major: omit `percentile` to get every configured percentile in one
 response. The four `wealth_*` series have no percentile axis.
 
 The envelope is `plan_id`, `name`, `series`, `month`, an optional
-`month_from`/`month_to` pair, `labels`, and `rows`. `labels` holds one ISO
-`YYYY-MM` calendar month per returned month, aligned with every row's `values`,
-so `labels[i]` names `values[i]`; it is derived from `start_month` and sliced
-with the requested months. `month=<int>` is a zero-based horizon index and
-returns that month as a one-element `values` list. `month` is always present and
-stays `null` when it is not used.
+`month_from`/`month_to` pair, `labels`, and `rows`. `month_from` and `month_to`
+are absent when no range is used, never `null`. Each row is
+`{percentile, values}`; the four `wealth_*` series return one row with
+`percentile: null`. `labels` holds one ISO `YYYY-MM` calendar month per returned
+month, aligned with every row's `values`, so `labels[i]` names `values[i]`; it is
+derived from `start_month` and sliced with the requested months. `month=<int>` is
+a zero-based horizon index and returns that month as a one-element `values` list.
+`month` is always present and stays `null` when it is not used.
 
 `month_from` and `month_to` are inclusive zero-based horizon indices. Either may
 be omitted: `month_from` alone runs to the last month, `month_to` alone starts at
-month 0. They cannot be combined with `month` — that is 400 `invalid_query` —
-and `month_from` greater than `month_to` is 400 `invalid_range`. Both checks are
-horizon-independent and run before the simulation. A supplied bound outside the
-horizon is 400 `month_out_of_range`, with the parameter named in the message and
-`min`/`max` set to the horizon bounds. A zero-month horizon answers
-`series has no months` without naming the parameter or setting `min`/`max`. When
-a range is used, the envelope echoes the effective `month_from` and `month_to`,
-and `month` stays `null`. Omitting all three month parameters leaves the payload
-unchanged apart from `labels`.
+month 0. Derive an index with
+`(year - start_month.year) * 12 + (month - start_month.month)`; negative indexes
+are rejected. They cannot be combined with `month` — that is 400
+`invalid_query` — and `month_from` greater than `month_to` is 400
+`invalid_range`. Both checks are horizon-independent and run before the
+simulation. A supplied bound outside the horizon is 400 `month_out_of_range`,
+with the parameter named in the message and `min`/`max` set to the horizon
+bounds; when both bounds are out of range, `month_from` is reported first. A
+zero-month horizon answers `series has no months` without naming the parameter or
+setting `min`/`max`. When a range is used, the envelope echoes the effective
+`month_from` and `month_to`, and `month` stays `null`. Omitting all three month
+parameters leaves the payload unchanged apart from `labels`.
 
 | Name | Meaning |
 | --- | --- |
