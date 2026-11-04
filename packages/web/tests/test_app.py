@@ -1,5 +1,6 @@
 import sqlite3
 from decimal import Decimal
+from xml.etree import ElementTree
 
 import httpx2 as httpx
 import pytest
@@ -41,6 +42,8 @@ from web.forms import (
 )
 from web.routes import (
     EDITOR_HOUSEHOLD,
+    FAVICON,
+    FAVICON_SVG,
     HOME,
     PLAN_CREATE,
     PLAN_DELETE,
@@ -63,7 +66,7 @@ from web.sections import (
     SOCIAL_SECURITY_TITLE,
 )
 from web.spending_summary import INITIAL_SPENDING_LABEL, WORST_CASE_SPENDING_LABEL
-from web.theme import PICO_STYLESHEET_HREF
+from web.theme import PICO_STYLESHEET_HREF, PRIMARY
 
 from web import charts as web_charts
 
@@ -225,6 +228,54 @@ def test_home_forces_light_pico_theme_from_module(
     assert 'data-theme="light"' in response.text
     assert PICO_STYLESHEET_HREF in response.text
     assert "--pico-primary:" in response.text
+
+
+def test_favicon_ico_serves_the_linked_svg(client: TestClient) -> None:
+    response: httpx.Response = client.get(FAVICON, follow_redirects=False)
+
+    assert response.status_code == 200
+    assert "location" not in response.headers
+    assert response.headers["content-type"].startswith("image/svg+xml")
+    assert response.content == client.get(FAVICON_SVG).content
+
+
+def test_favicon_ico_answers_head_with_headers_only(client: TestClient) -> None:
+    response: httpx.Response = client.head(FAVICON)
+
+    assert response.status_code == 200
+    assert int(response.headers["content-length"]) == len(
+        client.get(FAVICON_SVG).content
+    )
+
+
+def test_static_serves_parseable_favicon_svg(client: TestClient) -> None:
+    response: httpx.Response = client.get(FAVICON_SVG)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/svg+xml")
+    root = ElementTree.fromstring(response.text)
+    assert root.tag == "{http://www.w3.org/2000/svg}svg"
+
+
+def test_favicon_svg_uses_theme_primary_color(client: TestClient) -> None:
+    response: httpx.Response = client.get(FAVICON_SVG)
+
+    # The asset cannot read theme.py, so a PRIMARY retint fails this test
+    # until favicon.svg is edited to match.
+    rect = ElementTree.fromstring(response.text).find(
+        ".//{http://www.w3.org/2000/svg}rect"
+    )
+    assert rect is not None
+    assert rect.get("fill") == PRIMARY
+
+
+def test_home_declares_svg_favicon_link(client: TestClient, plan_id: int) -> None:
+    response: httpx.Response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    # Pinned verbatim: the tag is the contract this test protects.
+    icon_tag = f'<link rel="icon" type="image/svg+xml" href="{FAVICON_SVG}">'
+    assert icon_tag in response.text
 
 
 def test_patch_portfolio_persists_balance_change(

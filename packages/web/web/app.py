@@ -13,7 +13,7 @@ from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
 from domain.social_security.earnings import parse_social_security_statement_xml
 from fastapi import FastAPI, Form, HTTPException, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
@@ -63,6 +63,8 @@ from web.routes import (
     EDITOR_SIMULATION_DETAILS,
     EDITOR_SOCIAL_SECURITY,
     EDITOR_SPENDING,
+    FAVICON,
+    FAVICON_SVG_FILENAME,
     HOME,
     PLAN_CREATE,
     PLAN_DELETE,
@@ -85,6 +87,7 @@ from web.routes import (
 from web.simulation_cache import get_or_run_simulation
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
+_STATIC_DIR = _PACKAGE_DIR / "static"
 templates = Jinja2Templates(directory=str(_PACKAGE_DIR / "templates"))
 templates.env.globals["routes"] = routes
 templates.env.globals["theme"] = theme
@@ -196,9 +199,20 @@ def _redirect_after_plan_delete(
 def _mount_static(web_app: FastAPI) -> None:
     web_app.mount(
         routes.STATIC,
-        StaticFiles(directory=_PACKAGE_DIR / "static"),
+        StaticFiles(directory=_STATIC_DIR),
         name="static",
     )
+
+
+def _register_favicon_route(web_app: FastAPI) -> None:
+    # Browsers and crawlers ask for /favicon.ico even when the page links an
+    # SVG icon. Serving the same mark here keeps that bare request off the
+    # 404 path without a second asset or a redirect hop.
+    @web_app.api_route(FAVICON, methods=["GET", "HEAD"], include_in_schema=False)
+    def favicon() -> FileResponse:
+        return FileResponse(
+            _STATIC_DIR / FAVICON_SVG_FILENAME, media_type="image/svg+xml"
+        )
 
 
 def _register_home_route(web_app: FastAPI) -> None:
@@ -816,6 +830,7 @@ def create_app(*, db_path: Path | None = None) -> FastAPI:
     web_app.state.db_path = db_path or default_db_path()
 
     _mount_static(web_app)
+    _register_favicon_route(web_app)
     _register_home_route(web_app)
     _register_editor_routes(web_app)
     _register_spending_routes(web_app)
