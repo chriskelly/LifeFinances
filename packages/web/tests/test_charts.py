@@ -19,7 +19,12 @@ def _resolved_assumptions() -> ResolvedAssumptions:
     )
 
 
-def _make_result(*, percentiles: list[int], horizon_months: int) -> SimulationResult:
+def _make_result(
+    *,
+    percentiles: list[int],
+    horizon_months: int,
+    start_month: tuple[int, int] = (2026, 1),
+) -> SimulationResult:
     shape = (len(percentiles), horizon_months)
     series = np.zeros(shape, dtype=np.float64)
     months = np.zeros(horizon_months, dtype=np.float64)
@@ -28,7 +33,7 @@ def _make_result(*, percentiles: list[int], horizon_months: int) -> SimulationRe
         horizon_months=horizon_months,
         num_runs=10,
         percentiles=list(percentiles),
-        start_month=(2026, 1),
+        start_month=start_month,
         balance_start=series.copy(),
         withdrawals_essential=series.copy(),
         withdrawals_discretionary=series.copy(),
@@ -171,6 +176,113 @@ def test_wealth_composition_traces_hover_on_points_not_fills():
     assert all(trace["hoveron"] == "points" for trace in figure["data"])
 
 
+def test_income_by_source_maps_each_diagnostics_flow_to_its_trace():
+    horizon = 4
+    result = _make_result(percentiles=[50], horizon_months=horizon)
+    flows = {
+        "net_income_job": [0.0, 1.0, 2.0, 0.0],
+        "net_income_social_security": [0.0, 10.0, 20.0, 0.0],
+        "net_income_pension": [0.0, 100.0, 200.0, 0.0],
+        "net_income_manual": [0.0, 1_000.0, 2_000.0, 0.0],
+        # Deliberately not the layer sum: a zero-gross month keeps its residual
+        # tax in the total, so the chart must read this field rather than add
+        # the four layers.
+        "net_income_total": [-25.0, 1_111.0, 2_222.0, 0.0],
+    }
+    for field, values in flows.items():
+        setattr(result.diagnostics, field, np.array(values, dtype=np.float64))
+
+    figure = charts.build_figure(result, charts.INCOME_BY_SOURCE)
+
+    # Pinned: legend names and their order are the chart's user-facing contract.
+    expected = {
+        "Job": flows["net_income_job"],
+        "Social Security": flows["net_income_social_security"],
+        "Pension": flows["net_income_pension"],
+        "Manual": flows["net_income_manual"],
+        "Total net income": flows["net_income_total"],
+    }
+    assert [trace["name"] for trace in figure["data"]] == list(expected)
+    assert [list(trace["y"]) for trace in figure["data"]] == list(expected.values())
+
+
+def test_income_by_source_x_axis_uses_start_month_labels_across_year_end():
+    horizon = 4
+    start_month = (2025, 11)
+    result = _make_result(
+        percentiles=[50], horizon_months=horizon, start_month=start_month
+    )
+
+    figure = charts.build_figure(result, charts.INCOME_BY_SOURCE)
+
+    # Pinned: the calendar labels this chart must render for that start month.
+    assert list(figure["data"][0]["x"]) == [
+        "2025-11",
+        "2025-12",
+        "2026-01",
+        "2026-02",
+    ]
+
+
+def test_income_by_source_layers_share_one_stackgroup_and_total_is_unstacked():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=3)
+
+    figure = charts.build_figure(result, charts.INCOME_BY_SOURCE)
+
+    layers, total = figure["data"][:-1], figure["data"][-1]
+    stackgroups = {trace["stackgroup"] for trace in layers}
+    assert len(stackgroups) == 1
+    assert None not in stackgroups
+    assert total.get("stackgroup") is None
+
+
+def test_income_by_source_layers_hover_on_points_not_fills():
+    """Same plotly.js fill hit-catcher limitation as the wealth chart: stacked
+    fills swallow the pointer so "x unified" hover never fires."""
+    result = _make_result(percentiles=[50], horizon_months=3)
+
+    figure = charts.build_figure(result, charts.INCOME_BY_SOURCE)
+
+    assert all(trace["hoveron"] == "points" for trace in figure["data"][:-1])
+
+
+def test_income_by_source_total_is_a_dotted_line():
+    result = _make_result(percentiles=[50], horizon_months=2)
+
+    figure = charts.build_figure(result, charts.INCOME_BY_SOURCE)
+
+    total = figure["data"][-1]
+    # Pinned: the total is dotted so it reads as a summary line, not a fifth
+    # stacked source.
+    assert total["mode"] == "lines"
+    assert total["line"]["dash"] == "dot"
+
+
+def test_income_by_source_ignores_configured_percentiles():
+    single = _make_result(percentiles=[50], horizon_months=3)
+    many = _make_result(percentiles=[5, 50, 95], horizon_months=3)
+    # Distinct percentile-major rows so a regression that reads one of them
+    # would show up as a different figure.
+    single.balance_start[:] = 111.0
+    many.balance_start[:] = 222.0
+    single.withdrawals_total[:] = 333.0
+    many.withdrawals_total[:] = 444.0
+
+    single_figure = charts.build_figure(single, charts.INCOME_BY_SOURCE)
+    many_figure = charts.build_figure(many, charts.INCOME_BY_SOURCE)
+
+    assert single_figure["data"] == many_figure["data"]
+
+
+def test_chart_options_labels_income_by_source_without_percentile_suffix():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
+
+    options = dict(charts.chart_options(result))
+
+    # Pinned: the selector label must not gain a percentile suffix.
+    assert options[charts.INCOME_BY_SOURCE] == "Income by source"
+
+
 def test_chart_options_cover_all_chart_types_in_order():
     result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
 
@@ -202,6 +314,7 @@ def test_chart_options_wealth_labels_use_actual_percentiles():
         charts.WEALTH_COMPOSITION_LOW,
         charts.WEALTH_COMPOSITION_MID,
         charts.WEALTH_COMPOSITION_HIGH,
+        charts.INCOME_BY_SOURCE,
     ],
 )
 def test_build_figure_uses_unified_x_hovermode_for_stable_tooltips(chart_type):
@@ -299,10 +412,14 @@ def test_band_chart_omits_fill_for_single_percentile():
     assert all(trace.get("fill") in (None, "none") for trace in figure["data"])
 
 
-def test_wealth_composition_legend_traceorder_is_reversed():
+@pytest.mark.parametrize(
+    "chart_type",
+    [charts.WEALTH_COMPOSITION_MID, charts.INCOME_BY_SOURCE],
+)
+def test_stacked_charts_legend_traceorder_is_reversed(chart_type):
     result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
 
-    figure = charts.build_figure(result, charts.WEALTH_COMPOSITION_MID)
+    figure = charts.build_figure(result, chart_type)
 
     assert figure["layout"]["legend"]["traceorder"] == "reversed"
 
@@ -315,6 +432,7 @@ def test_wealth_composition_legend_traceorder_is_reversed():
         charts.WEALTH_COMPOSITION_LOW,
         charts.WEALTH_COMPOSITION_MID,
         charts.WEALTH_COMPOSITION_HIGH,
+        charts.INCOME_BY_SOURCE,
     ],
 )
 def test_dollar_charts_format_hover_as_whole_dollars(chart_type):

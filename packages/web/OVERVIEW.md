@@ -3,10 +3,10 @@
 FastAPI + HTMX UI for plan editing and simulation results. Depends on
 `simulation`, `domain`, and `core`.
 
-Explain JSON field names for `.agents/skills/explain-results` live in the three
-tables below. Mechanism (essential / discretionary / general / legacy spending,
-Merton allocation) is in `packages/simulation/README.md` — this file does not
-restate those equations.
+Explain JSON field names for `.agents/skills/explain-results` live in the Series,
+Summary, and Diagnostics tables below. Mechanism (essential / discretionary /
+general / legacy spending, Merton allocation) is in
+`packages/simulation/README.md` — this file does not restate those equations.
 
 ## Series
 
@@ -130,3 +130,27 @@ a source.
 | `net_income_social_security` | Social Security portion of `net_income_total` for the month. |
 | `net_income_pension` | Pension portion of `net_income_total` for the month. |
 | `net_income_manual` | Manual-income portion of `net_income_total` for the month, including the manual streams' own real/nominal basis. |
+
+## Results charts
+
+`GET /results?plan={id}&chart={type}` renders one chart. Valid `chart` values are
+the constants in `web/charts.py` (`CHART_TYPES`):
+
+| Value | Chart |
+| --- | --- |
+| `portfolio` | Portfolio balance band |
+| `spending-total` | Total spending band |
+| `income-by-source` | Income by source: four stacked expected-path flows plus the dotted net total |
+| `asset-allocation-savings-portfolio` | Savings stock allocation (0–100%) |
+| `wealth-composition-low` / `-mid` / `-high` | Wealth composition at the low / middle / high configured percentile |
+
+Unknown values fall back to `spending-total`. `income-by-source` is the only
+chart with no percentile axis: it reads `diagnostics.net_income_*` (real dollars,
+one value per month), so its traces do not vary with the configured percentiles
+and the selector lists it without a suffix.
+
+The chart plots **net** flows, so a source can be negative (tax prorating, or the
+nominal-basis manual adjustment). Plotly stacks negatives below zero, so the
+dotted total is the authoritative line and may not sit at the top of the stack;
+in a month with no gross income the four sources are zero while the total keeps
+that month's residual tax.
