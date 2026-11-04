@@ -7,6 +7,7 @@ from web.calendar_months import month_labels
 
 PORTFOLIO = "portfolio"
 SPENDING_TOTAL = "spending-total"
+INCOME_BY_SOURCE = "income-by-source"
 ASSET_ALLOCATION_SAVINGS = "asset-allocation-savings-portfolio"
 WEALTH_COMPOSITION_LOW = "wealth-composition-low"
 WEALTH_COMPOSITION_MID = "wealth-composition-mid"
@@ -17,6 +18,7 @@ DEFAULT_CHART = SPENDING_TOTAL
 CHART_TYPES: tuple[str, ...] = (
     PORTFOLIO,
     SPENDING_TOTAL,
+    INCOME_BY_SOURCE,
     ASSET_ALLOCATION_SAVINGS,
     WEALTH_COMPOSITION_LOW,
     WEALTH_COMPOSITION_MID,
@@ -42,6 +44,7 @@ _WEALTH_CHART_TYPES = frozenset(
 _STATIC_LABELS = {
     PORTFOLIO: "Portfolio balance",
     SPENDING_TOTAL: "Total spending",
+    INCOME_BY_SOURCE: "Income by source",
     ASSET_ALLOCATION_SAVINGS: "Savings allocation",
 }
 
@@ -74,14 +77,27 @@ _BAND_SOURCE = {
     ASSET_ALLOCATION_SAVINGS: "savings_stock_allocation",
 }
 
-_WEALTH_INCOME_LAYERS = (
-    ("Job", "wealth_job"),
-    ("Social Security", "wealth_social_security"),
-    ("Pension", "wealth_pension"),
-    ("Manual", "wealth_manual"),
+# Legend labels are shared by the two stacked charts so they cannot drift.
+_INCOME_SOURCES = (
+    ("Job", "job"),
+    ("Social Security", "social_security"),
+    ("Pension", "pension"),
+    ("Manual", "manual"),
+)
+
+_WEALTH_INCOME_LAYERS = tuple(
+    (label, f"wealth_{key}") for label, key in _INCOME_SOURCES
 )
 
 _WEALTH_STACKGROUP = "wealth"
+
+# Post-tax real-dollar monthly flows on the expected path (one value per month,
+# not a percentile band).
+_INCOME_FLOW_LAYERS = tuple(
+    (label, f"net_income_{key}") for label, key in _INCOME_SOURCES
+)
+
+_INCOME_STACKGROUP = "income"
 
 # "x unified" matches on hovered x and shows every trace, so tooltips stay
 # stable across the plot (unlike default "closest", which flips between lines).
@@ -187,6 +203,40 @@ def _wealth_composition_figure(result: SimulationResult, chart_type: str) -> go.
     return figure
 
 
+def _income_by_source_figure(result: SimulationResult) -> go.Figure:
+    x = month_labels(result.start_month, result.horizon_months)
+    figure = go.Figure()
+    for label, field in _INCOME_FLOW_LAYERS:
+        figure.add_trace(
+            go.Scatter(
+                x=x,
+                y=getattr(result.diagnostics, field).tolist(),
+                mode="lines",
+                name=label,
+                stackgroup=_INCOME_STACKGROUP,
+                hoveron="points",
+            )
+        )
+    # Read the total instead of summing the layers: in a month with no gross
+    # income the layers are zero while the total keeps that month's residual
+    # tax, so the dotted line can sit off the stack.
+    figure.add_trace(
+        go.Scatter(
+            x=x,
+            y=result.diagnostics.net_income_total.tolist(),
+            mode="lines",
+            name="Total net income",
+            line={"dash": "dot"},
+        )
+    )
+    figure.update_layout(
+        hovermode=_HOVERMODE,
+        legend={"traceorder": "reversed"},
+        yaxis={"hoverformat": HOVERFORMAT_DOLLAR},
+    )
+    return figure
+
+
 def build_figure(result: SimulationResult, chart_type: str) -> dict:
     source_field = _BAND_SOURCE.get(chart_type)
     if source_field is not None:
@@ -199,4 +249,6 @@ def build_figure(result: SimulationResult, chart_type: str) -> dict:
         ).to_plotly_json()
     if chart_type in _WEALTH_CHART_TYPES:
         return _wealth_composition_figure(result, chart_type).to_plotly_json()
+    if chart_type == INCOME_BY_SOURCE:
+        return _income_by_source_figure(result).to_plotly_json()
     raise ValueError(f"unsupported chart type: {chart_type!r}")
