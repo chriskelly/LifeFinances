@@ -12,8 +12,6 @@ uv run marimo edit tools/disability_insurance.py
 
 Optional: `uv run marimo run tools/disability_insurance.py` for view-only.
 
-Working directory must be the repo root so `core.paths.default_db_path()` resolves `data/data.db`. Override with `LIFE_FINANCES_DB_PATH`.
-
 ## Rules
 
 - Import `core` and `domain` only (plus `marimo` as the host). **Never** import `web` or `simulation`.

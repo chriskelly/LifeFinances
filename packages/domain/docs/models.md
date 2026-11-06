@@ -1,10 +1,11 @@
 # Domain models and streams
 
-Scope: the timed-stream primitive, real/nominal basis, and the legacy port map.
-Read before adding an income or spending source.
+Scope: the timed-stream primitive, real/nominal basis, and single-person
+households. Read before adding an income or spending source.
 
-Ported legacy finance logic that produces unified timed income/spending streams
-and tax-adjusted cashflows. Depends only on `core`. Never imports `web`.
+The finance logic here produces unified timed income/spending streams and
+tax-adjusted cashflows; the pre-rebuild implementation is preserved at tag
+`legacy/v1-final`.
 
 ## Stream primitive
 
@@ -15,25 +16,11 @@ projected with `core.timeline.project_stream`.
   the simulation layer (no inflation conversion), growth is a real raise.
   `is_nominal=True` => fixed nominal dollars, deflated to today's dollars by the
   simulation layer, growth is a nominal raise.
-- **Future-dated nominal anchoring is NOT supported** — only add a
-  3-way mode when a consumer needs it.
+- **No third basis mode exists**; add one only when a consumer needs it.
 - **Composition:** features that modify income over a sub-window
   (e.g. planned sabbaticals — break or % reduction) are expressed by composing
   multiple `TimedStream` segments, honoring the growth re-anchoring rule on
   each segment boundary.
-
-## Legacy port map
-
-| Legacy module | Destination | Status |
-|---------------|-------------|--------|
-| `job_income.py` (incl. planned sabbaticals) | `../domain/job_income/` | done |
-| `social_security.py` | `../domain/social_security/` | done |
-| `pension.py` | `../domain/pension/` | done |
-| `taxes.py` (income-side) | `../domain/taxes/` | done |
-| `build_monthly_cashflows(plan)` aggregator | `../domain/__init__.py` | done |
-
-Port pattern: adapt legacy tests -> implement with monthly boundaries -> wire to
-the engine.
 
 ## Single-person households
 

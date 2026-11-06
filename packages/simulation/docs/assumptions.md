@@ -1,5 +1,8 @@
 # Resolved assumptions without a simulation
 
+Scope: the display-only assumption resolver, its cache/refresh behavior, and its
+validation limits. Read before changing assumption display, refresh, or validation behavior.
+
 `resolve_assumptions(plan, ...)` in `../simulation/assumptions.py` resolves
 inflation and planning returns and returns a `ResolvedAssumptions` snapshot
 without running `preprocess`, `build_return_paths`, or the engine. It is for
