@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import date
 from decimal import Decimal
 from xml.etree import ElementTree
 
@@ -6,7 +7,7 @@ import httpx2 as httpx
 import pytest
 from core.defaults import DEFAULT_PLAN_NAME, default_plan
 from core.job import Job
-from core.models import AppSettings, PlanningReturnsConfig
+from core.models import AppSettings, InflationConfig, PlanningReturnsConfig
 from core.plan_names import copy_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
@@ -1040,12 +1041,50 @@ def test_market_assumptions_editor_shows_failure_for_non_compounding_returns(
     body = response.text
     assert response.status_code == 200
     _assert_assumptions_failure(body, caplog)
+    assert any(
+        record.exc_info is not None
+        and isinstance(record.exc_info[1], ValueError)
+        and "total loss" in str(record.exc_info[1])
+        for record in caplog.records
+    )
+
+
+def test_market_assumptions_editor_shows_failure_for_non_compounding_inflation(
+    client: TestClient, repo: PlanRepository, plan_id: int, caplog
+) -> None:
+    import logging
+
+    plan = repo.get_by_id(plan_id)
+    assert plan is not None
+    plan.inflation = InflationConfig(
+        mode="manual",
+        manual_annual_rate=Decimal("-1.5"),
+    )
+    repo.save(plan_id, plan)
+
+    with caplog.at_level(logging.ERROR, logger="web.app"):
+        response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
+
+    body = response.text
+    assert response.status_code == 200
+    _assert_assumptions_failure(body, caplog)
 
 
 def test_market_assumptions_editor_matches_full_simulation_summary(
     client: TestClient, plan_id: int, monkeypatch
 ) -> None:
+    import datetime as dt
     import sys
+
+    frozen = date(2026, 1, 2)
+
+    class FrozenDate(dt.date):
+        @classmethod
+        def today(cls):
+            return frozen
+
+    monkeypatch.setattr("simulation.assumptions.date", FrozenDate)
+    monkeypatch.setattr("web.simulation_cache.date", FrozenDate)
 
     treasury = sys.modules["simulation.market_data.treasury"]
     # /results runs the simulation with allow_refresh=True, and Treasury

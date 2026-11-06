@@ -199,6 +199,16 @@ def test_non_fixed_preset_ignores_invalid_fixed_literals():
     assert result.annual_bonds == ROUNDED_TIPS_20YR
 
 
+def test_fixed_preset_rejects_non_compounding_literals():
+    invalid_bond_return = Decimal("-1.5")
+    plan = default_plan()
+    plan.planning_returns.preset = "fixed"
+    plan.planning_returns.expected_annual_return_bonds = invalid_bond_return
+
+    with pytest.raises(ValueError, match="bond"):
+        resolve_planning_returns(plan, today=TODAY)
+
+
 def test_tips_20yr_is_rounded_to_three_decimals():
     unrounded_yield = 0.02637
     expected_bonds = round3(unrounded_yield)

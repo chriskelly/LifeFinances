@@ -36,9 +36,9 @@ SimulationResult  (percentile-major)      # public return; includes diagnostics
 planning returns and returns a `ResolvedAssumptions` snapshot without running
 `preprocess`, `build_return_paths`, or the engine. It is for display-only
 consumers such as the Market assumptions editor. It refreshes market data only
-when a caller passes `allow_refresh=True` and the resolver's own key/staleness
-conditions are met; with the default `False`, the existing cache -> vendored
-fallback applies.
+when a caller passes `allow_refresh=True` and the resolver's staleness (and, for
+keyed feeds, API key) conditions are met; with the default `False`, the existing
+cache -> vendored fallback applies.
 
 ## Stage by stage
 

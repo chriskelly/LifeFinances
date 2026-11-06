@@ -45,11 +45,12 @@ result; `/results` refreshes the same container via HTMX OOB
 (`hx-swap-oob="innerHTML"`). The direct `GET /editor/market-assumptions` does
 not run the engine: it resolves inflation and planning returns through
 `simulation.assumptions.resolve_assumptions` with refresh disabled, so it never
-blocks on a market-data fetch. Its values and observation dates match those
-files; source labels describe each caller's own read path, so a fresh editor
-read can say `cache` where a just-refreshed simulation run said `live`. The
-editor can also be newer than a cached home/results snapshot (for example after
-a manual refresh) until that cache misses again.
+blocks on a market-data fetch and deliberately ignores configured API keys. Its
+values and observation dates match a simulation reading the same cache/vendored
+files. A live refresh can make the two differ in either direction until the
+other side re-reads or its cache misses; source labels describe each caller's
+own read path, so a fresh editor read can say `cache` where a just-refreshed run
+said `live`.
 
 If the simulation raises, the results panel shows a generic `Simulation failed…`
 alert (exception is logged server-side with stack trace; raw exception text is

@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 from core.defaults import default_plan
-from core.models import PlanningReturnsConfig
+from core.models import InflationConfig, PlanningReturnsConfig
 from simulation.market_data.inflation import annual_to_monthly
 
 from simulation import (
@@ -17,6 +17,8 @@ TODAY = date(2026, 1, 1)
 
 
 def test_resolved_assumptions_match_full_simulation_for_same_plan_and_day() -> None:
+    # Both paths read the same cache/vendored files; a concurrent refresh could
+    # race the comparison.
     plan = default_plan()
     plan.sampling.num_runs = 25
 
@@ -95,8 +97,18 @@ def test_resolve_assumptions_forwards_refresh_and_now(
 
     assert captured["inflation"]["allow_refresh"] is True
     assert captured["inflation"]["now"] is sentinel_now
+    assert captured["inflation"]["today"] == TODAY
     assert captured["planning"]["allow_refresh"] is True
     assert captured["planning"]["now"] is sentinel_now
+    assert captured["planning"]["today"] == TODAY
+
+
+def test_resolve_assumptions_rejects_non_compounding_inflation() -> None:
+    plan = default_plan()
+    plan.inflation = InflationConfig(mode="manual", manual_annual_rate=Decimal("-1.5"))
+
+    with pytest.raises(ValueError, match="inflation"):
+        resolve_assumptions(plan, today=TODAY)
 
 
 @pytest.mark.parametrize(

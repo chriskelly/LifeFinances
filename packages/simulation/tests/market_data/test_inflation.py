@@ -279,6 +279,14 @@ def test_manual_mode_uses_configured_rate(tmp_path: Path) -> None:
     assert resolved.market_source is None
 
 
+def test_manual_rate_at_or_below_minus_one_raises() -> None:
+    plan = default_plan()
+    plan.inflation = InflationConfig(mode="manual", manual_annual_rate=Decimal("-1.5"))
+
+    with pytest.raises(ValueError, match="inflation"):
+        resolve_inflation(plan, today=date(2026, 1, 2))
+
+
 def test_manual_inflation_has_no_market_provenance() -> None:
     annual_rate = Decimal("0.031")
     plan = default_plan()
