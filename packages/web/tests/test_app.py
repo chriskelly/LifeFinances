@@ -978,7 +978,10 @@ def test_market_assumptions_editor_ignores_configured_api_keys(
 
     response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
 
+    body = unescape(response.text)
     assert response.status_code == 200
+    assert UNAVAILABLE_MESSAGE not in body
+    assert "Inflation source:" in body
     assert captured.get("allow_refresh") is False
     assert "fred_api_key" not in captured
     assert "eod_api_key" not in captured
@@ -1012,8 +1015,10 @@ def test_market_assumptions_editor_shows_failure_message_when_resolution_fails(
 
 
 def test_market_assumptions_editor_shows_failure_for_non_compounding_returns(
-    client: TestClient, repo: PlanRepository, plan_id: int
+    client: TestClient, repo: PlanRepository, plan_id: int, caplog
 ) -> None:
+    import logging
+
     plan = repo.get_by_id(plan_id)
     assert plan is not None
     plan.planning_returns = PlanningReturnsConfig(
@@ -1024,13 +1029,20 @@ def test_market_assumptions_editor_shows_failure_for_non_compounding_returns(
     )
     repo.save(plan_id, plan)
 
-    response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
+    with caplog.at_level(logging.ERROR, logger="web.app"):
+        response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
 
     body = unescape(response.text)
     assert response.status_code == 200
     assert _SIMULATION_FAILURE_MESSAGE in body
     assert UNAVAILABLE_MESSAGE in body
     assert 'class="resolved-assumptions"' not in body
+    assert any(
+        record.name == "web.app"
+        and record.exc_info is not None
+        and "plan_id" in record.getMessage()
+        for record in caplog.records
+    )
 
 
 def test_market_assumptions_editor_matches_full_simulation_summary(
@@ -1054,6 +1066,8 @@ def test_market_assumptions_editor_matches_full_simulation_summary(
 
     assert editor.status_code == 200
     assert results.status_code == 200
+    assert editor.text.count(marker) == 1
+    assert results.text.count(marker) == 1
     assert 'class="resolved-assumptions"' in editor.text
     assert summary(editor.text) == summary(results.text)
 

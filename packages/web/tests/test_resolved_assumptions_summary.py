@@ -225,7 +225,7 @@ def test_market_assumptions_get_renders_resolved_assumptions(
     assert format_percent(annual_inflation) in body
     assert format_percent(annual_bond_return) in body
     assert f"Inflation source: {SOURCE_LABELS['manual']}" in body
-    assert forms.PLANNING_PRESET_LABELS["regression_prediction"] in body
+    assert f"<dd>{forms.PLANNING_PRESET_LABELS['regression_prediction']}</dd>" in body
     assert 'hx-swap-oob="innerHTML"' not in body
 
 

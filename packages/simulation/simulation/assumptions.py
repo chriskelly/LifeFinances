@@ -1,3 +1,11 @@
+"""Resolve the assumptions a simulation would use, without running one.
+
+Display-only consumers (the Market assumptions editor) need the inflation and
+planning-return snapshot, not the cashflow projection, return paths, or the
+engine. This entrypoint skips all of them and leaves market-data refresh off by
+default.
+"""
+
 from __future__ import annotations
 
 from datetime import date, datetime

@@ -1,12 +1,17 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
 from core.defaults import default_plan
 from core.models import PlanningReturnsConfig
-from simulation.stub import run_simulation
+from simulation.market_data.inflation import annual_to_monthly
 
-from simulation import assumptions, resolve_assumptions
+from simulation import (
+    InflationResolved,
+    assumptions,
+    resolve_assumptions,
+    run_simulation,
+)
 
 TODAY = date(2026, 1, 1)
 
@@ -51,6 +56,47 @@ def test_resolve_assumptions_never_refreshes_market_data_by_default(
     assert captured["inflation"]["api_key"] == "fred-key"
     assert captured["planning"]["allow_refresh"] is False
     assert captured["planning"]["eod_api_key"] == "eod-key"
+
+
+def test_resolve_assumptions_forwards_refresh_and_now(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan = default_plan()
+    sentinel_now = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+    captured: dict[str, dict] = {}
+
+    class Stop(Exception):
+        pass
+
+    def spy_inflation(plan, **kwargs):
+        captured["inflation"] = kwargs
+        return InflationResolved(
+            annual=0.02,
+            monthly=annual_to_monthly(0.02),
+            source="manual",
+        )
+
+    def spy_planning(plan, **kwargs):
+        captured["planning"] = kwargs
+        raise Stop
+
+    monkeypatch.setattr(assumptions, "resolve_inflation", spy_inflation)
+    monkeypatch.setattr(assumptions, "resolve_planning_returns", spy_planning)
+
+    with pytest.raises(Stop):
+        resolve_assumptions(
+            plan,
+            today=TODAY,
+            allow_refresh=True,
+            now=sentinel_now,
+            fred_api_key="fred-key",
+            eod_api_key="eod-key",
+        )
+
+    assert captured["inflation"]["allow_refresh"] is True
+    assert captured["inflation"]["now"] is sentinel_now
+    assert captured["planning"]["allow_refresh"] is True
+    assert captured["planning"]["now"] is sentinel_now
 
 
 @pytest.mark.parametrize(
