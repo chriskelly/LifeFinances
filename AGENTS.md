@@ -60,10 +60,11 @@ After substantive changes, run `make` and confirm it passes before claiming work
 
 ## Testing
 
-Rules and the TDD loop: `~/.agents/docs/tdd.md`. Those rules outrank any skill's checklist. Repo conventions:
-
-- pytest, ruff, pyright; `make` is the full check.
-- Keep arrange / act / assert visually distinct.
+- A red must be **logical**: an assertion failure, not an import, missing symbol, or compile error. Scaffold until it is logical and do not record the structural run.
+- Test our logic, not framework wiring, trivial getters, or defaults.
+- One behaviour per test; fakes at boundaries per repo convention.
+- These rules outrank any skill's checklist.
+- pytest, ruff, pyright; `make` is the full check. Keep arrange / act / assert visually distinct.
 
 ## Package dependency direction (strict)
 
@@ -81,7 +82,7 @@ core → stdlib + pydantic + sqlite
 | -------- | ---- |
 | Root / nested `AGENTS.md` | Rules for this repo or area, plus a pointer index |
 | `docs/<topic>.md`, `packages/*/docs/<topic>.md` | Durable reference; read on demand |
-| `.agents/specs/`, `.agents/plans/` | Local designs and plans (lifecycle: `~/.agents/AGENTS.md`) |
+| `.agents/specs/`, `.agents/plans/` | Local designs and plans — **never committed** |
 | GitHub issues | Roadmap / larger-work tracking |
 
 - Name specs `.agents/specs/YYYY-MM-DD-<topic>-design.md`; load one only while continuing that work.
