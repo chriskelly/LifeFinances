@@ -42,7 +42,7 @@
 #   1  Fetch returned no usable observations
 #   2  Required API key not configured in Settings
 #
-# See AGENTS.md (Market data refresh).
+# See docs/market-data.md.
 """Refresh live market-data cache from configured local API keys."""
 
 from __future__ import annotations

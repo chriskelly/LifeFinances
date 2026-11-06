@@ -25,25 +25,10 @@ LifeFinances is a personal finances simulator rebuilt in 2026 (Python, TPAW mont
 │   ├── simulation/          # Monthly TPAW engine
 │   └── web/                 # FastAPI + HTMX UI
 ├── tools/                   # Marimo apps — see tools/AGENTS.md
-├── data/
-│   ├── data.db.blank        # committed schema
-│   └── data.db              # gitignored working DB
-├── scripts/
-│   ├── init_db.py
-│   ├── db_inspect.py
-│   ├── refresh_market_data.py
-│   └── import_legacy_yaml.py
-├── docs/specs/              # open designs only (delete when feature done)
-└── docs/plans/              # gitignored local implementation plans
+├── data/                    # data.db.blank committed; data.db gitignored
+├── scripts/                 # init_db, db_inspect, refresh_market_data, import_legacy_yaml
+└── docs/                    # cross-cutting reference
 ```
-
-## Explaining results
-
-With the dev server running, follow `.agents/skills/explain-results/SKILL.md`. It calls the local JSON routes for the cached simulation. Do not re-run the simulation in a separate process.
-
-## Working directory contract
-
-Always run developer commands from the **repository root**. `LIFE_FINANCES_DB_PATH` overrides the default `data/data.db` location.
 
 ## Bootstrap
 
@@ -52,59 +37,9 @@ uv sync
 uv run python scripts/init_db.py
 ```
 
-## Standalone tools
-
-Disability insurance calculator: `uv run marimo edit tools/disability_insurance.py`. Rules: `tools/AGENTS.md` (`core`/`domain` only; never `web`; never `simulation`).
-
-## Database inspection
-
-```bash
-sqlite3 data/data.db ".schema"
-uv run python scripts/db_inspect.py --plan 1
-```
-
-## Market data refresh
-
-Manual market-data fetch for suggested inflation (FRED `T10YIE`), S&P 500 close (EOD
-`GSPC.INDX`), and Treasury TIPS real yields. API keys are read from `AppSettings` in the
-local SQLite DB (enter them in the app Settings UI, or use `--db-path` to point at another
-DB). Treasury needs no key. No `.env` is consulted.
-
-```bash
-# Warm the gitignored T10YIE cache (30-day lookback) — default when no source flags
-uv run python scripts/refresh_market_data.py
-
-# Warm a single source
-uv run python scripts/refresh_market_data.py --only sp500
-uv run python scripts/refresh_market_data.py --only treasury
-
-# Warm every source
-uv run python scripts/refresh_market_data.py --all
-
-# Use a specific database
-uv run python scripts/refresh_market_data.py --db-path data/data.db
-
-# Maintainer: full-series fetch → rewrite committed vendored CSV
-uv run python scripts/refresh_market_data.py --update-vendored
-uv run python scripts/refresh_market_data.py --all --update-vendored
-```
-
-Treasury `--update-vendored` loops years from 2003 through the current year (the Treasury
-API is year-scoped). S&P `--update-vendored` uses a long `from` date (1990-01-01).
-
-Default cache output: `data/market_cache/t10yie_daily.csv` (+ sidecar metadata). S&P and
-Treasury caches live alongside it (`sp500_close.csv`, `treasury_real_yield.csv`). Vendored
-fallbacks are under `packages/simulation/simulation/market_data/data/`. Update
-`PROVENANCE.md` before committing vendored data changes. T10YIE / S&P / Treasury refreshes
-are `scripts/refresh_market_data.py`; TPAW historical-returns version bumps (CAPE
-regression, Shiller earnings, monthly returns, per-asset empirical stats — mean and
-variance for stocks and bonds) follow the checklist in
-`packages/simulation/simulation/market_data/data/PROVENANCE.md` — they are not covered by
-the refresh script.
-
-Exit codes: `0` success, `1` no usable observations, `2` required API key not configured in Settings.
-
 ## Commands
+
+Run everything from the **repository root**; `LIFE_FINANCES_DB_PATH` overrides the default `data/data.db`.
 
 | Action | Command |
 | ------ | ------- |
@@ -113,41 +48,22 @@ Exit codes: `0` success, `1` no usable observations, `2` required API key not co
 | Lint | `make lint` |
 | Lint + test | `make` |
 | Pre-commit | `pre-commit run --all-files` |
+| DB schema | `sqlite3 data/data.db ".schema"` |
+| Inspect a plan | `uv run python scripts/db_inspect.py --plan 1` |
 
 After substantive changes, run `make` and confirm it passes before claiming work complete.
 
-## Testing policy
+## Tools and results
 
-Follow TDD for every feature and bugfix. Test **our logic**, not library behavior — do not add tests that only exercise Pydantic validation, trivial getters, simple attribute defaults or framework wiring unless this guide or a nested `AGENTS.md` calls for a specific integration smoke test.
+- Explain a result: with the dev server running, follow `.agents/skills/explain-results/SKILL.md`; call the local JSON routes for the cached simulation, never a separate simulation process.
+- Disability insurance calculator: `uv run marimo edit tools/disability_insurance.py` (rules: `tools/AGENTS.md`).
 
-### Avoid fragile values
+## Testing
 
-Never hardcode the same literal in both arrange/act and assert. Bind shared values to a variable and reference it in both places.
+Rules and the TDD loop: `~/.agents/docs/tdd.md`. Those rules outrank any skill's checklist. Repo conventions:
 
-### Pull constants from source
-
-Import defaults, thresholds, and config from production code in tests. Do not copy literals that can drift. Inline a literal only for intentional contract tests; comment that the value is pinned.
-
-### TDD: red-green without wasting a structural loop
-
-1. Write the test first against intended behavior (including symbols that do not exist yet).
-2. Add minimal scaffolding so structure exists but logic does not (`NotImplementedError`, stub return).
-3. Run the test once — confirm failure is **logical** (`AssertionError`, `NotImplementedError`), not **structural** (`ImportError`, `AttributeError`, `ModuleNotFoundError`). Fix scaffolding until logical; do not commit or checklist a separate "structural failure" pytest run.
-4. Implement the logic.
-5. Run again — must pass. Never trust an unverified green.
-
-### General rules
-
-- One logical behavior per test; name tests after behavior, not methods.
+- pytest, ruff, pyright; `make` is the full check.
 - Keep arrange / act / assert visually distinct.
-- Inject clocks and dependencies for time-dependent logic (e.g. optional `today: date`, `ran_at: datetime`) — never assert against wall-clock time.
-
-### Shared test infrastructure
-
-- **`core.db_bootstrap.materialize_blank_db`** — copy committed blank schema to an arbitrary path; used by tests, `scripts/init_db.py`, and pytest fixtures.
-- **Repo-root `conftest.py`** — cross-package fixtures (`db_path`, `repo`). Pytest discovers it for all `packages/*/tests/`.
-- **Package `conftest.py`** — only fixtures specific to that package (e.g. web `client`). Do not duplicate `db_path` / `repo`.
-- **Web routes and labels** — path/title constants in `web/routes.py`, `web/sections.py`; per-section form DTOs in `web/forms.py` with flat field names bound by FastAPI `Form()`. Form DTOs are transport-only; validation constraints live on `core.models` (see `packages/web/AGENTS.md`).
 
 ## Package dependency direction (strict)
 
@@ -163,28 +79,26 @@ core → stdlib + pydantic + sqlite
 
 | Location | Role |
 | -------- | ---- |
-| Root / nested `AGENTS.md` | How to work in this repo or area |
-| `packages/*/OVERVIEW.md` | Durable package context; update when shipped behavior agents must know changes |
-| `docs/specs/` | Open design specs only — commit while work is open; **delete when the feature is done** (git history is enough) |
-| `docs/plans/` | Local implementation plans — **gitignored**; after implementation, delete the plan file |
+| Root / nested `AGENTS.md` | Rules for this repo or area, plus a pointer index |
+| `docs/<topic>.md`, `packages/*/docs/<topic>.md` | Durable reference; read on demand |
+| `.agents/specs/`, `.agents/plans/` | Local designs and plans (lifecycle: `~/.agents/AGENTS.md`) |
 | GitHub issues | Roadmap / larger-work tracking |
 
-Rules:
+- Name specs `.agents/specs/YYYY-MM-DD-<topic>-design.md`; load one only while continuing that work.
+- Durable docs state the conclusion; never cite a spec, plan, PR, or phase.
+- No package reference file beside `docs/<topic>.md`, no `docs/features/` chain, no archive tree.
+- Link every nested `AGENTS.md` and every `docs/<topic>.md` from the nearest parent `AGENTS.md`.
 
-- Do not keep completed specs or plans in the tree.
-- Open specs may exist on pull requests for review, but they must be deleted before or when landing on `main`; `docs_specs_empty.yml` fails pushes to `main` when `docs/specs/` contains anything other than `.gitkeep`.
-- Name open specs `docs/specs/YYYY-MM-DD-<topic>-design.md`.
-- Do not create `docs/features/...` chains or an `archive/` docs tree.
-- Promote lasting policy into `AGENTS.md` / `OVERVIEW.md` before deleting a spec.
-- For design/review of open work, load the matching file under `docs/specs/` if present.
-- Load a plan under `docs/plans/` only when continuing implementation of that plan — not during ordinary code review.
-- Do not load historical specs/plans unless the user explicitly asks (use git history).
-- Durable docs (`AGENTS.md`, `README.md`, `OVERVIEW.md`) must not cite specific spec/plan files or rebuild phase numbers (this table's path roles are the exception).
+## Reference index
+
+- Market data refresh, caches, and vendored series → `docs/market-data.md`
+- Test fixtures and conftest layout → `docs/testing.md`
+- Area guides → `packages/web/AGENTS.md` · `packages/simulation/AGENTS.md` · `packages/domain/AGENTS.md` · `tools/AGENTS.md`
 
 ## Hard guardrails
 
 - NEVER commit `data/data.db` or personal plan data.
-- NEVER modify `config.yml` — YAML workflow removed; legacy import is the import script only (`scripts/import_legacy_yaml.py`).
+- NEVER modify config.yml — YAML workflow removed; legacy import is the import script only (`scripts/import_legacy_yaml.py`).
 - NEVER modify files under `.github/workflows/` without explicit user confirmation.
 - NEVER edit lockfiles by hand — use `uv add` / `uv sync`.
 - NEVER import `web` from `tools/` or `simulation`.
@@ -196,8 +110,8 @@ Rules:
 
 ### Complexity Reduction
 - SHOULD avoid single line functions unless there's real risk of drift between call sites
-- SHOULD require named parameters for functions with more than one arguement
-- SHOULD configure sensible defaults for arguements rather than making each caller have to do the work
+- SHOULD require named parameters for functions with more than one argument
+- SHOULD configure sensible defaults for arguments rather than making each caller have to do the work
 
 ### Performance
 - SHOULD evaluate downstream consumers of O(n) operations to prevent O(n^2) performance, for example in calculated properties that zip/sum lists

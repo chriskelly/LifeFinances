@@ -1,4 +1,7 @@
-# Domain Package — Overview
+# Domain models and streams
+
+Scope: the timed-stream primitive, real/nominal basis, and the legacy port map.
+Read before adding an income or spending source.
 
 Ported legacy finance logic that produces unified timed income/spending streams
 and tax-adjusted cashflows. Depends only on `core`. Never imports `web`.
@@ -23,11 +26,11 @@ projected with `core.timeline.project_stream`.
 
 | Legacy module | Destination | Status |
 |---------------|-------------|--------|
-| `job_income.py` (incl. planned sabbaticals) | `domain/job_income/` | done |
-| `social_security.py` | `domain/social_security/` | done |
-| `pension.py` | `domain/pension/` | done |
-| `taxes.py` (income-side) | `domain/taxes/` | done |
-| `build_monthly_cashflows(plan)` aggregator | `domain/__init__.py` | done |
+| `job_income.py` (incl. planned sabbaticals) | `../domain/job_income/` | done |
+| `social_security.py` | `../domain/social_security/` | done |
+| `pension.py` | `../domain/pension/` | done |
+| `taxes.py` (income-side) | `../domain/taxes/` | done |
+| `build_monthly_cashflows(plan)` aggregator | `../domain/__init__.py` | done |
 
 Port pattern: adapt legacy tests -> implement with monthly boundaries -> wire to
 the engine.

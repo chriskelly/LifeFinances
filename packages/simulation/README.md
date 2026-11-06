@@ -53,7 +53,7 @@ at the boundary, rather than carrying inflation as a per-month adjustment
 through the rest of the pipeline. Real income therefore passes through
 undeflated — its growth is a real raise, not an inflation-adjusted one. This is
 a deliberate simplification versus TPAW's stochastic/bootstrapped inflation —
-see `OVERVIEW.md` for the parity note.
+see `packages/simulation/docs/parity.md` for the parity note.
 
 **Return paths.** Also, `build_return_paths` produces bootstrapped
 monthly stock and bond returns for every simulated run, over the full horizon.
@@ -68,7 +68,7 @@ others; the rest of the pipeline is otherwise deterministic given a plan and a
 set of return paths. The deterministic "expected run" still uses planning
 returns directly and is unaffected by this adjustment. Block size and
 volatility scale are read from the resolved `PlanningReturns` snapshot; see
-`OVERVIEW.md` for the plan/planning mismatch guard.
+`packages/simulation/docs/parity.md` for the plan/planning mismatch guard.
 
 **Planning returns (expected).** Separate from the bootstrapped return paths,
 `resolve_planning_returns` (`planning_returns.py`) produces the *expected*
@@ -271,7 +271,7 @@ Unit tests pin numeric outputs against TPAW doctests in `test_mertons.py`.
 
 Implementation lives in `presets.py` (pure math) and `planning_returns.py`
 (dispatch + market-data injection). Vendored inputs are under
-`market_data/data/` — see `PROVENANCE.md` for sources.
+`market_data/data/` — see `packages/simulation/simulation/market_data/data/PROVENANCE.md` for sources.
 
 ### Preset menu
 

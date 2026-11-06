@@ -12,8 +12,8 @@ data/market_cache/
 # Personal SSA statement downloads (never commit)
 social-security-statement.xml
 
-docs/plans/*.md
-!docs/plans/README.md
+.agents/plans/
+.agents/specs/
 .superpowers/
 
 # Node / frontend (removed in rebuild; keep node_modules ignore for safety)
