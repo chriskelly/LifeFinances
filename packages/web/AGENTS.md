@@ -22,7 +22,7 @@ Open `http://127.0.0.1:8000/`. The module exposes `app = create_app()` at the bo
 
 ## Rules
 
-- Every plan-scoped request uses the **`plan` query parameter** (`?plan={id}`). There is no session or cookie state; unknown or missing plan ids return `404`.
+- Plan-editor, results, and section requests use the **`plan` query parameter** (`?plan={id}`); plan-management routes for an existing plan take the id in the path. There is no session or cookie state; unknown or missing plan ids return `404`.
 - API keys live on `AppSettings` and are injected at the web boundary. **Never** store keys in plan JSON, plan export, or git.
 - Web tests live in `packages/web/tests/`; use the package `client` fixture (layout: `docs/testing.md`).
 

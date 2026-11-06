@@ -11,4 +11,4 @@ cashflows. Depends only on `core`; never imports `web` or `simulation`.
 
 ## Reference
 
-- Stream semantics, the legacy port map, and household handling → `packages/domain/docs/models.md`
+- Stream semantics and household handling → `packages/domain/docs/models.md`

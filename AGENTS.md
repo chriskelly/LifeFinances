@@ -63,7 +63,7 @@ After substantive changes, run `make` and confirm it passes before claiming work
 - A red must be **logical**: an assertion failure, not an import, missing symbol, or compile error. Scaffold until it is logical and do not record the structural run.
 - Test our logic, not framework wiring, trivial getters, or defaults.
 - One behaviour per test; fakes at boundaries per repo convention.
-- These rules outrank any skill's checklist.
+- The user's explicit instruction outranks these rules, and these rules outrank any skill's checklist.
 - pytest, ruff, pyright; `make` is the full check. Keep arrange / act / assert visually distinct.
 
 ## Package dependency direction (strict)

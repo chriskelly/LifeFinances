@@ -3,12 +3,11 @@
 Scope: plan-scoped routing, the header plan menu, and settings. Read before
 adding or changing a plan-scoped route or the plan menu.
 
-Every plan-scoped request uses the **`plan` query parameter** (`?plan={id}`).
-There is no session or cookie state.
+Behavior for the entry route, plan-scoped requests, and unknown ids:
 
 - **`GET /`** without `plan` → `302` redirect to `/?plan={AppSettings.default_plan_id}` (user-marked default).
-- **`GET /?plan=2`**, editor GETs, **`GET /results?plan=2`**, and section **`PATCH`** routes operate on that plan id.
-- Unknown or missing plan id on a plan-scoped route → `404`.
+- **`GET /?plan=2`**, editor GETs, **`GET /results?plan=2`**, and section **`PATCH`** routes operate on that plan id, except `PATCH /plan/settings`, which writes the global settings row.
+- Unknown plan id anywhere, or a missing id on an editor, results, or section route → `404` (`GET /` without `plan` redirects).
 - Empty DB bootstrap creates one plan and sets `default_plan_id`.
 
 Route constants for plan management live in `../web/routes.py` (`PLAN_CREATE`,
@@ -30,7 +29,8 @@ page reload).
 
 ## Settings (API keys)
 
-`fred_api_key` and `eod_api_key` live on **`AppSettings`** (singleton DB row),
-edited via `../web/templates/editor_settings.html` / `AppSettingsForm`. They are injected at the
-web boundary into `run_simulation(..., allow_refresh=True)`. Keys never go into
-plan JSON, plan export, or git.
+`fred_api_key` and `eod_api_key` are edited in
+`../web/templates/editor_settings.html`; `patch_settings` applies
+`AppSettingsForm` and saves the singleton `AppSettings` row.
+`get_or_run_simulation` passes both keys to
+`run_simulation(..., allow_refresh=True)`.
