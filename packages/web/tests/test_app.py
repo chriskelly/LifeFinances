@@ -1,6 +1,5 @@
 import sqlite3
 from decimal import Decimal
-from html import unescape
 from xml.etree import ElementTree
 
 import httpx2 as httpx
@@ -936,6 +935,18 @@ def test_home_results_panel_reads_chart_from_select(
     assert "results-meta" not in response.text
 
 
+def _assert_assumptions_failure(body: str, caplog) -> None:
+    assert _SIMULATION_FAILURE_MESSAGE in body
+    assert UNAVAILABLE_MESSAGE in body
+    assert 'class="resolved-assumptions"' not in body
+    assert any(
+        record.name == "web.app"
+        and record.exc_info is not None
+        and "plan_id" in record.getMessage()
+        for record in caplog.records
+    )
+
+
 def test_market_assumptions_editor_does_not_run_simulation(
     client: TestClient, plan_id: int, monkeypatch
 ) -> None:
@@ -954,7 +965,7 @@ def test_market_assumptions_editor_does_not_run_simulation(
 
     response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
 
-    body = unescape(response.text)
+    body = response.text
     assert response.status_code == 200
     assert _SIMULATION_FAILURE_MESSAGE not in body
     assert UNAVAILABLE_MESSAGE not in body
@@ -978,7 +989,7 @@ def test_market_assumptions_editor_ignores_configured_api_keys(
 
     response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
 
-    body = unescape(response.text)
+    body = response.text
     assert response.status_code == 200
     assert UNAVAILABLE_MESSAGE not in body
     assert "Inflation source:" in body
@@ -1002,16 +1013,10 @@ def test_market_assumptions_editor_shows_failure_message_when_resolution_fails(
     with caplog.at_level(logging.ERROR, logger="web.app"):
         response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
 
-    body = unescape(response.text)
+    body = response.text
     assert response.status_code == 200
-    assert _SIMULATION_FAILURE_MESSAGE in body
-    assert UNAVAILABLE_MESSAGE in body
-    assert 'class="resolved-assumptions"' not in body
     assert resolver_detail not in body
-    assert any(
-        record.exc_info is not None and "plan_id" in record.getMessage()
-        for record in caplog.records
-    )
+    _assert_assumptions_failure(body, caplog)
 
 
 def test_market_assumptions_editor_shows_failure_for_non_compounding_returns(
@@ -1032,17 +1037,9 @@ def test_market_assumptions_editor_shows_failure_for_non_compounding_returns(
     with caplog.at_level(logging.ERROR, logger="web.app"):
         response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
 
-    body = unescape(response.text)
+    body = response.text
     assert response.status_code == 200
-    assert _SIMULATION_FAILURE_MESSAGE in body
-    assert UNAVAILABLE_MESSAGE in body
-    assert 'class="resolved-assumptions"' not in body
-    assert any(
-        record.name == "web.app"
-        and record.exc_info is not None
-        and "plan_id" in record.getMessage()
-        for record in caplog.records
-    )
+    _assert_assumptions_failure(body, caplog)
 
 
 def test_market_assumptions_editor_matches_full_simulation_summary(
