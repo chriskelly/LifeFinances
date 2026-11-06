@@ -14,7 +14,11 @@ from core.settings_repository import SettingsRepository
 from core.social_security import AnnualEarnings
 from core.streams import CalendarMonthBoundary, PersonMaxAgeBoundary
 from fastapi.testclient import TestClient
-from web.app import _SIMULATION_FAILURE_MESSAGE, _figure_json
+from web.app import (
+    _ASSUMPTIONS_FAILURE_MESSAGE,
+    _SIMULATION_FAILURE_MESSAGE,
+    _figure_json,
+)
 from web.currency import format_usd
 from web.forms import (
     CLEAR_EOD_API_KEY,
@@ -937,7 +941,8 @@ def test_home_results_panel_reads_chart_from_select(
 
 
 def _assert_assumptions_failure(body: str, caplog) -> None:
-    assert _SIMULATION_FAILURE_MESSAGE in body
+    assert _ASSUMPTIONS_FAILURE_MESSAGE in body
+    assert _SIMULATION_FAILURE_MESSAGE not in body
     assert UNAVAILABLE_MESSAGE in body
     assert 'class="resolved-assumptions"' not in body
     assert any(

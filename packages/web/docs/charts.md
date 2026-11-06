@@ -48,7 +48,9 @@ not run the engine: it resolves inflation and planning returns through
 blocks on a market-data fetch. The route is resolution-only: it does not run
 plan, cashflow, or timeline validation, and it ignores configured API keys
 because refresh is disabled. Refresh, freshness, and source-label caveats:
-`packages/simulation/docs/assumptions.md`.
+`packages/simulation/docs/assumptions.md`. A resolution failure shows the
+editor's own assumptions-error message; the simulation-failure alert stays on
+the results panel.
 
 If the simulation raises, the results panel shows a generic `Simulation failed…`
 alert (exception is logged server-side with stack trace; raw exception text is

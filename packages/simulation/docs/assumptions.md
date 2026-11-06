@@ -19,3 +19,5 @@ said `live`.
 The entrypoint validates assumption resolution only. It does not run plan,
 cashflow, or timeline validation, so a plan that fails a later simulation stage
 still shows its assumptions here while the results panel reports the failure.
+The editor's own resolution-failure message is separate from the simulation
+failure alert.
