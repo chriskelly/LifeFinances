@@ -30,6 +30,16 @@ aggregate + wealth composition            # aggregate.py, composition.py
 SimulationResult  (percentile-major)      # public return; includes diagnostics
 ```
 
+## Resolved assumptions without a simulation
+
+`resolve_assumptions(plan, ...)` in `assumptions.py` resolves inflation and
+planning returns and returns a `ResolvedAssumptions` snapshot without running
+`preprocess`, `build_return_paths`, or the engine. It is for display-only
+consumers such as the Market assumptions editor. It refreshes market data only
+when a caller passes `allow_refresh=True` and the resolver's own key/staleness
+conditions are met; with the default `False`, the existing cache -> vendored
+fallback applies.
+
 ## Stage by stage
 
 **Domain cashflows.** Everything starts with `domain.build_monthly_cashflows`,

@@ -39,10 +39,17 @@ typical single-worker local use).
 
 Every `SimulationResult` carries a required `resolved_assumptions` snapshot
 (exact inflation/returns/volatility values plus source labels and observation
-dates used by that run). Charts and the Market assumptions resolved-assumptions
-summary share that one cached result: home and direct Market assumptions GET
-render `#resolved-assumptions-summary` from it; `/results` refreshes the same
-container via HTMX OOB (`hx-swap-oob="innerHTML"`).
+dates used by that run). On home and `/results`, charts and the Market
+assumptions summary render `#resolved-assumptions-summary` from that cached
+result; `/results` refreshes the same container via HTMX OOB
+(`hx-swap-oob="innerHTML"`). The direct `GET /editor/market-assumptions` does
+not run the engine: it resolves inflation and planning returns through
+`simulation.assumptions.resolve_assumptions` with refresh disabled, so it never
+blocks on a market-data fetch. Its values and observation dates match those
+files; source labels describe each caller's own read path, so a fresh editor
+read can say `cache` where a just-refreshed simulation run said `live`. The
+editor can also be newer than a cached home/results snapshot (for example after
+a manual refresh) until that cache misses again.
 
 If the simulation raises, the results panel shows a generic `Simulation failed…`
 alert (exception is logged server-side with stack trace; raw exception text is
