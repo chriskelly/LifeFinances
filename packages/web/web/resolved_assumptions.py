@@ -23,6 +23,6 @@ def from_result(result: SimulationResult | None) -> ResolvedAssumptions | None:
     """Project a simulation result to its resolved-assumptions snapshot.
 
     Owns the `None` check so callers never repeat `X if result is not None
-    else None` at each of the home, market-assumptions, and results routes.
+    else None` at each of the home and results routes.
     """
     return result.resolved_assumptions if result is not None else None

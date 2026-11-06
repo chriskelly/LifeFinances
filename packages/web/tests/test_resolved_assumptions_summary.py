@@ -21,6 +21,7 @@ from web.resolved_assumptions import (
 from web.routes import EDITOR_MARKET_ASSUMPTIONS, HOME, RESULTS
 from web.sections import MARKET_ASSUMPTIONS_TITLE
 
+from simulation import assumptions as simulation_assumptions
 from web import forms
 
 
@@ -199,21 +200,31 @@ def test_results_simulation_failure_oob_shows_unavailable(
     assert 'class="resolved-assumptions"' not in body
 
 
-def test_market_assumptions_get_renders_cached_assumptions(
+def test_market_assumptions_get_renders_resolved_assumptions(
     client: TestClient, plan_id: int, monkeypatch
 ) -> None:
-    annual_bond_return = 0.021
+    annual_bond_return = 0.0123
+    annual_inflation = 0.0456
     assumptions = _assumptions(
         annual_stock_log_variance=0.03,
         annual_bond_return=annual_bond_return,
+        annual_inflation=annual_inflation,
+        inflation_source="manual",
+        inflation_observation_date=None,
     )
-    _stub_run(monkeypatch, _make_result(assumptions))
+
+    def stub_resolve(plan, **kwargs):
+        return assumptions
+
+    monkeypatch.setattr(simulation_assumptions, "resolve_assumptions", stub_resolve)
 
     response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
 
     body = unescape(response.text)
     assert response.status_code == 200
+    assert format_percent(annual_inflation) in body
     assert format_percent(annual_bond_return) in body
+    assert f"Inflation source: {SOURCE_LABELS['manual']}" in body
     assert forms.PLANNING_PRESET_LABELS["regression_prediction"] in body
     assert 'hx-swap-oob="innerHTML"' not in body
 
