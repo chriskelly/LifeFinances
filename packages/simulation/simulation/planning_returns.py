@@ -61,26 +61,6 @@ class PlanningReturns:
     treasury: TreasuryYieldsResolved | None = None
 
 
-def _validate_fixed_preset_literals(config: PlanningReturnsConfig) -> None:
-    # These literals only drive returns under preset == "fixed"; validating them
-    # unconditionally would reject plans whose stale/unused fixed literals
-    # happen to be invalid while a different preset is actually active.
-    if config.preset != "fixed":
-        return
-
-    expected_bonds = float(config.expected_annual_return_bonds)
-    if 1.0 + expected_bonds <= 0.0:
-        raise ValueError(
-            "planning expected annual bond return implies total loss or worse"
-        )
-
-    expected_stocks = float(config.expected_annual_return_stocks)
-    if 1.0 + expected_stocks <= 0.0:
-        raise ValueError(
-            "planning expected annual stock return implies total loss or worse"
-        )
-
-
 def _resolve_preset_returns(
     config: PlanningReturnsConfig,
     *,
@@ -198,7 +178,6 @@ def resolve_planning_returns(
 ) -> PlanningReturns:
     config = plan.planning_returns
     today = today or date.today()
-    _validate_fixed_preset_literals(config)
 
     # Lazy + memoized: only hit the (cache/vendored) data once, and only for
     # presets that actually need it.
@@ -224,6 +203,16 @@ def resolve_planning_returns(
         block_size_months=block_size_months,
         volatility_scale=volatility_scale,
     )
+    if 1.0 + annual_bonds <= 0.0:
+        raise ValueError(
+            f"planning annual bond return {annual_bonds} implies "
+            "total loss or worse (1 + rate <= 0); cannot compound monthly"
+        )
+    if 1.0 + annual_stocks <= 0.0:
+        raise ValueError(
+            f"planning annual stock return {annual_stocks} implies "
+            "total loss or worse (1 + rate <= 0); cannot compound monthly"
+        )
     return PlanningReturns(
         annual_stocks=annual_stocks,
         annual_bonds=annual_bonds,

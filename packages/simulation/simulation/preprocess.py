@@ -125,16 +125,6 @@ def preprocess(
         now=now,
         eod_api_key=eod_api_key,
     )
-    if 1.0 + planning.annual_bonds <= 0.0:
-        raise ValueError(
-            f"planning annual bond return {planning.annual_bonds} implies "
-            "total loss or worse (1 + rate <= 0); cannot compound monthly"
-        )
-    if 1.0 + planning.annual_stocks <= 0.0:
-        raise ValueError(
-            f"planning annual stock return {planning.annual_stocks} implies "
-            "total loss or worse (1 + rate <= 0); cannot compound monthly"
-        )
 
     # The domain produces job, Social Security, pension, and tax amounts in
     # today's dollars (real), so they are used as-is; only manual income streams
