@@ -1,4 +1,8 @@
-# `simulation` — TPAW parity backlog
+# TPAW parity and numerical validation
+
+Scope: how the engine maps to TPAW, what is deferred, and how correctness is
+validated. Read before changing engine math, planning-return presets, or parity
+goldens.
 
 This package is a Python port of [TPAW](https://tpawplanner.com/)'s withdrawal
 engine (formerly CUDA/Rust: `run_tpaw.cu`, `run_common.cu`,
@@ -11,17 +15,17 @@ numerical correctness without a runnable TPAW binary to diff against.
 
 | Feature | Status | Where |
 | --- | --- | --- |
-| Risk-tolerance → RRA conversion (age glide, legacy delta) | Ported | `simulation/risk.py` |
-| Merton's formula (stock allocation + spending tilt, equity-premium/variance clamps, ∞-RRA case) | Ported | `simulation/mertons.py` |
-| Backward NPV precompute pass + `cumulative_1_plus_g_over_1_plus_r` amortization | Ported | `simulation/npv.py`, `simulation/preprocess.py` |
-| Vectorized forward monthly loop (wealth, pool carve, expected-run elasticity, contributions/withdrawals, allocation, rebalancing) | Ported | `simulation/engine.py` |
-| Expected-run diagnostics (RRA, Merton, savings carve series, and monthly net-income flows) on raw + public results | Ported | `simulation/diagnostics.py`, `simulation/engine.py` |
-| Raw per-run result arrays (engine-internal) | Ported | `simulation/result.py` (`RawSimulationResult`) |
-| Percentile aggregation (10th/50th/90th, etc. reduction over raw arrays) | Ported | `simulation/aggregate.py` |
-| Wealth composition (tax-prorated NPV by income source: job / SS / pension / manual) | Ported | `simulation/composition.py` |
-| Planning-returns presets (live CAPE/EOD-derived expected returns, empirical variance refinement) | Ported | `simulation/presets.py`, `simulation/market_data/presets_data.py` |
-| S&P + Treasury 20-yr TIPS market feeds (cache + vendored fallback) | Ported | `simulation/market_data/` |
-| Historical-returns adjustment (rescale bootstrapped returns to the planning expected return: block-size shift correction, log-volatility scaling) | Ported | `simulation/market_data/bootstrap.py`, `simulation/presets.py` |
+| Risk-tolerance → RRA conversion (age glide, legacy delta) | Ported | `../simulation/risk.py` |
+| Merton's formula (stock allocation + spending tilt, equity-premium/variance clamps, ∞-RRA case) | Ported | `../simulation/mertons.py` |
+| Backward NPV precompute pass + `cumulative_1_plus_g_over_1_plus_r` amortization | Ported | `../simulation/npv.py`, `../simulation/preprocess.py` |
+| Vectorized forward monthly loop (wealth, pool carve, expected-run elasticity, contributions/withdrawals, allocation, rebalancing) | Ported | `../simulation/engine.py` |
+| Expected-run diagnostics (RRA, Merton, savings carve series, and monthly net-income flows) on raw + public results | Ported | `../simulation/diagnostics.py`, `../simulation/engine.py` |
+| Raw per-run result arrays (engine-internal) | Ported | `../simulation/result.py` (`RawSimulationResult`) |
+| Percentile aggregation (10th/50th/90th, etc. reduction over raw arrays) | Ported | `../simulation/aggregate.py` |
+| Wealth composition (tax-prorated NPV by income source: job / SS / pension / manual) | Ported | `../simulation/composition.py` |
+| Planning-returns presets (live CAPE/EOD-derived expected returns, empirical variance refinement) | Ported | `../simulation/presets.py`, `../simulation/market_data/presets_data.py` |
+| S&P + Treasury 20-yr TIPS market feeds (cache + vendored fallback) | Ported | `../simulation/market_data/` |
+| Historical-returns adjustment (rescale bootstrapped returns to the planning expected return: block-size shift correction, log-volatility scaling) | Ported | `../simulation/market_data/bootstrap.py`, `../simulation/presets.py` |
 | Bootstrapped/stochastic inflation (currently a single resolved scalar inflation rate for the whole horizon) | Deferred | Issue #186 |
 | Spending ceiling/floor constraints | Removed from scope | Not planned — this rebuild's product scope removed ceiling/floor |
 | Detailed tax-bucket modeling interactions with withdrawals (traditional vs. Roth vs. taxable sequencing) | Deferred | Unscheduled |
@@ -34,7 +38,7 @@ numerical correctness without a runnable TPAW binary to diff against.
 `run_simulation` returns a public, percentile-major `SimulationResult` (balance,
 withdrawals, savings stock allocation, wealth-composition bands, plus expected-run
 `diagnostics`). The engine still emits private `RawSimulationResult`
-(`num_runs × months`); aggregation happens in `aggregate.py` via
+(`num_runs × months`); aggregation happens in `../simulation/aggregate.py` via
 `numpy.percentile` along the run axis. Percentiles default from
 `plan.advanced.percentiles` (`[5, 50, 95]`); the `percentiles` kwarg overrides.
 Chart UI wiring lives in the web package.
@@ -44,7 +48,7 @@ Chart UI wiring lives in the web package.
 TPAW runs on CUDA with mixed float32/float64 arithmetic and ChaCha8 RNG
 streams. This port uses NumPy `float64` throughout and the seeded RNG
 (`numpy.random.default_rng`), which is **not** bit-identical to TPAW's ChaCha8
-streams — see `simulation/market_data/bootstrap.py`'s `build_index_sequences`
+streams — see `../simulation/market_data/bootstrap.py`'s `build_index_sequences`
 docstring, which already notes "algorithmic parity, our own determinism." We
 target **algorithmic** parity — the same formulas applied in the same
 sequence — validated against TPAW's own published test/doctest values, not
@@ -53,7 +57,7 @@ of floating-point rounding (float32 vs. float64) or RNG stream identity are
 expected and are not treated as bugs.
 
 Bootstrapped return paths match TPAW's historical-returns adjustment.
-`market_data/bootstrap.py::adjusted_historical_returns` rescales the vendored
+`../simulation/market_data/bootstrap.py::adjusted_historical_returns` rescales the vendored
 monthly log series (via `presets.adjust_log_returns`) so the *block-bootstrapped*
 annualized non-log mean equals the planning expected return, using the per-block
 empirical mean for the shift correction and scaling stocks' deviations by
@@ -71,7 +75,7 @@ when its `plan` and `planning` arguments disagree on `block_size_months` or
 
 One stored-sign difference is intentional. `delta_at_max_age` is the decrease
 shown in the editor. The age glide subtracts it from risk tolerance between
-age 20 and max age (`simulation/risk.py`). TPAW stores the negation of that
+age 20 and max age (`../simulation/risk.py`). TPAW stores the negation of that
 displayed decrease and adds it (`at20 + deltaAtMaxAge` in `process_risk.rs`,
 default `-2`).
 
@@ -81,10 +85,10 @@ There is no runnable TPAW binary in this repo to diff full simulation runs
 against, so correctness is validated in two layers:
 
 1. **Unit goldens pinned to TPAW's own test cases.** The pure-math modules —
-   `mertons.py` (plain/effective Merton's formula cases, `get_rra_for_all_stocks`),
-   `risk.py` (risk-tolerance → RRA endpoints), `npv.py`
+   `../simulation/mertons.py` (plain/effective Merton's formula cases, `get_rra_for_all_stocks`),
+   `../simulation/risk.py` (risk-tolerance → RRA endpoints), `../simulation/npv.py`
    (backward precomputation at start, target withdrawals with no
-   ceiling/floor, stock allocation), and `withdrawals.py`
+   ceiling/floor, stock allocation), and `../simulation/withdrawals.py`
    (`apply_contributions_and_withdrawals`, `apply_allocation`) — have unit
    tests whose expected values are copied from TPAW's own doctests/test cases
    (e.g. `mertons_formula.cu`'s `plain_mertons_formula` test cases) and checked
@@ -112,4 +116,4 @@ yields (S&P + Treasury feeds). Variance uses the vendored block-size table scale
 `stock_volatility_scale²` — preset choice affects expected returns only, not variance
 (tpaw behavior). An expected-return glide path over the simulation horizon is
 intentionally absent: tpaw fixes planning returns at month 0; the RRA-based stock
-allocation glide is in `risk.py` / the engine.
+allocation glide is in `../simulation/risk.py` / the engine.

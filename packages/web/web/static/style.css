@@ -266,7 +266,7 @@ label.partner-toggle input[type="checkbox"] {
   min-height: 0;
 }
 
-/* Keep in sync with Plotly default figure height (see packages/web/AGENTS.md). */
+/* Keep in sync with Plotly default figure height (see packages/web/docs/charts.md). */
 #results-chart {
   min-height: 450px;
 }
