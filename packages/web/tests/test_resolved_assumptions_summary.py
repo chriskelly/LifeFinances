@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from simulation.diagnostics import empty_diagnostics
 from simulation.market_data.cache import MarketDataSource
 from simulation.result import InflationSource, ResolvedAssumptions, SimulationResult
+from web.app import _ASSUMPTIONS_FAILURE_MESSAGE
 from web.percent import format_percent
 from web.resolved_assumptions import (
     SOURCE_LABELS,
@@ -222,6 +223,7 @@ def test_market_assumptions_get_renders_resolved_assumptions(
 
     body = unescape(response.text)
     assert response.status_code == 200
+    assert _ASSUMPTIONS_FAILURE_MESSAGE not in body
     assert format_percent(annual_inflation) in body
     assert format_percent(annual_bond_return) in body
     assert f"Inflation source: {SOURCE_LABELS['manual']}" in body

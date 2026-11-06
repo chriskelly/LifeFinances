@@ -11,7 +11,7 @@ With the default `False`, the existing cache -> vendored fallback applies and th
 editor ignores configured API keys.
 
 Values and observation dates match a simulation reading the same cache/vendored
-files. A live refresh can make the two differ in either direction until the
+files for the same plan and day. A live refresh can make the two differ in either direction until the
 other side re-reads or its cache misses; source labels describe each caller's
 own read path, so a fresh editor read can say `cache` where a just-refreshed run
 said `live`.

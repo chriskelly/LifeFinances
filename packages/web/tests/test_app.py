@@ -973,6 +973,7 @@ def test_market_assumptions_editor_does_not_run_simulation(
 
     body = response.text
     assert response.status_code == 200
+    assert _ASSUMPTIONS_FAILURE_MESSAGE not in body
     assert _SIMULATION_FAILURE_MESSAGE not in body
     assert UNAVAILABLE_MESSAGE not in body
     assert "Inflation source:" in body

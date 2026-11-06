@@ -48,9 +48,10 @@ not run the engine: it resolves inflation and planning returns through
 blocks on a market-data fetch. The route is resolution-only: it does not run
 plan, cashflow, or timeline validation, and it ignores configured API keys
 because refresh is disabled. Refresh, freshness, and source-label caveats:
-`packages/simulation/docs/assumptions.md`. A resolution failure shows the
-editor's own assumptions-error message; the simulation-failure alert stays on
-the results panel.
+`packages/simulation/docs/assumptions.md`. A resolution failure on the
+standalone editor route shows the editor's own assumptions-error message. Home
+still passes its simulation failure into the included editor section through the
+shared context key, and `/results` keeps the simulation-failure alert.
 
 If the simulation raises, the results panel shows a generic `Simulation failed…`
 alert (exception is logged server-side with stack trace; raw exception text is
