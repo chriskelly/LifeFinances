@@ -219,15 +219,21 @@ def test_fixed_preset_rejects_non_compounding_literals(
         resolve_planning_returns(plan, today=TODAY)
 
 
-def test_fixed_preset_allows_valid_negative_return() -> None:
-    valid_bond_return = Decimal("-0.5")
+@pytest.mark.parametrize(
+    "field",
+    ["expected_annual_return_bonds", "expected_annual_return_stocks"],
+)
+def test_fixed_preset_allows_valid_negative_return(field: str) -> None:
+    valid_return = Decimal("-0.5")
     plan = default_plan()
     plan.planning_returns.preset = "fixed"
-    plan.planning_returns.expected_annual_return_bonds = valid_bond_return
+    setattr(plan.planning_returns, field, valid_return)
 
     result = resolve_planning_returns(plan, today=TODAY)
 
-    assert result.annual_bonds == pytest.approx(float(valid_bond_return))
+    assert getattr(result, field.replace("expected_annual_return", "annual")) == (
+        pytest.approx(float(valid_return))
+    )
 
 
 def test_tips_20yr_is_rounded_to_three_decimals():

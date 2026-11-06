@@ -13,8 +13,9 @@ domain.build_monthly_cashflows(plan)        # Decimal net income/taxes per month
         │  (→ float64 at the boundary)
         ▼
 preprocess(plan)
-  ├─ resolve_inflation(plan)                # scalar monthly rate
-  ├─ resolve_planning_returns(plan)         # expected stock/bond returns
+  ├─ resolve_market_inputs(plan)            # inflation + expected returns
+  │   ├─ resolve_inflation(plan)            # scalar monthly rate
+  │   └─ resolve_planning_returns(plan)     # expected stock/bond returns
   ├─ risk:    RRA-by-month + legacy RRA     (risk.py)
   ├─ mertons: stock-alloc + spending-tilt   (mertons.py)
   └─ npv:     backward PV pass + cumulative  (npv.py, vectorized)

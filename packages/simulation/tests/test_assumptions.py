@@ -114,6 +114,22 @@ def test_resolve_assumptions_rejects_non_compounding_inflation(
         resolve_assumptions(plan, today=TODAY)
 
 
+def test_resolve_assumptions_allows_valid_negative_custom_returns() -> None:
+    plan = default_plan()
+    plan.planning_returns = PlanningReturnsConfig(
+        preset="custom",
+        custom_stocks_base="historical",
+        custom_bonds_base="historical",
+        custom_stocks_delta=Decimal("-0.5"),
+        custom_bonds_delta=Decimal("-0.5"),
+    )
+
+    snapshot = resolve_assumptions(plan, today=TODAY)
+
+    assert snapshot.annual_stock_return < 0
+    assert snapshot.annual_bond_return < 0
+
+
 @pytest.mark.parametrize(
     ("delta", "match"),
     [

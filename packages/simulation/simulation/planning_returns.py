@@ -203,6 +203,9 @@ def resolve_planning_returns(
         block_size_months=block_size_months,
         volatility_scale=volatility_scale,
     )
+    # Validate the returns the preset actually selected. The fixed preset's
+    # expected_annual_return_* literals are validated only here, after
+    # selection; stale literals under other presets are intentionally ignored.
     if 1.0 + annual_bonds <= 0.0:
         raise ValueError(
             f"planning annual bond return {annual_bonds} implies "

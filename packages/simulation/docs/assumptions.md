@@ -6,9 +6,9 @@ without running `preprocess`, `build_return_paths`, or the engine. It is for
 display-only consumers such as the Market assumptions editor.
 
 It refreshes market data only when a caller passes `allow_refresh=True` and the
-resolver's staleness (and, for keyed feeds, API key) conditions are met. With the
-default `False`, the existing cache -> vendored fallback applies and the editor
-ignores configured API keys.
+resolver's staleness check (and, for keyed feeds, an available API key) passes.
+With the default `False`, the existing cache -> vendored fallback applies and the
+editor ignores configured API keys.
 
 Values and observation dates match a simulation reading the same cache/vendored
 files. A live refresh can make the two differ in either direction until the
