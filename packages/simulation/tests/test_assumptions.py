@@ -8,7 +8,7 @@ from simulation.market_data.inflation import annual_to_monthly
 
 from simulation import (
     InflationResolved,
-    assumptions,
+    market_inputs,
     resolve_assumptions,
     run_simulation,
 )
@@ -33,8 +33,8 @@ def test_resolve_assumptions_never_refreshes_market_data_by_default(
 ) -> None:
     plan = default_plan()
     captured: dict[str, dict] = {}
-    real_inflation = assumptions.resolve_inflation
-    real_planning = assumptions.resolve_planning_returns
+    real_inflation = market_inputs.resolve_inflation
+    real_planning = market_inputs.resolve_planning_returns
 
     def spy_inflation(plan, **kwargs):
         captured["inflation"] = kwargs
@@ -44,8 +44,8 @@ def test_resolve_assumptions_never_refreshes_market_data_by_default(
         captured["planning"] = kwargs
         return real_planning(plan, **kwargs)
 
-    monkeypatch.setattr(assumptions, "resolve_inflation", spy_inflation)
-    monkeypatch.setattr(assumptions, "resolve_planning_returns", spy_planning)
+    monkeypatch.setattr(market_inputs, "resolve_inflation", spy_inflation)
+    monkeypatch.setattr(market_inputs, "resolve_planning_returns", spy_planning)
 
     resolve_assumptions(
         plan,
@@ -82,8 +82,8 @@ def test_resolve_assumptions_forwards_refresh_and_now(
         captured["planning"] = kwargs
         raise Stop
 
-    monkeypatch.setattr(assumptions, "resolve_inflation", spy_inflation)
-    monkeypatch.setattr(assumptions, "resolve_planning_returns", spy_planning)
+    monkeypatch.setattr(market_inputs, "resolve_inflation", spy_inflation)
+    monkeypatch.setattr(market_inputs, "resolve_planning_returns", spy_planning)
 
     with pytest.raises(Stop):
         resolve_assumptions(
@@ -103,9 +103,12 @@ def test_resolve_assumptions_forwards_refresh_and_now(
     assert captured["planning"]["today"] == TODAY
 
 
-def test_resolve_assumptions_rejects_non_compounding_inflation() -> None:
+@pytest.mark.parametrize("annual_rate", [Decimal("-1"), Decimal("-1.5")])
+def test_resolve_assumptions_rejects_non_compounding_inflation(
+    annual_rate: Decimal,
+) -> None:
     plan = default_plan()
-    plan.inflation = InflationConfig(mode="manual", manual_annual_rate=Decimal("-1.5"))
+    plan.inflation = InflationConfig(mode="manual", manual_annual_rate=annual_rate)
 
     with pytest.raises(ValueError, match="inflation"):
         resolve_assumptions(plan, today=TODAY)

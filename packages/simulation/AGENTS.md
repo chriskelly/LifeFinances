@@ -13,3 +13,4 @@ Monthly TPAW withdrawal engine. Depends on `domain` and `core`; never imports
 
 - TPAW parity, numerical caveats, and testing approach → `packages/simulation/docs/parity.md`
 - Pipeline walkthrough → `packages/simulation/README.md`
+- Display-only assumptions entrypoint → `packages/simulation/docs/assumptions.md`

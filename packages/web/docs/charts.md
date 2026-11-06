@@ -50,7 +50,10 @@ values and observation dates match a simulation reading the same cache/vendored
 files. A live refresh can make the two differ in either direction until the
 other side re-reads or its cache misses; source labels describe each caller's
 own read path, so a fresh editor read can say `cache` where a just-refreshed run
-said `live`.
+said `live`. The editor validates assumption resolution only; it does not run
+plan, cashflow, or timeline validation, so a plan that fails a later simulation
+stage still shows its assumptions here while the results panel reports the
+failure.
 
 If the simulation raises, the results panel shows a generic `Simulation failed…`
 alert (exception is logged server-side with stack trace; raw exception text is

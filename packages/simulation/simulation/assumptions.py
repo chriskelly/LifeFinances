@@ -12,8 +12,7 @@ from datetime import date, datetime
 
 from core.models import Plan
 
-from simulation.market_data.inflation import resolve_inflation
-from simulation.planning_returns import resolve_planning_returns
+from simulation.market_inputs import resolve_market_inputs
 from simulation.result import ResolvedAssumptions, build_resolved_assumptions
 
 
@@ -27,19 +26,12 @@ def resolve_assumptions(
     eod_api_key: str | None = None,
 ) -> ResolvedAssumptions:
     """Resolve the assumption snapshot without running the simulation."""
-    today = today or date.today()
-    inflation = resolve_inflation(
+    inflation, planning = resolve_market_inputs(
         plan,
         today=today,
         allow_refresh=allow_refresh,
         now=now,
-        api_key=fred_api_key,
-    )
-    planning = resolve_planning_returns(
-        plan,
-        today=today,
-        allow_refresh=allow_refresh,
-        now=now,
+        fred_api_key=fred_api_key,
         eod_api_key=eod_api_key,
     )
     return build_resolved_assumptions(

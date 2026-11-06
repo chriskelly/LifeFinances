@@ -19,11 +19,11 @@ from core.timeline import Timeline, person_end_date, project_stream
 
 from domain import build_monthly_cashflows
 from simulation.composition import manual_stream_basis_adjustment
-from simulation.market_data import resolve_inflation
 from simulation.market_data.inflation import InflationResolved
+from simulation.market_inputs import resolve_market_inputs
 from simulation.mertons import effective_mertons
 from simulation.npv import backward_npv_including_current
-from simulation.planning_returns import PlanningReturns, resolve_planning_returns
+from simulation.planning_returns import PlanningReturns
 from simulation.risk import legacy_rra, rra_by_month
 
 
@@ -111,18 +111,12 @@ def preprocess(
             "domain cashflow horizon must match core.timeline horizon: "
             f"got {len(cashflows.net_cashflow)}, expected {months}"
         )
-    inflation = resolve_inflation(
+    inflation, planning = resolve_market_inputs(
         plan,
         today=today,
         allow_refresh=allow_refresh,
         now=now,
-        api_key=fred_api_key,
-    )
-    planning = resolve_planning_returns(
-        plan,
-        today=today,
-        allow_refresh=allow_refresh,
-        now=now,
+        fred_api_key=fred_api_key,
         eod_api_key=eod_api_key,
     )
 

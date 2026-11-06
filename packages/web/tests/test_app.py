@@ -1068,28 +1068,35 @@ def test_market_assumptions_editor_shows_failure_for_non_compounding_inflation(
     body = response.text
     assert response.status_code == 200
     _assert_assumptions_failure(body, caplog)
+    assert any(
+        record.exc_info is not None
+        and isinstance(record.exc_info[1], ValueError)
+        and "deflation" in str(record.exc_info[1])
+        for record in caplog.records
+    )
 
 
 def test_market_assumptions_editor_matches_full_simulation_summary(
     client: TestClient, plan_id: int, monkeypatch
 ) -> None:
-    import datetime as dt
     import sys
 
     frozen = date(2026, 1, 2)
 
-    class FrozenDate(dt.date):
+    class FrozenDate(date):
         @classmethod
         def today(cls):
             return frozen
 
-    monkeypatch.setattr("simulation.assumptions.date", FrozenDate)
+    monkeypatch.setattr("simulation.market_inputs.date", FrozenDate)
     monkeypatch.setattr("web.simulation_cache.date", FrozenDate)
 
     treasury = sys.modules["simulation.market_data.treasury"]
     # /results runs the simulation with allow_refresh=True, and Treasury
     # refreshes without an API key. Disable staleness so both routes read the
-    # same files and the comparison cannot race a live fetch.
+    # same files and the comparison cannot race a live fetch. Both requests
+    # also read the real market cache; a concurrent refresh script could still
+    # change files between them.
     monkeypatch.setattr(treasury, "is_cache_stale", lambda **kwargs: False)
 
     editor = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
