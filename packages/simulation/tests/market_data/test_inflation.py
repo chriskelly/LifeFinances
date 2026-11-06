@@ -279,6 +279,33 @@ def test_manual_mode_uses_configured_rate(tmp_path: Path) -> None:
     assert resolved.market_source is None
 
 
+@pytest.mark.parametrize("annual_rate", [Decimal("-1"), Decimal("-1.5")])
+def test_manual_rate_at_or_below_minus_one_raises(annual_rate: Decimal) -> None:
+    plan = default_plan()
+    plan.inflation = InflationConfig(mode="manual", manual_annual_rate=annual_rate)
+
+    with pytest.raises(ValueError, match="inflation"):
+        resolve_inflation(plan, today=date(2026, 1, 2))
+
+
+def test_manual_valid_negative_rate_resolves() -> None:
+    annual_rate = Decimal("-0.02")
+    plan = default_plan()
+    plan.inflation = InflationConfig(mode="manual", manual_annual_rate=annual_rate)
+
+    resolved = resolve_inflation(plan, today=date(2026, 1, 2))
+
+    assert resolved.annual == pytest.approx(float(annual_rate))
+    assert resolved.monthly == pytest.approx(annual_to_monthly(float(annual_rate)))
+
+
+def test_suggested_rate_at_minus_one_raises(tmp_path: Path) -> None:
+    csv = _write_t10yie(tmp_path / "t.csv", ["2026-01-01,-100.00"])
+
+    with pytest.raises(ValueError, match="inflation"):
+        resolve_inflation(_suggested_plan(), today=date(2026, 1, 15), t10yie_path=csv)
+
+
 def test_manual_inflation_has_no_market_provenance() -> None:
     annual_rate = Decimal("0.031")
     plan = default_plan()

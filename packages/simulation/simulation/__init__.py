@@ -2,6 +2,7 @@
 
 from core.timeline import horizon_months, person_end_date
 
+from simulation.assumptions import resolve_assumptions
 from simulation.diagnostics import SimulationDiagnostics
 from simulation.engine import simulate_monthly
 from simulation.market_data import (
@@ -28,6 +29,7 @@ __all__ = [
     "load_historical_returns",
     "person_end_date",
     "preprocess",
+    "resolve_assumptions",
     "resolve_inflation",
     "run_simulation",
     "simulate_monthly",

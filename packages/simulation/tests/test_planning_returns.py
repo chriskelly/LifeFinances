@@ -199,6 +199,43 @@ def test_non_fixed_preset_ignores_invalid_fixed_literals():
     assert result.annual_bonds == ROUNDED_TIPS_20YR
 
 
+@pytest.mark.parametrize(
+    ("field", "value", "feed"),
+    [
+        ("expected_annual_return_bonds", Decimal("-1"), "bond"),
+        ("expected_annual_return_bonds", Decimal("-1.5"), "bond"),
+        ("expected_annual_return_stocks", Decimal("-1"), "stock"),
+        ("expected_annual_return_stocks", Decimal("-1.5"), "stock"),
+    ],
+)
+def test_fixed_preset_rejects_non_compounding_literals(
+    field: str, value: Decimal, feed: str
+) -> None:
+    plan = default_plan()
+    plan.planning_returns.preset = "fixed"
+    setattr(plan.planning_returns, field, value)
+
+    with pytest.raises(ValueError, match=f"{feed}.*cannot compound monthly"):
+        resolve_planning_returns(plan, today=TODAY)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["expected_annual_return_bonds", "expected_annual_return_stocks"],
+)
+def test_fixed_preset_allows_valid_negative_return(field: str) -> None:
+    valid_return = Decimal("-0.5")
+    plan = default_plan()
+    plan.planning_returns.preset = "fixed"
+    setattr(plan.planning_returns, field, valid_return)
+
+    result = resolve_planning_returns(plan, today=TODAY)
+
+    assert getattr(result, field.replace("expected_annual_return", "annual")) == (
+        pytest.approx(float(valid_return))
+    )
+
+
 def test_tips_20yr_is_rounded_to_three_decimals():
     unrounded_yield = 0.02637
     expected_bonds = round3(unrounded_yield)

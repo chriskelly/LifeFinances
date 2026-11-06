@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -17,8 +18,9 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
-from simulation.result import SimulationResult
+from simulation.result import ResolvedAssumptions, SimulationResult
 
+from simulation import assumptions as simulation_assumptions
 from web import (
     boundaries,
     charts,
@@ -86,6 +88,8 @@ from web.routes import (
 )
 from web.simulation_cache import get_or_run_simulation
 
+logger = logging.getLogger(__name__)
+
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _STATIC_DIR = _PACKAGE_DIR / "static"
 templates = Jinja2Templates(directory=str(_PACKAGE_DIR / "templates"))
@@ -102,6 +106,9 @@ templates.env.filters["percent_points"] = percent.format_percent_points
 
 _INIT_DB_MESSAGE = "No database found. Run: uv run python scripts/init_db.py"
 _SIMULATION_FAILURE_MESSAGE = "Simulation failed. Check plan inputs and try again."
+_ASSUMPTIONS_FAILURE_MESSAGE = (
+    "Could not resolve market assumptions. Check plan inputs and try again."
+)
 
 # A real SSA statement XML is a few hundred KB; cap the upload well above that
 # so a malformed or hostile file cannot be read into memory unbounded.
@@ -173,6 +180,24 @@ def _load_simulation(
         )
     except Exception:
         return None, _SIMULATION_FAILURE_MESSAGE
+
+
+def _load_assumptions(
+    *,
+    plan_id: int,
+    plan_model: Plan,
+) -> tuple[ResolvedAssumptions | None, str | None]:
+    try:
+        return (
+            simulation_assumptions.resolve_assumptions(
+                plan_model,
+                allow_refresh=False,
+            ),
+            None,
+        )
+    except Exception:
+        logger.exception("Assumption resolution failed for plan_id=%s", plan_id)
+        return None, _ASSUMPTIONS_FAILURE_MESSAGE
 
 
 def _redirect_to_plan(plan_id: int) -> RedirectResponse:
@@ -412,13 +437,10 @@ def _register_market_assumptions_routes(web_app: FastAPI) -> None:
     def editor_market_assumptions(
         request: Request,
         selected: PlanDep,
-        settings: SettingsDep,
     ) -> HTMLResponse:
-        result, simulation_error = _load_simulation(
-            request,
+        assumptions, simulation_error = _load_assumptions(
             plan_id=selected.id,
             plan_model=selected.plan,
-            settings=settings,
         )
         return templates.TemplateResponse(
             request,
@@ -426,7 +448,7 @@ def _register_market_assumptions_routes(web_app: FastAPI) -> None:
             {
                 "plan_id": selected.id,
                 "plan": selected.plan,
-                "assumptions": resolved_assumptions.from_result(result),
+                "assumptions": assumptions,
                 "simulation_error": simulation_error,
             },
         )

@@ -13,8 +13,9 @@ domain.build_monthly_cashflows(plan)        # Decimal net income/taxes per month
         │  (→ float64 at the boundary)
         ▼
 preprocess(plan)
-  ├─ resolve_inflation(plan)                # scalar monthly rate
-  ├─ resolve_planning_returns(plan)         # expected stock/bond returns
+  ├─ resolve_market_inputs(plan)            # inflation + expected returns
+  │   ├─ resolve_inflation(plan)            # scalar monthly rate
+  │   └─ resolve_planning_returns(plan)     # expected stock/bond returns
   ├─ risk:    RRA-by-month + legacy RRA     (risk.py)
   ├─ mertons: stock-alloc + spending-tilt   (mertons.py)
   └─ npv:     backward PV pass + cumulative  (npv.py, vectorized)
@@ -29,6 +30,10 @@ aggregate + wealth composition            # aggregate.py, composition.py
         ▼
 SimulationResult  (percentile-major)      # public return; includes diagnostics
 ```
+
+Display-only consumers such as the Market assumptions editor can resolve the
+assumption snapshot without the pipeline's later stages; see
+`packages/simulation/docs/assumptions.md`.
 
 ## Stage by stage
 

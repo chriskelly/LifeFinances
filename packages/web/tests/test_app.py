@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import date
 from decimal import Decimal
 from xml.etree import ElementTree
 
@@ -6,14 +7,18 @@ import httpx2 as httpx
 import pytest
 from core.defaults import DEFAULT_PLAN_NAME, default_plan
 from core.job import Job
-from core.models import AppSettings
+from core.models import AppSettings, InflationConfig, PlanningReturnsConfig
 from core.plan_names import copy_plan_name
 from core.repository import PlanRepository
 from core.settings_repository import SettingsRepository
 from core.social_security import AnnualEarnings
 from core.streams import CalendarMonthBoundary, PersonMaxAgeBoundary
 from fastapi.testclient import TestClient
-from web.app import _SIMULATION_FAILURE_MESSAGE, _figure_json
+from web.app import (
+    _ASSUMPTIONS_FAILURE_MESSAGE,
+    _SIMULATION_FAILURE_MESSAGE,
+    _figure_json,
+)
 from web.currency import format_usd
 from web.forms import (
     CLEAR_EOD_API_KEY,
@@ -40,8 +45,10 @@ from web.forms import (
     RETURN_PLAN,
     TAX_MODELED_STATES,
 )
+from web.resolved_assumptions import UNAVAILABLE_MESSAGE
 from web.routes import (
     EDITOR_HOUSEHOLD,
+    EDITOR_MARKET_ASSUMPTIONS,
     FAVICON,
     FAVICON_SVG,
     HOME,
@@ -68,6 +75,7 @@ from web.sections import (
 from web.spending_summary import INITIAL_SPENDING_LABEL, WORST_CASE_SPENDING_LABEL
 from web.theme import PICO_STYLESHEET_HREF, PRIMARY
 
+from simulation import assumptions as simulation_assumptions
 from web import charts as web_charts
 
 
@@ -930,6 +938,187 @@ def test_home_results_panel_reads_chart_from_select(
     assert "hx-vals=" in response.text
     assert "chart-select" in response.text
     assert "results-meta" not in response.text
+
+
+def _assert_assumptions_failure(body: str, caplog) -> None:
+    assert _ASSUMPTIONS_FAILURE_MESSAGE in body
+    assert _SIMULATION_FAILURE_MESSAGE not in body
+    assert UNAVAILABLE_MESSAGE in body
+    assert 'class="resolved-assumptions"' not in body
+    assert any(
+        record.name == "web.app"
+        and record.exc_info is not None
+        and "plan_id" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+def test_market_assumptions_editor_does_not_run_simulation(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    import sys
+
+    stub = sys.modules["simulation.stub"]
+    preprocess_module = sys.modules["simulation.preprocess"]
+
+    def boom(*args, **kwargs):
+        raise AssertionError("simulation pipeline must not run")
+
+    monkeypatch.setattr(stub, "simulate_monthly", boom)
+    monkeypatch.setattr(stub, "build_return_paths", boom)
+    monkeypatch.setattr(preprocess_module, "build_monthly_cashflows", boom)
+    monkeypatch.setattr(preprocess_module, "Timeline", boom)
+
+    response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
+
+    body = response.text
+    assert response.status_code == 200
+    assert _ASSUMPTIONS_FAILURE_MESSAGE not in body
+    assert _SIMULATION_FAILURE_MESSAGE not in body
+    assert UNAVAILABLE_MESSAGE not in body
+    assert "Inflation source:" in body
+
+
+def test_market_assumptions_editor_ignores_configured_api_keys(
+    client: TestClient, plan_id: int, db_path, monkeypatch
+) -> None:
+    SettingsRepository(db_path=db_path).save(
+        AppSettings(fred_api_key="fred-secret", eod_api_key="eod-secret")
+    )
+    captured: dict = {}
+    real_resolver = simulation_assumptions.resolve_assumptions
+
+    def spy_resolver(plan, **kwargs):
+        captured.update(kwargs)
+        return real_resolver(plan, **kwargs)
+
+    monkeypatch.setattr(simulation_assumptions, "resolve_assumptions", spy_resolver)
+
+    response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
+
+    body = response.text
+    assert response.status_code == 200
+    assert UNAVAILABLE_MESSAGE not in body
+    assert "Inflation source:" in body
+    assert captured.get("allow_refresh") is False
+    assert "fred_api_key" not in captured
+    assert "eod_api_key" not in captured
+
+
+def test_market_assumptions_editor_shows_failure_message_when_resolution_fails(
+    client: TestClient, plan_id: int, monkeypatch, caplog
+) -> None:
+    import logging
+
+    resolver_detail = "resolver exploded"
+
+    def boom(plan, **kwargs):
+        raise RuntimeError(resolver_detail)
+
+    monkeypatch.setattr(simulation_assumptions, "resolve_assumptions", boom)
+
+    with caplog.at_level(logging.ERROR, logger="web.app"):
+        response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
+
+    body = response.text
+    assert response.status_code == 200
+    assert resolver_detail not in body
+    _assert_assumptions_failure(body, caplog)
+
+
+def test_market_assumptions_editor_shows_failure_for_non_compounding_returns(
+    client: TestClient, repo: PlanRepository, plan_id: int, caplog
+) -> None:
+    import logging
+
+    plan = repo.get_by_id(plan_id)
+    assert plan is not None
+    plan.planning_returns = PlanningReturnsConfig(
+        preset="custom",
+        custom_stocks_base="historical",
+        custom_bonds_base="historical",
+        custom_stocks_delta=Decimal("-10"),
+    )
+    repo.save(plan_id, plan)
+
+    with caplog.at_level(logging.ERROR, logger="web.app"):
+        response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
+
+    body = response.text
+    assert response.status_code == 200
+    _assert_assumptions_failure(body, caplog)
+    assert any(
+        record.exc_info is not None
+        and isinstance(record.exc_info[1], ValueError)
+        and "total loss" in str(record.exc_info[1])
+        for record in caplog.records
+    )
+
+
+def test_market_assumptions_editor_shows_failure_for_non_compounding_inflation(
+    client: TestClient, repo: PlanRepository, plan_id: int, caplog
+) -> None:
+    import logging
+
+    plan = repo.get_by_id(plan_id)
+    assert plan is not None
+    plan.inflation = InflationConfig(
+        mode="manual",
+        manual_annual_rate=Decimal("-1.5"),
+    )
+    repo.save(plan_id, plan)
+
+    with caplog.at_level(logging.ERROR, logger="web.app"):
+        response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
+
+    body = response.text
+    assert response.status_code == 200
+    _assert_assumptions_failure(body, caplog)
+    assert any(
+        record.exc_info is not None
+        and isinstance(record.exc_info[1], ValueError)
+        and "deflation" in str(record.exc_info[1])
+        for record in caplog.records
+    )
+
+
+def test_market_assumptions_editor_matches_full_simulation_summary(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    import sys
+
+    frozen = date(2026, 1, 2)
+
+    class FrozenDate(date):
+        @classmethod
+        def today(cls):
+            return frozen
+
+    monkeypatch.setattr("simulation.market_inputs.date", FrozenDate)
+    monkeypatch.setattr("web.simulation_cache.date", FrozenDate)
+
+    treasury = sys.modules["simulation.market_data.treasury"]
+    # /results runs the simulation with allow_refresh=True, and Treasury
+    # refreshes without an API key. Disable staleness so both routes read the
+    # same files and the comparison cannot race a live fetch. Both requests
+    # also read the real market cache; a concurrent refresh script could still
+    # change files between them.
+    monkeypatch.setattr(treasury, "is_cache_stale", lambda **kwargs: False)
+
+    editor = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
+    results = client.get(f"{RESULTS}?plan={plan_id}")
+
+    marker = 'id="resolved-assumptions-summary"'
+
+    def summary(html: str) -> str:
+        return html.split(marker, 1)[1].split(">", 1)[1].split("</div>", 1)[0].strip()
+
+    assert editor.status_code == 200
+    assert results.status_code == 200
+    assert editor.text.count(marker) == 1
+    assert results.text.count(marker) == 1
+    assert 'class="resolved-assumptions"' in editor.text
+    assert summary(editor.text) == summary(results.text)
 
 
 def test_create_plan_redirects_to_new_plan(client: TestClient, db_path) -> None:

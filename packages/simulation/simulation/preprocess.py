@@ -19,11 +19,11 @@ from core.timeline import Timeline, person_end_date, project_stream
 
 from domain import build_monthly_cashflows
 from simulation.composition import manual_stream_basis_adjustment
-from simulation.market_data import resolve_inflation
 from simulation.market_data.inflation import InflationResolved
+from simulation.market_inputs import resolve_market_inputs
 from simulation.mertons import effective_mertons
 from simulation.npv import backward_npv_including_current
-from simulation.planning_returns import PlanningReturns, resolve_planning_returns
+from simulation.planning_returns import PlanningReturns
 from simulation.risk import legacy_rra, rra_by_month
 
 
@@ -111,30 +111,14 @@ def preprocess(
             "domain cashflow horizon must match core.timeline horizon: "
             f"got {len(cashflows.net_cashflow)}, expected {months}"
         )
-    inflation = resolve_inflation(
+    inflation, planning = resolve_market_inputs(
         plan,
         today=today,
         allow_refresh=allow_refresh,
         now=now,
-        api_key=fred_api_key,
-    )
-    planning = resolve_planning_returns(
-        plan,
-        today=today,
-        allow_refresh=allow_refresh,
-        now=now,
+        fred_api_key=fred_api_key,
         eod_api_key=eod_api_key,
     )
-    if 1.0 + planning.annual_bonds <= 0.0:
-        raise ValueError(
-            f"planning annual bond return {planning.annual_bonds} implies "
-            "total loss or worse (1 + rate <= 0); cannot compound monthly"
-        )
-    if 1.0 + planning.annual_stocks <= 0.0:
-        raise ValueError(
-            f"planning annual stock return {planning.annual_stocks} implies "
-            "total loss or worse (1 + rate <= 0); cannot compound monthly"
-        )
 
     # The domain produces job, Social Security, pension, and tax amounts in
     # today's dollars (real), so they are used as-is; only manual income streams

@@ -186,6 +186,11 @@ def resolve_inflation(
             cache_path=t10yie_cache_path,
         )
         source = "suggested"
+    if 1.0 + annual <= 0.0:
+        raise ValueError(
+            f"annual inflation {annual} implies total deflation or worse "
+            "(1 + rate <= 0)"
+        )
     return InflationResolved(
         annual=annual,
         monthly=annual_to_monthly(annual),
