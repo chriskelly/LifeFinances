@@ -460,3 +460,44 @@ def test_savings_allocation_y_axis_spans_zero_to_one_hundred_percent():
     yaxis = figure["layout"]["yaxis"]
     assert yaxis["range"] == list(charts.PERCENT_Y_RANGE)
     assert yaxis["tickformat"] == charts.TICKFORMAT_PERCENT
+
+
+@pytest.mark.parametrize("chart_type", charts.CHART_TYPES)
+def test_every_chart_pads_the_x_range_past_the_first_and_last_month(chart_type):
+    """Month 0 sat on the plot's left edge, so its hover resolved to month 1."""
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=4)
+
+    figure = charts.build_figure(result, chart_type)
+
+    assert figure["layout"]["xaxis"]["range"] == ["2025-12-01", "2026-05-01"]
+
+
+@pytest.mark.parametrize(
+    ("horizon_months", "expected_range"),
+    [
+        (99, ["2025-12-01", "2034-04-01"]),
+        (200, ["2025-11-01", "2042-10-01"]),
+    ],
+)
+def test_x_range_padding_steps_up_per_hundred_months(horizon_months, expected_range):
+    result = _make_result(percentiles=[50], horizon_months=horizon_months)
+
+    figure = charts.build_figure(result, charts.SPENDING_TOTAL)
+
+    assert figure["layout"]["xaxis"]["range"] == expected_range
+
+
+def test_x_range_padding_crosses_the_year_boundary():
+    result = _make_result(percentiles=[50], horizon_months=2, start_month=(2026, 12))
+
+    figure = charts.build_figure(result, charts.SPENDING_TOTAL)
+
+    assert figure["layout"]["xaxis"]["range"] == ["2026-11-01", "2027-02-01"]
+
+
+def test_x_range_stays_ordered_for_an_empty_horizon():
+    result = _make_result(percentiles=[50], horizon_months=0)
+
+    figure = charts.build_figure(result, charts.SPENDING_TOTAL)
+
+    assert figure["layout"]["xaxis"]["range"] == ["2025-12-01", "2026-01-01"]

@@ -75,6 +75,15 @@ unified hover lists all series with the lowest percentile last.
 Wealth-composition and income-by-source traces set `hoveron="points"` because
 unified hover does not reliably hit filled areas.
 
+The x-axis range is padded by one month per 100 months of horizon (at least one
+month) at each end, so the margin stays near 1% of the plot width. Plotly's
+date-axis autorange is the data extent, which puts month 0 and the final month
+exactly on the plot edges; on a long horizon the hit window at those edges is a
+sub-pixel sliver clipped by the boundary, so the pointer resolves to the
+neighbouring month. The padding keeps the edge months inside the plot with the
+same hit width as any other month. Data and tooltip values are unchanged; axis
+ticks extend by the padding.
+
 **Gotcha:** render charts on `htmx:afterSettle`, not `afterSwap`. Settle
 re-applies server attributes to id-matched elements and strips Plotly's
 `js-plotly-plot` class, which breaks absolute SVG positioning and pushes
