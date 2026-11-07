@@ -3,7 +3,7 @@ from __future__ import annotations
 import plotly.graph_objects as go
 from simulation.result import SimulationResult
 
-from web.calendar_months import month_labels
+from web.calendar_months import month_labels, padded_month_range
 
 PORTFOLIO = "portfolio"
 SPENDING_TOTAL = "spending-total"
@@ -113,6 +113,44 @@ PERCENT_Y_RANGE = (0.0, 1.0)
 # Classic Plotly blue; translucent band between outer percentiles only.
 BAND_FILLCOLOR = "rgba(31, 119, 180, 0.2)"
 
+# Blank axis on each side, one month per this many months of horizon (minimum
+# one). Plotly's date-axis autorange is the data extent, which puts the first and
+# last month exactly on the plot edges; on a long horizon the hit window at those
+# edges is a sub-pixel sliver clipped by the boundary, so the pointer resolves to
+# the neighbouring month. Scaling the margin with the horizon keeps it near 1% of
+# the plot width (a few pixels), enough to clear the clipped edge at typical
+# chart widths.
+_X_HOVER_MARGIN_MONTHS_PER = 100
+
+
+def _x_axis_range(result: SimulationResult) -> list[str]:
+    horizon_months = max(result.horizon_months, 0)
+    pad_months = max(1, horizon_months // _X_HOVER_MARGIN_MONTHS_PER)
+    return padded_month_range(
+        result.start_month,
+        horizon_months,
+        pad_months=pad_months,
+    )
+
+
+def _apply_shared_layout(
+    figure: go.Figure,
+    result: SimulationResult,
+    *,
+    yaxis: dict[str, object],
+) -> None:
+    """Apply the layout every chart shares.
+
+    The x-axis is always the simulation month axis, so its range is always the
+    padded month span.
+    """
+    figure.update_layout(
+        hovermode=_HOVERMODE,
+        legend={"traceorder": "reversed"},
+        xaxis={"range": _x_axis_range(result)},
+        yaxis=yaxis,
+    )
+
 
 def _band_figure(
     result: SimulationResult,
@@ -162,11 +200,7 @@ def _band_figure(
     if lock_percent_axis:
         yaxis["range"] = list(PERCENT_Y_RANGE)
         yaxis["tickformat"] = TICKFORMAT_PERCENT
-    figure.update_layout(
-        hovermode=_HOVERMODE,
-        legend={"traceorder": "reversed"},
-        yaxis=yaxis,
-    )
+    _apply_shared_layout(figure, result, yaxis=yaxis)
     return figure
 
 
@@ -195,11 +229,7 @@ def _wealth_composition_figure(result: SimulationResult, chart_type: str) -> go.
                 hoveron="points",
             )
         )
-    figure.update_layout(
-        hovermode=_HOVERMODE,
-        legend={"traceorder": "reversed"},
-        yaxis={"hoverformat": HOVERFORMAT_DOLLAR},
-    )
+    _apply_shared_layout(figure, result, yaxis={"hoverformat": HOVERFORMAT_DOLLAR})
     return figure
 
 
@@ -229,11 +259,7 @@ def _income_by_source_figure(result: SimulationResult) -> go.Figure:
             line={"dash": "dot"},
         )
     )
-    figure.update_layout(
-        hovermode=_HOVERMODE,
-        legend={"traceorder": "reversed"},
-        yaxis={"hoverformat": HOVERFORMAT_DOLLAR},
-    )
+    _apply_shared_layout(figure, result, yaxis={"hoverformat": HOVERFORMAT_DOLLAR})
     return figure
 
 
