@@ -22,8 +22,8 @@ jobs:
       - name: Sync dependencies
         run: uv sync
 
-      - name: Run tests
-        run: make test
+      - name: Run tests with coverage
+        run: make coverage
 
       - name: Run lint
         run: make lint
