@@ -5,6 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from simulation.market_data import treasury as treasury_module
 from simulation.market_data.cache import TREASURY_TENORS
 from simulation.market_data.treasury import resolve_treasury_real_yields
 
@@ -224,3 +225,75 @@ def test_vendored_snapshot_resolves_latest_committed_curve() -> None:
     assert resolved.yields["20"] == pytest.approx(expected_twenty_yr)
     assert resolved.observation_date == expected_date
     assert set(resolved.yields) == set(TREASURY_TENORS)
+
+
+def test_skips_rows_with_missing_observation_date(tmp_path: Path) -> None:
+    vendored = tmp_path / "v.csv"
+    vendored.write_text("5,7,10,20,30\n0.01,0.01,0.01,0.01,0.01\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="no Treasury curve"):
+        resolve_treasury_real_yields(
+            today=date(2026, 1, 2),
+            vendored_path=vendored,
+            cache_path=tmp_path / "no_cache.csv",
+        )
+
+
+def test_skips_rows_with_unparsable_observation_date(tmp_path: Path) -> None:
+    header = "observation_date,5,7,10,20,30\n"
+    valid = "2026-01-01,0.02,0.02,0.02,0.02,0.02\n"
+    vendored = tmp_path / "v.csv"
+    vendored.write_text(
+        header + "not-a-date,0.01,0.01,0.01,0.01,0.01\n" + valid,
+        encoding="utf-8",
+    )
+
+    resolved = resolve_treasury_real_yields(
+        today=date(2026, 1, 2),
+        vendored_path=vendored,
+        cache_path=tmp_path / "no_cache.csv",
+    )
+
+    assert resolved.observation_date == date(2026, 1, 1)
+
+
+def test_skips_rows_with_non_numeric_tenor_cell(tmp_path: Path) -> None:
+    header = "observation_date,5,7,10,20,30\n"
+    malformed = "2026-01-02,0.01,0.01,0.01,bad,0.01\n"
+    valid = "2026-01-01,0.02,0.02,0.02,0.02,0.02\n"
+    vendored = tmp_path / "v.csv"
+    vendored.write_text(header + malformed + valid, encoding="utf-8")
+
+    resolved = resolve_treasury_real_yields(
+        today=date(2026, 1, 3),
+        vendored_path=vendored,
+        cache_path=tmp_path / "no_cache.csv",
+    )
+
+    assert resolved.observation_date == date(2026, 1, 1)
+
+
+def test_vendored_without_usable_curve_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    vendored = tmp_path / "v.csv"
+    vendored.write_text("observation_date,5,7,10,20,30\n", encoding="utf-8")
+    calls = 0
+    real = treasury_module._latest_curve
+
+    def counting_latest_curve(today, path):
+        nonlocal calls
+        calls += 1
+        return real(today, path)
+
+    monkeypatch.setattr(treasury_module, "_latest_curve", counting_latest_curve)
+
+    with pytest.raises(ValueError, match="no Treasury curve"):
+        resolve_treasury_real_yields(
+            today=date(2026, 1, 2),
+            vendored_path=vendored,
+            cache_path=tmp_path / "no_cache.csv",
+        )
+
+    # The early re-raise matters: without it the same vendored path is read twice.
+    assert calls == 1
