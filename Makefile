@@ -1,7 +1,12 @@
+.PHONY: all test coverage ruff-check ruff-format-check pyright lint
+
 all: test lint
 
 test:
 	uv run pytest
+
+coverage:
+	uv run pytest --cov
 
 ruff-check:
 	uv run ruff check .

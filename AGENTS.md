@@ -45,6 +45,7 @@ Run everything from the **repository root**; `LIFE_FINANCES_DB_PATH` overrides t
 | ------ | ------- |
 | Install deps | `uv sync` |
 | Run all tests | `make test` |
+| Coverage gate | `make coverage` |
 | Lint | `make lint` |
 | Lint + test | `make` |
 | Pre-commit | `pre-commit run --all-files` |
@@ -65,6 +66,7 @@ After substantive changes, run `make` and confirm it passes before claiming work
 - One behaviour per test; fakes at boundaries per repo convention.
 - The user's explicit instruction outranks these rules, and these rules outrank any skill's checklist.
 - pytest, ruff, pyright; `make` is the full check. Keep arrange / act / assert visually distinct.
+- **Coverage gate:** `make coverage` measures branch coverage over the four package source roots and fails below 95%; `make test`, `make`, and pre-commit never judge the number. Never add blanket `# pragma: no cover` to move it, and a fifth package is not measured until added to `[tool.coverage.run].source`.
 
 ## Package dependency direction (strict)
 

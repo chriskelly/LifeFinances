@@ -19,6 +19,7 @@ dev = [
     "life-finances-simulation",
     "life-finances-web",
     "marimo>=0.24.0",
+    "pytest-cov>=7.1.0",
 ]
 
 [tool.uv.sources]
@@ -31,6 +32,20 @@ life-finances-web = { workspace = true }
 testpaths = ["tests", "packages"]
 pythonpath = ["."]
 addopts = "--import-mode=importlib"
+
+[tool.coverage.run]
+branch = true
+source = [
+    "packages/core/core",
+    "packages/domain/domain",
+    "packages/simulation/simulation",
+    "packages/web/web",
+]
+
+[tool.coverage.report]
+fail_under = 95
+precision = 2
+show_missing = true
 
 [tool.ruff]
 line-length = 88
