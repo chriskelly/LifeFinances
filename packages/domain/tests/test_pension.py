@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
 
@@ -217,7 +218,14 @@ def _job_with_pension(
     )
 
 
-def test_service_credit_requires_a_pension() -> None:
+@pytest.mark.parametrize(
+    "formula",
+    [service_credit_years, final_compensation],
+    ids=["service-credit", "final-compensation"],
+)
+def test_formula_helper_requires_a_pension(
+    formula: Callable[..., Decimal],
+) -> None:
     job = Job(
         annual_income=Decimal("120_000"),
         start=CalendarMonthBoundary(year=2016, month=1),
@@ -226,19 +234,7 @@ def test_service_credit_requires_a_pension() -> None:
     timeline = Timeline(_plan_with_person1_job(job), today=date(2026, 1, 1))
 
     with pytest.raises(ValueError, match="formula pension"):
-        service_credit_years(job=job, timeline=timeline)
-
-
-def test_final_compensation_requires_a_pension() -> None:
-    job = Job(
-        annual_income=Decimal("120_000"),
-        start=CalendarMonthBoundary(year=2016, month=1),
-        end=CalendarMonthBoundary(year=2046, month=1),
-    )
-    timeline = Timeline(_plan_with_person1_job(job), today=date(2026, 1, 1))
-
-    with pytest.raises(ValueError, match="formula pension"):
-        final_compensation(job=job, timeline=timeline)
+        formula(job=job, timeline=timeline)
 
 
 def test_final_compensation_requires_job_end() -> None:

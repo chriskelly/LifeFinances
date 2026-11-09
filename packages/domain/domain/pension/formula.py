@@ -65,7 +65,7 @@ def interpolate_age_factor(table: list[AgeFactor], age_months: int) -> Decimal:
         return rows[0].factor
     if age_months >= rows[-1].age_months:
         return rows[-1].factor
-    upper_index = bisect_left([row.age_months for row in rows], age_months)
+    upper_index = bisect_left(rows, age_months, key=lambda row: row.age_months)
     lower = rows[upper_index - 1]
     upper = rows[upper_index]
     ratio = Decimal(age_months - lower.age_months) / Decimal(
