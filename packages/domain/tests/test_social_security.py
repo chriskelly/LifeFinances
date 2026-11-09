@@ -87,6 +87,18 @@ def test_log_linear_extrapolate_extends_two_year_growth() -> None:
     assert float(result) == pytest.approx(float(expected), rel=0.0001)
 
 
+def _statement_xml(earnings_rows: str) -> str:
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        "<osss:OnlineSocialSecurityStatementData"
+        ' xmlns:osss="http://ssa.gov/osss/schemas/2.0">'
+        "<osss:EarningsRecord>"
+        f"{earnings_rows}"
+        "</osss:EarningsRecord>"
+        "</osss:OnlineSocialSecurityStatementData>"
+    )
+
+
 def test_parse_social_security_statement_xml_extracts_fica_earnings() -> None:
     xml_text = """<?xml version="1.0" encoding="UTF-8"?>
 <osss:OnlineSocialSecurityStatementData xmlns:osss="http://ssa.gov/osss/schemas/2.0">
@@ -420,3 +432,69 @@ def test_household_trust_factor_scales_projected_benefits() -> None:
     assert reduced_projection.person1.max_benefit[claim_index] == (
         full_projection.person1.max_benefit[claim_index] * reduced_trust
     ).quantize(Decimal("0.01"))
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        '<osss:Earnings endYear="2023">'
+        "<osss:FicaEarnings>1000</osss:FicaEarnings></osss:Earnings>",
+        '<osss:Earnings startYear="2023">'
+        "<osss:FicaEarnings>1000</osss:FicaEarnings></osss:Earnings>",
+    ],
+    ids=["missing-startYear", "missing-endYear"],
+)
+def test_parse_statement_rejects_missing_year_attributes(row: str) -> None:
+    with pytest.raises(ValueError, match="startYear or endYear"):
+        parse_social_security_statement_xml(_statement_xml(row))
+
+
+def test_parse_statement_rejects_missing_fica_earnings() -> None:
+    row = (
+        '<osss:Earnings startYear="2023" endYear="2023">'
+        "<osss:MedicareEarnings>1000</osss:MedicareEarnings>"
+        "</osss:Earnings>"
+    )
+
+    with pytest.raises(ValueError, match="FicaEarnings"):
+        parse_social_security_statement_xml(_statement_xml(row))
+
+
+def test_parse_statement_rejects_malformed_fica_earnings() -> None:
+    row = (
+        '<osss:Earnings startYear="2023" endYear="2023">'
+        "<osss:FicaEarnings>not-a-number</osss:FicaEarnings>"
+        "</osss:Earnings>"
+    )
+
+    with pytest.raises(ValueError, match="malformed FicaEarnings"):
+        parse_social_security_statement_xml(_statement_xml(row))
+
+
+def test_indexed_annual_earnings_skips_years_before_today() -> None:
+    past_year = 2020
+    current_year = 2026
+    current_earnings = Decimal("2000")
+
+    values = indexed_annual_earnings(
+        historical_earnings=[],
+        future_real_earnings_by_year={
+            past_year: Decimal("1000"),
+            current_year: current_earnings,
+        },
+        today_year=current_year,
+    )
+
+    assert values == [current_earnings]
+
+
+def test_log_linear_extrapolate_rejects_empty_table() -> None:
+    with pytest.raises(ValueError, match="empty statutory table"):
+        log_linear_extrapolate([], 2030)
+
+
+def test_log_linear_extrapolate_returns_first_value_for_identical_years() -> None:
+    first_value = Decimal("100")
+    rows = [(2020, first_value), (2020, Decimal("121"))]
+
+    assert log_linear_extrapolate(rows, 2021) == first_value
