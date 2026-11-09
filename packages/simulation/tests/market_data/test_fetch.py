@@ -249,3 +249,45 @@ def test_treasury_real_yield_curve_builds_request() -> None:
     assert rows[0][0] == observed
     assert f"/{year}/all" in str(captured["url"])
     assert f"type={TREASURY_REAL_YIELD_TYPE}" in str(captured["url"])
+
+
+def test_parse_fred_observations_raises_on_invalid_json() -> None:
+    with pytest.raises(json.JSONDecodeError):
+        parse_fred_observations("{not json")
+
+
+def test_parse_eod_close_raises_on_invalid_json() -> None:
+    from simulation.market_data.fetch import parse_eod_close
+
+    with pytest.raises(json.JSONDecodeError):
+        parse_eod_close("{not json")
+
+
+def test_parse_eod_close_returns_empty_for_non_array_json(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from simulation.market_data.fetch import parse_eod_close
+
+    caplog.set_level(logging.WARNING)
+
+    assert parse_eod_close(json.dumps({"error": "not an array"})) == []
+    assert "was not a JSON array" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "csv_text",
+    [
+        "",
+        _TREASURY_CSV_HEADER,
+        _TREASURY_CSV_HEADER + "\n\n",
+        _TREASURY_CSV_HEADER + "\nnot-a-date,1.85,1.90,1.95,2.05,2.15",
+        _TREASURY_CSV_HEADER + "\n01/02/2026",
+    ],
+    ids=["empty-body", "header-only", "blank-row", "unparsable-date", "short-row"],
+)
+def test_parse_treasury_real_yields_returns_no_rows_for_malformed_csv(
+    csv_text: str,
+) -> None:
+    from simulation.market_data.fetch import parse_treasury_real_yields
+
+    assert parse_treasury_real_yields(csv_text) == []
