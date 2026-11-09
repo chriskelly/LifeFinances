@@ -271,7 +271,8 @@ def test_parse_eod_close_returns_empty_for_non_array_json(
 ) -> None:
     caplog.set_level(logging.WARNING)
 
-    assert parse_eod_close(json.dumps({"error": "not an array"})) == []
+    # A scalar is not iterable, so deleting the guard raises instead of returning [].
+    assert parse_eod_close(json.dumps(5)) == []
     assert "was not a JSON array" in caplog.text
 
 
