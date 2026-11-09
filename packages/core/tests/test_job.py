@@ -181,3 +181,38 @@ def test_cross_person_and_mixed_boundary_kinds_resolve() -> None:
     household = _household_with_person1_jobs([job])
 
     assert len(household.person1.jobs[0].sabbaticals) == 1
+
+
+def test_sabbatical_window_start_after_end_rejected() -> None:
+    job = Job(
+        annual_income=Decimal("100000"),
+        start=_plan_start(year=2026, month=1),
+        sabbaticals=[
+            SabbaticalWindow(
+                start=CalendarMonthBoundary(year=2030, month=6),
+                end=CalendarMonthBoundary(year=2030, month=1),
+                remaining_fraction=Decimal("0"),
+            )
+        ],
+    )
+
+    with pytest.raises(ValidationError, match="start must not be after"):
+        _household_with_person1_jobs([job])
+
+
+def test_sabbatical_window_end_after_job_end_rejected() -> None:
+    job = Job(
+        annual_income=Decimal("100000"),
+        start=_plan_start(year=2026, month=1),
+        end=CalendarMonthBoundary(year=2030, month=12),
+        sabbaticals=[
+            SabbaticalWindow(
+                start=CalendarMonthBoundary(year=2030, month=1),
+                end=CalendarMonthBoundary(year=2031, month=1),
+                remaining_fraction=Decimal("0"),
+            )
+        ],
+    )
+
+    with pytest.raises(ValidationError, match="ends after"):
+        _household_with_person1_jobs([job])

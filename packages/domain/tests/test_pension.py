@@ -21,6 +21,8 @@ from domain.statutory.pension import (
     age_factors_from_statutory,
 )
 
+from domain import pension as pension_module
+
 
 def test_calstrs_table_spans_55_to_65_and_is_monotonic() -> None:
     youngest_age_months = 55 * 12
@@ -435,3 +437,34 @@ def test_manual_income_streams_flow_into_pension_manual() -> None:
 
     assert projection.manual[0] == monthly_amount
     assert projection.stored_total[0] == projection.formula[0] + monthly_amount
+
+
+def test_project_pension_rejects_empty_age_factor_table(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    job = _job_with_pension(
+        annual_income=Decimal("120_000"),
+        claim_age_months_value=62 * 12,
+        end_year=2045,
+    )
+    assert job.pension is not None
+    job.pension.age_factor_table = []
+    plan = _plan_with_person1_job(job)
+    timeline = Timeline(plan, today=date(2026, 1, 1))
+    calls = 0
+    real = pension_module.interpolate_age_factor
+
+    def counting_interpolate_age_factor(table, age_months):
+        nonlocal calls
+        calls += 1
+        return real(table, age_months)
+
+    monkeypatch.setattr(
+        pension_module, "interpolate_age_factor", counting_interpolate_age_factor
+    )
+
+    with pytest.raises(ValueError, match="empty age_factor_table"):
+        project_pension(plan, timeline, project_job_income(plan, timeline))
+
+    # Without the guard, interpolate_age_factor([]) raises the same ValueError.
+    assert calls == 0
