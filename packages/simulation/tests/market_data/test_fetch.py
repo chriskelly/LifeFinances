@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
 from urllib.request import Request
@@ -244,26 +245,25 @@ def test_treasury_real_yield_curve_builds_request() -> None:
     assert f"type={TREASURY_REAL_YIELD_TYPE}" in str(captured["url"])
 
 
-def test_parse_fred_observations_raises_on_invalid_json(
+@pytest.mark.parametrize(
+    ("parse", "expected_message"),
+    [
+        (parse_fred_observations, "FRED T10YIE response was not valid JSON"),
+        (parse_eod_close, "EOD GSPC.INDX response was not valid JSON"),
+    ],
+    ids=["fred-observations", "eod-close"],
+)
+def test_parse_rejects_invalid_json(
+    parse: Callable[[str], object],
+    expected_message: str,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     caplog.set_level(logging.ERROR)
 
     with pytest.raises(json.JSONDecodeError):
-        parse_fred_observations("{not json")
+        parse("{not json")
 
-    assert "not valid JSON" in caplog.text
-
-
-def test_parse_eod_close_raises_on_invalid_json(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    caplog.set_level(logging.ERROR)
-
-    with pytest.raises(json.JSONDecodeError):
-        parse_eod_close("{not json")
-
-    assert "not valid JSON" in caplog.text
+    assert expected_message in caplog.text
 
 
 def test_parse_eod_close_returns_empty_for_non_array_json(

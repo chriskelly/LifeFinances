@@ -239,33 +239,27 @@ def test_skips_rows_with_missing_observation_date(tmp_path: Path) -> None:
         )
 
 
-def test_skips_rows_with_unparsable_observation_date(tmp_path: Path) -> None:
-    header = "observation_date,5,7,10,20,30\n"
-    valid = "2026-01-01,0.02,0.02,0.02,0.02,0.02\n"
+@pytest.mark.parametrize(
+    ("malformed_row", "today"),
+    [
+        ("not-a-date,0.01,0.01,0.01,0.01,0.01", date(2026, 1, 2)),
+        ("2026-01-02,0.01,0.01,0.01,bad,0.01", date(2026, 1, 3)),
+    ],
+    ids=["unparsable-date", "non-numeric-tenor"],
+)
+def test_skips_rows_with_unparsable_fields(
+    tmp_path: Path, malformed_row: str, today: date
+) -> None:
     vendored = tmp_path / "v.csv"
     vendored.write_text(
-        header + "not-a-date,0.01,0.01,0.01,0.01,0.01\n" + valid,
+        "observation_date,5,7,10,20,30\n"
+        + malformed_row
+        + "\n2026-01-01,0.02,0.02,0.02,0.02,0.02\n",
         encoding="utf-8",
     )
 
     resolved = resolve_treasury_real_yields(
-        today=date(2026, 1, 2),
-        vendored_path=vendored,
-        cache_path=tmp_path / "no_cache.csv",
-    )
-
-    assert resolved.observation_date == date(2026, 1, 1)
-
-
-def test_skips_rows_with_non_numeric_tenor_cell(tmp_path: Path) -> None:
-    header = "observation_date,5,7,10,20,30\n"
-    malformed = "2026-01-02,0.01,0.01,0.01,bad,0.01\n"
-    valid = "2026-01-01,0.02,0.02,0.02,0.02,0.02\n"
-    vendored = tmp_path / "v.csv"
-    vendored.write_text(header + malformed + valid, encoding="utf-8")
-
-    resolved = resolve_treasury_real_yields(
-        today=date(2026, 1, 3),
+        today=today,
         vendored_path=vendored,
         cache_path=tmp_path / "no_cache.csv",
     )
