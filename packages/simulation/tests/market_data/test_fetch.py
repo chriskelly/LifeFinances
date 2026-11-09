@@ -254,7 +254,7 @@ def test_treasury_real_yield_curve_builds_request() -> None:
     ids=["fred-observations", "eod-close"],
 )
 def test_parse_rejects_invalid_json(
-    parse: Callable[[str], object],
+    parse: Callable[[str], list[tuple[date, Decimal]]],
     expected_message: str,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
