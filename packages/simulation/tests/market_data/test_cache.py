@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -8,9 +9,12 @@ from pathlib import Path
 import pytest
 from simulation.market_data.cache import (
     CACHE_TTL,
+    TREASURY_TENORS,
     is_t10yie_cache_stale,
     resolve_t10yie_read_path,
+    write_sp500_cache,
     write_t10yie_cache,
+    write_treasury_cache,
 )
 
 
@@ -81,8 +85,6 @@ def test_cache_stale_uses_source_ttl_constant(tmp_path: Path) -> None:
 
 
 def test_write_sp500_cache_shape(tmp_path: Path) -> None:
-    from simulation.market_data.cache import write_sp500_cache
-
     cache_path = tmp_path / "sp500_close.csv"
     meta_path = tmp_path / "sp500_close.meta.json"
     fetched_at = datetime(2026, 6, 28, 12, 0, tzinfo=UTC)
@@ -102,11 +104,13 @@ def test_write_sp500_cache_shape(tmp_path: Path) -> None:
     from simulation.market_data.fetch import EOD_SP500_SYMBOL
 
     assert meta["series_id"] == EOD_SP500_SYMBOL
+    assert sorted(path.name for path in tmp_path.iterdir()) == [
+        cache_path.name,
+        meta_path.name,
+    ]
 
 
 def test_write_treasury_cache_shape(tmp_path: Path) -> None:
-    from simulation.market_data.cache import TREASURY_TENORS, write_treasury_cache
-
     cache_path = tmp_path / "treasury_real_yield.csv"
     meta_path = tmp_path / "treasury_real_yield.meta.json"
     fetched_at = datetime(2026, 6, 28, 12, 0, tzinfo=UTC)
@@ -139,8 +143,6 @@ def test_write_treasury_cache_shape(tmp_path: Path) -> None:
 
 
 def test_write_treasury_cache_rejects_incomplete_rows(tmp_path: Path) -> None:
-    from simulation.market_data.cache import write_treasury_cache
-
     cache_path = tmp_path / "treasury_real_yield.csv"
     meta_path = tmp_path / "treasury_real_yield.meta.json"
     fetched_at = datetime(2026, 6, 28, 12, 0, tzinfo=UTC)
@@ -154,3 +156,60 @@ def test_write_treasury_cache_rejects_incomplete_rows(tmp_path: Path) -> None:
             cache_path=cache_path,
             meta_path=meta_path,
         )
+
+
+class _UnwritableDecimal(Decimal):
+    def __str__(self) -> str:
+        raise OSError("disk full")
+
+
+def _treasury_row_with_unwritable_yield() -> tuple[date, dict[str, Decimal]]:
+    yields = {tenor: Decimal("0.02") for tenor in TREASURY_TENORS}
+    yields["10"] = _UnwritableDecimal("0.02")
+    return date(2026, 6, 2), yields
+
+
+@pytest.mark.parametrize(
+    ("writer", "payload"),
+    [
+        (write_sp500_cache, [(date(2026, 6, 2), _UnwritableDecimal("1.0"))]),
+        (write_t10yie_cache, [(date(2026, 6, 2), _UnwritableDecimal("1.0"))]),
+        (write_treasury_cache, [_treasury_row_with_unwritable_yield()]),
+    ],
+    ids=["sp500", "t10yie", "treasury"],
+)
+def test_cache_write_failure_leaves_previous_file_intact(
+    tmp_path: Path,
+    writer: Callable[..., None],
+    payload: list[tuple[date, Decimal]] | list[tuple[date, dict[str, Decimal]]],
+) -> None:
+    cache_path = tmp_path / "cache.csv"
+    meta_path = tmp_path / "cache.meta.json"
+    previous = "observation_date,value\n2026-06-01,1.0\n"
+    cache_path.write_text(previous, encoding="utf-8")
+
+    with pytest.raises(OSError, match="disk full"):
+        writer(
+            payload,
+            now=datetime(2026, 6, 28, 12, 0, tzinfo=UTC),
+            cache_path=cache_path,
+            meta_path=meta_path,
+        )
+
+    assert cache_path.read_text(encoding="utf-8") == previous
+    assert sorted(path.name for path in tmp_path.iterdir()) == [cache_path.name]
+
+
+def test_cache_write_failure_leaves_no_partial_file(tmp_path: Path) -> None:
+    cache_path = tmp_path / "sp500_close.csv"
+    meta_path = tmp_path / "sp500_close.meta.json"
+
+    with pytest.raises(OSError, match="disk full"):
+        write_sp500_cache(
+            [(date(2026, 6, 2), _UnwritableDecimal("1.0"))],
+            now=datetime(2026, 6, 28, 12, 0, tzinfo=UTC),
+            cache_path=cache_path,
+            meta_path=meta_path,
+        )
+
+    assert list(tmp_path.iterdir()) == []

@@ -33,7 +33,7 @@ def _latest_close(today: date, path: Path) -> tuple[date, float]:
             try:
                 observed = date.fromisoformat(row["observation_date"].strip())
                 close = float(row["close"])
-            except KeyError, ValueError, AttributeError:
+            except KeyError, TypeError, ValueError, AttributeError:
                 continue
             if observed > today:
                 continue

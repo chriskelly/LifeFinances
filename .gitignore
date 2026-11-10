@@ -9,6 +9,8 @@ tools/*.local.toml
 tools/__marimo__/
 data/data.db
 data/market_cache/
+# Partial files from an interrupted atomic cache write
+.*.tmp
 # Personal SSA statement downloads (never commit)
 social-security-statement.xml
 
