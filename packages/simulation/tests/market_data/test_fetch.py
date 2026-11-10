@@ -2,15 +2,22 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
 from urllib.request import Request
 
 import pytest
 from simulation.market_data.fetch import (
+    EOD_SP500_SYMBOL,
     FRED_T10YIE_SERIES_ID,
+    TREASURY_REAL_YIELD_TYPE,
+    eod_gspc_close,
     fred_observations,
+    parse_eod_close,
     parse_fred_observations,
+    parse_treasury_real_yields,
+    treasury_real_yield_curve,
 )
 
 
@@ -108,8 +115,6 @@ def test_parse_fred_observations_logs_api_error(
 
 
 def test_parse_eod_close_reads_close_and_skips_bad_rows() -> None:
-    from simulation.market_data.fetch import parse_eod_close
-
     good_date = date(2026, 1, 2)
     good_close = Decimal("4700.10")
     skipped_date = date(2026, 1, 5)
@@ -144,8 +149,6 @@ def test_parse_eod_close_reads_close_and_skips_bad_rows() -> None:
 
 
 def test_eod_gspc_close_builds_request() -> None:
-    from simulation.market_data.fetch import EOD_SP500_SYMBOL, eod_gspc_close
-
     captured: dict[str, object] = {}
     expected_key = "eod-request-key"
     from_date = date(2026, 1, 1)
@@ -179,8 +182,6 @@ _TREASURY_CSV_HEADER = 'Date,"5 YR","7 YR","10 YR","20 YR","30 YR"'
 
 
 def test_parse_treasury_real_yields_normalizes_percent_to_decimal() -> None:
-    from simulation.market_data.fetch import parse_treasury_real_yields
-
     observed = date(2026, 1, 2)
     percent_by_tenor = {
         "5": "1.85",
@@ -206,8 +207,6 @@ def test_parse_treasury_real_yields_normalizes_percent_to_decimal() -> None:
 
 
 def test_parse_treasury_real_yields_skips_blank_cells() -> None:
-    from simulation.market_data.fetch import parse_treasury_real_yields
-
     observed = date(2026, 1, 2)
     twenty_yr_percent = "2.05"
     csv_text = "\n".join(
@@ -225,11 +224,6 @@ def test_parse_treasury_real_yields_skips_blank_cells() -> None:
 
 
 def test_treasury_real_yield_curve_builds_request() -> None:
-    from simulation.market_data.fetch import (
-        TREASURY_REAL_YIELD_TYPE,
-        treasury_real_yield_curve,
-    )
-
     captured: dict[str, object] = {}
     year = 2026
     observed = date(2026, 1, 2)
@@ -249,3 +243,51 @@ def test_treasury_real_yield_curve_builds_request() -> None:
     assert rows[0][0] == observed
     assert f"/{year}/all" in str(captured["url"])
     assert f"type={TREASURY_REAL_YIELD_TYPE}" in str(captured["url"])
+
+
+@pytest.mark.parametrize(
+    ("parse", "expected_message"),
+    [
+        (parse_fred_observations, "FRED T10YIE response was not valid JSON"),
+        (parse_eod_close, "EOD GSPC.INDX response was not valid JSON"),
+    ],
+    ids=["fred-observations", "eod-close"],
+)
+def test_parse_rejects_invalid_json(
+    parse: Callable[[str], list[tuple[date, Decimal]]],
+    expected_message: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.ERROR)
+
+    with pytest.raises(json.JSONDecodeError):
+        parse("{not json")
+
+    assert expected_message in caplog.text
+
+
+def test_parse_eod_close_returns_empty_for_non_array_json(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.WARNING)
+
+    # A scalar is not iterable, so deleting the guard raises instead of returning [].
+    assert parse_eod_close(json.dumps(5)) == []
+    assert "was not a JSON array" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "csv_text",
+    [
+        "",
+        _TREASURY_CSV_HEADER,
+        _TREASURY_CSV_HEADER + "\n\n",
+        _TREASURY_CSV_HEADER + "\nnot-a-date,1.85,1.90,1.95,2.05,2.15",
+        _TREASURY_CSV_HEADER + "\n01/02/2026",
+    ],
+    ids=["empty-body", "header-only", "blank-row", "unparsable-date", "short-row"],
+)
+def test_parse_treasury_real_yields_returns_no_rows_for_malformed_csv(
+    csv_text: str,
+) -> None:
+    assert parse_treasury_real_yields(csv_text) == []

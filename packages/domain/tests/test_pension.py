@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
 
@@ -20,6 +21,8 @@ from domain.statutory.pension import (
     CALSTRS_2_AT_62_AGE_FACTORS,
     age_factors_from_statutory,
 )
+
+from domain import pension as pension_module
 
 
 def test_calstrs_table_spans_55_to_65_and_is_monotonic() -> None:
@@ -215,6 +218,92 @@ def _job_with_pension(
     )
 
 
+@pytest.mark.parametrize(
+    "formula",
+    [service_credit_years, final_compensation],
+    ids=["service-credit", "final-compensation"],
+)
+def test_formula_helper_requires_a_pension(
+    formula: Callable[..., Decimal],
+) -> None:
+    job = Job(
+        annual_income=Decimal("120_000"),
+        start=CalendarMonthBoundary(year=2016, month=1),
+        end=CalendarMonthBoundary(year=2046, month=1),
+    )
+    timeline = Timeline(_plan_with_person1_job(job), today=date(2026, 1, 1))
+
+    with pytest.raises(ValueError, match="formula pension"):
+        formula(job=job, timeline=timeline)
+
+
+def test_final_compensation_requires_job_end() -> None:
+    job = _job_with_pension(
+        annual_income=Decimal("120_000"),
+        claim_age_months_value=62 * 12,
+        end_year=2045,
+    )
+    timeline = Timeline(_plan_with_person1_job(job), today=date(2026, 1, 1))
+    # Pydantic does not revalidate assignment; the guard exists for this path.
+    job.end = None
+
+    with pytest.raises(ValueError, match="job end"):
+        final_compensation(job=job, timeline=timeline)
+
+
+def test_final_compensation_returns_zero_for_nonpositive_horizon() -> None:
+    job = _job_with_pension(
+        annual_income=Decimal("120_000"),
+        claim_age_months_value=62 * 12,
+        end_year=2045,
+    )
+    plan = _plan_with_person1_job(job)
+    timeline = Timeline(plan, today=date(2100, 1, 1))
+
+    assert final_compensation(job=job, timeline=timeline) == Decimal("0.00")
+
+
+@pytest.mark.parametrize(
+    ("table", "age_months", "expected"),
+    [
+        (
+            [
+                AgeFactor(age_months=60 * 12, factor=Decimal("0.10")),
+                AgeFactor(age_months=60 * 12, factor=Decimal("0.20")),
+                AgeFactor(age_months=62 * 12, factor=Decimal("0.30")),
+            ],
+            61 * 12,
+            Decimal("0.25"),
+        ),
+        (
+            [
+                AgeFactor(age_months=58 * 12, factor=Decimal("0.10")),
+                AgeFactor(age_months=60 * 12, factor=Decimal("0.20")),
+                AgeFactor(age_months=60 * 12, factor=Decimal("0.30")),
+                AgeFactor(age_months=62 * 12, factor=Decimal("0.40")),
+            ],
+            60 * 12,
+            Decimal("0.20"),
+        ),
+        (
+            [
+                AgeFactor(age_months=58 * 12, factor=Decimal("0.10")),
+                AgeFactor(age_months=60 * 12, factor=Decimal("0.20")),
+                AgeFactor(age_months=60 * 12, factor=Decimal("0.30")),
+                AgeFactor(age_months=62 * 12, factor=Decimal("0.40")),
+            ],
+            61 * 12,
+            Decimal("0.35"),
+        ),
+    ],
+    ids=["start-duplicate", "middle-plateau", "after-plateau"],
+)
+def test_interpolate_age_factor_handles_duplicate_ages(
+    table: list[AgeFactor], age_months: int, expected: Decimal
+) -> None:
+    assert interpolate_age_factor(table, age_months) == expected
+
+
 def test_project_pension_returns_horizon_length_series() -> None:
     job = _job_with_pension(
         annual_income=Decimal("109_500"), claim_age_months_value=62 * 12, end_year=2045
@@ -344,3 +433,34 @@ def test_manual_income_streams_flow_into_pension_manual() -> None:
 
     assert projection.manual[0] == monthly_amount
     assert projection.stored_total[0] == projection.formula[0] + monthly_amount
+
+
+def test_project_pension_rejects_empty_age_factor_table(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    job = _job_with_pension(
+        annual_income=Decimal("120_000"),
+        claim_age_months_value=62 * 12,
+        end_year=2045,
+    )
+    assert job.pension is not None
+    job.pension.age_factor_table = []
+    plan = _plan_with_person1_job(job)
+    timeline = Timeline(plan, today=date(2026, 1, 1))
+    calls = 0
+    real = pension_module.interpolate_age_factor
+
+    def counting_interpolate_age_factor(table, age_months):
+        nonlocal calls
+        calls += 1
+        return real(table, age_months)
+
+    monkeypatch.setattr(
+        pension_module, "interpolate_age_factor", counting_interpolate_age_factor
+    )
+
+    with pytest.raises(ValueError, match="empty age_factor_table"):
+        project_pension(plan, timeline, project_job_income(plan, timeline))
+
+    # Without the guard, interpolate_age_factor([]) raises the same ValueError.
+    assert calls == 0

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from core.defaults import default_plan
 from core.models import InflationConfig
+from simulation.market_data import inflation as inflation_module
 from simulation.market_data.inflation import (
     InflationResolved,
     annual_to_monthly,
@@ -325,3 +326,78 @@ def test_resolve_returns_inflation_resolved_type() -> None:
     resolved = resolve_inflation(plan, today=date(2026, 1, 2))
 
     assert isinstance(resolved, InflationResolved)
+
+
+def test_suggested_skips_rows_shorter_than_two_columns(tmp_path: Path) -> None:
+    csv = _write_t10yie(tmp_path / "t.csv", ["2026-01-01", "2026-01-02,2.0"])
+
+    resolved = resolve_inflation(
+        _suggested_plan(), today=date(2026, 1, 3), t10yie_path=csv
+    )
+
+    assert resolved.observation_date == date(2026, 1, 2)
+    assert resolved.annual == pytest.approx(0.020)
+
+
+def test_refresh_with_zero_live_rows_keeps_vendored_data(tmp_path: Path) -> None:
+    cache_path = tmp_path / "cache.csv"
+    meta_path = tmp_path / "cache.meta.json"
+    today = date(2026, 6, 30)
+    baseline = resolve_inflation(
+        _suggested_plan(),
+        today=today,
+        t10yie_cache_path=cache_path,
+        t10yie_meta_path=meta_path,
+    )
+
+    def fetcher(**kwargs):
+        return []
+
+    resolved = resolve_inflation(
+        _suggested_plan(),
+        today=today,
+        allow_refresh=True,
+        now=datetime(2026, 6, 30, 12, tzinfo=UTC),
+        api_key="fred-key",
+        fetcher=fetcher,
+        t10yie_cache_path=cache_path,
+        t10yie_meta_path=meta_path,
+    )
+
+    assert resolved.annual == baseline.annual
+    assert resolved.observation_date == baseline.observation_date
+    assert resolved.market_source == "vendored"
+    assert not cache_path.exists()
+
+
+def test_manual_mode_without_rate_raises_despite_model_validation() -> None:
+    plan = default_plan()
+    plan.inflation = InflationConfig(mode="manual", manual_annual_rate=Decimal("0.02"))
+    # Pydantic does not revalidate assignment; this is the path the guard covers.
+    plan.inflation.manual_annual_rate = None
+
+    with pytest.raises(ValueError, match="manual_annual_rate"):
+        resolve_inflation(plan, today=date(2026, 1, 2))
+
+
+def test_vendored_without_usable_observation_reraises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    csv = _write_t10yie(tmp_path / "t.csv", [])
+    calls = 0
+    real = inflation_module._suggested_annual
+
+    def counting_suggested_annual(today, path):
+        nonlocal calls
+        calls += 1
+        return real(today, path)
+
+    monkeypatch.setattr(
+        inflation_module, "_suggested_annual", counting_suggested_annual
+    )
+
+    with pytest.raises(ValueError, match="no T10YIE observation"):
+        resolve_inflation(_suggested_plan(), today=date(2026, 1, 2), t10yie_path=csv)
+
+    # The early re-raise matters: without it the same vendored path is read twice.
+    assert calls == 1

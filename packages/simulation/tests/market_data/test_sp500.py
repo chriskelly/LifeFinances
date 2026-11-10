@@ -5,6 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from simulation.market_data import sp500 as sp500_module
 from simulation.market_data.sp500 import resolve_latest_sp500_close
 
 
@@ -203,3 +204,63 @@ def test_vendored_snapshot_resolves_latest_committed_row() -> None:
 
     assert resolved.close == pytest.approx(expected_close)
     assert resolved.observation_date == expected_date
+
+
+def test_skips_rows_when_close_column_is_missing(tmp_path: Path) -> None:
+    vendored = tmp_path / "v.csv"
+    vendored.write_text("observation_date\n2026-01-01\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="no S&P close"):
+        resolve_latest_sp500_close(
+            today=date(2026, 1, 2),
+            vendored_path=vendored,
+            cache_path=tmp_path / "no_cache.csv",
+        )
+
+
+@pytest.mark.parametrize(
+    "malformed_row",
+    ["not-a-date,5000.0", "2026-01-02,bad"],
+    ids=["unparsable-date", "non-numeric-close"],
+)
+def test_skips_rows_with_unparsable_fields(tmp_path: Path, malformed_row: str) -> None:
+    vendored = tmp_path / "v.csv"
+    vendored.write_text(
+        "observation_date,close\n" + malformed_row + "\n2026-01-01,5000.0\n",
+        encoding="utf-8",
+    )
+
+    resolved = resolve_latest_sp500_close(
+        today=date(2026, 1, 3),
+        vendored_path=vendored,
+        cache_path=tmp_path / "no_cache.csv",
+    )
+
+    assert resolved.observation_date == date(2026, 1, 1)
+    assert resolved.close == pytest.approx(5000.0)
+
+
+def test_vendored_without_usable_close_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    vendored = tmp_path / "v.csv"
+    vendored.write_text("observation_date,close\n", encoding="utf-8")
+    calls = 0
+    real = sp500_module._latest_close
+
+    def counting_latest_close(today, path):
+        nonlocal calls
+        calls += 1
+        return real(today, path)
+
+    monkeypatch.setattr(sp500_module, "_latest_close", counting_latest_close)
+
+    with pytest.raises(ValueError, match="no S&P close"):
+        resolve_latest_sp500_close(
+            today=date(2026, 1, 2),
+            vendored_path=vendored,
+            cache_path=tmp_path / "no_cache.csv",
+        )
+
+    # The early re-raise matters: without it the same vendored path is read twice.
+    assert calls == 1

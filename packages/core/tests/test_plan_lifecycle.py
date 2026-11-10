@@ -223,3 +223,17 @@ def test_ensure_bootstrap_creates_when_only_unparseable_plans_remain(db_path) ->
     assert plan.name == DEFAULT_PLAN_NAME
     assert settings.get().default_plan_id == resolved_id
     assert plans.get_by_id(resolved_id) is not None
+
+
+def test_duplicate_rejects_missing_plan(repo: PlanRepository) -> None:
+    existing_id, _ = repo.create(name="Base")
+
+    with pytest.raises(ValueError, match="does not exist"):
+        repo.duplicate(existing_id + 999)
+
+
+def test_rename_rejects_missing_plan(repo: PlanRepository) -> None:
+    existing_id, _ = repo.create(name="Base")
+
+    with pytest.raises(ValueError, match="does not exist"):
+        repo.rename(existing_id + 999, name="Renamed")

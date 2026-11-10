@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from bisect import bisect_left
 from decimal import Decimal
 
 from core.job import AgeFactor, Job
@@ -64,14 +65,13 @@ def interpolate_age_factor(table: list[AgeFactor], age_months: int) -> Decimal:
         return rows[0].factor
     if age_months >= rows[-1].age_months:
         return rows[-1].factor
-    for lower, upper in zip(rows, rows[1:], strict=False):
-        if lower.age_months <= age_months <= upper.age_months:
-            span = upper.age_months - lower.age_months
-            if span == 0:
-                return lower.factor
-            ratio = Decimal(age_months - lower.age_months) / Decimal(span)
-            return lower.factor + (upper.factor - lower.factor) * ratio
-    return rows[-1].factor
+    upper_index = bisect_left(rows, age_months, key=lambda row: row.age_months)
+    lower = rows[upper_index - 1]
+    upper = rows[upper_index]
+    ratio = Decimal(age_months - lower.age_months) / Decimal(
+        upper.age_months - lower.age_months
+    )
+    return lower.factor + (upper.factor - lower.factor) * ratio
 
 
 def claim_age_months(

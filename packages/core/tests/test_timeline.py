@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import cast
 
 import pytest
 from core.defaults import default_plan
 from core.models import Household, PersonHousehold
-from core.streams import CalendarMonthBoundary, PersonAgeBoundary, PersonMaxAgeBoundary
+from core.streams import (
+    Boundary,
+    CalendarMonthBoundary,
+    PersonAgeBoundary,
+    PersonMaxAgeBoundary,
+)
 from core.timeline import (
     Timeline,
     boundary_to_year_month,
@@ -129,3 +135,10 @@ def test_month_boundary_is_inverse_of_index_of() -> None:
 
     assert isinstance(boundary, CalendarMonthBoundary)
     assert timeline.index_of(boundary) == index
+
+
+def test_unknown_boundary_type_raises_type_error() -> None:
+    unknown = cast(Boundary, object())
+
+    with pytest.raises(TypeError, match="Unknown boundary"):
+        boundary_to_year_month(unknown, default_plan().household)
