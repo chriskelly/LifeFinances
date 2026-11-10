@@ -35,7 +35,9 @@ Treasury API is year-scoped). S&P `--update-vendored` uses a long `from` date
 
 Default cache output: `data/market_cache/t10yie_daily.csv` (+ sidecar metadata).
 S&P and Treasury caches live alongside it (`sp500_close.csv`,
-`treasury_real_yield.csv`). Vendored fallbacks are under
+`treasury_real_yield.csv`). Each cache file is written to a temporary file in the
+same directory and moved into place, so an interrupted refresh leaves the
+previous file intact. Vendored fallbacks are under
 `packages/simulation/simulation/market_data/data/`; update
 `packages/simulation/simulation/market_data/data/PROVENANCE.md` before committing
 vendored data changes. T10YIE / S&P / Treasury refreshes are

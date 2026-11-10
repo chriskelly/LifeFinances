@@ -206,6 +206,75 @@ def test_vendored_snapshot_resolves_latest_committed_row() -> None:
     assert resolved.observation_date == expected_date
 
 
+def test_resolves_previous_close_when_final_row_is_truncated(tmp_path: Path) -> None:
+    vendored = tmp_path / "v.csv"
+    vendored.write_text(
+        "observation_date,close\n2026-01-01,5000.0\n2026-01-02\n",
+        encoding="utf-8",
+    )
+
+    resolved = resolve_latest_sp500_close(
+        today=date(2026, 1, 3),
+        vendored_path=vendored,
+        cache_path=tmp_path / "no_cache.csv",
+    )
+
+    assert resolved.observation_date == date(2026, 1, 1)
+    assert resolved.close == pytest.approx(5000.0)
+
+
+def test_truncated_final_cache_row_keeps_earlier_cache_row(tmp_path: Path) -> None:
+    cache = tmp_path / "cache.csv"
+    cache.write_text(
+        "observation_date,close\n2026-01-01,5000.0\n2026-01-02\n", encoding="utf-8"
+    )
+    vendored = tmp_path / "vendored.csv"
+    vendored.write_text("observation_date,close\n2025-01-01,4000.0\n", encoding="utf-8")
+
+    resolved = resolve_latest_sp500_close(
+        today=date(2026, 1, 3),
+        cache_path=cache,
+        vendored_path=vendored,
+    )
+
+    assert resolved.observation_date == date(2026, 1, 1)
+    assert resolved.close == pytest.approx(5000.0)
+    assert resolved.source == "cache"
+
+
+def test_accepts_rows_with_extra_trailing_columns(tmp_path: Path) -> None:
+    vendored = tmp_path / "v.csv"
+    vendored.write_text(
+        "observation_date,close\n2026-01-02,5100.0,ignored\n2026-01-01,5000.0\n",
+        encoding="utf-8",
+    )
+
+    resolved = resolve_latest_sp500_close(
+        today=date(2026, 1, 3),
+        vendored_path=vendored,
+        cache_path=tmp_path / "no_cache.csv",
+    )
+
+    assert resolved.observation_date == date(2026, 1, 2)
+    assert resolved.close == pytest.approx(5100.0)
+
+
+def test_only_malformed_cache_rows_fall_back_to_vendored(tmp_path: Path) -> None:
+    cache = tmp_path / "cache.csv"
+    cache.write_text("observation_date,close\n2026-01-01\n", encoding="utf-8")
+    vendored = tmp_path / "vendored.csv"
+    vendored.write_text("observation_date,close\n2026-01-01,5000.0\n", encoding="utf-8")
+
+    resolved = resolve_latest_sp500_close(
+        today=date(2026, 1, 2),
+        cache_path=cache,
+        vendored_path=vendored,
+    )
+
+    assert resolved.close == pytest.approx(5000.0)
+    assert resolved.source == "vendored"
+
+
 def test_skips_rows_when_close_column_is_missing(tmp_path: Path) -> None:
     vendored = tmp_path / "v.csv"
     vendored.write_text("observation_date\n2026-01-01\n", encoding="utf-8")
@@ -220,8 +289,18 @@ def test_skips_rows_when_close_column_is_missing(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "malformed_row",
-    ["not-a-date,5000.0", "2026-01-02,bad"],
-    ids=["unparsable-date", "non-numeric-close"],
+    [
+        "not-a-date,5000.0",
+        "2026-01-02,bad",
+        "2026-01-02,",
+        "2026-01-02,   ",
+    ],
+    ids=[
+        "unparsable-date",
+        "non-numeric-close",
+        "empty-close-cell",
+        "whitespace-close-cell",
+    ],
 )
 def test_skips_rows_with_unparsable_fields(tmp_path: Path, malformed_row: str) -> None:
     vendored = tmp_path / "v.csv"
