@@ -79,6 +79,50 @@ age 20 and max age (`../simulation/risk.py`). TPAW stores the negation of that
 displayed decrease and adds it (`at20 + deltaAtMaxAge` in `process_risk.rs`,
 default `-2`).
 
+## Investigating a gap against a real TPAW plan
+
+When the two disagree, the cause may be an input mismatch (cheaper to debug),
+rather than engine math.
+Work in this order.
+
+**Compare month 0 first.** The first month is identical across Monte Carlo runs,
+so a month-0 gap cannot come from sampling, the RNG, or the historical-returns
+adjustment. Only read the later months once month 0 agrees.
+
+**Diff the inputs, most sensitive first:** portfolio balance; risk (tolerance at
+20, glide to max age, legacy delta, time preference, additional annual spending
+tilt); planning-return preset and log-volatility scales; inflation; sampling;
+horizon.
+
+**Take TPAW's values from an exported plan.** Plan menu → *Save to File* writes a
+`.tpaw.txt`: prose header, then JSON from the first `{`. The payload is a
+JSON-patch **history**, not a params snapshot — replay `planParamsHistory[].diff`
+in order over an empty object (only `add`, `replace`, and `remove` appear in
+practice); `reverseHeadIndex: 0` means the last entry is the current state. The
+head's `timestamp` is the plan's **evaluation date**: run LifeFinances with
+`today` set to it, because planning returns come from that date's CAPE and TIPS
+data.
+
+**Expect these mapping differences.** TPAW has no tax model — its `futureSavings`
+and `incomeDuringRetirement` are net amounts, while LifeFinances builds gross
+job/SS/pension income and taxes it; compare annualized `income_real` against the
+stream schedule and accept a few percent of drift. `forLegacyAsDeltaFromAt20` is
+added to the tolerance at 20, and `additionalAnnualSpendingTilt` is added
+directly to the Merton spending tilt (the `deltaAtMaxAge` sign is covered above).
+TPAW's month count includes the max-age month, so a tail difference can be the
+horizon rather than the math.
+
+**Mutate copies.** Ablate parameters on a copy of the plan — never the stored
+plan or the exported TPAW params.
+
+**Sensitivity, for triage on a long-horizon plan with real returns near 3%:** a
+0.5%/yr additional spending tilt moves month-0 spending by roughly 12%, a
+risk-tolerance glide of 2 points by roughly 5%, and one horizon month by roughly
+0.1%. Tilt and glide mismatches are large enough to explain a four-figure monthly
+gap on their own: a plan carrying a −0.5%/yr additional tilt and a flat glide,
+compared against TPAW with tilt 0 and a 2-point glide, differed by ~$1k/month at
+month 0 and matched once both inputs were aligned, with no engine change.
+
 ## Testing approach: doctest-golden values
 
 There is no runnable TPAW binary in this repo to diff full simulation runs
