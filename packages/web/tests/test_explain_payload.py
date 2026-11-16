@@ -161,6 +161,22 @@ def test_unknown_series_lists_allowed_public_series() -> None:
     assert failure.body() == expected_body
 
 
+def test_analysis_matrix_is_not_a_series() -> None:
+    result = _result()
+
+    with pytest.raises(ApiError) as raised:
+        series_payload(
+            scoped=_scoped(result),
+            series="withdrawals_total_by_run",
+            month=None,
+            percentile=None,
+        )
+    failure = raised.value
+
+    assert failure.code == UNKNOWN_SERIES
+    assert list(failure.allowed) == list(PUBLIC_ARRAY_FIELDS)
+
+
 def test_unknown_percentile_lists_configured_percentiles() -> None:
     result = _result()
     unknown_percentile = max(result.percentiles) + 1
@@ -230,6 +246,9 @@ def test_empty_horizon_summary_has_no_spending_amounts() -> None:
             "horizon_months": 0,
             "withdrawals_total": np.zeros(
                 (len(result.percentiles), 0), dtype=np.float64
+            ),
+            "withdrawals_total_by_run": np.zeros(
+                (result.num_runs, 0), dtype=np.float64
             ),
         }
     )

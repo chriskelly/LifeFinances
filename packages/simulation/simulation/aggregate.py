@@ -40,6 +40,7 @@ def build_public_result(
         withdrawals_discretionary=reduced["withdrawals_discretionary"],
         withdrawals_general=reduced["withdrawals_general"],
         withdrawals_total=reduced["withdrawals_total"],
+        withdrawals_total_by_run=raw.withdrawals_total,
         savings_stock_allocation=reduced["savings_stock_allocation"],
         wealth_job=composition.job,
         wealth_social_security=composition.social_security,

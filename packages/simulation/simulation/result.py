@@ -37,6 +37,11 @@ PUBLIC_ARRAY_FIELDS = (
     *HORIZON_ARRAY_FIELDS,
 )
 
+# Equality-only: adding these to PUBLIC_ARRAY_FIELDS would expose a 2-D array
+# through the /api/result/series whitelist, and eq_ndarray_model treats any
+# field omitted from array_fields as a scalar.
+ANALYSIS_ARRAY_FIELDS = ("withdrawals_total_by_run",)
+
 
 class RawSimulationResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -136,6 +141,9 @@ class SimulationResult(BaseModel):
     withdrawals_discretionary: np.ndarray
     withdrawals_general: np.ndarray
     withdrawals_total: np.ndarray
+    # Per-run total spending for path-level analysis; retained by reference,
+    # not a percentile series. Treat as read-only.
+    withdrawals_total_by_run: np.ndarray
     savings_stock_allocation: np.ndarray
     wealth_job: np.ndarray
     wealth_social_security: np.ndarray
@@ -148,7 +156,9 @@ class SimulationResult(BaseModel):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, SimulationResult):
             return NotImplemented
-        return eq_ndarray_model(self, other, array_fields=PUBLIC_ARRAY_FIELDS)
+        return eq_ndarray_model(
+            self, other, array_fields=PUBLIC_ARRAY_FIELDS + ANALYSIS_ARRAY_FIELDS
+        )
 
 
 __all__ = [

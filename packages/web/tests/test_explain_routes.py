@@ -42,7 +42,9 @@ def _make_result() -> SimulationResult:
     horizon_months = 2
     percentiles = [5, 50, 95]
     shape = (len(percentiles), horizon_months)
+    num_runs = 10
     series = np.zeros(shape, dtype=np.float64)
+    run_matrix = np.zeros((num_runs, horizon_months), dtype=np.float64)
     months = np.zeros(horizon_months, dtype=np.float64)
     scheduled_wealth = np.array([101.0, 202.0], dtype=np.float64)
     diagnostics = empty_diagnostics(months=horizon_months).model_copy(
@@ -51,7 +53,7 @@ def _make_result() -> SimulationResult:
     return SimulationResult(
         ran_at=datetime(2026, 9, 23),
         horizon_months=horizon_months,
-        num_runs=10,
+        num_runs=num_runs,
         percentiles=percentiles,
         start_month=(2026, 9),
         balance_start=series.copy(),
@@ -59,6 +61,7 @@ def _make_result() -> SimulationResult:
         withdrawals_discretionary=series.copy(),
         withdrawals_general=series.copy(),
         withdrawals_total=series.copy(),
+        withdrawals_total_by_run=run_matrix,
         savings_stock_allocation=series.copy(),
         wealth_job=months.copy(),
         wealth_social_security=months.copy(),
