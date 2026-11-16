@@ -32,6 +32,8 @@ def scoped_result(
 def sample_simulation_result() -> SimulationResult:
     percentiles = [10, 50, 90]
     months = 4
+    num_runs = 250
+    run_matrix = np.zeros((num_runs, months), dtype=np.float64)
     percentile_values = np.arange(
         1.0, 1.0 + len(percentiles) * months, dtype=np.float64
     ).reshape(len(percentiles), months)
@@ -46,7 +48,7 @@ def sample_simulation_result() -> SimulationResult:
     return SimulationResult(
         ran_at=datetime(2026, 9, 23, 8, 30),
         horizon_months=months,
-        num_runs=250,
+        num_runs=num_runs,
         percentiles=percentiles,
         start_month=(2026, 9),
         balance_start=percentile_values.copy(),
@@ -54,6 +56,7 @@ def sample_simulation_result() -> SimulationResult:
         withdrawals_discretionary=percentile_values.copy(),
         withdrawals_general=percentile_values.copy(),
         withdrawals_total=percentile_values.copy(),
+        withdrawals_total_by_run=run_matrix,
         savings_stock_allocation=percentile_values.copy(),
         wealth_job=horizon_values,
         wealth_social_security=horizon_values + 10.0,

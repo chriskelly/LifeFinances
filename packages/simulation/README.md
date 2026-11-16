@@ -28,7 +28,7 @@ RawSimulationResult  (engine-internal)      # per-run arrays + diagnostics in re
         ▼
 aggregate + wealth composition            # aggregate.py, composition.py
         ▼
-SimulationResult  (percentile-major)      # public return; includes diagnostics
+SimulationResult  (public result)           # percentile-major series + run-major total
 ```
 
 Display-only consumers such as the Market assumptions editor can resolve the
@@ -158,11 +158,17 @@ vectorized across all simulated runs at once, which is what keeps the whole
 simulation fast (on the order of tens of milliseconds for hundreds of runs over
 multi-decade horizons).
 
-**Public results.** `run_simulation` returns a percentile-major `SimulationResult`:
-each chart series is reduced along the run axis (default percentiles from
-`plan.advanced.percentiles`, overridable via kwarg). The forward loop still
-emits a private `RawSimulationResult` (`num_runs × months`) internally; callers
-should treat raw arrays as an engine artifact, not the public API. Wealth
+**Public results.** `run_simulation` returns a `SimulationResult` whose chart
+series are percentile-major: each chart series is reduced along the run axis
+(default percentiles from `plan.advanced.percentiles`, overridable via kwarg).
+The forward loop also emits a private `RawSimulationResult` (`num_runs ×
+months`); callers should treat its arrays as an engine artifact, not the public
+API. One exception carries path-level detail into the public result:
+`withdrawals_total_by_run` retains the raw `withdrawals_total` matrix by
+reference (`num_runs × horizon_months`, float64, real dollars); treat it as
+read-only. It is not percentile-reduced, and it never reaches a JSON series
+because it is absent from `PUBLIC_ARRAY_FIELDS` (which is also the
+`/api/result/series` whitelist). Wealth
 composition bands (job, Social Security, pension, manual income — tax-prorated
 remaining NPV at each month) are attached for stacked total-portfolio charts in
 the web charts UI.

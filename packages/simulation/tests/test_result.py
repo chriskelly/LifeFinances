@@ -2,7 +2,13 @@ from datetime import datetime
 
 import numpy as np
 from simulation.diagnostics import empty_diagnostics
-from simulation.result import RawSimulationResult, ResolvedAssumptions, SimulationResult
+from simulation.result import (
+    ANALYSIS_ARRAY_FIELDS,
+    PUBLIC_ARRAY_FIELDS,
+    RawSimulationResult,
+    ResolvedAssumptions,
+    SimulationResult,
+)
 
 
 def _resolved_assumptions() -> ResolvedAssumptions:
@@ -112,6 +118,7 @@ def _make_public_result(*, balance_start: np.ndarray) -> SimulationResult:
         ),
         withdrawals_general=np.zeros((len(percentiles), months), dtype=np.float64),
         withdrawals_total=np.zeros((len(percentiles), months), dtype=np.float64),
+        withdrawals_total_by_run=np.zeros((num_runs, months), dtype=np.float64),
         savings_stock_allocation=np.zeros((len(percentiles), months), dtype=np.float64),
         wealth_job=wealth,
         wealth_social_security=wealth.copy(),
@@ -140,6 +147,16 @@ def test_public_simulation_result_inequality_on_differing_wealth_band():
     assert first != second
 
 
+def test_public_simulation_result_inequality_on_differing_per_run_total():
+    balance_start = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=np.float64)
+    first = _make_public_result(balance_start=balance_start)
+    changed = first.withdrawals_total_by_run.copy()
+    changed[-1, -1] += 1.0
+    second = first.model_copy(update={"withdrawals_total_by_run": changed})
+
+    assert first != second
+
+
 def test_public_simulation_result_inequality_on_differing_assumptions():
     balance_start = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=np.float64)
     first = _make_public_result(balance_start=balance_start)
@@ -153,3 +170,17 @@ def test_public_simulation_result_inequality_on_differing_assumptions():
     )
 
     assert first != second
+
+
+def test_analysis_array_fields_are_disjoint_from_public_array_fields() -> None:
+    assert set(ANALYSIS_ARRAY_FIELDS).isdisjoint(PUBLIC_ARRAY_FIELDS)
+
+
+def test_every_ndarray_field_is_in_a_comparison_tuple() -> None:
+    ndarray_fields = {
+        name
+        for name, field in SimulationResult.model_fields.items()
+        if field.annotation is np.ndarray
+    }
+
+    assert ndarray_fields <= set(PUBLIC_ARRAY_FIELDS) | set(ANALYSIS_ARRAY_FIELDS)

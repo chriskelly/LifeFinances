@@ -25,12 +25,14 @@ def _result_with_withdrawals(
     withdrawals: np.ndarray, *, percentiles: list[int] | None = None
 ) -> SimulationResult:
     horizon = withdrawals.shape[1]
+    num_runs = 10
     zeros = np.zeros_like(withdrawals)
+    run_matrix = np.zeros((num_runs, horizon), dtype=np.float64)
     months = np.zeros(horizon, dtype=np.float64)
     return SimulationResult(
         ran_at=datetime(2026, 1, 1),
         horizon_months=horizon,
-        num_runs=10,
+        num_runs=num_runs,
         percentiles=percentiles or list(DEFAULT_PERCENTILES),
         start_month=(2026, 1),
         balance_start=zeros.copy(),
@@ -38,6 +40,7 @@ def _result_with_withdrawals(
         withdrawals_discretionary=zeros.copy(),
         withdrawals_general=zeros.copy(),
         withdrawals_total=withdrawals,
+        withdrawals_total_by_run=run_matrix,
         savings_stock_allocation=zeros.copy(),
         wealth_job=months.copy(),
         wealth_social_security=months.copy(),

@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
+import numpy as np
 from core.defaults import default_plan
 from core.models import (
     DEFAULT_PERCENTILES,
@@ -30,6 +31,11 @@ def test_run_simulation_returns_percentile_major_series():
     assert result.num_runs == plan.sampling.num_runs
     assert result.balance_start.shape == (len(percentiles), result.horizon_months)
     assert result.withdrawals_total.shape == result.balance_start.shape
+    assert result.withdrawals_total_by_run.shape == (
+        result.num_runs,
+        result.horizon_months,
+    )
+    assert result.withdrawals_total_by_run.dtype == np.float64
     assert result.wealth_job.shape == (result.horizon_months,)
 
 

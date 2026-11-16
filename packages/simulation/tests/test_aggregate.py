@@ -112,3 +112,21 @@ def test_build_public_result_reuses_raw_diagnostics() -> None:
     )
 
     assert result.diagnostics is raw.diagnostics
+
+
+def test_build_public_result_retains_per_run_total_withdrawals() -> None:
+    # Identity is the contract; the value pin guards the fixture wiring.
+    raw = _raw()
+
+    result = build_public_result(
+        raw,
+        percentiles=list(DEFAULT_PERCENTILES),
+        composition=_composition(),
+        start_month=(2026, 1),
+        resolved_assumptions=_resolved_assumptions(),
+    )
+
+    assert result.withdrawals_total_by_run is raw.withdrawals_total
+    np.testing.assert_array_equal(
+        result.withdrawals_total_by_run, _RAW_ARRAYS["withdrawals_total"]
+    )
