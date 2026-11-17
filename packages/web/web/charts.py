@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import plotly.graph_objects as go
 from simulation.result import SimulationResult
 
@@ -71,6 +72,24 @@ def wealth_percentile_index(chart_type: str, num_percentiles: int) -> int:
     raise ValueError(f"not a wealth-composition chart: {chart_type!r}")
 
 
+def median_run_index(result: SimulationResult) -> int | None:
+    """Row of the run closest to the median of the run-level lifetime medians."""
+    matrix = result.withdrawals_total_by_run
+    if matrix.size == 0:
+        return None
+    run_medians = np.median(matrix, axis=1)
+    ordered = np.sort(run_medians)
+    middle = len(ordered) // 2
+    # The closest runs are the central order statistic for an odd count and the
+    # two central ones for an even count. Comparing sorted values avoids the
+    # rounded midpoint, which would break an even count's tie by one ulp.
+    if len(ordered) % 2:
+        closest = ordered[middle : middle + 1]
+    else:
+        closest = ordered[middle - 1 : middle + 1]
+    return int(np.flatnonzero(np.isin(run_medians, closest))[0])
+
+
 _BAND_SOURCE = {
     PORTFOLIO: "balance_start",
     SPENDING_TOTAL: "withdrawals_total",
@@ -112,6 +131,13 @@ PERCENT_Y_RANGE = (0.0, 1.0)
 
 # Classic Plotly blue; translucent band between outer percentiles only.
 BAND_FILLCOLOR = "rgba(31, 119, 180, 0.2)"
+
+# One real simulated run on the spending chart. The stock Plotly colourway is
+# saturated, so a neutral gray keeps the path distinct from the percentiles.
+# It stays out of the legend: the label is wider than the percentile entries and
+# squeezed the plot's width, so the unified hover carries the name instead.
+MEDIAN_RUN_LABEL = "a median run"
+MEDIAN_RUN_COLOR = "#7f7f7f"
 
 # Blank axis on each side, one month per this many months of horizon (minimum
 # one). Plotly's date-axis autorange is the data extent, which puts the first and
@@ -158,6 +184,7 @@ def _band_figure(
     *,
     hoverformat: str,
     lock_percent_axis: bool = False,
+    include_median_run: bool = False,
 ) -> go.Figure:
     x = month_labels(result.start_month, result.horizon_months)
     series = getattr(result, source_field)
@@ -196,6 +223,19 @@ def _band_figure(
                 name=f"{percentile}th",
             )
         )
+    if include_median_run:
+        run_index = median_run_index(result)
+        if run_index is not None:
+            figure.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=result.withdrawals_total_by_run[run_index, :].tolist(),
+                    mode="lines",
+                    name=MEDIAN_RUN_LABEL,
+                    showlegend=False,
+                    line={"width": 1, "color": MEDIAN_RUN_COLOR},
+                )
+            )
     yaxis: dict[str, object] = {"hoverformat": hoverformat}
     if lock_percent_axis:
         yaxis["range"] = list(PERCENT_Y_RANGE)
@@ -272,6 +312,7 @@ def build_figure(result: SimulationResult, chart_type: str) -> dict:
             source_field,
             hoverformat=HOVERFORMAT_PERCENT if is_alloc else HOVERFORMAT_DOLLAR,
             lock_percent_axis=is_alloc,
+            include_median_run=chart_type == SPENDING_TOTAL,
         ).to_plotly_json()
     if chart_type in _WEALTH_CHART_TYPES:
         return _wealth_composition_figure(result, chart_type).to_plotly_json()

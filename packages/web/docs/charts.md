@@ -12,7 +12,7 @@ fall back to `DEFAULT_CHART` (`spending-total`).
 | Value | Chart |
 | --- | --- |
 | `portfolio` | Portfolio balance band |
-| `spending-total` | Total spending band |
+| `spending-total` | Total spending band plus one real simulated run |
 | `income-by-source` | Income by source: four stacked expected-path flows plus the dotted net total |
 | `asset-allocation-savings-portfolio` | Savings stock allocation (0–100%) |
 | `wealth-composition-low` / `-mid` / `-high` | Wealth composition at the low / middle / high configured percentile |
@@ -74,6 +74,18 @@ Chart figures use `hovermode="x unified"` and `legend.traceorder="reversed"` so
 unified hover lists all series with the lowest percentile last.
 Wealth-composition and income-by-source traces set `hoveron="points"` because
 unified hover does not reliably hit filled areas.
+
+`spending-total` also draws one real simulated run from
+`SimulationResult.withdrawals_total_by_run`: the run whose lifetime median
+monthly spending is closest to the median of the run-level lifetime medians,
+with ties to the lowest run index. The trace is appended after the percentile
+traces so it draws over the band, has no fill, uses a one-pixel neutral gray
+line, and is named `a median run`. It is excluded from the legend
+(`showlegend=False`) because the wide label squeezed the plot's width; the
+unified hover still names it. The trace is omitted when the run matrix has no
+runs or no months; other band charts never draw it. It participates in the
+y-axis autorange, so a path that leaves the band can widen the plotted spending
+range; the band and percentile values themselves are unchanged.
 
 The x-axis range is padded by one month per 100 months of horizon (at least one
 month) at each end, so the margin stays near 1% of the plot width. Plotly's
