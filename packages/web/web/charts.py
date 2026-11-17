@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import plotly.graph_objects as go
 from simulation.result import SimulationResult
 
@@ -69,6 +70,24 @@ def wealth_percentile_index(chart_type: str, num_percentiles: int) -> int:
     if chart_type == WEALTH_COMPOSITION_MID:
         return num_percentiles // 2
     raise ValueError(f"not a wealth-composition chart: {chart_type!r}")
+
+
+def median_run_index(result: SimulationResult) -> int | None:
+    """Row of the run closest to the median of the run-level lifetime medians."""
+    matrix = result.withdrawals_total_by_run
+    if matrix.size == 0:
+        return None
+    run_medians = np.median(matrix, axis=1)
+    ordered = np.sort(run_medians)
+    middle = len(ordered) // 2
+    # The closest runs are the central order statistic for an odd count and the
+    # two central ones for an even count. Comparing sorted values avoids the
+    # rounded midpoint, which would break an even count's tie by one ulp.
+    if len(ordered) % 2:
+        closest = ordered[middle : middle + 1]
+    else:
+        closest = ordered[middle - 1 : middle + 1]
+    return int(np.flatnonzero(np.isin(run_medians, closest))[0])
 
 
 _BAND_SOURCE = {

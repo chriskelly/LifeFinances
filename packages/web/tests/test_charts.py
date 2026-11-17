@@ -53,6 +53,11 @@ def _make_result(
     )
 
 
+def _set_run_matrix(result: SimulationResult, runs: list[list[float]]) -> None:
+    result.num_runs = len(runs)
+    result.withdrawals_total_by_run = np.array(runs, dtype=np.float64)
+
+
 def test_default_chart_is_spending_total():
     assert charts.DEFAULT_CHART == charts.SPENDING_TOTAL
 
@@ -89,6 +94,72 @@ def test_wealth_index_other_lengths_use_first_middle_last():
 def test_wealth_index_rejects_non_wealth_chart():
     with pytest.raises(ValueError):
         charts.wealth_percentile_index(charts.PORTFOLIO, 3)
+
+
+def test_median_run_index_picks_the_run_closest_to_the_median_run():
+    result = _make_result(percentiles=[50], horizon_months=1)
+    _set_run_matrix(result, [[10.0], [20.0], [30.0], [90.0], [1_000.0]])
+
+    assert charts.median_run_index(result) == 2
+
+
+def test_median_run_index_uses_each_runs_lifetime_median():
+    result = _make_result(percentiles=[50], horizon_months=3)
+    # Lifetime medians are 900, 20, 1000, so run 0 wins. The first month
+    # (median 10), all nine values (median 40) and the monthly medians
+    # (median 40) all point at run 1 instead.
+    _set_run_matrix(
+        result,
+        [
+            [0.0, 900.0, 900.0],
+            [10.0, 20.0, 30.0],
+            [1_000.0, 1_000.0, 40.0],
+        ],
+    )
+
+    assert charts.median_run_index(result) == 0
+
+
+def test_median_run_index_uses_medians_not_sums_means_or_maxima():
+    result = _make_result(percentiles=[50], horizon_months=4)
+    # Medians are 0, 10, 20 and select run 1. Means (250, 10, 20), sums
+    # (1000, 40, 80) and maxima (1000, 10, 20) all select run 2.
+    _set_run_matrix(
+        result,
+        [
+            [0.0, 0.0, 0.0, 1_000.0],
+            [10.0, 10.0, 10.0, 10.0],
+            [20.0, 20.0, 20.0, 20.0],
+        ],
+    )
+
+    assert charts.median_run_index(result) == 1
+
+
+def test_median_run_index_breaks_ties_to_the_lowest_index():
+    result = _make_result(percentiles=[50], horizon_months=1)
+    # Both runs are central; a "pick the lower median" shortcut would return 1.
+    _set_run_matrix(result, [[15.0], [5.0]])
+
+    assert charts.median_run_index(result) == 0
+
+
+def test_median_run_index_is_stable_when_the_midpoint_would_round():
+    result = _make_result(percentiles=[50], horizon_months=1)
+    # 0.1 and 0.2 are equidistant from their midpoint, but the float midpoint
+    # is fractionally closer to 0.2, so distance-based selection would return 1.
+    _set_run_matrix(result, [[0.1], [0.2]])
+
+    assert charts.median_run_index(result) == 0
+
+
+@pytest.mark.parametrize("shape", [(0, 3), (10, 0)])
+def test_median_run_index_returns_none_when_there_is_nothing_to_plot(shape):
+    result = _make_result(percentiles=[50], horizon_months=shape[1])
+    result.num_runs = shape[0]
+    result.withdrawals_total_by_run = np.zeros(shape, dtype=np.float64)
+
+    assert charts.median_run_index(result) is None
 
 
 def test_portfolio_has_one_trace_per_percentile_named_by_percentile():
