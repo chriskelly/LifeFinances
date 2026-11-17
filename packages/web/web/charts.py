@@ -134,7 +134,9 @@ BAND_FILLCOLOR = "rgba(31, 119, 180, 0.2)"
 
 # One real simulated run on the spending chart. The stock Plotly colourway is
 # saturated, so a neutral gray keeps the path distinct from the percentiles.
-MEDIAN_RUN_LABEL = "one simulated run"
+# It stays out of the legend: the label is wider than the percentile entries and
+# squeezed the plot's width, so the unified hover carries the name instead.
+MEDIAN_RUN_LABEL = "a median run"
 MEDIAN_RUN_COLOR = "#7f7f7f"
 
 # Blank axis on each side, one month per this many months of horizon (minimum
@@ -230,6 +232,7 @@ def _band_figure(
                     y=result.withdrawals_total_by_run[run_index, :].tolist(),
                     mode="lines",
                     name=MEDIAN_RUN_LABEL,
+                    showlegend=False,
                     line={"width": 1, "color": MEDIAN_RUN_COLOR},
                 )
             )
