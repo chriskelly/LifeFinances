@@ -10,7 +10,7 @@ Monthly TPAW withdrawal engine. Depends on `domain` and `core`; never imports
 - TPAW goldens are pinned contract values; never retune them to pass a refactor.
 - Keep the mechanism walkthrough in the package README as the human-facing
   long-form explanation; it has no line budget. The `docs/` leaves remain the
-  agent references; do not move the walkthrough into one.
+  agent references; do not move or restate the walkthrough in one.
 
 ## Reference
 
