@@ -202,6 +202,66 @@ def test_band_chart_y_comes_from_matching_source_row():
     assert list(high_trace["y"]) == high_values
 
 
+def test_spending_total_appends_one_simulated_run_trace():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=3)
+    _set_run_matrix(result, [[0.0, 0.0, 0.0], [10.0, 20.0, 30.0], [900.0] * 3])
+
+    figure = charts.build_figure(result, charts.SPENDING_TOTAL)
+
+    names = [trace["name"] for trace in figure["data"]]
+    assert names[-1] == "one simulated run"
+    assert names.count("one simulated run") == 1
+
+
+def test_simulated_run_trace_uses_the_selected_rows_months():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=3)
+    # Lifetime medians 0, 20, 900 select run 1.
+    _set_run_matrix(result, [[0.0, 0.0, 0.0], [10.0, 20.0, 30.0], [900.0] * 3])
+
+    figure = charts.build_figure(result, charts.SPENDING_TOTAL)
+
+    runs = [trace for trace in figure["data"] if trace["name"] == "one simulated run"]
+    expected_x = charts.month_labels(result.start_month, 3)
+    assert [list(trace["x"]) for trace in runs] == [expected_x]
+    assert [list(trace["y"]) for trace in runs] == [[10.0, 20.0, 30.0]]
+
+
+def test_simulated_run_line_is_thin_and_neutral():
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=2)
+    _set_run_matrix(result, [[0.0, 0.0], [10.0, 20.0], [900.0, 900.0]])
+
+    figure = charts.build_figure(result, charts.SPENDING_TOTAL)
+
+    styles = [
+        (trace["line"].get("width"), trace["line"].get("color"))
+        for trace in figure["data"]
+        if trace["name"] == "one simulated run"
+    ]
+    assert styles == [(1, "#7f7f7f")]
+
+
+@pytest.mark.parametrize(
+    "chart_type", [charts.PORTFOLIO, charts.ASSET_ALLOCATION_SAVINGS]
+)
+def test_simulated_run_trace_appears_only_on_spending_total(chart_type):
+    result = _make_result(percentiles=[5, 50, 95], horizon_months=3)
+    _set_run_matrix(result, [[0.0] * 3, [10.0, 20.0, 30.0], [900.0] * 3])
+
+    figure = charts.build_figure(result, chart_type)
+
+    names = [trace["name"] for trace in figure["data"]]
+    assert names.count("one simulated run") == 0
+
+
+def test_spending_total_with_an_empty_horizon_omits_the_simulated_run():
+    result = _make_result(percentiles=[50], horizon_months=0)
+
+    figure = charts.build_figure(result, charts.SPENDING_TOTAL)
+
+    names = [trace["name"] for trace in figure["data"]]
+    assert "one simulated run" not in names
+
+
 def test_wealth_composition_has_savings_plus_four_income_layers():
     percentiles = [5, 50, 95]
     result = _make_result(percentiles=percentiles, horizon_months=3)
@@ -409,7 +469,9 @@ def test_band_chart_hover_lists_lowest_percentile_last():
     legend and line z-order stay stable, but "x unified" hover otherwise
     lists them top-to-bottom in that same (ascending) order, showing the
     lowest percentile at the top. Reversing legend.traceorder flips only the
-    hover listing so the lowest percentile appears at the bottom."""
+    hover listing so the lowest percentile appears at the bottom. The
+    real-run trace is appended after the percentiles, so the reversed order
+    lists it first."""
     percentiles = [5, 50, 95]
     result = _make_result(percentiles=percentiles, horizon_months=2)
 
@@ -421,7 +483,7 @@ def test_band_chart_hover_lists_lowest_percentile_last():
         for trace in figure["data"]
         if trace.get("showlegend") is not False
     ]
-    assert line_names == [f"{p}th" for p in percentiles]
+    assert line_names == [f"{p}th" for p in percentiles] + ["one simulated run"]
 
 
 def test_band_chart_adds_translucent_fill_between_outer_percentiles():

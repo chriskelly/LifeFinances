@@ -132,6 +132,11 @@ PERCENT_Y_RANGE = (0.0, 1.0)
 # Classic Plotly blue; translucent band between outer percentiles only.
 BAND_FILLCOLOR = "rgba(31, 119, 180, 0.2)"
 
+# One real simulated run on the spending chart. The stock Plotly colourway is
+# saturated, so a neutral gray keeps the path distinct from the percentiles.
+MEDIAN_RUN_LABEL = "one simulated run"
+MEDIAN_RUN_COLOR = "#7f7f7f"
+
 # Blank axis on each side, one month per this many months of horizon (minimum
 # one). Plotly's date-axis autorange is the data extent, which puts the first and
 # last month exactly on the plot edges; on a long horizon the hit window at those
@@ -177,6 +182,7 @@ def _band_figure(
     *,
     hoverformat: str,
     lock_percent_axis: bool = False,
+    include_median_run: bool = False,
 ) -> go.Figure:
     x = month_labels(result.start_month, result.horizon_months)
     series = getattr(result, source_field)
@@ -215,6 +221,18 @@ def _band_figure(
                 name=f"{percentile}th",
             )
         )
+    if include_median_run:
+        run_index = median_run_index(result)
+        if run_index is not None:
+            figure.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=result.withdrawals_total_by_run[run_index, :].tolist(),
+                    mode="lines",
+                    name=MEDIAN_RUN_LABEL,
+                    line={"width": 1, "color": MEDIAN_RUN_COLOR},
+                )
+            )
     yaxis: dict[str, object] = {"hoverformat": hoverformat}
     if lock_percent_axis:
         yaxis["range"] = list(PERCENT_Y_RANGE)
@@ -291,6 +309,7 @@ def build_figure(result: SimulationResult, chart_type: str) -> dict:
             source_field,
             hoverformat=HOVERFORMAT_PERCENT if is_alloc else HOVERFORMAT_DOLLAR,
             lock_percent_axis=is_alloc,
+            include_median_run=chart_type == SPENDING_TOTAL,
         ).to_plotly_json()
     if chart_type in _WEALTH_CHART_TYPES:
         return _wealth_composition_figure(result, chart_type).to_plotly_json()
