@@ -68,13 +68,16 @@
   document.body.addEventListener("htmx:afterRequest", function (event) {
     const form = event.detail.elt;
     const patchTarget = form.getAttribute && form.getAttribute("hx-patch");
+    const isForm = form.tagName === "FORM";
     const isPlanForm =
-      form.tagName === "FORM" &&
+      isForm &&
       patchTarget &&
       patchTarget.startsWith("{{ routes.PLAN_PREFIX }}");
-    if (isPlanForm && event.detail.successful) {
+    if (isForm && event.detail.successful) {
       formError.textContent = "";
       formError.hidden = true;
+    }
+    if (isPlanForm && event.detail.successful) {
       document.body.dispatchEvent(new CustomEvent("planUpdated"));
     }
   });

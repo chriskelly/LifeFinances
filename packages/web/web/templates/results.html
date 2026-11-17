@@ -31,20 +31,9 @@
     {{ result.num_runs_insufficient }} of {{ result.num_runs }} runs ran out of money
     · updated {{ result.ran_at.strftime("%Y-%m-%d %H:%M:%S") }}
   </p>
-  <p class="results-spending">
-    {{ spending_summary.INITIAL_SPENDING_LABEL }}:
-    {% if spending.current.initial is none %}unavailable{% else %}{{ spending.current.initial|usd }}/mo{% endif %}
-    · {{ spending_summary.LOWEST_PERCENTILE_YEAR_LABEL }}:
-    {% if spending.current.lowest_percentile_year is none %}unavailable{% else %}{{ spending.current.lowest_percentile_year|usd }}/mo{% endif %}
-    · {{ spending_summary.MEDIAN_FINAL_YEAR_LABEL }}:
-    {% if spending.current.median_final_year is none %}unavailable{% else %}{{ spending.current.median_final_year|usd }}/mo{% endif %}
-    {% if spending.threshold is not none %}
-    · {{ spending_summary.BAD_YEAR_LABEL }}:
-    {% if spending.current.bad_year_share is none %}unavailable{% else %}{{ spending.current.bad_year_share|percent }} {{ spending_summary.BAD_YEAR_SUFFIX }}{% endif %}
-    · {{ spending_summary.BAD_MONTH_LABEL }}:
-    {% if spending.current.bad_month_share is none %}unavailable{% else %}{{ spending.current.bad_month_share|percent }} {{ spending_summary.BAD_MONTH_SUFFIX }}{% endif %}
-    {% endif %}
-  </p>
+  <div id="spending-summary">
+    {% include "_spending_summary.html" %}
+  </div>
   {% endif %}
 </div>
 {% if assumptions_oob %}

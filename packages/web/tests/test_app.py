@@ -759,6 +759,7 @@ def test_results_shows_spending_levels(client: TestClient, plan_id: int) -> None
     assert INITIAL_SPENDING_LABEL in response.text
     assert LOWEST_PERCENTILE_YEAR_LABEL in response.text
     assert MEDIAN_FINAL_YEAR_LABEL in response.text
+    assert 'id="spending-summary"' in response.text
 
 
 def test_results_invalid_chart_falls_back_to_default(

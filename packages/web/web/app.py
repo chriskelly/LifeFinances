@@ -85,6 +85,7 @@ from web.routes import (
     PLAN_SPENDING,
     PLAN_SS_EARNINGS,
     RESULTS,
+    RESULTS_SUMMARY_THRESHOLD,
 )
 from web.simulation_cache import get_or_run_simulation, previous_result
 
@@ -122,6 +123,7 @@ _FIELD_LABELS = {
     "birth_year": "Birth year",
     "max_age_years": "Max age",
     "current_savings_balance": "Total savings balance",
+    "summary_spending_threshold": "Spending threshold",
 }
 
 
@@ -869,6 +871,46 @@ def _register_results_route(web_app: FastAPI) -> None:
                 "simulation_error": None,
                 "assumptions": resolved_assumptions.from_result(result),
                 "assumptions_oob": True,
+            },
+        )
+
+    @web_app.post(RESULTS_SUMMARY_THRESHOLD)
+    def save_summary_threshold(
+        request: Request,
+        repo: RepoDep,
+        selected: PlanDep,
+        settings: SettingsDep,
+        summary_spending_threshold: Annotated[str | None, Form()] = None,
+    ) -> Response:
+        try:
+            updated = forms.SummaryThresholdForm.from_raw(
+                summary_spending_threshold,
+                previous=selected.plan.summary_spending_threshold,
+            ).apply_to(selected.plan)
+        except (ValidationError, ValueError, ArithmeticError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        # The threshold is valid and display-only; a later engine failure must
+        # not discard the user's choice.
+        repo.save(selected.id, updated)
+        result, _ = _load_simulation(
+            request,
+            plan_id=selected.id,
+            plan_model=updated,
+            settings=settings,
+        )
+        if result is None:
+            return HTMLResponse(_SIMULATION_FAILURE_MESSAGE, status_code=422)
+        return templates.TemplateResponse(
+            request,
+            "_spending_summary.html",
+            {
+                "plan_id": selected.id,
+                "spending": _spending_for(
+                    request,
+                    plan_id=selected.id,
+                    plan_model=updated,
+                    result=result,
+                ),
             },
         )
 

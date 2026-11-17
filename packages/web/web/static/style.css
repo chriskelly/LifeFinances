@@ -294,15 +294,88 @@ label.partner-toggle input[type="checkbox"] {
   border-radius: var(--pico-border-radius);
 }
 
-.results-summary,
-.results-spending {
+.results-summary {
   margin: 0.75rem 0 0;
   font-size: 0.9rem;
   color: var(--pico-muted-color);
 }
 
-.results-spending {
-  margin-top: 0.35rem;
+.spending-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.spending-column h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.spending-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.spending-metric dt {
+  color: var(--pico-muted-color);
+  font-size: 0.85rem;
+}
+
+.spending-metric dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.metric-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 50%;
+  color: var(--pico-muted-color);
+  font-size: 0.7rem;
+  cursor: help;
+}
+
+/* Pico marks a tooltip trigger with a dotted bottom border; keep the circle. */
+.metric-help[data-tooltip] {
+  border-bottom-style: solid;
+}
+
+/* Pico's tooltip is nowrap; the metric explanations are sentences. */
+.metric-help[data-tooltip]::before {
+  width: max-content;
+  max-width: min(18rem, 80vw);
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.spending-threshold-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+}
+
+.spending-threshold-form label {
+  flex: 1;
+  margin: 0;
+}
+
+.spending-threshold-form button {
+  margin: 0;
+  white-space: nowrap;
 }
 
 .boundary-part[hidden] {
