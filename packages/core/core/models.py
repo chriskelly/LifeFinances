@@ -230,3 +230,6 @@ class Plan(BaseModel):
     # unlike every other spending/income stream on this model, it is NOT
     # inflation-adjusted before being discounted.
     legacy_target: Decimal = Field(default=Decimal(0), ge=0)
+    # Reporting-only floor for the results summary odds. The simulation engine
+    # never reads it.
+    summary_spending_threshold: Decimal | None = Field(default=None, ge=0)
