@@ -8,21 +8,28 @@
 >?</span></span>
 {%- endmacro %}
 
+{% macro delta(value, kind, higher_is_better) -%}
+{% set marker = spending_summary.delta_marker(value=value, kind=kind, higher_is_better=higher_is_better) -%}
+{% if marker -%}
+<span class="spending-delta spending-delta-{{ marker.tone }}">{{ marker.symbol }} {{ marker.text }}</span>
+{%- endif %}
+{%- endmacro %}
+
 <div class="spending-columns">
   <section class="spending-column">
     <h3>{{ spending_summary.LEVELS_TITLE }}</h3>
     <dl class="spending-metrics">
       <div class="spending-metric">
         <dt>{{ tooltip(spending_summary.INITIAL_SPENDING_LABEL, spending_summary.INITIAL_SPENDING_TOOLTIP) }}</dt>
-        <dd>{% if spending.current.initial is none %}unavailable{% else %}{{ spending.current.initial|usd }}/mo{% endif %}</dd>
+        <dd>{% if spending.current.initial is none %}unavailable{% else %}{{ spending.current.initial|usd }}/mo{% endif %} {{ delta(spending.deltas.initial, "usd", true) }}</dd>
       </div>
       <div class="spending-metric">
         <dt>{{ tooltip(spending_summary.LOWEST_PERCENTILE_YEAR_LABEL, spending_summary.LOWEST_PERCENTILE_YEAR_TOOLTIP) }}</dt>
-        <dd>{% if spending.current.lowest_percentile_year is none %}unavailable{% else %}{{ spending.current.lowest_percentile_year|usd }}/mo{% endif %}</dd>
+        <dd>{% if spending.current.lowest_percentile_year is none %}unavailable{% else %}{{ spending.current.lowest_percentile_year|usd }}/mo{% endif %} {{ delta(spending.deltas.lowest_percentile_year, "usd", true) }}</dd>
       </div>
       <div class="spending-metric">
         <dt>{{ tooltip(spending_summary.MEDIAN_FINAL_YEAR_LABEL, spending_summary.MEDIAN_FINAL_YEAR_TOOLTIP) }}</dt>
-        <dd>{% if spending.current.median_final_year is none %}unavailable{% else %}{{ spending.current.median_final_year|usd }}/mo{% endif %}</dd>
+        <dd>{% if spending.current.median_final_year is none %}unavailable{% else %}{{ spending.current.median_final_year|usd }}/mo{% endif %} {{ delta(spending.deltas.median_final_year, "usd", true) }}</dd>
       </div>
     </dl>
   </section>
@@ -54,11 +61,11 @@
     <dl class="spending-metrics">
       <div class="spending-metric">
         <dt>{{ tooltip(spending_summary.BAD_YEAR_LABEL, spending_summary.BAD_YEAR_TOOLTIP) }}</dt>
-        <dd>{% if spending.current.bad_year_share is none %}unavailable{% else %}{{ spending.current.bad_year_share|percent }} {{ spending_summary.BAD_YEAR_SUFFIX }}{% endif %}</dd>
+        <dd>{% if spending.current.bad_year_share is none %}unavailable{% else %}{{ spending.current.bad_year_share|percent }} {{ spending_summary.BAD_YEAR_SUFFIX }}{% endif %} {{ delta(spending.deltas.bad_year_share, "pp", false) }}</dd>
       </div>
       <div class="spending-metric">
         <dt>{{ tooltip(spending_summary.BAD_MONTH_LABEL, spending_summary.BAD_MONTH_TOOLTIP) }}</dt>
-        <dd>{% if spending.current.bad_month_share is none %}unavailable{% else %}{{ spending.current.bad_month_share|percent }} {{ spending_summary.BAD_MONTH_SUFFIX }}{% endif %}</dd>
+        <dd>{% if spending.current.bad_month_share is none %}unavailable{% else %}{{ spending.current.bad_month_share|percent }} {{ spending_summary.BAD_MONTH_SUFFIX }}{% endif %} {{ delta(spending.deltas.bad_month_share, "pp", false) }}</dd>
       </div>
     </dl>
     {% endif %}

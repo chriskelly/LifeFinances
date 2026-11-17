@@ -179,3 +179,121 @@ def test_build_without_previous_has_no_previous_or_deltas() -> None:
 
     assert summary.previous is None
     assert summary.deltas == spending.SpendingDeltas(None, None, None, None, None)
+
+
+def _metrics(
+    *,
+    initial: float | None,
+    lowest_percentile_year: float | None,
+    median_final_year: float | None,
+    bad_year_share: float | None,
+    bad_month_share: float | None,
+) -> spending.SpendingMetrics:
+    return spending.SpendingMetrics(
+        initial=initial,
+        lowest_percentile_year=lowest_percentile_year,
+        median_final_year=median_final_year,
+        bad_year_share=bad_year_share,
+        bad_month_share=bad_month_share,
+    )
+
+
+def test_deltas_are_all_none_without_previous() -> None:
+    current = _metrics(
+        initial=1_200.0,
+        lowest_percentile_year=1_000.0,
+        median_final_year=1_100.0,
+        bad_year_share=0.25,
+        bad_month_share=0.5,
+    )
+
+    deltas = spending.deltas_for(current=current, previous=None)
+
+    assert deltas == spending.SpendingDeltas(None, None, None, None, None)
+
+
+def test_deltas_subtract_previous_from_current() -> None:
+    current = _metrics(
+        initial=1_200.0,
+        lowest_percentile_year=1_000.0,
+        median_final_year=1_100.0,
+        bad_year_share=0.25,
+        bad_month_share=0.5,
+    )
+    previous = _metrics(
+        initial=1_000.0,
+        lowest_percentile_year=900.0,
+        median_final_year=1_200.0,
+        bad_year_share=0.5,
+        bad_month_share=0.4,
+    )
+
+    deltas = spending.deltas_for(current=current, previous=previous)
+
+    assert deltas.initial == pytest.approx(200.0)
+    assert deltas.lowest_percentile_year == pytest.approx(100.0)
+    assert deltas.median_final_year == pytest.approx(-100.0)
+    assert deltas.bad_year_share == pytest.approx(-0.25)
+    assert deltas.bad_month_share == pytest.approx(0.1)
+
+
+def test_deltas_skip_metrics_missing_from_either_snapshot() -> None:
+    current = _metrics(
+        initial=1_200.0,
+        lowest_percentile_year=1_000.0,
+        median_final_year=1_100.0,
+        bad_year_share=0.25,
+        bad_month_share=0.5,
+    )
+    previous = _metrics(
+        initial=1_000.0,
+        lowest_percentile_year=None,
+        median_final_year=None,
+        bad_year_share=None,
+        bad_month_share=0.4,
+    )
+
+    deltas = spending.deltas_for(current=current, previous=previous)
+
+    assert deltas.initial == pytest.approx(200.0)
+    assert deltas.lowest_percentile_year is None
+    assert deltas.median_final_year is None
+    assert deltas.bad_year_share is None
+    assert deltas.bad_month_share == pytest.approx(0.1)
+
+
+def test_spending_increase_is_better() -> None:
+    marker = spending.delta_marker(value=100.0, kind="usd", higher_is_better=True)
+
+    assert marker == spending.DeltaMarker("▲", "+$100/mo", "better")
+
+
+def test_spending_decrease_is_worse() -> None:
+    marker = spending.delta_marker(value=-100.0, kind="usd", higher_is_better=True)
+
+    assert marker == spending.DeltaMarker("▼", "-$100/mo", "worse")
+
+
+def test_share_decrease_is_better() -> None:
+    marker = spending.delta_marker(value=-0.031, kind="pp", higher_is_better=False)
+
+    assert marker == spending.DeltaMarker("▼", "-3.1 pp", "better")
+
+
+def test_share_increase_is_worse() -> None:
+    marker = spending.delta_marker(value=0.031, kind="pp", higher_is_better=False)
+
+    assert marker == spending.DeltaMarker("▲", "+3.1 pp", "worse")
+
+
+def test_zero_or_missing_delta_has_no_marker() -> None:
+    assert spending.delta_marker(value=None, kind="usd", higher_is_better=True) is None
+    assert spending.delta_marker(value=0.0, kind="usd", higher_is_better=True) is None
+
+
+def test_a_delta_that_rounds_to_zero_has_no_marker() -> None:
+    assert spending.delta_marker(value=0.4, kind="usd", higher_is_better=True) is None
+    assert (
+        spending.delta_marker(value=0.000000004, kind="pp", higher_is_better=False)
+        is None
+    )

@@ -378,6 +378,19 @@ label.partner-toggle input[type="checkbox"] {
   white-space: nowrap;
 }
 
+.spending-delta {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.spending-delta-better {
+  color: var(--pico-ins-color);
+}
+
+.spending-delta-worse {
+  color: var(--pico-del-color);
+}
+
 .boundary-part[hidden] {
   display: none;
 }

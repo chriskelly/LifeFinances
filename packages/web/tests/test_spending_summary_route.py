@@ -286,3 +286,40 @@ def test_post_threshold_persists_when_simulation_fails(
     saved = repo.get_by_id(plan_id)
     assert saved is not None
     assert saved.summary_spending_threshold == Decimal("1000")
+
+
+def test_results_shows_change_markers_after_a_plan_edit(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    first = _summary_result()
+    second = _summary_result(
+        initial=1_500.0, matrix=np.full((4, 24), 1_500.0, dtype=np.float64)
+    )
+    results = iter([first, second])
+    app_module = sys.modules["web.simulation_cache"]
+    monkeypatch.setattr(
+        app_module, "run_simulation", lambda plan, **kwargs: next(results)
+    )
+
+    client.get(f"{RESULTS}?plan={plan_id}")
+    plan = repo.get_by_id(plan_id)
+    assert plan is not None
+    repo.save(plan_id, plan.model_copy(update={"legacy_target": Decimal("1000")}))
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert "spending-delta-better" in response.text
+    assert "▲" in response.text
+    assert "+$300/mo" in response.text
+
+
+def test_results_has_no_markers_without_a_previous_run(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    _install_result(monkeypatch, _summary_result())
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert "spending-delta-" not in response.text

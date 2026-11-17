@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Literal
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 from simulation.result import SimulationResult
+
+from web.currency import format_usd
+from web.percent import format_percent_points
 
 WINDOW_MONTHS = 12
 
@@ -69,6 +73,67 @@ class SpendingSummary:
     threshold: Decimal | None
 
 
+DeltaKind = Literal["usd", "pp"]
+DeltaTone = Literal["better", "worse"]
+
+
+@dataclass(frozen=True)
+class DeltaMarker:
+    symbol: str
+    text: str
+    tone: DeltaTone
+
+
+def _difference(*, current: float | None, previous: float | None) -> float | None:
+    if current is None or previous is None:
+        return None
+    return current - previous
+
+
+def deltas_for(
+    *, current: SpendingMetrics, previous: SpendingMetrics | None
+) -> SpendingDeltas:
+    if previous is None:
+        return SpendingDeltas(None, None, None, None, None)
+    return SpendingDeltas(
+        initial=_difference(current=current.initial, previous=previous.initial),
+        lowest_percentile_year=_difference(
+            current=current.lowest_percentile_year,
+            previous=previous.lowest_percentile_year,
+        ),
+        median_final_year=_difference(
+            current=current.median_final_year, previous=previous.median_final_year
+        ),
+        bad_year_share=_difference(
+            current=current.bad_year_share, previous=previous.bad_year_share
+        ),
+        bad_month_share=_difference(
+            current=current.bad_month_share, previous=previous.bad_month_share
+        ),
+    )
+
+
+def delta_marker(
+    *, value: float | None, kind: DeltaKind, higher_is_better: bool
+) -> DeltaMarker | None:
+    if value is None or value == 0:
+        return None
+    rising = value > 0
+    sign = "+" if rising else "-"
+    if kind == "usd":
+        rendered = format_usd(abs(value))
+        if rendered == format_usd(0):
+            return None
+        text = f"{sign}{rendered}/mo"
+    else:
+        rendered = format_percent_points(abs(value))
+        if Decimal(rendered) == 0:
+            return None
+        text = f"{sign}{rendered} pp"
+    tone: DeltaTone = "better" if rising == higher_is_better else "worse"
+    return DeltaMarker(symbol="▲" if rising else "▼", text=text, tone=tone)
+
+
 def metrics_for(
     *, result: SimulationResult, threshold: Decimal | None
 ) -> SpendingMetrics:
@@ -115,6 +180,6 @@ def build(
     return SpendingSummary(
         current=current,
         previous=previous_metrics,
-        deltas=SpendingDeltas(None, None, None, None, None),
+        deltas=deltas_for(current=current, previous=previous_metrics),
         threshold=threshold,
     )
