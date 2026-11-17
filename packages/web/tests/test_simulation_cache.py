@@ -155,6 +155,27 @@ def test_cache_hit_does_not_move_the_previous_result() -> None:
     assert previous_result(app, plan_id=1) is first
 
 
+def test_cache_hit_on_a_different_plan_moves_the_previous_result() -> None:
+    app = FastAPI()
+    plan_a = default_plan()
+    plan_b = plan_a.model_copy(update={"legacy_target": Decimal("1000")})
+    plan_c = plan_a.model_copy(update={"legacy_target": Decimal("2000")})
+    result_a = _make_result()
+    result_b = _make_result()
+    result_c = _make_result()
+    fixed_today = date(2026, 6, 1)
+
+    _run_once(app, plan_id=1, plan=plan_a, result=result_a, today=fixed_today)
+    _run_once(app, plan_id=1, plan=plan_b, result=result_b, today=fixed_today)
+    _run_once(app, plan_id=1, plan=plan_c, result=result_c, today=fixed_today)
+    returned = _run_once(
+        app, plan_id=1, plan=plan_a, result=result_a, today=fixed_today
+    )
+
+    assert returned is result_a
+    assert previous_result(app, plan_id=1) is result_c
+
+
 def test_failed_run_does_not_move_the_previous_result() -> None:
     app = FastAPI()
     plan = default_plan()

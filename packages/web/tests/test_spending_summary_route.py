@@ -386,3 +386,56 @@ def test_post_threshold_keeps_existing_change_markers(
     assert response.status_code == 200
     assert "spending-delta-better" in response.text
     assert "+$300/mo" in response.text
+
+
+def test_results_revisiting_a_cached_plan_compares_against_the_last_render(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    results_by_delta = {
+        Decimal("6"): _summary_result(
+            initial=1_000.0, matrix=np.full((4, 24), 1_000.0, dtype=np.float64)
+        ),
+        Decimal("7"): _summary_result(
+            initial=1_100.0, matrix=np.full((4, 24), 1_100.0, dtype=np.float64)
+        ),
+        Decimal("8"): _summary_result(
+            initial=1_200.0, matrix=np.full((4, 24), 1_200.0, dtype=np.float64)
+        ),
+    }
+    app_module = sys.modules["web.simulation_cache"]
+    monkeypatch.setattr(
+        app_module,
+        "run_simulation",
+        lambda plan, **kwargs: results_by_delta[plan.risk.delta_at_max_age],
+    )
+
+    def set_delta(value: str) -> None:
+        plan = repo.get_by_id(plan_id)
+        assert plan is not None
+        repo.save(
+            plan_id,
+            plan.model_copy(
+                update={
+                    "risk": plan.risk.model_copy(
+                        update={"delta_at_max_age": Decimal(value)}
+                    )
+                }
+            ),
+        )
+
+    def get_page() -> str:
+        response = client.get(f"{RESULTS}?plan={plan_id}")
+        assert response.status_code == 200
+        return response.text
+
+    set_delta("8")
+    get_page()  # pre-cache 8, then revisit 6 -> 7 -> 8
+
+    for value in ("6", "7"):
+        set_delta(value)
+        get_page()
+    set_delta("8")
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert "+$100/mo" in response.text
+    assert "+$200/mo" not in response.text

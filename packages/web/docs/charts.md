@@ -40,8 +40,10 @@ typical single-worker local use).
 The plan's `summary_spending_threshold` is also excluded from the fingerprint:
 changing the reporting floor re-renders the odds from the cached result, without
 re-running the engine. `app.state.simulation_keys` holds one
-`(previous, current)` cache-key pair per plan. The pair moves only on a miss, so
-a hit — including a threshold-only save — never changes the change markers.
+`(previous, current)` cache-key pair per plan. The pair moves when the rendered
+plan key changes — on a miss, and on a hit that revisits an earlier plan. A
+repeated render of the same key, including a threshold-only save, leaves it
+alone, so the markers stay stable.
 `web.simulation_cache.previous_result(app, plan_id=…)` returns the result for the
 previous key, or `None` when there is no earlier run or the entry was evicted.
 The markers therefore have four documented limits: they live in process memory

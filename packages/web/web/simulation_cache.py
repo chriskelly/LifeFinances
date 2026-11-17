@@ -79,6 +79,13 @@ def get_or_run_simulation(
     cached = cache.get(key)
     if cached is not None:
         cache.move_to_end(key)
+        keys = _keys_for(app)
+        _previous_key, current_key = keys.get(plan_id, (None, None))
+        if key != current_key:
+            # Revisiting an earlier plan is a cache hit, but it is still the
+            # newest result the panel shows, so the next change must compare
+            # against it. Repeated renders of the same key leave the pair alone.
+            keys[plan_id] = (current_key, key)
         return cached
 
     try:
