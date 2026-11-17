@@ -32,12 +32,17 @@
     · updated {{ result.ran_at.strftime("%Y-%m-%d %H:%M:%S") }}
   </p>
   <p class="results-spending">
-    {% if spending.initial is none %}
-    {{ spending_summary.INITIAL_SPENDING_LABEL }}: unavailable
-    · {{ spending_summary.WORST_CASE_SPENDING_LABEL }}: unavailable
-    {% else %}
-    {{ spending_summary.INITIAL_SPENDING_LABEL }}: {{ spending.initial|usd }}/mo
-    · {{ spending_summary.WORST_CASE_SPENDING_LABEL }}: {{ spending.worst_case|usd }}/mo
+    {{ spending_summary.INITIAL_SPENDING_LABEL }}:
+    {% if spending.current.initial is none %}unavailable{% else %}{{ spending.current.initial|usd }}/mo{% endif %}
+    · {{ spending_summary.LOWEST_PERCENTILE_YEAR_LABEL }}:
+    {% if spending.current.lowest_percentile_year is none %}unavailable{% else %}{{ spending.current.lowest_percentile_year|usd }}/mo{% endif %}
+    · {{ spending_summary.MEDIAN_FINAL_YEAR_LABEL }}:
+    {% if spending.current.median_final_year is none %}unavailable{% else %}{{ spending.current.median_final_year|usd }}/mo{% endif %}
+    {% if spending.threshold is not none %}
+    · {{ spending_summary.BAD_YEAR_LABEL }}:
+    {% if spending.current.bad_year_share is none %}unavailable{% else %}{{ spending.current.bad_year_share|percent }} {{ spending_summary.BAD_YEAR_SUFFIX }}{% endif %}
+    · {{ spending_summary.BAD_MONTH_LABEL }}:
+    {% if spending.current.bad_month_share is none %}unavailable{% else %}{{ spending.current.bad_month_share|percent }} {{ spending_summary.BAD_MONTH_SUFFIX }}{% endif %}
     {% endif %}
   </p>
   {% endif %}

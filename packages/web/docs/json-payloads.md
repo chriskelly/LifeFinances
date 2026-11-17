@@ -77,7 +77,11 @@ explain route and are omitted here.
 | `resolved_assumptions.treasury_source` | Source of the Treasury real yield. Null when the preset does not use one. |
 | `resolved_assumptions.treasury_observation_date` | Date of that yield. Null when unused. |
 | `spending.initial` | Total withdrawals at month 0. Null when the horizon has no months. |
-| `spending.worst_case` | Smallest month on the lowest configured percentile of `withdrawals_total`. Each month's percentile is computed on its own, so the row is an envelope across months. Null when the horizon has no months. |
+| `spending.lowest_percentile_year` | The configured lowest percentile, across runs, of each run's worst full 12-month average. Partial windows are ignored. Null when the horizon has fewer than 12 months. |
+| `spending.median_final_year` | Median across runs of the final full 12-month average. Null when the horizon has fewer than 12 months. |
+| `spending.threshold` | The plan's `summary_spending_threshold`, or null when unset. |
+| `spending.bad_year_share` | Fraction of runs whose worst full 12-month average is below the threshold. Null when no threshold is set or the horizon has fewer than 12 months. |
+| `spending.bad_month_share` | Fraction of all simulated run-months below the threshold. Null when no threshold is set or the horizon has no months. |
 
 ## Diagnostics
 

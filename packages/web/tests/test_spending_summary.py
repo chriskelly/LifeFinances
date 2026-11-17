@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 
 import numpy as np
+import pytest
 from core.models import DEFAULT_PERCENTILES
 from simulation.diagnostics import empty_diagnostics
 from simulation.result import ResolvedAssumptions, SimulationResult
@@ -21,27 +23,31 @@ def _resolved_assumptions() -> ResolvedAssumptions:
     )
 
 
-def _result_with_withdrawals(
-    withdrawals: np.ndarray, *, percentiles: list[int] | None = None
+def _result(
+    matrix: np.ndarray,
+    *,
+    percentiles: list[int] | None = None,
+    initial: float = 4_200.0,
 ) -> SimulationResult:
-    horizon = withdrawals.shape[1]
-    num_runs = 10
-    zeros = np.zeros_like(withdrawals)
-    run_matrix = np.zeros((num_runs, horizon), dtype=np.float64)
+    horizon = matrix.shape[1]
+    resolved_percentiles = percentiles or list(DEFAULT_PERCENTILES)
+    totals = np.zeros((len(resolved_percentiles), horizon), dtype=np.float64)
+    if horizon:
+        totals[0, 0] = initial
     months = np.zeros(horizon, dtype=np.float64)
     return SimulationResult(
         ran_at=datetime(2026, 1, 1),
         horizon_months=horizon,
-        num_runs=num_runs,
-        percentiles=percentiles or list(DEFAULT_PERCENTILES),
+        num_runs=matrix.shape[0],
+        percentiles=resolved_percentiles,
         start_month=(2026, 1),
-        balance_start=zeros.copy(),
-        withdrawals_essential=zeros.copy(),
-        withdrawals_discretionary=zeros.copy(),
-        withdrawals_general=zeros.copy(),
-        withdrawals_total=withdrawals,
-        withdrawals_total_by_run=run_matrix,
-        savings_stock_allocation=zeros.copy(),
+        balance_start=totals.copy(),
+        withdrawals_essential=totals.copy(),
+        withdrawals_discretionary=totals.copy(),
+        withdrawals_general=totals.copy(),
+        withdrawals_total=totals,
+        withdrawals_total_by_run=matrix.astype(np.float64),
+        savings_stock_allocation=totals.copy(),
         wealth_job=months.copy(),
         wealth_social_security=months.copy(),
         wealth_pension=months.copy(),
@@ -52,62 +58,124 @@ def _result_with_withdrawals(
     )
 
 
-def test_empty_horizon_has_no_spending_month() -> None:
-    percentile_count = len(DEFAULT_PERCENTILES)
-    withdrawals = np.zeros((percentile_count, 0), dtype=np.float64)
+def test_empty_horizon_has_no_metrics() -> None:
+    summary = spending.build(result=_result(np.zeros((10, 0))), threshold=None)
 
-    summary = spending.from_result(_result_with_withdrawals(withdrawals))
-
-    assert summary.initial is None
-    assert summary.worst_case is None
+    assert summary.current == spending.SpendingMetrics(None, None, None, None, None)
 
 
-def test_initial_spending_is_month_zero_of_total_withdrawals() -> None:
+def test_initial_spending_comes_from_total_spending_month_zero() -> None:
+    matrix = np.zeros((2, 12), dtype=np.float64)
     initial = 4_200.0
-    withdrawals = np.array(
+
+    summary = spending.build(result=_result(matrix, initial=initial))
+
+    assert summary.current.initial == initial
+
+
+def test_fewer_than_twelve_months_keeps_initial_and_month_share() -> None:
+    matrix = np.array(
         [
-            [initial, 3_000.0, 2_500.0],
-            [initial, 4_000.0, 3_500.0],
-            [initial, 5_000.0, 4_500.0],
-        ],
-        dtype=np.float64,
+            [100.0, 100.0, 100.0],
+            [2_000.0, 2_000.0, 2_000.0],
+        ]
     )
 
-    summary = spending.from_result(_result_with_withdrawals(withdrawals))
+    summary = spending.build(result=_result(matrix), threshold=Decimal("1000"))
 
-    assert summary.initial == initial
+    assert summary.current.initial == 4_200.0
+    assert summary.current.lowest_percentile_year is None
+    assert summary.current.median_final_year is None
+    assert summary.current.bad_year_share is None
+    assert summary.current.bad_month_share == pytest.approx(0.5)
 
 
-def test_worst_case_tracks_the_lowest_percentile_row_not_the_global_minimum() -> None:
-    lowest_percentile_low = 2_000.0
-    global_minimum = 900.0
-    # Row order follows the ascending percentile list, so row 0 is the lowest
-    # percentile. The global minimum sits in a higher percentile row here so a
-    # summary that just takes `min()` over the whole array would be caught.
-    withdrawals = np.array(
+def test_lowest_percentile_year_uses_the_lowest_configured_percentile() -> None:
+    run_values = np.arange(10, dtype=np.float64).reshape(10, 1)
+    matrix = np.tile(run_values, (1, 12))
+
+    summary = spending.build(
+        result=_result(matrix, percentiles=[25, 95]), threshold=None
+    )
+
+    # np.percentile([0..9], 25) == 2.25; a hardcoded 50th would give 4.5.
+    assert summary.current.lowest_percentile_year == pytest.approx(2.25)
+
+
+def test_median_final_year_uses_the_final_full_window() -> None:
+    row = [1_200.0] * 11 + [0.0, 0.0]
+    matrix = np.tile(np.array(row, dtype=np.float64), (3, 1))
+
+    summary = spending.build(result=_result(matrix), threshold=None)
+
+    # Window 0 (months 0..11) averages 1100; the final window (1..12) averages 1000.
+    assert summary.current.median_final_year == pytest.approx(1_000.0)
+
+
+def test_bad_year_share_counts_runs_whose_worst_year_is_below_threshold() -> None:
+    matrix = np.array(
         [
-            [4_000.0, lowest_percentile_low, 2_200.0],
-            [4_000.0, global_minimum, 3_000.0],
-            [4_000.0, 5_000.0, 4_500.0],
-        ],
-        dtype=np.float64,
+            [500.0] * 12,
+            [900.0] * 12,
+            [1_100.0] * 12,
+            [1_500.0] * 12,
+        ]
     )
 
-    summary = spending.from_result(_result_with_withdrawals(withdrawals))
+    summary = spending.build(result=_result(matrix), threshold=Decimal("1000"))
 
-    assert summary.worst_case == lowest_percentile_low
-    assert global_minimum < lowest_percentile_low
+    assert summary.current.bad_year_share == pytest.approx(0.5)
 
 
-def test_worst_case_follows_the_configured_lowest_percentile() -> None:
-    lowest_row_low = 3_100.0
-    withdrawals = np.array(
-        [[5_000.0, lowest_row_low], [5_000.0, 4_800.0]], dtype=np.float64
+def test_bad_month_share_counts_every_run_month_below_threshold() -> None:
+    run_zero = [100.0] * 6 + [2_000.0] * 6
+    run_one = [2_000.0] * 12
+    matrix = np.array([run_zero, run_one], dtype=np.float64)
+
+    summary = spending.build(result=_result(matrix), threshold=Decimal("1000"))
+
+    assert summary.current.bad_month_share == pytest.approx(0.25)
+    assert summary.current.bad_year_share == pytest.approx(0.0)
+
+
+def test_unset_threshold_leaves_shares_none() -> None:
+    matrix = np.full((2, 12), 1_000.0, dtype=np.float64)
+
+    summary = spending.build(result=_result(matrix), threshold=None)
+
+    assert summary.current.lowest_percentile_year == pytest.approx(1_000.0)
+    assert summary.current.median_final_year == pytest.approx(1_000.0)
+    assert summary.current.bad_year_share is None
+    assert summary.current.bad_month_share is None
+
+
+def test_zero_threshold_reports_zero_shares() -> None:
+    matrix = np.full((2, 12), 100.0, dtype=np.float64)
+
+    summary = spending.build(result=_result(matrix), threshold=Decimal(0))
+
+    assert summary.threshold == Decimal(0)
+    assert summary.current.bad_year_share == 0.0
+    assert summary.current.bad_month_share == 0.0
+
+
+def test_previous_metrics_use_the_current_threshold() -> None:
+    current = _result(np.full((2, 12), 2_000.0, dtype=np.float64))
+    previous = _result(np.full((2, 12), 500.0, dtype=np.float64))
+
+    summary = spending.build(
+        result=current, previous=previous, threshold=Decimal("1000")
     )
-    percentiles = [50, 95]
 
-    summary = spending.from_result(
-        _result_with_withdrawals(withdrawals, percentiles=percentiles)
-    )
+    assert summary.previous is not None
+    assert summary.previous.bad_year_share == pytest.approx(1.0)
+    assert summary.current.bad_year_share == pytest.approx(0.0)
 
-    assert summary.worst_case == lowest_row_low
+
+def test_build_without_previous_has_no_previous_or_deltas() -> None:
+    matrix = np.full((2, 12), 1_000.0, dtype=np.float64)
+
+    summary = spending.build(result=_result(matrix), previous=None)
+
+    assert summary.previous is None
+    assert summary.deltas == spending.SpendingDeltas(None, None, None, None, None)

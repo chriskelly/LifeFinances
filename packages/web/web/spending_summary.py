@@ -1,36 +1,120 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 
+import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 from simulation.result import SimulationResult
 
+WINDOW_MONTHS = 12
+
 INITIAL_SPENDING_LABEL = "Initial spending"
-WORST_CASE_SPENDING_LABEL = "Worst-case spending"
+INITIAL_SPENDING_TOOLTIP = (
+    "Total spending in the first month of the plan. Every simulated run "
+    "starts with this amount."
+)
+LOWEST_PERCENTILE_YEAR_LABEL = "Lowest-percentile year"
+LOWEST_PERCENTILE_YEAR_TOOLTIP = (
+    "The configured lowest percentile of each run's worst complete 12-month "
+    "average. Partial windows at the start of the horizon are ignored."
+)
+MEDIAN_FINAL_YEAR_LABEL = "Median final year"
+MEDIAN_FINAL_YEAR_TOOLTIP = (
+    "The median across runs of the last complete 12-month average."
+)
+BAD_YEAR_LABEL = "Years below floor"
+BAD_YEAR_TOOLTIP = (
+    "Share of simulated runs whose worst complete 12-month average falls "
+    "below the threshold."
+)
+BAD_MONTH_LABEL = "Months below floor"
+BAD_MONTH_TOOLTIP = "Share of all simulated run-months below the threshold."
+THRESHOLD_LABEL = "Threshold"
+THRESHOLD_TOOLTIP = (
+    "A monthly spending level in today's dollars. It only sets these odds; "
+    "the simulation never reads it."
+)
+THRESHOLD_PROMPT = "Set a threshold to see how often spending falls below it."
+LEVELS_TITLE = "Levels"
+ODDS_TITLE = "Odds below floor"
+APPLY_LABEL = "Apply"
+BAD_YEAR_SUFFIX = "of runs"
+BAD_MONTH_SUFFIX = "of months"
+
+
+@dataclass(frozen=True)
+class SpendingMetrics:
+    initial: float | None
+    lowest_percentile_year: float | None
+    median_final_year: float | None
+    bad_year_share: float | None
+    bad_month_share: float | None
+
+
+@dataclass(frozen=True)
+class SpendingDeltas:
+    initial: float | None
+    lowest_percentile_year: float | None
+    median_final_year: float | None
+    bad_year_share: float | None
+    bad_month_share: float | None
 
 
 @dataclass(frozen=True)
 class SpendingSummary:
-    initial: float | None
-    worst_case: float | None
+    current: SpendingMetrics
+    previous: SpendingMetrics | None
+    deltas: SpendingDeltas
+    threshold: Decimal | None
 
 
-def from_result(result: SimulationResult) -> SpendingSummary:
-    """Summarize the total-spending series for the results panel.
+def metrics_for(
+    *, result: SimulationResult, threshold: Decimal | None
+) -> SpendingMetrics:
+    if result.horizon_months == 0:
+        return SpendingMetrics(None, None, None, None, None)
+    initial = float(result.withdrawals_total[0, 0])
+    matrix = result.withdrawals_total_by_run
+    threshold_value = None if threshold is None else float(threshold)
+    bad_month_share = (
+        None if threshold_value is None else float(np.mean(matrix < threshold_value))
+    )
+    if result.horizon_months < WINDOW_MONTHS:
+        return SpendingMetrics(initial, None, None, None, bad_month_share)
 
-    Row 0 of every percentile array is the lowest configured percentile
-    (`result.percentiles` is sorted ascending). Month 0 is identical across
-    rows, so `initial` is unambiguous. A zero-length horizon has no month 0,
-    so both amounts are None.
+    # One mean per full 12-month window; shape (num_runs, horizon - 11).
+    windows = sliding_window_view(matrix, WINDOW_MONTHS, axis=1).mean(axis=2)
+    worst_year_by_run = windows.min(axis=1)
+    lowest_year = float(np.percentile(worst_year_by_run, result.percentiles[0]))
+    median_final = float(np.median(windows[:, -1]))
+    bad_year_share = (
+        None
+        if threshold_value is None
+        else float(np.mean(worst_year_by_run < threshold_value))
+    )
+    return SpendingMetrics(
+        initial=initial,
+        lowest_percentile_year=lowest_year,
+        median_final_year=median_final,
+        bad_year_share=bad_year_share,
+        bad_month_share=bad_month_share,
+    )
 
-    `worst_case` is the smallest month on that lowest-percentile row. Percentiles
-    are computed independently per month, so the row is a cross-sectional
-    envelope rather than a single simulated run — no individual run necessarily
-    follows it.
-    """
-    lowest_percentile_row = result.withdrawals_total[0]
-    if lowest_percentile_row.size == 0:
-        return SpendingSummary(initial=None, worst_case=None)
+
+def build(
+    *,
+    result: SimulationResult,
+    previous: SimulationResult | None = None,
+    threshold: Decimal | None = None,
+) -> SpendingSummary:
+    current = metrics_for(result=result, threshold=threshold)
+    previous_metrics = (
+        None if previous is None else metrics_for(result=previous, threshold=threshold)
+    )
     return SpendingSummary(
-        initial=float(lowest_percentile_row[0]),
-        worst_case=float(lowest_percentile_row.min()),
+        current=current,
+        previous=previous_metrics,
+        deltas=SpendingDeltas(None, None, None, None, None),
+        threshold=threshold,
     )

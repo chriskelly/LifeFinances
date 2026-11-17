@@ -86,7 +86,7 @@ from web.routes import (
     PLAN_SS_EARNINGS,
     RESULTS,
 )
-from web.simulation_cache import get_or_run_simulation
+from web.simulation_cache import get_or_run_simulation, previous_result
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +200,20 @@ def _load_assumptions(
         return None, _ASSUMPTIONS_FAILURE_MESSAGE
 
 
+def _spending_for(
+    request: Request,
+    *,
+    plan_id: int,
+    plan_model: Plan,
+    result: SimulationResult,
+) -> spending_summary.SpendingSummary:
+    return spending_summary.build(
+        result=result,
+        previous=previous_result(request.app, plan_id=plan_id),
+        threshold=plan_model.summary_spending_threshold,
+    )
+
+
 def _redirect_to_plan(plan_id: int) -> RedirectResponse:
     return RedirectResponse(url=f"{HOME}?plan={plan_id}", status_code=302)
 
@@ -279,7 +293,14 @@ def _register_home_route(web_app: FastAPI) -> None:
             "plan": plan_model,
             "result": result,
             "spending": (
-                spending_summary.from_result(result) if result is not None else None
+                _spending_for(
+                    request,
+                    plan_id=plan_id,
+                    plan_model=plan_model,
+                    result=result,
+                )
+                if result is not None
+                else None
             ),
             "settings": settings,
             "summaries": summaries,
@@ -829,7 +850,12 @@ def _register_results_route(web_app: FastAPI) -> None:
                 },
             )
         figure = charts.build_figure(result, chart_type)
-        spending = spending_summary.from_result(result)
+        spending = _spending_for(
+            request,
+            plan_id=selected.id,
+            plan_model=selected.plan,
+            result=result,
+        )
         return templates.TemplateResponse(
             request,
             "results.html",

@@ -72,7 +72,11 @@ from web.sections import (
     SETTINGS_TITLE,
     SOCIAL_SECURITY_TITLE,
 )
-from web.spending_summary import INITIAL_SPENDING_LABEL, WORST_CASE_SPENDING_LABEL
+from web.spending_summary import (
+    INITIAL_SPENDING_LABEL,
+    LOWEST_PERCENTILE_YEAR_LABEL,
+    MEDIAN_FINAL_YEAR_LABEL,
+)
 from web.theme import PICO_STYLESHEET_HREF, PRIMARY
 
 from simulation import assumptions as simulation_assumptions
@@ -747,16 +751,14 @@ def test_results_renders_default_chart_selected(
     assert f'value="{web_charts.DEFAULT_CHART}" selected' in response.text
 
 
-def test_results_shows_initial_and_worst_case_spending(
-    client: TestClient, plan_id: int
-) -> None:
+def test_results_shows_spending_levels(client: TestClient, plan_id: int) -> None:
 
     response = client.get(f"{RESULTS}?plan={plan_id}")
 
     assert response.status_code == 200
     assert INITIAL_SPENDING_LABEL in response.text
-    assert WORST_CASE_SPENDING_LABEL in response.text
-    assert "results-spending" in response.text
+    assert LOWEST_PERCENTILE_YEAR_LABEL in response.text
+    assert MEDIAN_FINAL_YEAR_LABEL in response.text
 
 
 def test_results_invalid_chart_falls_back_to_default(
