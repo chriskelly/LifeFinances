@@ -66,6 +66,7 @@ NUM_RUNS = "num_runs"
 STAGGER_RUN_STARTS = "stagger_run_starts"
 SAMPLING_SEED = "seed"
 PERCENTILES = "percentiles"
+SUMMARY_SPENDING_THRESHOLD = "summary_spending_threshold"
 PERCENTILES_WEALTH_MAPPING_HELP = (
     "Wealth composition Low, Middle, and High use the first, middle, "
     "and last configured percentiles."
@@ -488,6 +489,25 @@ class PortfolioForm(BaseModel):
         data["current_savings_balance"] = self.current_savings_balance
         portfolio = Portfolio.model_validate(data)
         return plan.model_copy(update={"portfolio": portfolio})
+
+
+class SummaryThresholdForm(BaseModel):
+    summary_spending_threshold: Decimal | None = None
+
+    @classmethod
+    def from_raw(
+        cls, raw: str | None, *, previous: Decimal | None
+    ) -> SummaryThresholdForm:
+        if not (raw or "").strip():
+            return cls(summary_spending_threshold=None)
+        return cls(summary_spending_threshold=parse_usd(raw, previous=previous))
+
+    def apply_to(self, plan: Plan) -> Plan:
+        # Transport DTOs stay constraint-free (packages/web/docs/templates.md);
+        # Plan owns the bound, so a single scalar still revalidates the plan.
+        data = plan.model_dump()
+        data[SUMMARY_SPENDING_THRESHOLD] = self.summary_spending_threshold
+        return Plan.model_validate(data)
 
 
 class RiskForm(BaseModel):

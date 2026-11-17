@@ -31,15 +31,9 @@
     {{ result.num_runs_insufficient }} of {{ result.num_runs }} runs ran out of money
     · updated {{ result.ran_at.strftime("%Y-%m-%d %H:%M:%S") }}
   </p>
-  <p class="results-spending">
-    {% if spending.initial is none %}
-    {{ spending_summary.INITIAL_SPENDING_LABEL }}: unavailable
-    · {{ spending_summary.WORST_CASE_SPENDING_LABEL }}: unavailable
-    {% else %}
-    {{ spending_summary.INITIAL_SPENDING_LABEL }}: {{ spending.initial|usd }}/mo
-    · {{ spending_summary.WORST_CASE_SPENDING_LABEL }}: {{ spending.worst_case|usd }}/mo
-    {% endif %}
-  </p>
+  <div id="spending-summary">
+    {% include "_spending_summary.html" %}
+  </div>
   {% endif %}
 </div>
 {% if assumptions_oob %}

@@ -7,6 +7,7 @@ Behavior for the entry route, plan-scoped requests, and unknown ids:
 
 - **`GET /`** without `plan` → `302` redirect to `/?plan={AppSettings.default_plan_id}` (user-marked default).
 - **`GET /?plan=2`**, editor GETs, **`GET /results?plan=2`**, and section **`PATCH`** routes operate on that plan id, except `PATCH /plan/settings`, which writes the global settings row.
+- **`POST /results/summary-threshold?plan=2`** saves `Plan.summary_spending_threshold` and returns the results-summary partial only. It deliberately lives outside `PLAN_PREFIX`, so the shell does not dispatch `planUpdated` and the chart is not re-rendered. A valid value is saved before the partial render; if the engine then fails on a cold or evicted cache, the route returns `422` with the generic simulation-failure text and the saved value stands.
 - Unknown plan id anywhere, or a missing id on an editor, results, or section route → `404` (`GET /` without `plan` redirects).
 - Empty DB bootstrap creates one plan and sets `default_plan_id`.
 

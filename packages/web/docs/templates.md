@@ -51,3 +51,28 @@ hx-swap="innerHTML"
 This decouples save (debounced per form) from results refresh (once per
 successful save). The panel reads the current chart from `#chart-select` via
 `hx-vals` so the selection survives the refresh.
+
+Any successful form clears `#form-error` in the same `htmx:afterRequest`
+listener; only forms whose `hx-patch` starts with `PLAN_PREFIX` dispatch
+`planUpdated`.
+
+## Results summary
+
+`../web/templates/results.html` wraps `../web/templates/_spending_summary.html`
+in `#spending-summary`; home includes `results.html`, so both surfaces share the
+partial. It has two columns: the level metrics (initial, lowest-percentile year,
+median final year) and the threshold odds (the form, then the share of runs and
+months below it). A blank threshold shows the input plus a muted prompt.
+
+Labels and tooltip copy come from `../web/spending_summary.py` constants, so the
+screen and the explain JSON share one source. Each label is a
+`tabindex="0"` trigger for a CSS bubble (`.metric-help-bubble`) revealed on
+`:hover` and `:focus-visible`, so it works without a mouse; the bubble is
+anchored below the label, not over the `?` marker.
+
+The form `hx-post`s `POST /results/summary-threshold?plan={id}` and swaps the
+partial into `#spending-summary` (innerHTML). The route returns the partial only
+and deliberately lives outside `PLAN_PREFIX`, so the shell does not dispatch
+`planUpdated` and the chart is not re-rendered for a display-only change. A
+blank field clears the stored threshold; invalid or negative input returns
+`422` with the shared error text.

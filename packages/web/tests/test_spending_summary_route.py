@@ -1,0 +1,442 @@
+from __future__ import annotations
+
+import sys
+from datetime import datetime
+from decimal import Decimal
+
+import numpy as np
+import pytest
+from core.repository import PlanRepository
+from fastapi.testclient import TestClient
+from simulation.diagnostics import empty_diagnostics
+from simulation.result import ResolvedAssumptions, SimulationResult
+from web.app import _SIMULATION_FAILURE_MESSAGE
+from web.routes import RESULTS, RESULTS_SUMMARY_THRESHOLD
+
+from web import forms, spending_summary
+
+
+def _resolved_assumptions() -> ResolvedAssumptions:
+    return ResolvedAssumptions(
+        annual_inflation=0.02,
+        annual_stock_return=0.05,
+        annual_bond_return=0.02,
+        annual_stock_log_variance=0.03,
+        planning_preset="fixed",
+        inflation_source="manual",
+    )
+
+
+def _summary_result(
+    *, initial: float = 1_200.0, matrix: np.ndarray | None = None
+) -> SimulationResult:
+    percentiles = [5, 50, 95]
+    if matrix is None:
+        matrix = np.array(
+            [
+                [600.0] * 12 + [1_200.0] * 12,
+                [1_200.0] * 24,
+                [1_500.0] * 24,
+                [2_000.0] * 24,
+            ],
+            dtype=np.float64,
+        )
+    horizon = matrix.shape[1]
+    totals = np.zeros((len(percentiles), horizon), dtype=np.float64)
+    if horizon:
+        totals[0, 0] = initial
+    months = np.zeros(horizon, dtype=np.float64)
+    return SimulationResult(
+        ran_at=datetime(2026, 1, 1),
+        horizon_months=horizon,
+        num_runs=matrix.shape[0],
+        percentiles=percentiles,
+        start_month=(2026, 1),
+        balance_start=totals.copy(),
+        withdrawals_essential=totals.copy(),
+        withdrawals_discretionary=totals.copy(),
+        withdrawals_general=totals.copy(),
+        withdrawals_total=totals,
+        withdrawals_total_by_run=matrix.astype(np.float64),
+        savings_stock_allocation=totals.copy(),
+        wealth_job=months.copy(),
+        wealth_social_security=months.copy(),
+        wealth_pension=months.copy(),
+        wealth_manual=months.copy(),
+        num_runs_insufficient=0,
+        diagnostics=empty_diagnostics(months=horizon),
+        resolved_assumptions=_resolved_assumptions(),
+    )
+
+
+def _install_result(monkeypatch, result: SimulationResult) -> None:
+    app_module = sys.modules["web.simulation_cache"]
+    monkeypatch.setattr(app_module, "run_simulation", lambda plan, **kwargs: result)
+
+
+def _seed_threshold(repo: PlanRepository, plan_id: int, value: Decimal | None) -> None:
+    plan = repo.get_by_id(plan_id)
+    assert plan is not None
+    repo.save(
+        plan_id,
+        plan.model_copy(update={"summary_spending_threshold": value}),
+    )
+
+
+def test_results_renders_levels_and_odds_columns(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    _seed_threshold(repo, plan_id, Decimal("1000"))
+    _install_result(monkeypatch, _summary_result())
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert response.text.count('class="spending-column"') == 2
+    for label in (
+        spending_summary.INITIAL_SPENDING_LABEL,
+        spending_summary.LOWEST_PERCENTILE_YEAR_LABEL,
+        spending_summary.MEDIAN_FINAL_YEAR_LABEL,
+        spending_summary.BAD_YEAR_LABEL,
+        spending_summary.BAD_MONTH_LABEL,
+    ):
+        assert label in response.text
+    assert "metric-help-bubble" in response.text
+    assert 'role="tooltip"' in response.text
+    assert 'tabindex="0"' in response.text
+
+
+def test_results_without_threshold_shows_prompt_and_no_odds(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    _install_result(monkeypatch, _summary_result())
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert spending_summary.THRESHOLD_PROMPT in response.text
+    assert spending_summary.BAD_YEAR_LABEL not in response.text
+
+
+def test_results_with_zero_threshold_still_shows_odds(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    _seed_threshold(repo, plan_id, Decimal(0))
+    _install_result(monkeypatch, _summary_result())
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert spending_summary.THRESHOLD_PROMPT not in response.text
+    assert "0% of runs" in response.text
+    assert "0% of months" in response.text
+
+
+def test_results_with_threshold_shows_percentages(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    _seed_threshold(repo, plan_id, Decimal("1000"))
+    _install_result(monkeypatch, _summary_result())
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert "25% of runs" in response.text
+    assert "12.5% of months" in response.text
+
+
+def test_results_short_horizon_shows_unavailable_year_metrics(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    _seed_threshold(repo, plan_id, Decimal("1000"))
+    matrix = np.array([[100.0] * 3, [2_000.0] * 3], dtype=np.float64)
+    _install_result(monkeypatch, _summary_result(matrix=matrix))
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert response.text.count(spending_summary.UNAVAILABLE_VALUE) == 3
+    assert spending_summary.BAD_MONTH_LABEL in response.text
+    assert "50% of months" in response.text
+    assert "of runs" not in response.text
+
+
+def test_results_zero_month_horizon_shows_unavailable_levels(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    _install_result(monkeypatch, _summary_result(matrix=np.zeros((4, 0))))
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert response.text.count(spending_summary.UNAVAILABLE_VALUE) == 3
+
+
+def test_post_threshold_saves_and_returns_the_partial(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    _install_result(monkeypatch, _summary_result())
+
+    response = client.post(
+        f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
+        data={forms.SUMMARY_SPENDING_THRESHOLD: "$1,000"},
+    )
+
+    assert response.status_code == 200
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.summary_spending_threshold == Decimal("1000")
+    assert "25% of runs" in response.text
+    assert "<html" not in response.text
+    assert 'id="results-panel"' not in response.text
+
+
+def test_post_blank_threshold_clears(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    _seed_threshold(repo, plan_id, Decimal("1000"))
+    _install_result(monkeypatch, _summary_result())
+
+    response = client.post(
+        f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
+        data={forms.SUMMARY_SPENDING_THRESHOLD: ""},
+    )
+
+    assert response.status_code == 200
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.summary_spending_threshold is None
+    assert spending_summary.THRESHOLD_PROMPT in response.text
+
+
+def test_post_unparsable_threshold_returns_422_and_keeps_value(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    _seed_threshold(repo, plan_id, Decimal("1000"))
+
+    response = client.post(
+        f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
+        data={forms.SUMMARY_SPENDING_THRESHOLD: "abc"},
+    )
+
+    assert response.status_code == 422
+    assert "Enter a dollar amount" in response.text
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.summary_spending_threshold == Decimal("1000")
+
+
+def test_post_negative_threshold_returns_422_with_field_label(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    _seed_threshold(repo, plan_id, Decimal("1000"))
+
+    response = client.post(
+        f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
+        data={forms.SUMMARY_SPENDING_THRESHOLD: "-5"},
+    )
+
+    assert response.status_code == 422
+    assert "Spending threshold" in response.text
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.summary_spending_threshold == Decimal("1000")
+
+
+@pytest.mark.parametrize("raw", ["1e999999", "12345678901234567890123456789"])
+def test_post_oversized_threshold_returns_422_and_keeps_value(
+    client: TestClient, repo: PlanRepository, plan_id: int, raw: str
+) -> None:
+    _seed_threshold(repo, plan_id, Decimal("1000"))
+
+    response = client.post(
+        f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
+        data={forms.SUMMARY_SPENDING_THRESHOLD: raw},
+    )
+
+    assert response.status_code == 422
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.summary_spending_threshold == Decimal("1000")
+
+
+def test_post_threshold_does_not_rerun_simulation(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    calls = {"n": 0}
+    result = _summary_result()
+    app_module = sys.modules["web.simulation_cache"]
+
+    def run(plan, **kwargs):
+        calls["n"] += 1
+        return result
+
+    monkeypatch.setattr(app_module, "run_simulation", run)
+    client.get(f"{RESULTS}?plan={plan_id}")
+
+    response = client.post(
+        f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
+        data={forms.SUMMARY_SPENDING_THRESHOLD: "$1,000"},
+    )
+
+    assert response.status_code == 200
+    assert calls["n"] == 1
+
+
+def test_threshold_form_posts_outside_the_plan_prefix(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    _install_result(monkeypatch, _summary_result())
+    page = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert f'hx-post="{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}"' in page.text
+    class_at = page.text.index("spending-threshold-form")
+    form_start = page.text.rindex("<form", 0, class_at)
+    form_tag = page.text[form_start : page.text.index(">", form_start)]
+    assert "hx-post=" in form_tag
+    assert "hx-patch" not in form_tag
+
+    response = client.post(
+        f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
+        data={forms.SUMMARY_SPENDING_THRESHOLD: "$1,000"},
+    )
+    assert response.headers.get("HX-Trigger") is None
+
+
+def test_post_threshold_persists_when_simulation_fails(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    app_module = sys.modules["web.simulation_cache"]
+
+    def boom(plan, **kwargs):
+        raise RuntimeError("engine exploded")
+
+    monkeypatch.setattr(app_module, "run_simulation", boom)
+
+    response = client.post(
+        f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
+        data={forms.SUMMARY_SPENDING_THRESHOLD: "$1,000"},
+    )
+
+    assert response.status_code == 422
+    assert _SIMULATION_FAILURE_MESSAGE in response.text
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.summary_spending_threshold == Decimal("1000")
+
+
+def test_results_shows_change_markers_after_a_plan_edit(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    first = _summary_result()
+    second = _summary_result(
+        initial=1_500.0, matrix=np.full((4, 24), 1_500.0, dtype=np.float64)
+    )
+    results = iter([first, second])
+    app_module = sys.modules["web.simulation_cache"]
+    monkeypatch.setattr(
+        app_module, "run_simulation", lambda plan, **kwargs: next(results)
+    )
+
+    client.get(f"{RESULTS}?plan={plan_id}")
+    plan = repo.get_by_id(plan_id)
+    assert plan is not None
+    repo.save(plan_id, plan.model_copy(update={"legacy_target": Decimal("1000")}))
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert "spending-delta-better" in response.text
+    assert "▲" in response.text
+    assert "+$300/mo" in response.text
+
+
+def test_results_has_no_markers_without_a_previous_run(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    _install_result(monkeypatch, _summary_result())
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert "spending-delta-" not in response.text
+
+
+def test_post_threshold_keeps_existing_change_markers(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    first = _summary_result()
+    second = _summary_result(
+        initial=1_500.0, matrix=np.full((4, 24), 1_500.0, dtype=np.float64)
+    )
+    results = iter([first, second])
+    app_module = sys.modules["web.simulation_cache"]
+    monkeypatch.setattr(
+        app_module, "run_simulation", lambda plan, **kwargs: next(results)
+    )
+    client.get(f"{RESULTS}?plan={plan_id}")
+    plan = repo.get_by_id(plan_id)
+    assert plan is not None
+    repo.save(plan_id, plan.model_copy(update={"legacy_target": Decimal("1000")}))
+    client.get(f"{RESULTS}?plan={plan_id}")
+
+    response = client.post(
+        f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
+        data={forms.SUMMARY_SPENDING_THRESHOLD: "$1,000"},
+    )
+
+    assert response.status_code == 200
+    assert "spending-delta-better" in response.text
+    assert "+$300/mo" in response.text
+
+
+def test_results_revisiting_a_cached_plan_compares_against_the_last_render(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    results_by_delta = {
+        Decimal("6"): _summary_result(
+            initial=1_000.0, matrix=np.full((4, 24), 1_000.0, dtype=np.float64)
+        ),
+        Decimal("7"): _summary_result(
+            initial=1_100.0, matrix=np.full((4, 24), 1_100.0, dtype=np.float64)
+        ),
+        Decimal("8"): _summary_result(
+            initial=1_200.0, matrix=np.full((4, 24), 1_200.0, dtype=np.float64)
+        ),
+    }
+    app_module = sys.modules["web.simulation_cache"]
+    monkeypatch.setattr(
+        app_module,
+        "run_simulation",
+        lambda plan, **kwargs: results_by_delta[plan.risk.delta_at_max_age],
+    )
+
+    def set_delta(value: str) -> None:
+        plan = repo.get_by_id(plan_id)
+        assert plan is not None
+        repo.save(
+            plan_id,
+            plan.model_copy(
+                update={
+                    "risk": plan.risk.model_copy(
+                        update={"delta_at_max_age": Decimal(value)}
+                    )
+                }
+            ),
+        )
+
+    def get_page() -> str:
+        response = client.get(f"{RESULTS}?plan={plan_id}")
+        assert response.status_code == 200
+        return response.text
+
+    set_delta("8")
+    get_page()  # pre-cache 8, then revisit 6 -> 7 -> 8
+
+    for value in ("6", "7"):
+        set_delta(value)
+        get_page()
+    set_delta("8")
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert "+$100/mo" in response.text
+    assert "+$200/mo" not in response.text

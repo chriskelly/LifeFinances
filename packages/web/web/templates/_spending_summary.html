@@ -1,0 +1,68 @@
+{% macro tooltip(label, copy) -%}
+<span class="metric-label" tabindex="0" aria-label="{{ copy }}">{{ label }}<span class="metric-help" aria-hidden="true">?</span><span class="metric-help-bubble" role="tooltip" aria-hidden="true">{{ copy }}</span></span>
+{%- endmacro %}
+
+{% macro delta(value, kind, higher_is_better) -%}
+{% set marker = spending_summary.delta_marker(value=value, kind=kind, higher_is_better=higher_is_better) -%}
+{% if marker -%}
+<span class="spending-delta spending-delta-{{ marker.tone }}">{{ marker.symbol }} {{ marker.text }}</span>
+{%- endif %}
+{%- endmacro %}
+
+{% macro metric_value(value, kind, suffix="") -%}
+{% if value is none %}{{ spending_summary.UNAVAILABLE_VALUE }}{% elif kind == "usd" %}{{ value|usd }}/mo{% else %}{{ value|percent }}{% endif %}{% if value is not none and suffix %} {{ suffix }}{% endif %}
+{%- endmacro %}
+
+<div class="spending-columns">
+  <section class="spending-column">
+    <dl class="spending-metrics">
+      <div class="spending-metric">
+        <dt>{{ tooltip(spending_summary.INITIAL_SPENDING_LABEL, spending_summary.INITIAL_SPENDING_TOOLTIP) }}</dt>
+        <dd>{{ metric_value(spending.current.initial, "usd") }} {{ delta(spending.deltas.initial, "usd", true) }}</dd>
+      </div>
+      <div class="spending-metric">
+        <dt>{{ tooltip(spending_summary.LOWEST_PERCENTILE_YEAR_LABEL, spending_summary.LOWEST_PERCENTILE_YEAR_TOOLTIP) }}</dt>
+        <dd>{{ metric_value(spending.current.lowest_percentile_year, "usd") }} {{ delta(spending.deltas.lowest_percentile_year, "usd", true) }}</dd>
+      </div>
+      <div class="spending-metric">
+        <dt>{{ tooltip(spending_summary.MEDIAN_FINAL_YEAR_LABEL, spending_summary.MEDIAN_FINAL_YEAR_TOOLTIP) }}</dt>
+        <dd>{{ metric_value(spending.current.median_final_year, "usd") }} {{ delta(spending.deltas.median_final_year, "usd", true) }}</dd>
+      </div>
+    </dl>
+  </section>
+  <section class="spending-column">
+    <form
+      class="spending-threshold-form"
+      hx-post="{{ routes.RESULTS_SUMMARY_THRESHOLD }}?plan={{ plan_id }}"
+      hx-target="#spending-summary"
+      hx-swap="innerHTML"
+    >
+      <label for="summary-spending-threshold">
+        {{ tooltip(spending_summary.THRESHOLD_LABEL, spending_summary.THRESHOLD_TOOLTIP) }}
+        <input
+          id="summary-spending-threshold"
+          type="text"
+          inputmode="decimal"
+          class="currency-input"
+          name="{{ forms.SUMMARY_SPENDING_THRESHOLD }}"
+          value="{% if spending.threshold is not none %}{{ spending.threshold|usd }}{% endif %}"
+        >
+      </label>
+      <button type="submit">{{ spending_summary.APPLY_LABEL }}</button>
+    </form>
+    {% if spending.threshold is none %}
+    <p class="helper-text">{{ spending_summary.THRESHOLD_PROMPT }}</p>
+    {% else %}
+    <dl class="spending-metrics">
+      <div class="spending-metric">
+        <dt>{{ tooltip(spending_summary.BAD_YEAR_LABEL, spending_summary.BAD_YEAR_TOOLTIP) }}</dt>
+        <dd>{{ metric_value(spending.current.bad_year_share, "percent", spending_summary.BAD_YEAR_SUFFIX) }} {{ delta(spending.deltas.bad_year_share, "pp", false) }}</dd>
+      </div>
+      <div class="spending-metric">
+        <dt>{{ tooltip(spending_summary.BAD_MONTH_LABEL, spending_summary.BAD_MONTH_TOOLTIP) }}</dt>
+        <dd>{{ metric_value(spending.current.bad_month_share, "percent", spending_summary.BAD_MONTH_SUFFIX) }} {{ delta(spending.deltas.bad_month_share, "pp", false) }}</dd>
+      </div>
+    </dl>
+    {% endif %}
+  </section>
+</div>

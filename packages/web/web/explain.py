@@ -83,7 +83,10 @@ class ApiError(Exception):
 
 
 def summary_payload(scoped: ScopedResult) -> dict[str, object]:
-    spending = spending_summary.from_result(scoped.result)
+    spending = spending_summary.build(
+        result=scoped.result, threshold=scoped.plan.summary_spending_threshold
+    )
+    current = spending.current
     result = scoped.result
     return {
         "plan_id": scoped.plan_id,
@@ -96,8 +99,14 @@ def summary_payload(scoped: ScopedResult) -> dict[str, object]:
         "num_runs_insufficient": result.num_runs_insufficient,
         "resolved_assumptions": result.resolved_assumptions.model_dump(mode="json"),
         "spending": {
-            "initial": spending.initial,
-            "worst_case": spending.worst_case,
+            "initial": current.initial,
+            "lowest_percentile_year": current.lowest_percentile_year,
+            "median_final_year": current.median_final_year,
+            "threshold": (
+                None if spending.threshold is None else float(spending.threshold)
+            ),
+            "bad_year_share": current.bad_year_share,
+            "bad_month_share": current.bad_month_share,
         },
     }
 

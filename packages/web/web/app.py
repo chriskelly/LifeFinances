@@ -85,8 +85,9 @@ from web.routes import (
     PLAN_SPENDING,
     PLAN_SS_EARNINGS,
     RESULTS,
+    RESULTS_SUMMARY_THRESHOLD,
 )
-from web.simulation_cache import get_or_run_simulation
+from web.simulation_cache import get_or_run_simulation, previous_result
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,7 @@ _FIELD_LABELS = {
     "birth_year": "Birth year",
     "max_age_years": "Max age",
     "current_savings_balance": "Total savings balance",
+    "summary_spending_threshold": "Spending threshold",
 }
 
 
@@ -198,6 +200,20 @@ def _load_assumptions(
     except Exception:
         logger.exception("Assumption resolution failed for plan_id=%s", plan_id)
         return None, _ASSUMPTIONS_FAILURE_MESSAGE
+
+
+def _spending_for(
+    request: Request,
+    *,
+    plan_id: int,
+    plan_model: Plan,
+    result: SimulationResult,
+) -> spending_summary.SpendingSummary:
+    return spending_summary.build(
+        result=result,
+        previous=previous_result(request.app, plan_id=plan_id),
+        threshold=plan_model.summary_spending_threshold,
+    )
 
 
 def _redirect_to_plan(plan_id: int) -> RedirectResponse:
@@ -279,7 +295,14 @@ def _register_home_route(web_app: FastAPI) -> None:
             "plan": plan_model,
             "result": result,
             "spending": (
-                spending_summary.from_result(result) if result is not None else None
+                _spending_for(
+                    request,
+                    plan_id=plan_id,
+                    plan_model=plan_model,
+                    result=result,
+                )
+                if result is not None
+                else None
             ),
             "settings": settings,
             "summaries": summaries,
@@ -829,7 +852,12 @@ def _register_results_route(web_app: FastAPI) -> None:
                 },
             )
         figure = charts.build_figure(result, chart_type)
-        spending = spending_summary.from_result(result)
+        spending = _spending_for(
+            request,
+            plan_id=selected.id,
+            plan_model=selected.plan,
+            result=result,
+        )
         return templates.TemplateResponse(
             request,
             "results.html",
@@ -843,6 +871,46 @@ def _register_results_route(web_app: FastAPI) -> None:
                 "simulation_error": None,
                 "assumptions": resolved_assumptions.from_result(result),
                 "assumptions_oob": True,
+            },
+        )
+
+    @web_app.post(RESULTS_SUMMARY_THRESHOLD)
+    def save_summary_threshold(
+        request: Request,
+        repo: RepoDep,
+        selected: PlanDep,
+        settings: SettingsDep,
+        summary_spending_threshold: Annotated[str | None, Form()] = None,
+    ) -> Response:
+        try:
+            updated = forms.SummaryThresholdForm.from_raw(
+                summary_spending_threshold,
+                previous=selected.plan.summary_spending_threshold,
+            ).apply_to(selected.plan)
+        except (ValidationError, ValueError, ArithmeticError) as exc:
+            return HTMLResponse(_error_message(exc), status_code=422)
+        # The threshold is valid and display-only; a later engine failure must
+        # not discard the user's choice.
+        repo.save(selected.id, updated)
+        result, _ = _load_simulation(
+            request,
+            plan_id=selected.id,
+            plan_model=updated,
+            settings=settings,
+        )
+        if result is None:
+            return HTMLResponse(_SIMULATION_FAILURE_MESSAGE, status_code=422)
+        return templates.TemplateResponse(
+            request,
+            "_spending_summary.html",
+            {
+                "plan_id": selected.id,
+                "spending": _spending_for(
+                    request,
+                    plan_id=selected.id,
+                    plan_model=updated,
+                    result=result,
+                ),
             },
         )
 

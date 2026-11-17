@@ -30,6 +30,13 @@ def test_pico_root_css_styles_error_banners_from_danger_constants():
     assert f"border-color: {theme.DANGER_BORDER};" in css
 
 
+def test_pico_root_css_emits_delta_colors_from_theme_constants():
+    css = theme.pico_root_css()
+
+    assert f"--pico-ins-color: {theme.SUCCESS_TEXT};" in css
+    assert f"--pico-del-color: {theme.DANGER_TEXT};" in css
+
+
 def test_pico_root_css_emits_density_tokens_from_constants():
     css = theme.pico_root_css()
 

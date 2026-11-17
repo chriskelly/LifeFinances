@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from datetime import datetime
+from decimal import Decimal
 
 import numpy as np
 from core.defaults import default_plan
@@ -23,9 +24,15 @@ def diagnostics_envelope(
 
 
 def scoped_result(
-    result: SimulationResult, *, plan_id: int = 1, plan_name: str = "Plan"
+    result: SimulationResult,
+    *,
+    plan_id: int = 1,
+    plan_name: str = "Plan",
+    threshold: Decimal | None = None,
 ) -> ScopedResult:
-    plan = default_plan().model_copy(update={"name": plan_name})
+    plan = default_plan().model_copy(
+        update={"name": plan_name, "summary_spending_threshold": threshold}
+    )
     return ScopedResult(plan_id=plan_id, plan=plan, result=result)
 
 

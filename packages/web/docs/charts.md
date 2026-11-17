@@ -37,6 +37,20 @@ hits skip `allow_refresh` until the next miss — mid-day market-data updates ar
 invisible until then. The cache is single-process and not thread-safe (fine for
 typical single-worker local use).
 
+The plan's `summary_spending_threshold` is also excluded from the fingerprint:
+changing the reporting floor re-renders the odds from the cached result, without
+re-running the engine. `app.state.simulation_keys` holds one
+`(previous, current)` cache-key pair per plan. The pair moves when the rendered
+plan key changes — on a miss, and on a hit that revisits an earlier plan. A
+repeated render of the same key, including a threshold-only save, leaves it
+alone, so the markers stay stable.
+`web.simulation_cache.previous_result(app, plan_id=…)` returns the result for the
+previous key, or `None` when there is no earlier run or the entry was evicted.
+The markers therefore have four documented limits: they live in process memory
+only (a restart clears them), they compare one step rather than a pinned
+baseline, a new market-data day can produce a marker without a plan edit, and an
+eviction is silent so the panel shows no marker rather than a wrong one.
+
 Every `SimulationResult` carries a required `resolved_assumptions` snapshot
 (exact inflation/returns/volatility values plus source labels and observation
 dates used by that run). On home and `/results`, charts and the Market

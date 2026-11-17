@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 
 import numpy as np
 import pytest
@@ -9,7 +10,12 @@ from core.models import AppSettings
 from fastapi import FastAPI
 from simulation.diagnostics import empty_diagnostics
 from simulation.result import ResolvedAssumptions, SimulationResult
-from web.simulation_cache import CACHE_MAX_SIZE, fingerprint_plan, get_or_run_simulation
+from web.simulation_cache import (
+    CACHE_MAX_SIZE,
+    fingerprint_plan,
+    get_or_run_simulation,
+    previous_result,
+)
 
 
 def _resolved_assumptions() -> ResolvedAssumptions:
@@ -63,6 +69,166 @@ def test_fingerprint_ignores_plan_name() -> None:
     renamed = plan.model_copy(update={"name": "Renamed plan"})
 
     assert fingerprint_plan(plan) == fingerprint_plan(renamed)
+
+
+def test_fingerprint_ignores_summary_spending_threshold() -> None:
+    plan = default_plan()
+    changed = plan.model_copy(update={"summary_spending_threshold": Decimal("12000")})
+
+    assert fingerprint_plan(plan) == fingerprint_plan(changed)
+
+
+def test_fingerprint_tracks_an_economic_plan_change() -> None:
+    plan = default_plan()
+    changed = plan.model_copy(update={"legacy_target": Decimal("1000")})
+
+    assert fingerprint_plan(plan) != fingerprint_plan(changed)
+
+
+def _run_once(
+    app: FastAPI,
+    *,
+    plan_id: int,
+    plan,
+    result: SimulationResult,
+    today: date,
+) -> SimulationResult:
+    return get_or_run_simulation(
+        app,
+        plan_id=plan_id,
+        plan=plan,
+        settings=_empty_settings(),
+        run=lambda plan, **kwargs: result,
+        today=today,
+    )
+
+
+def test_previous_result_is_none_before_the_first_miss() -> None:
+    app = FastAPI()
+
+    assert previous_result(app, plan_id=1) is None
+
+
+def test_previous_result_is_none_after_one_miss_without_an_earlier_run() -> None:
+    app = FastAPI()
+    _run_once(
+        app,
+        plan_id=1,
+        plan=default_plan(),
+        result=_make_result(),
+        today=date(2026, 6, 1),
+    )
+
+    assert previous_result(app, plan_id=1) is None
+
+
+def test_previous_result_returns_the_result_before_the_last_miss() -> None:
+    app = FastAPI()
+    plan = default_plan()
+    changed = plan.model_copy(update={"legacy_target": Decimal("1000")})
+    first = _make_result()
+    second = _make_result()
+    fixed_today = date(2026, 6, 1)
+
+    _run_once(app, plan_id=1, plan=plan, result=first, today=fixed_today)
+    _run_once(app, plan_id=1, plan=changed, result=second, today=fixed_today)
+
+    assert previous_result(app, plan_id=1) is first
+
+
+def test_cache_hit_does_not_move_the_previous_result() -> None:
+    app = FastAPI()
+    plan = default_plan()
+    changed = plan.model_copy(update={"legacy_target": Decimal("1000")})
+    first = _make_result()
+    second = _make_result()
+    hit_result = _make_result()
+    fixed_today = date(2026, 6, 1)
+
+    _run_once(app, plan_id=1, plan=plan, result=first, today=fixed_today)
+    _run_once(app, plan_id=1, plan=changed, result=second, today=fixed_today)
+    returned = _run_once(
+        app, plan_id=1, plan=changed, result=hit_result, today=fixed_today
+    )
+
+    assert returned is second
+    assert previous_result(app, plan_id=1) is first
+
+
+def test_cache_hit_on_a_different_plan_moves_the_previous_result() -> None:
+    app = FastAPI()
+    plan_a = default_plan()
+    plan_b = plan_a.model_copy(update={"legacy_target": Decimal("1000")})
+    plan_c = plan_a.model_copy(update={"legacy_target": Decimal("2000")})
+    result_a = _make_result()
+    result_b = _make_result()
+    result_c = _make_result()
+    fixed_today = date(2026, 6, 1)
+
+    _run_once(app, plan_id=1, plan=plan_a, result=result_a, today=fixed_today)
+    _run_once(app, plan_id=1, plan=plan_b, result=result_b, today=fixed_today)
+    _run_once(app, plan_id=1, plan=plan_c, result=result_c, today=fixed_today)
+    returned = _run_once(
+        app, plan_id=1, plan=plan_a, result=result_a, today=fixed_today
+    )
+
+    assert returned is result_a
+    assert previous_result(app, plan_id=1) is result_c
+
+
+def test_failed_run_does_not_move_the_previous_result() -> None:
+    app = FastAPI()
+    plan = default_plan()
+    first = _make_result()
+    second = _make_result()
+    fixed_today = date(2026, 6, 1)
+    _run_once(app, plan_id=1, plan=plan, result=first, today=fixed_today)
+    _run_once(
+        app,
+        plan_id=1,
+        plan=plan.model_copy(update={"legacy_target": Decimal("1000")}),
+        result=second,
+        today=fixed_today,
+    )
+
+    def boom(plan, **kwargs):
+        raise RuntimeError("engine exploded")
+
+    with pytest.raises(RuntimeError, match="engine exploded"):
+        get_or_run_simulation(
+            app,
+            plan_id=1,
+            plan=plan.model_copy(update={"legacy_target": Decimal("2000")}),
+            settings=_empty_settings(),
+            run=boom,
+            today=fixed_today,
+        )
+
+    assert previous_result(app, plan_id=1) is first
+
+
+def test_previous_result_is_none_after_eviction() -> None:
+    app = FastAPI()
+    plan = default_plan()
+    fixed_today = date(2026, 6, 1)
+    _run_once(app, plan_id=1, plan=plan, result=_make_result(), today=fixed_today)
+    _run_once(
+        app,
+        plan_id=1,
+        plan=plan.model_copy(update={"legacy_target": Decimal("1000")}),
+        result=_make_result(),
+        today=fixed_today,
+    )
+    for plan_id in range(2, CACHE_MAX_SIZE + 2):
+        _run_once(
+            app,
+            plan_id=plan_id,
+            plan=plan.model_copy(update={"name": f"Plan {plan_id}"}),
+            result=_make_result(),
+            today=fixed_today,
+        )
+
+    assert previous_result(app, plan_id=1) is None
 
 
 def test_different_today_reruns_simulation() -> None:

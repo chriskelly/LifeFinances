@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import numpy as np
 import pytest
 from simulation.diagnostics import DIAGNOSTICS_ARRAY_FIELDS, empty_diagnostics
@@ -33,7 +35,7 @@ def test_summary_serializes_public_scalar_and_spending_fields() -> None:
     result = _result()
     plan_id = 17
     plan_name = "Retirement"
-    spending = spending_summary.from_result(result)
+    spending = spending_summary.build(result=result)
 
     payload = summary_payload(_scoped(result, plan_id=plan_id, plan_name=plan_name))
 
@@ -48,12 +50,36 @@ def test_summary_serializes_public_scalar_and_spending_fields() -> None:
         "num_runs_insufficient": result.num_runs_insufficient,
         "resolved_assumptions": result.resolved_assumptions.model_dump(mode="json"),
         "spending": {
-            "initial": spending.initial,
-            "worst_case": spending.worst_case,
+            "initial": spending.current.initial,
+            "lowest_percentile_year": None,
+            "median_final_year": None,
+            "threshold": None,
+            "bad_year_share": None,
+            "bad_month_share": None,
         },
     }
     assert "balance_start" not in payload
     assert "diagnostics" not in payload
+
+
+def test_summary_with_threshold_reports_odds() -> None:
+    threshold = Decimal("1000")
+
+    payload = summary_payload(_scoped(_result(), threshold=threshold))
+
+    spending = payload["spending"]
+    assert isinstance(spending, dict)
+    assert spending["threshold"] == 1000.0
+    assert spending["bad_month_share"] == 1.0
+    assert spending["bad_year_share"] is None
+
+
+def test_summary_does_not_report_worst_case() -> None:
+    payload = summary_payload(_scoped(_result()))
+
+    spending = payload["spending"]
+    assert isinstance(spending, dict)
+    assert "worst_case" not in spending
 
 
 def test_diagnostics_serializes_every_array_and_legacy_allocation() -> None:
@@ -256,7 +282,14 @@ def test_empty_horizon_summary_has_no_spending_amounts() -> None:
     payload = summary_payload(_scoped(empty, plan_name=plan_name))
 
     assert payload["horizon_months"] == 0
-    assert payload["spending"] == {"initial": None, "worst_case": None}
+    assert payload["spending"] == {
+        "initial": None,
+        "lowest_percentile_year": None,
+        "median_final_year": None,
+        "threshold": None,
+        "bad_year_share": None,
+        "bad_month_share": None,
+    }
 
 
 def test_month_on_empty_horizon_does_not_invert_bounds() -> None:
