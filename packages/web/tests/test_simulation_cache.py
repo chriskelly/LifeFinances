@@ -78,6 +78,13 @@ def test_fingerprint_ignores_summary_spending_threshold() -> None:
     assert fingerprint_plan(plan) == fingerprint_plan(changed)
 
 
+def test_fingerprint_tracks_an_economic_plan_change() -> None:
+    plan = default_plan()
+    changed = plan.model_copy(update={"legacy_target": Decimal("1000")})
+
+    assert fingerprint_plan(plan) != fingerprint_plan(changed)
+
+
 def _run_once(
     app: FastAPI,
     *,
