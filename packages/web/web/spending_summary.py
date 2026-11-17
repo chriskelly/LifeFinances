@@ -41,8 +41,6 @@ THRESHOLD_TOOLTIP = (
 )
 THRESHOLD_PROMPT = "Set a threshold to see how often spending falls below it."
 UNAVAILABLE_VALUE = "unavailable"
-LEVELS_TITLE = "Levels"
-ODDS_TITLE = "Odds below floor"
 APPLY_LABEL = "Apply"
 BAD_YEAR_SUFFIX = "of runs"
 BAD_MONTH_SUFFIX = "of months"

@@ -92,8 +92,7 @@ def test_results_renders_levels_and_odds_columns(
     response = client.get(f"{RESULTS}?plan={plan_id}")
 
     assert response.status_code == 200
-    assert spending_summary.LEVELS_TITLE in response.text
-    assert spending_summary.ODDS_TITLE in response.text
+    assert response.text.count('class="spending-column"') == 2
     for label in (
         spending_summary.INITIAL_SPENDING_LABEL,
         spending_summary.LOWEST_PERCENTILE_YEAR_LABEL,

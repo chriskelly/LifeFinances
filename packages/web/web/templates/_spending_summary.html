@@ -15,7 +15,6 @@
 
 <div class="spending-columns">
   <section class="spending-column">
-    <h3>{{ spending_summary.LEVELS_TITLE }}</h3>
     <dl class="spending-metrics">
       <div class="spending-metric">
         <dt>{{ tooltip(spending_summary.INITIAL_SPENDING_LABEL, spending_summary.INITIAL_SPENDING_TOOLTIP) }}</dt>
@@ -32,7 +31,6 @@
     </dl>
   </section>
   <section class="spending-column">
-    <h3>{{ spending_summary.ODDS_TITLE }}</h3>
     <form
       class="spending-threshold-form"
       hx-post="{{ routes.RESULTS_SUMMARY_THRESHOLD }}?plan={{ plan_id }}"

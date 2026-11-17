@@ -60,8 +60,8 @@ listener; only forms whose `hx-patch` starts with `PLAN_PREFIX` dispatch
 
 `../web/templates/results.html` wraps `../web/templates/_spending_summary.html`
 in `#spending-summary`; home includes `results.html`, so both surfaces share the
-partial. It has two columns: **Levels** (initial, lowest-percentile year, median
-final year) and **Odds below floor** (threshold form, then the share of runs and
+partial. It has two columns: the level metrics (initial, lowest-percentile year,
+median final year) and the threshold odds (the form, then the share of runs and
 months below it). A blank threshold shows the input plus a muted prompt.
 
 Labels and tooltip copy come from `../web/spending_summary.py` constants, so the

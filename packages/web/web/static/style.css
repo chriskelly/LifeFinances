@@ -391,6 +391,7 @@ label.partner-toggle input[type="checkbox"] {
 
 .spending-threshold-form input {
   min-width: 0;
+  margin-bottom: 0;
 }
 
 .spending-threshold-form button {
