@@ -752,7 +752,6 @@ def test_results_renders_default_chart_selected(
 
 
 def test_results_shows_spending_levels(client: TestClient, plan_id: int) -> None:
-
     response = client.get(f"{RESULTS}?plan={plan_id}")
 
     assert response.status_code == 200

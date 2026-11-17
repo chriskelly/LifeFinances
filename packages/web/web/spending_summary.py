@@ -40,6 +40,7 @@ THRESHOLD_TOOLTIP = (
     "the simulation never reads it."
 )
 THRESHOLD_PROMPT = "Set a threshold to see how often spending falls below it."
+UNAVAILABLE_VALUE = "unavailable"
 LEVELS_TITLE = "Levels"
 ODDS_TITLE = "Odds below floor"
 APPLY_LABEL = "Apply"

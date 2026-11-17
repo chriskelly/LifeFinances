@@ -5,6 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 
 import numpy as np
+import pytest
 from core.repository import PlanRepository
 from fastapi.testclient import TestClient
 from simulation.diagnostics import empty_diagnostics
@@ -152,8 +153,21 @@ def test_results_short_horizon_shows_unavailable_year_metrics(
     response = client.get(f"{RESULTS}?plan={plan_id}")
 
     assert response.status_code == 200
-    assert "unavailable" in response.text
+    assert response.text.count("unavailable") == 3
     assert spending_summary.BAD_MONTH_LABEL in response.text
+    assert "50% of months" in response.text
+    assert "of runs" not in response.text
+
+
+def test_results_zero_month_horizon_shows_unavailable_levels(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    _install_result(monkeypatch, _summary_result(matrix=np.zeros((4, 0))))
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert response.text.count("unavailable") == 3
 
 
 def test_post_threshold_saves_and_returns_the_partial(
@@ -227,6 +241,23 @@ def test_post_negative_threshold_returns_422_with_field_label(
     assert saved.summary_spending_threshold == Decimal("1000")
 
 
+@pytest.mark.parametrize("raw", ["1e999999", "12345678901234567890123456789"])
+def test_post_oversized_threshold_returns_422_and_keeps_value(
+    client: TestClient, repo: PlanRepository, plan_id: int, raw: str
+) -> None:
+    _seed_threshold(repo, plan_id, Decimal("1000"))
+
+    response = client.post(
+        f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
+        data={forms.SUMMARY_SPENDING_THRESHOLD: raw},
+    )
+
+    assert response.status_code == 422
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.summary_spending_threshold == Decimal("1000")
+
+
 def test_post_threshold_does_not_rerun_simulation(
     client: TestClient, plan_id: int, monkeypatch
 ) -> None:
@@ -257,7 +288,9 @@ def test_threshold_form_posts_outside_the_plan_prefix(
     page = client.get(f"{RESULTS}?plan={plan_id}")
 
     assert f'hx-post="{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}"' in page.text
-    assert "hx-patch" not in page.text
+    form_start = page.text.index("spending-threshold-form")
+    form_tag = page.text[form_start : page.text.index(">", form_start)]
+    assert "hx-patch" not in form_tag
 
     response = client.post(
         f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
@@ -323,3 +356,31 @@ def test_results_has_no_markers_without_a_previous_run(
 
     assert response.status_code == 200
     assert "spending-delta-" not in response.text
+
+
+def test_post_threshold_keeps_existing_change_markers(
+    client: TestClient, repo: PlanRepository, plan_id: int, monkeypatch
+) -> None:
+    first = _summary_result()
+    second = _summary_result(
+        initial=1_500.0, matrix=np.full((4, 24), 1_500.0, dtype=np.float64)
+    )
+    results = iter([first, second])
+    app_module = sys.modules["web.simulation_cache"]
+    monkeypatch.setattr(
+        app_module, "run_simulation", lambda plan, **kwargs: next(results)
+    )
+    client.get(f"{RESULTS}?plan={plan_id}")
+    plan = repo.get_by_id(plan_id)
+    assert plan is not None
+    repo.save(plan_id, plan.model_copy(update={"legacy_target": Decimal("1000")}))
+    client.get(f"{RESULTS}?plan={plan_id}")
+
+    response = client.post(
+        f"{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}",
+        data={forms.SUMMARY_SPENDING_THRESHOLD: "$1,000"},
+    )
+
+    assert response.status_code == 200
+    assert "spending-delta-better" in response.text
+    assert "+$300/mo" in response.text

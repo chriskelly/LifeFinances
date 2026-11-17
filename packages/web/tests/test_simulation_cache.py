@@ -148,6 +148,37 @@ def test_cache_hit_does_not_move_the_previous_result() -> None:
     assert previous_result(app, plan_id=1) is first
 
 
+def test_failed_run_does_not_move_the_previous_result() -> None:
+    app = FastAPI()
+    plan = default_plan()
+    first = _make_result()
+    second = _make_result()
+    fixed_today = date(2026, 6, 1)
+    _run_once(app, plan_id=1, plan=plan, result=first, today=fixed_today)
+    _run_once(
+        app,
+        plan_id=1,
+        plan=plan.model_copy(update={"legacy_target": Decimal("1000")}),
+        result=second,
+        today=fixed_today,
+    )
+
+    def boom(plan, **kwargs):
+        raise RuntimeError("engine exploded")
+
+    with pytest.raises(RuntimeError, match="engine exploded"):
+        get_or_run_simulation(
+            app,
+            plan_id=1,
+            plan=plan.model_copy(update={"legacy_target": Decimal("2000")}),
+            settings=_empty_settings(),
+            run=boom,
+            today=fixed_today,
+        )
+
+    assert previous_result(app, plan_id=1) is first
+
+
 def test_previous_result_is_none_after_eviction() -> None:
     app = FastAPI()
     plan = default_plan()

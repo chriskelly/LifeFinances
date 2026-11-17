@@ -503,6 +503,8 @@ class SummaryThresholdForm(BaseModel):
         return cls(summary_spending_threshold=parse_usd(raw, previous=previous))
 
     def apply_to(self, plan: Plan) -> Plan:
+        # Transport DTOs stay constraint-free (packages/web/docs/templates.md);
+        # Plan owns the bound, so a single scalar still revalidates the plan.
         data = plan.model_dump()
         data[SUMMARY_SPENDING_THRESHOLD] = self.summary_spending_threshold
         return Plan.model_validate(data)

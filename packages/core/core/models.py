@@ -231,5 +231,8 @@ class Plan(BaseModel):
     # inflation-adjusted before being discounted.
     legacy_target: Decimal = Field(default=Decimal(0), ge=0)
     # Reporting-only floor for the results summary odds. The simulation engine
-    # never reads it.
-    summary_spending_threshold: Decimal | None = Field(default=None, ge=0)
+    # never reads it. The upper bound keeps a pasted exponent or an oversized
+    # number from being stored where dollar formatting would later fail.
+    summary_spending_threshold: Decimal | None = Field(
+        default=None, ge=0, le=Decimal("1e18")
+    )

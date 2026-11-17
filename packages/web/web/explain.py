@@ -83,8 +83,9 @@ class ApiError(Exception):
 
 
 def summary_payload(scoped: ScopedResult) -> dict[str, object]:
-    threshold = scoped.plan.summary_spending_threshold
-    spending = spending_summary.build(result=scoped.result, threshold=threshold)
+    spending = spending_summary.build(
+        result=scoped.result, threshold=scoped.plan.summary_spending_threshold
+    )
     current = spending.current
     result = scoped.result
     return {
@@ -101,7 +102,9 @@ def summary_payload(scoped: ScopedResult) -> dict[str, object]:
             "initial": current.initial,
             "lowest_percentile_year": current.lowest_percentile_year,
             "median_final_year": current.median_final_year,
-            "threshold": None if threshold is None else float(threshold),
+            "threshold": (
+                None if spending.threshold is None else float(spending.threshold)
+            ),
             "bad_year_share": current.bad_year_share,
             "bad_month_share": current.bad_month_share,
         },

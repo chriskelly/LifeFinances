@@ -31,6 +31,11 @@ def test_summary_spending_threshold_rejects_negative() -> None:
         _plan_with(Decimal("-1"))
 
 
+def test_summary_spending_threshold_rejects_oversized_value() -> None:
+    with pytest.raises(ValidationError):
+        _plan_with(Decimal("1e999999"))
+
+
 def test_summary_spending_threshold_persists_through_repository(
     repo: PlanRepository,
 ) -> None:
