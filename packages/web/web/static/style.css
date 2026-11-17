@@ -302,9 +302,13 @@ label.partner-toggle input[type="checkbox"] {
 
 .spending-columns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
   margin-top: 0.75rem;
+}
+
+.spending-column {
+  min-width: 0;
 }
 
 .spending-column h3 {
@@ -370,7 +374,12 @@ label.partner-toggle input[type="checkbox"] {
 
 .spending-threshold-form label {
   flex: 1;
+  min-width: 0;
   margin: 0;
+}
+
+.spending-threshold-form input {
+  min-width: 0;
 }
 
 .spending-threshold-form button {
