@@ -16,7 +16,7 @@
 {%- endmacro %}
 
 {% macro metric_value(value, kind, suffix="") -%}
-{% if value is none %}{{ spending_summary.UNAVAILABLE_VALUE }}{% elif kind == "usd" %}{{ value|usd }}/mo{% else %}{{ value|percent }}{% if suffix %} {{ suffix }}{% endif %}{% endif %}
+{% if value is none %}{{ spending_summary.UNAVAILABLE_VALUE }}{% elif kind == "usd" %}{{ value|usd }}/mo{% else %}{{ value|percent }}{% endif %}{% if value is not none and suffix %} {{ suffix }}{% endif %}
 {%- endmacro %}
 
 <div class="spending-columns">

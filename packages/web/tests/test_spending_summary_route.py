@@ -153,7 +153,7 @@ def test_results_short_horizon_shows_unavailable_year_metrics(
     response = client.get(f"{RESULTS}?plan={plan_id}")
 
     assert response.status_code == 200
-    assert response.text.count("unavailable") == 3
+    assert response.text.count(spending_summary.UNAVAILABLE_VALUE) == 3
     assert spending_summary.BAD_MONTH_LABEL in response.text
     assert "50% of months" in response.text
     assert "of runs" not in response.text
@@ -167,7 +167,7 @@ def test_results_zero_month_horizon_shows_unavailable_levels(
     response = client.get(f"{RESULTS}?plan={plan_id}")
 
     assert response.status_code == 200
-    assert response.text.count("unavailable") == 3
+    assert response.text.count(spending_summary.UNAVAILABLE_VALUE) == 3
 
 
 def test_post_threshold_saves_and_returns_the_partial(
@@ -288,8 +288,10 @@ def test_threshold_form_posts_outside_the_plan_prefix(
     page = client.get(f"{RESULTS}?plan={plan_id}")
 
     assert f'hx-post="{RESULTS_SUMMARY_THRESHOLD}?plan={plan_id}"' in page.text
-    form_start = page.text.index("spending-threshold-form")
+    class_at = page.text.index("spending-threshold-form")
+    form_start = page.text.rindex("<form", 0, class_at)
     form_tag = page.text[form_start : page.text.index(">", form_start)]
+    assert "hx-post=" in form_tag
     assert "hx-patch" not in form_tag
 
     response = client.post(
