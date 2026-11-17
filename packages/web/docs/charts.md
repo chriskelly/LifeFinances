@@ -80,11 +80,11 @@ unified hover does not reliably hit filled areas.
 monthly spending is closest to the median of the run-level lifetime medians,
 with ties to the lowest run index. The trace is appended after the percentile
 traces so it draws over the band, has no fill, uses a one-pixel neutral gray
-line, and is labelled `one simulated run`. Because `legend.traceorder` is
-reversed, it appears first in the legend and in unified hover, ahead of the
-percentiles. The trace is omitted when the run matrix has no runs or no
-months; other band charts never draw it. It participates in the y-axis
-autorange, so a path that leaves the band can widen the plotted spending
+line, and is named `a median run`. It is excluded from the legend
+(`showlegend=False`) because the wide label squeezed the plot's width; the
+unified hover still names it. The trace is omitted when the run matrix has no
+runs or no months; other band charts never draw it. It participates in the
+y-axis autorange, so a path that leaves the band can widen the plotted spending
 range; the band and percentile values themselves are unchanged.
 
 The x-axis range is padded by one month per 100 months of horizon (at least one
