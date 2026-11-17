@@ -1,11 +1,5 @@
 {% macro tooltip(label, copy) -%}
-<span class="metric-label">{{ label }}<span
-  class="metric-help"
-  data-tooltip="{{ copy }}"
-  data-placement="bottom"
-  tabindex="0"
-  aria-label="{{ copy }}"
->?</span></span>
+<span class="metric-label" tabindex="0" aria-label="{{ copy }}">{{ label }}<span class="metric-help" aria-hidden="true">?</span><span class="metric-help-bubble" role="tooltip" aria-hidden="true">{{ copy }}</span></span>
 {%- endmacro %}
 
 {% macro delta(value, kind, higher_is_better) -%}

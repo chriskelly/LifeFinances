@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 # Seeded from Pico CSS 2.1.1 default light:
 # https://picocss.com/docs/css-variables
 PICO_STYLESHEET_HREF = (
     "https://cdn.jsdelivr.net/npm/@picocss/pico@2.1.1/css/pico.fluid.classless.min.css"
 )
+
+_STYLE_PATH = Path(__file__).resolve().parent / "static" / "style.css"
 
 BACKGROUND = "#fff"
 COLOR = "#373c44"
@@ -23,6 +27,9 @@ PRIMARY_INVERSE = "#fff"
 DANGER_TEXT = "rgb(136, 56.5, 53)"
 DANGER_BORDER = "rgb(183.5, 105.5, 106.5)"
 DANGER_BACKGROUND = "rgb(253, 236, 234)"
+# Success/insertion green from Pico light, emitted so delta colours cannot fall
+# back to inherited text if the external stylesheet is cached or unavailable.
+SUCCESS_TEXT = "rgb(28.5, 105.5, 84)"
 
 # Density — Pico defaults are roomy for a dense planner UI.
 # Pico fluid also grows --pico-font-size at large breakpoints; we re-set it here
@@ -57,8 +64,14 @@ PICO_LIGHT: dict[str, str] = {
     "--pico-form-element-invalid-border-color": DANGER_BORDER,
     "--pico-form-element-invalid-active-border-color": DANGER_TEXT,
     "--pico-form-element-invalid-focus-color": DANGER_TEXT,
+    "--pico-ins-color": SUCCESS_TEXT,
     "--pico-del-color": DANGER_TEXT,
 }
+
+
+def stylesheet_version() -> str:
+    """Cache-buster for the local stylesheet; changes whenever style.css does."""
+    return str(int(_STYLE_PATH.stat().st_mtime))
 
 
 def pico_root_css() -> str:

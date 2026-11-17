@@ -65,10 +65,10 @@ final year) and **Odds below floor** (threshold form, then the share of runs and
 months below it). A blank threshold shows the input plus a muted prompt.
 
 Labels and tooltip copy come from `../web/spending_summary.py` constants, so the
-screen and the explain JSON share one source. Tooltips use Pico's
-`data-tooltip` on a `tabindex="0"` trigger, which reveals on hover and focus;
-`../web/static/style.css` only overrides Pico's `nowrap` so the sentence-length
-copy wraps.
+screen and the explain JSON share one source. Each label is a
+`tabindex="0"` trigger for a CSS bubble (`.metric-help-bubble`) revealed on
+`:hover` and `:focus-visible`, so it works without a mouse; the bubble is
+anchored below the label, not over the `?` marker.
 
 The form `hx-post`s `POST /results/summary-threshold?plan={id}` and swaps the
 partial into `#spending-summary` (innerHTML). The route returns the partial only

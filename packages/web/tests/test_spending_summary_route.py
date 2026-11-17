@@ -102,7 +102,9 @@ def test_results_renders_levels_and_odds_columns(
         spending_summary.BAD_MONTH_LABEL,
     ):
         assert label in response.text
-    assert "data-tooltip=" in response.text
+    assert "metric-help-bubble" in response.text
+    assert 'role="tooltip"' in response.text
+    assert 'tabindex="0"' in response.text
 
 
 def test_results_without_threshold_shows_prompt_and_no_odds(
