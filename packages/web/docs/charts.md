@@ -83,7 +83,9 @@ traces so it draws over the band, has no fill, uses a one-pixel neutral gray
 line, and is labelled `one simulated run`. Because `legend.traceorder` is
 reversed, it appears first in the legend and in unified hover, ahead of the
 percentiles. The trace is omitted when the run matrix has no runs or no
-months; other band charts never draw it.
+months; other band charts never draw it. It participates in the y-axis
+autorange, so a path that leaves the band can widen the plotted spending
+range; the band and percentile values themselves are unchanged.
 
 The x-axis range is padded by one month per 100 months of horizon (at least one
 month) at each end, so the margin stays near 1% of the plot width. Plotly's

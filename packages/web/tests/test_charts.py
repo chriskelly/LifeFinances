@@ -250,7 +250,7 @@ def test_simulated_run_trace_appears_only_on_spending_total(chart_type):
     figure = charts.build_figure(result, chart_type)
 
     names = [trace["name"] for trace in figure["data"]]
-    assert names.count("one simulated run") == 0
+    assert "one simulated run" not in names
 
 
 def test_spending_total_with_an_empty_horizon_omits_the_simulated_run():
