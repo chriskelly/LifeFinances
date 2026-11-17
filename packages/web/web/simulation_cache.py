@@ -47,7 +47,7 @@ def _keys_for(app: FastAPI) -> dict[int, KeysEntry]:
 
 
 def previous_result(app: FastAPI, *, plan_id: int) -> SimulationResult | None:
-    """The result before the plan's latest cache miss, if it is still cached."""
+    """The result rendered before the current one, if it is still cached."""
     keys = getattr(app.state, _KEYS_ATTR, None)
     if keys is None:
         return None
