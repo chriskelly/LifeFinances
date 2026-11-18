@@ -16,6 +16,7 @@ numerical correctness without a runnable TPAW binary to diff against.
 | Feature | Status | Where |
 | --- | --- | --- |
 | Risk-tolerance → RRA conversion (age glide, legacy delta) | Ported | `../simulation/risk.py` |
+| Time-preference sign convention (TPAW UI shows −TPR as "Preference for the Future") | Documented; UI alignment in #279 | Input and sign mapping |
 | Merton's formula (stock allocation + spending tilt, equity-premium/variance clamps, ∞-RRA case) | Ported | `../simulation/mertons.py` |
 | Backward NPV precompute pass + `cumulative_1_plus_g_over_1_plus_r` amortization | Ported | `../simulation/npv.py`, `../simulation/preprocess.py` |
 | Vectorized forward monthly loop (wealth, pool carve, expected-run elasticity, contributions/withdrawals, allocation, rebalancing) | Ported | `../simulation/engine.py` |
@@ -73,11 +74,44 @@ index sequences use the same values. `build_return_paths` raises `ValueError`
 when its `plan` and `planning` arguments disagree on `block_size_months` or
 `stock_volatility_scale` — resolve planning from the same plan you pass in.
 
-One stored-sign difference is intentional. `delta_at_max_age` is the decrease
-shown in the editor. The age glide subtracts it from risk tolerance between
-age 20 and max age (`../simulation/risk.py`). TPAW stores the negation of that
-displayed decrease and adds it (`at20 + deltaAtMaxAge` in `process_risk.rs`,
-default `-2`).
+## Input and sign mapping
+
+The risk block is the most common source of month-0 drift because the two UIs
+show different quantities. Compare the stored values, not the slider labels.
+
+| TPAW export path | LifeFinances | Convention |
+| --- | --- | --- |
+| `risk.tpaw.riskTolerance.at20` | `risk.risk_tolerance_at_20` | Same value. |
+| `risk.tpaw.riskTolerance.deltaAtMaxAge` | `risk.delta_at_max_age` | TPAW stores the negation of the displayed decrease and adds it (`at20 + deltaAtMaxAge`); LifeFinances stores the decrease and subtracts it. TPAW `-8` corresponds to LifeFinances `8`. |
+| `risk.tpaw.riskTolerance.forLegacyAsDeltaFromAt20` | `risk.legacy_delta_from_at_20` | Same value; added to the age-20 tolerance. Affects only the legacy carve. |
+| `risk.tpaw.timePreference` | `risk.time_preference` | Both are the time preference rate (impatience). TPAW's UI shows **Preference for the Future**, the negation of this stored rate; LifeFinances' editor currently labels the stored rate itself "Time preference" (#279). |
+| `risk.tpaw.additionalAnnualSpendingTilt` | `risk.additional_annual_spending_tilt` | Same value; added directly to the Merton spending tilt. |
+| `advanced.returnsStatsForPlanning.expectedValue.empiricalAnnualNonLog.type` | `planning_returns.preset` | Preset mapping; for example `conservativeEstimate,20YearTIPSYield` ↔ `conservative_estimate`. |
+| `advanced.sampling.data.blockSize.inMonths` | `sampling.block_size_months` | Same value. |
+| `advanced.sampling.data.staggerRunStarts` | `sampling.stagger_run_starts` | Same value. |
+| `advanced.annualInflation` | `inflation` | `suggested` ↔ `mode: suggested`; a manual rate maps to `manual_annual_rate`. |
+| `wealth.portfolioBalance.amount` (or `updatedTo` when carried forward) | `portfolio.current_savings_balance` | Same value. |
+| `adjustmentsToSpending.tpawAndSPAW.legacy.total` | `legacy_target` | Same value. |
+| `adjustmentsToSpending.extraSpending.essential` / `.discretionary` | `extra_essential_spending` / `extra_discretionary_spending` | Amounts and windows; LifeFinances includes both start and end months, while TPAW's `startAndDuration` is a duration. |
+| `wealth.incomeDuringRetirement` | jobs, Social Security, pension, manual streams | TPAW stores net manual streams; LifeFinances builds gross and taxes. Not one-to-one; compare annualized flows. |
+| `people.*.ages.maxAge.inMonths` | `household.person*.max_age_years` | TPAW months; LifeFinances years. |
+
+**Time-preference sign trap.** TPAW's UI value is the negation of its stored
+`timePreference`; LifeFinances' editor currently shows `time_preference`
+directly. A visible -0.5% on both sliders is TPAW `+0.005` but LifeFinances
+`-0.005` — a 1.0-point mismatch. For the same engine rate the two UI values must
+be opposite signs: TPAW +0.5% ↔ LifeFinances -0.5%. On a long-horizon plan this
+mismatch moved month-0 spending by roughly 7–8%, versus about 0.6% for a
+half-point glide mismatch. Compare the stored values, or negate TPAW's UI value
+before diffing. TPAW's rationale is UI direction: moving the slider right
+increases future spending, so it displays `-TPR` and shows the TPR in its
+foldable details.
+
+**Glide sign trap.** TPAW's UI shows the decrease and stores its negation;
+LifeFinances stores the decrease itself. TPAW `-8` is LifeFinances `8`, not
+`-8`.
+
+The legacy delta is not negated. It is added to the age-20 tolerance in both.
 
 ## Investigating a gap against a real TPAW plan
 
@@ -92,7 +126,9 @@ adjustment. Only read the later months once month 0 agrees.
 **Diff the inputs, most sensitive first:** portfolio balance; risk (tolerance at
 20, glide to max age, legacy delta, time preference, additional annual spending
 tilt); planning-return preset and log-volatility scales; inflation; sampling;
-horizon.
+horizon. For the risk block, use the mapping table above — TPAW's UI shows the
+glide decrease and Preference for the Future; both are the negation of TPAW's
+stored values.
 
 **Take TPAW's values from an exported plan.** Plan menu → *Save to File* writes a
 `.tpaw.txt`: prose header, then JSON from the first `{`. The payload is a
@@ -108,20 +144,32 @@ and `incomeDuringRetirement` are net amounts, while LifeFinances builds gross
 job/SS/pension income and taxes it; compare annualized `income_real` against the
 stream schedule and accept a few percent of drift. `forLegacyAsDeltaFromAt20` is
 added to the tolerance at 20, and `additionalAnnualSpendingTilt` is added
-directly to the Merton spending tilt (the `deltaAtMaxAge` sign is covered above).
-TPAW's month count includes the max-age month, so a tail difference can be the
-horizon rather than the math.
+directly to the Merton spending tilt (the `deltaAtMaxAge` and time-preference
+signs are covered above). TPAW's `startAndDuration` extra-spending windows are
+durations, while LifeFinances includes both the start and end months; a
+12-month TPAW sabbatical becomes 13 months in LifeFinances if the end is copied
+literally. TPAW's month count includes the max-age month, so a tail difference
+can be the horizon rather than the math. TPAW's chart percentile set and run
+count are not in the exported params, so do not treat a band difference as
+engine drift; compare month 0 and the summary scalars first.
 
 **Mutate copies.** Ablate parameters on a copy of the plan — never the stored
 plan or the exported TPAW params.
 
 **Sensitivity, for triage on a long-horizon plan with real returns near 3%:** a
 0.5%/yr additional spending tilt moves month-0 spending by roughly 12%, a
-risk-tolerance glide of 2 points by roughly 5%, and one horizon month by roughly
-0.1%. Tilt and glide mismatches are large enough to explain a four-figure monthly
-gap on their own: a plan carrying a −0.5%/yr additional tilt and a flat glide,
-compared against TPAW with tilt 0 and a 2-point glide, differed by ~$1k/month at
-month 0 and matched once both inputs were aligned, with no engine change.
+1.0-point time-preference mismatch by roughly 7–8%, a risk-tolerance glide of
+2 points by roughly 5%, and one horizon month by roughly 0.1%. Tilt, time
+preference, and glide mismatches are large enough to explain a four-figure
+monthly gap on their own.
+
+Two worked examples. A plan carrying a −0.5%/yr additional tilt and a flat
+glide, compared against TPAW with tilt 0 and a 2-point glide, differed by
+~$1k/month at month 0 and matched once both inputs were aligned, with no engine
+change. A second plan showed $14,041 at month 0 with `time_preference = -0.005`
+and $15,028 with `time_preference = +0.005`; the TPAW export carried the
+positive rate and charted $14,952. Aligning the sign moved month 0 to within
+$76 (0.5%) of TPAW, leaving only the usual net-income/tax drift.
 
 ## Testing approach: doctest-golden values
 
