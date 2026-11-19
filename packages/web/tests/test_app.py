@@ -19,7 +19,7 @@ from web.app import (
     _SIMULATION_FAILURE_MESSAGE,
     _figure_json,
 )
-from web.currency import format_usd
+from web.currency import INVALID_CURRENCY_MESSAGE, format_usd
 from web.forms import (
     CLEAR_EOD_API_KEY,
     CLEAR_FRED_API_KEY,
@@ -340,6 +340,26 @@ def test_patch_portfolio_negative_balance_returns_422_without_persisting(
 
     assert response.status_code == 422
     assert response.text
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.portfolio.current_savings_balance == (
+        original.portfolio.current_savings_balance
+    )
+
+
+def test_patch_portfolio_oversized_balance_returns_422_without_persisting(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    original = repo.get_by_id(plan_id)
+    assert original is not None
+
+    response: httpx.Response = client.patch(
+        f"{PLAN_PORTFOLIO}?plan={plan_id}",
+        data={CURRENT_SAVINGS_BALANCE: "1e30"},
+    )
+
+    assert response.status_code == 422
+    assert INVALID_CURRENCY_MESSAGE in response.text
     after = repo.get_by_id(plan_id)
     assert after is not None
     assert after.portfolio.current_savings_balance == (

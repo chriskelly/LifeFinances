@@ -3,7 +3,7 @@ from decimal import Decimal
 from core.repository import PlanRepository
 from core.streams import CalendarMonthBoundary, TimedStream
 from fastapi.testclient import TestClient
-from web.currency import format_usd
+from web.currency import INVALID_CURRENCY_MESSAGE, format_usd
 from web.routes import EDITOR_MANUAL_INCOME, PLAN_MANUAL_INCOME
 from web.sections import MANUAL_INCOME_TITLE
 
@@ -61,6 +61,39 @@ def test_patch_manual_income_blank_monthly_amount_returns_422(
     )
 
     assert response.status_code == 422
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.manual_income_streams[0].monthly_amount == expected_amount
+
+
+def test_patch_manual_income_oversized_monthly_amount_returns_422_without_changing(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    expected_label = "Rental"
+    expected_amount = Decimal("2500")
+    stream_start = CalendarMonthBoundary(year=2010, month=1)
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.manual_income_streams = [
+        TimedStream(
+            label=expected_label, monthly_amount=expected_amount, start=stream_start
+        )
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.patch(
+        f"{PLAN_MANUAL_INCOME}?plan={plan_id}",
+        data={
+            "streams[0].label": expected_label,
+            "streams[0].monthly_amount": "1e30",
+            "streams[0].annual_growth_rate": "0",
+            "streams[0].start_kind": "now",
+            "streams[0].end_kind": "none",
+        },
+    )
+
+    assert response.status_code == 422
+    assert INVALID_CURRENCY_MESSAGE in response.text
     after = repo.get_by_id(plan_id)
     assert after is not None
     assert after.manual_income_streams[0].monthly_amount == expected_amount
