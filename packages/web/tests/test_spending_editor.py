@@ -5,8 +5,8 @@ from core.models import RiskConfig, SamplingConfig
 from core.repository import PlanRepository
 from core.streams import CalendarMonthBoundary, TimedStream
 from fastapi.testclient import TestClient
-from web.currency import format_usd
-from web.routes import EDITOR_SPENDING, PLAN_SPENDING
+from web.currency import INVALID_CURRENCY_MESSAGE, format_usd
+from web.routes import EDITOR_SPENDING, PLAN_SPENDING, RESULTS
 from web.sections import SPENDING_GOALS_TITLE
 
 from web import boundaries, forms
@@ -162,6 +162,129 @@ def test_patch_spending_invalid_amount_returns_422_without_changes(
     assert saved is not None
     assert saved.extra_essential_spending[0].monthly_amount == essential_amount
     assert saved.extra_discretionary_spending[0].monthly_amount == discretionary_amount
+    assert saved.legacy_target == prior_legacy
+
+
+def test_patch_spending_oversized_legacy_target_returns_422_without_changes(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    prior_legacy = Decimal("100000")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.legacy_target = prior_legacy
+    repo.save(plan_id, seeded)
+
+    response = client.patch(
+        f"{PLAN_SPENDING}?plan={plan_id}",
+        data={forms.LEGACY_TARGET: "1e30"},
+    )
+
+    assert response.status_code == 422
+    assert INVALID_CURRENCY_MESSAGE in response.text
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.legacy_target == prior_legacy
+
+
+def test_editor_spending_renders_stored_oversized_legacy_target(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.legacy_target = Decimal("1e30")
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_SPENDING}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert "$1,000,000,000,000,000,000+" in response.text
+
+
+def test_patch_spending_accepts_echo_of_stored_oversized_legacy_target(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    stored_legacy = Decimal("1e30")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.legacy_target = stored_legacy
+    repo.save(plan_id, seeded)
+
+    response = client.patch(
+        f"{PLAN_SPENDING}?plan={plan_id}",
+        data={forms.LEGACY_TARGET: "$1,000,000,000,000,000,000+"},
+    )
+
+    assert response.status_code == 200
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.legacy_target == stored_legacy
+
+
+def test_results_stays_200_with_stored_oversized_legacy_target(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.legacy_target = Decimal("1e30")
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{RESULTS}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert 'id="spending-summary"' in response.text
+
+
+def test_patch_spending_accepts_echo_of_stored_oversized_stream(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    stored_amount = Decimal("1e30")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.extra_essential_spending = [
+        TimedStream(
+            label="Healthcare",
+            monthly_amount=stored_amount,
+            start=CalendarMonthBoundary(year=2010, month=1),
+        )
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.patch(
+        f"{PLAN_SPENDING}?plan={plan_id}",
+        data={
+            **_stream_data(
+                prefix=forms.ESSENTIAL_PREFIX,
+                label="Healthcare",
+                amount="$1,000,000,000,000,000,000+",
+            ),
+            forms.LEGACY_TARGET: "0",
+        },
+    )
+
+    assert response.status_code == 200
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.extra_essential_spending[0].monthly_amount == stored_amount
+
+
+def test_patch_spending_negative_legacy_target_returns_422_without_changes(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    prior_legacy = Decimal("100000")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.legacy_target = prior_legacy
+    repo.save(plan_id, seeded)
+
+    response = client.patch(
+        f"{PLAN_SPENDING}?plan={plan_id}",
+        data={forms.LEGACY_TARGET: "-5"},
+    )
+
+    assert response.status_code == 422
+    assert forms.LEGACY_TARGET in response.text
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
     assert saved.legacy_target == prior_legacy
 
 

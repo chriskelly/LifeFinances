@@ -746,13 +746,13 @@ class SpendingGoalsForm:
         )
 
     def apply_to(self, plan: Plan) -> Plan:
-        return plan.model_copy(
-            update={
-                "extra_essential_spending": self.essential,
-                "extra_discretionary_spending": self.discretionary,
-                "legacy_target": self.legacy_target,
-            }
-        )
+        # Revalidate through Plan so its constraints (legacy_target >= 0)
+        # still apply; model_copy would persist an invalid value.
+        data = plan.model_dump()
+        data["extra_essential_spending"] = self.essential
+        data["extra_discretionary_spending"] = self.discretionary
+        data["legacy_target"] = self.legacy_target
+        return Plan.model_validate(data)
 
 
 class SocialSecurityForm(BaseModel):

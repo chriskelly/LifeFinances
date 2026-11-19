@@ -9,7 +9,7 @@ from domain.statutory.pension import (
 )
 from fastapi.testclient import TestClient
 from markupsafe import escape
-from web.currency import format_usd
+from web.currency import INVALID_CURRENCY_MESSAGE, format_usd
 from web.forms import (
     INVALID_AGE_FACTOR_TABLE_MESSAGE,
     INVALID_AVERAGING_MONTHS_MESSAGE,
@@ -69,6 +69,35 @@ def test_patch_jobs_blank_annual_income_returns_422(
     )
 
     assert response.status_code == 422
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.person1.jobs[0].annual_income == expected_income
+
+
+def test_patch_jobs_oversized_annual_income_returns_422_without_changing(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    expected_income = Decimal("150000")
+    job_start = CalendarMonthBoundary(year=2010, month=1)
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(annual_income=expected_income, start=job_start)
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.patch(
+        f"{PLAN_JOBS}?plan={plan_id}&person=person1",
+        data={
+            "jobs[0].annual_income": "1e30",
+            "jobs[0].annual_tax_deferred": "0",
+            "jobs[0].start_kind": "now",
+            "jobs[0].end_kind": "none",
+        },
+    )
+
+    assert response.status_code == 422
+    assert INVALID_CURRENCY_MESSAGE in response.text
     after = repo.get_by_id(plan_id)
     assert after is not None
     assert after.household.person1.jobs[0].annual_income == expected_income
