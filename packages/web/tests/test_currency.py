@@ -29,7 +29,12 @@ def test_format_usd_keeps_the_maximum_currency_exactly() -> None:
 
 @pytest.mark.parametrize(
     "value",
-    [Decimal("1_000_000_000_000_000_001"), Decimal("1e30"), Decimal("1e999999")],
+    [
+        Decimal("1_000_000_000_000_000_001"),
+        Decimal("1e30"),
+        Decimal("1e999999"),
+        Decimal("1e1000000"),
+    ],
 )
 def test_format_usd_clamps_values_above_the_maximum(value: Decimal) -> None:
     assert format_usd(value) == "$1,000,000,000,000,000,000+"
@@ -70,6 +75,8 @@ def test_parse_usd_accepts_the_maximum_value() -> None:
         "1e19",
         "-1e19",
         "1e999999",
+        "1e1000000",
+        "-1e1000000",
     ],
 )
 def test_parse_usd_rejects_values_beyond_the_maximum_magnitude(raw: str) -> None:

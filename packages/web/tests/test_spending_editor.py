@@ -267,6 +267,40 @@ def test_patch_spending_accepts_echo_of_stored_oversized_stream(
     assert saved.extra_essential_spending[0].monthly_amount == stored_amount
 
 
+def test_patch_spending_oversized_stream_returns_422_without_changes(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    prior_amount = Decimal("700")
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.extra_essential_spending = [
+        TimedStream(
+            label="Healthcare",
+            monthly_amount=prior_amount,
+            start=CalendarMonthBoundary(year=2010, month=1),
+        )
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.patch(
+        f"{PLAN_SPENDING}?plan={plan_id}",
+        data={
+            **_stream_data(
+                prefix=forms.ESSENTIAL_PREFIX,
+                label="Healthcare",
+                amount="1e1000000",
+            ),
+            forms.LEGACY_TARGET: "0",
+        },
+    )
+
+    assert response.status_code == 422
+    assert INVALID_CURRENCY_MESSAGE in response.text
+    saved = repo.get_by_id(plan_id)
+    assert saved is not None
+    assert saved.extra_essential_spending[0].monthly_amount == prior_amount
+
+
 def test_patch_spending_negative_legacy_target_returns_422_without_changes(
     client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:

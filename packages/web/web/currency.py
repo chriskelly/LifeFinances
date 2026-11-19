@@ -11,6 +11,15 @@ MAX_USD = Decimal("1e18")
 _MAX_USD_TEXT = f"{MAX_USD:,.0f}"
 
 
+def _exceeds_max_usd(amount: Decimal) -> bool:
+    """True for finite amounts whose magnitude exceeds ``MAX_USD``.
+
+    ``copy_abs`` is context-free; ``abs`` raises Overflow past the context's
+    Emax, which Plan-accepted Decimals can exceed.
+    """
+    return amount.is_finite() and amount.copy_abs() > MAX_USD
+
+
 def format_usd(value: Decimal | int | float | str | None) -> str:
     """Format a dollar amount as USD with zero decimal places (e.g. ``$120,000``).
 
@@ -22,8 +31,7 @@ def format_usd(value: Decimal | int | float | str | None) -> str:
         amount = Decimal(0)
     else:
         amount = Decimal(str(value))
-    # abs(NaN) raises, so gate on is_finite before the magnitude check.
-    if amount.is_finite() and abs(amount) > MAX_USD:
+    if _exceeds_max_usd(amount):
         sign = "-" if amount < 0 else ""
         return f"${sign}{_MAX_USD_TEXT}+"
     quantized = amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
@@ -52,6 +60,6 @@ def parse_usd(raw: str | None, *, previous: Decimal | None = None) -> Decimal:
         raise ValueError(INVALID_CURRENCY_MESSAGE) from exc
     # Negative values within the bound stay model-rejected (currency fields'
     # ge=0).
-    if not amount.is_finite() or abs(amount) > MAX_USD:
+    if not amount.is_finite() or _exceeds_max_usd(amount):
         raise ValueError(INVALID_CURRENCY_MESSAGE)
     return amount

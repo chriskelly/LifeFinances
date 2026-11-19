@@ -103,6 +103,41 @@ def test_patch_jobs_oversized_annual_income_returns_422_without_changing(
     assert after.household.person1.jobs[0].annual_income == expected_income
 
 
+def test_patch_jobs_oversized_annual_tax_deferred_returns_422_without_changing(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    expected_income = Decimal("150000")
+    expected_deferred = Decimal("5000")
+    job_start = CalendarMonthBoundary(year=2010, month=1)
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            annual_income=expected_income,
+            annual_tax_deferred=expected_deferred,
+            start=job_start,
+        )
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.patch(
+        f"{PLAN_JOBS}?plan={plan_id}&person=person1",
+        data={
+            "jobs[0].annual_income": "150000",
+            "jobs[0].annual_tax_deferred": "1e1000000",
+            "jobs[0].start_kind": "now",
+            "jobs[0].end_kind": "none",
+        },
+    )
+
+    assert response.status_code == 422
+    assert INVALID_CURRENCY_MESSAGE in response.text
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.person1.jobs[0].annual_income == expected_income
+    assert after.household.person1.jobs[0].annual_tax_deferred == expected_deferred
+
+
 def test_patch_jobs_empty_form_clears_jobs(
     client: TestClient, repo: PlanRepository, plan_id: int
 ) -> None:
