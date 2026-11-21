@@ -45,6 +45,10 @@ ESSENTIAL_PREFIX = "essential"
 DISCRETIONARY_PREFIX = "discretionary"
 LEGACY_TARGET = "legacy_target"
 LEGACY_TARGET_HELP = "Target at the plan horizon, in today's dollars."
+PREFERENCE_FOR_THE_FUTURE_HELP = (
+    "Higher values shift spending toward later years. The underlying "
+    "time preference rate is the negative of this value."
+)
 RISK_TOLERANCE_AT_20 = "risk_tolerance_at_20"
 DELTA_AT_MAX_AGE = "delta_at_max_age"
 LEGACY_DELTA_FROM_AT_20 = "legacy_delta_from_at_20"

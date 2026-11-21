@@ -56,17 +56,17 @@
         >
       </label>
       <label>
-        Time preference
+        Preference for the future
         {{ range_slider.range_with_value(
           forms.TIME_PREFERENCE,
           forms.PERCENT_SLIDER_MIN,
           forms.PERCENT_SLIDER_MAX,
           forms.PERCENT_SLIDER_STEP,
-          plan.risk.time_preference|percent_points,
-          display=plan.risk.time_preference|percent,
+          (-plan.risk.time_preference)|percent_points,
           suffix='%'
         ) }}
       </label>
+      <p class="field-help">{{ forms.PREFERENCE_FOR_THE_FUTURE_HELP }}</p>
     </details>
   </form>
 </section>

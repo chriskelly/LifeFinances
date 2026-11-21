@@ -199,7 +199,7 @@ Implementation lives in `mertons.py`. The engine calls `effective_mertons` (not
 | \(\mu\) | `planning.annual_stocks − planning.annual_bonds` | Expected annual equity premium |
 | \(\sigma^2\) | vendored stock log-variance × 12 | Annual variance of stock log returns |
 | \(\gamma\) | RRA from `risk.py` (per month, or legacy RRA) | Relative risk aversion |
-| \(\rho\) | `plan.risk.time_preference` | Time preference (impatience); TPAW's UI shows \(-\rho\) as "Preference for the Future" |
+| \(\rho\) | `plan.risk.time_preference` | Time preference (impatience); both UIs show \(-\rho\) as "Preference for the Future" |
 | \(g_{\text{add}}\) | `plan.risk.additional_annual_spending_tilt` | User override on annual consumption growth |
 
 ### Stock allocation
@@ -264,8 +264,9 @@ down. Zero tilt requires zero returns, zero risk effects, and \(g_{\text{add}} =
 (or infinite RRA with no add-on).
 
 TPAW's "Preference for the Future" slider displays \(-\rho\): a positive
-preference for the future means a negative time preference rate. See
-`docs/parity.md` for the full input mapping.
+preference for the future means a negative time preference rate. The risk
+editor shows the same quantity with the same sign. See `docs/parity.md` for the
+full input mapping.
 
 #### Where tilt is consumed
 

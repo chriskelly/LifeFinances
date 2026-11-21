@@ -16,7 +16,7 @@ numerical correctness without a runnable TPAW binary to diff against.
 | Feature | Status | Where |
 | --- | --- | --- |
 | Risk-tolerance → RRA conversion (age glide, legacy delta) | Ported | `../simulation/risk.py` |
-| Time-preference sign convention (TPAW UI shows −TPR as "Preference for the Future") | Documented; UI alignment in #279 | Input and sign mapping |
+| Time-preference sign convention (both UIs show −TPR as "Preference for the Future") | Ported | Input and sign mapping |
 | Merton's formula (stock allocation + spending tilt, equity-premium/variance clamps, ∞-RRA case) | Ported | `../simulation/mertons.py` |
 | Backward NPV precompute pass + `cumulative_1_plus_g_over_1_plus_r` amortization | Ported | `../simulation/npv.py`, `../simulation/preprocess.py` |
 | Vectorized forward monthly loop (wealth, pool carve, expected-run elasticity, contributions/withdrawals, allocation, rebalancing) | Ported | `../simulation/engine.py` |
@@ -76,15 +76,15 @@ when its `plan` and `planning` arguments disagree on `block_size_months` or
 
 ## Input and sign mapping
 
-The risk block is the most common source of month-0 drift because the two UIs
-show different quantities. Compare the stored values, not the slider labels.
+The risk block can be a source of month-0 drift because some quantities are
+stored with opposite signs. Compare the stored values, not the UI labels.
 
 | TPAW export path | LifeFinances | Convention |
 | --- | --- | --- |
 | `risk.tpaw.riskTolerance.at20` | `risk.risk_tolerance_at_20` | Same value. |
 | `risk.tpaw.riskTolerance.deltaAtMaxAge` | `risk.delta_at_max_age` | TPAW stores the negation of the displayed decrease and adds it (`at20 + deltaAtMaxAge`); LifeFinances stores the decrease and subtracts it. TPAW `-8` corresponds to LifeFinances `8`. |
 | `risk.tpaw.riskTolerance.forLegacyAsDeltaFromAt20` | `risk.legacy_delta_from_at_20` | Same value; added to the age-20 tolerance. Affects only the legacy carve. |
-| `risk.tpaw.timePreference` | `risk.time_preference` | Both are the time preference rate (impatience). TPAW's UI shows **Preference for the Future**, the negation of this stored rate; LifeFinances' editor currently labels the stored rate itself "Time preference" (#279). |
+| `risk.tpaw.timePreference` | `risk.time_preference` | Both are the time preference rate (impatience). Both UIs show **Preference for the Future**, the negation of this stored rate. |
 | `risk.tpaw.additionalAnnualSpendingTilt` | `risk.additional_annual_spending_tilt` | Same value; added directly to the Merton spending tilt. |
 | `advanced.returnsStatsForPlanning.expectedValue.empiricalAnnualNonLog.type` | `planning_returns.preset` | Preset mapping; for example `conservativeEstimate,20YearTIPSYield` ↔ `conservative_estimate`. |
 | `advanced.sampling.data.blockSize.inMonths` | `sampling.block_size_months` | Same value. |
@@ -96,16 +96,15 @@ show different quantities. Compare the stored values, not the slider labels.
 | `wealth.incomeDuringRetirement` | jobs, Social Security, pension, manual streams | TPAW stores net manual streams; LifeFinances builds gross and taxes. Not one-to-one; compare annualized flows. |
 | `people.*.ages.maxAge.inMonths` | `household.person*.max_age_years` | TPAW months; LifeFinances years. |
 
-**Time-preference sign trap.** TPAW's UI value is the negation of its stored
-`timePreference`; LifeFinances' editor currently shows `time_preference`
-directly. A visible -0.5% on both sliders is TPAW `+0.005` but LifeFinances
-`-0.005` — a 1.0-point mismatch. For the same engine rate the two UI values must
-be opposite signs: TPAW +0.5% ↔ LifeFinances -0.5%. On a long-horizon plan this
-mismatch moved month-0 spending by roughly 7–8%, versus about 0.6% for a
-half-point glide mismatch. Compare the stored values, or negate TPAW's UI value
-before diffing. TPAW's rationale is UI direction: moving the slider right
-increases future spending, so it displays `-TPR` and shows the TPR in its
-foldable details.
+**Time-preference sign trap.** Both UIs show the negation of the stored
+`timePreference`/`time_preference` rate: a visible +0.5% is stored `-0.005` in
+both. The engine applies the stored rate as impatience. Compare the stored
+values when diffing an export, or negate a displayed value before comparing it
+with a stored rate. The UIs display `-TPR` for direction: moving the slider
+right increases future spending. TPAW shows the stored TPR in its foldable
+details; LifeFinances' help text describes it. A one-point rate mismatch moved
+month-0 spending by roughly 7–8% on a long-horizon plan, versus about 0.6% for
+a half-point glide mismatch.
 
 **Glide sign trap.** TPAW's UI shows the decrease and stores its negation;
 LifeFinances stores the decrease itself. TPAW `-8` is LifeFinances `8`, not

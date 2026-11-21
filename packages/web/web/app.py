@@ -444,7 +444,9 @@ def _register_risk_routes(web_app: FastAPI) -> None:
                 risk_tolerance_at_20=Decimal(risk_tolerance_at_20),
                 delta_at_max_age=Decimal(delta_at_max_age),
                 legacy_delta_from_at_20=Decimal(legacy_delta_from_at_20),
-                time_preference=percent.parse_percent(time_preference),
+                # The slider shows TPAW's "Preference for the future", the
+                # negation of the stored time preference rate.
+                time_preference=-percent.parse_percent(time_preference),
                 additional_annual_spending_tilt=percent.parse_percent(
                     additional_annual_spending_tilt
                 ),
