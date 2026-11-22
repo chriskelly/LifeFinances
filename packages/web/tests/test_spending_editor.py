@@ -11,7 +11,12 @@ from web.sections import SPENDING_GOALS_TITLE
 
 from web import boundaries, forms
 
-from .row_helpers import assert_row_collapsed, row_summary_labels
+from .row_helpers import (
+    assert_row_collapsed,
+    rendered_rows,
+    row_summary_labels,
+    template_contains_row,
+)
 
 
 def _stream_data(*, prefix: str, label: str, amount: str) -> dict[str, str]:
@@ -45,12 +50,10 @@ def test_editor_spending_renders_collapsible_stream_rows(
     labels = row_summary_labels(response.text)
 
     assert response.status_code == 200
+    assert labels == ["Healthcare", "Untitled essential spending", "Travel"]
+    assert len(rendered_rows(response.text, "stream-row")) == 3
     assert_row_collapsed(response.text, "stream-row")
-    assert "Healthcare" in labels
-    assert "Travel" in labels
-    assert labels.count("Untitled essential spending") == 2
-    assert labels.count("Untitled discretionary spending") == 1
-    assert response.text.count('<details class="row stream-row"') == 5
+    assert template_contains_row(response.text, "stream-row")
 
 
 def test_patch_spending_keeps_categories_separate(

@@ -8,10 +8,6 @@
     hx-trigger="input changed delay:750ms, change delay:750ms"
     hx-swap="none"
   >
-    <div class="rows" data-prefix="{{ forms.STREAMS_PREFIX }}">
-      {% for stream in plan.manual_income_streams %}{{ streams.stream_row(forms.STREAMS_PREFIX, loop.index0, stream, people, empty_label="Untitled income stream") }}{% endfor %}
-      <template class="row-template">{{ streams.stream_row(forms.STREAMS_PREFIX, 0, none, people, empty_label="Untitled income stream") }}</template>
-      <button type="button" data-add-row>Add income stream</button>
-    </div>
+    {{ streams.stream_rows(forms.STREAMS_PREFIX, plan.manual_income_streams, people, empty_label="Untitled income stream", add_label="Add income stream") }}
   </form>
 </details>

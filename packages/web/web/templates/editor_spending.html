@@ -9,18 +9,10 @@
     hx-swap="none"
   >
     <h3>Essential</h3>
-    <div class="rows" data-prefix="{{ forms.ESSENTIAL_PREFIX }}">
-      {% for stream in plan.extra_essential_spending %}{{ streams.stream_row(forms.ESSENTIAL_PREFIX, loop.index0, stream, people, empty_label="Untitled essential spending") }}{% endfor %}
-      <template class="row-template">{{ streams.stream_row(forms.ESSENTIAL_PREFIX, 0, none, people, empty_label="Untitled essential spending") }}</template>
-      <button type="button" data-add-row>Add essential spending</button>
-    </div>
+    {{ streams.stream_rows(forms.ESSENTIAL_PREFIX, plan.extra_essential_spending, people, empty_label="Untitled essential spending", add_label="Add essential spending") }}
 
     <h3>Discretionary</h3>
-    <div class="rows" data-prefix="{{ forms.DISCRETIONARY_PREFIX }}">
-      {% for stream in plan.extra_discretionary_spending %}{{ streams.stream_row(forms.DISCRETIONARY_PREFIX, loop.index0, stream, people, empty_label="Untitled discretionary spending") }}{% endfor %}
-      <template class="row-template">{{ streams.stream_row(forms.DISCRETIONARY_PREFIX, 0, none, people, empty_label="Untitled discretionary spending") }}</template>
-      <button type="button" data-add-row>Add discretionary spending</button>
-    </div>
+    {{ streams.stream_rows(forms.DISCRETIONARY_PREFIX, plan.extra_discretionary_spending, people, empty_label="Untitled discretionary spending", add_label="Add discretionary spending") }}
 
     <label>
       Legacy target

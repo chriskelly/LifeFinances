@@ -9,7 +9,12 @@ from web.sections import MANUAL_INCOME_TITLE
 
 from web import boundaries, forms
 
-from .row_helpers import assert_row_collapsed, row_summary_labels
+from .row_helpers import (
+    assert_row_collapsed,
+    rendered_rows,
+    row_summary_labels,
+    template_contains_row,
+)
 
 
 def test_editor_manual_income_renders_collapsible_stream_rows(
@@ -28,10 +33,10 @@ def test_editor_manual_income_renders_collapsible_stream_rows(
     labels = row_summary_labels(response.text)
 
     assert response.status_code == 200
+    assert labels == ["Rental", "Untitled income stream"]
+    assert len(rendered_rows(response.text, "stream-row")) == 2
     assert_row_collapsed(response.text, "stream-row")
-    assert "Rental" in labels
-    assert labels.count("Untitled income stream") == 2
-    assert response.text.count('<details class="row stream-row"') == 3
+    assert template_contains_row(response.text, "stream-row")
 
 
 def test_patch_manual_income_adds_stream(
@@ -55,6 +60,26 @@ def test_patch_manual_income_adds_stream(
     streams = after.manual_income_streams
     assert [s.label for s in streams] == [expected_label]
     assert streams[0].monthly_amount == Decimal(expected_amount)
+
+
+def test_patch_manual_income_stores_whitespace_label_as_none(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    response = client.patch(
+        f"{PLAN_MANUAL_INCOME}?plan={plan_id}",
+        data={
+            "streams[0].label": "   ",
+            "streams[0].monthly_amount": "2500",
+            "streams[0].annual_growth_rate": "0",
+            "streams[0].start_kind": "now",
+            "streams[0].end_kind": "none",
+        },
+    )
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.manual_income_streams[0].label is None
 
 
 def test_patch_manual_income_blank_monthly_amount_returns_422(

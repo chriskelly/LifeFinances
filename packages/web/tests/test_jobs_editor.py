@@ -21,7 +21,13 @@ from web.sections import JOBS_TITLE
 
 from web import forms
 
-from .row_helpers import assert_row_collapsed, row_details_tag, row_summary_labels
+from .row_helpers import (
+    assert_row_collapsed,
+    assert_sabbatical_rows_nested_in_job,
+    rendered_rows,
+    row_summary_labels,
+    template_contains_row,
+)
 
 
 def test_patch_jobs_adds_job_to_person1(
@@ -47,6 +53,28 @@ def test_patch_jobs_adds_job_to_person1(
     jobs = after.household.person1.jobs
     assert [j.label for j in jobs] == [expected_label]
     assert jobs[0].annual_income == Decimal(expected_income)
+
+
+def test_patch_jobs_stores_whitespace_label_as_none(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    response = client.patch(
+        f"{PLAN_JOBS}?plan={plan_id}&person=person1",
+        data={
+            "jobs[0].label": "   ",
+            "jobs[0].annual_income": "150000",
+            "jobs[0].annual_tax_deferred": "0",
+            "jobs[0].annual_raise": "0",
+            "jobs[0].social_security_eligible": "on",
+            "jobs[0].start_kind": "now",
+            "jobs[0].end_kind": "none",
+        },
+    )
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.person1.jobs[0].label is None
 
 
 def test_patch_jobs_blank_annual_income_returns_422(
@@ -292,19 +320,18 @@ def test_editor_jobs_renders_collapsible_job_and_sabbatical_rows(
     labels = row_summary_labels(body)
 
     assert response.status_code == 200
-    assert row_details_tag(body, "job-row").startswith('<details class="row job-row"')
-    assert 'data-empty-label="Untitled job"' in row_details_tag(body, "job-row")
+    assert labels == ["Engineer", "Sabbatical", "Untitled job"]
+    assert len(rendered_rows(body, "job-row")) == 2
+    assert len(rendered_rows(body, "sabbatical-row")) == 1
     assert_row_collapsed(body, "job-row")
     assert_row_collapsed(body, "sabbatical-row")
-    assert "Engineer" in labels
-    assert labels.count("Untitled job") == 3
-    assert "Sabbatical" in labels
+    assert_sabbatical_rows_nested_in_job(body)
+    assert template_contains_row(body, "job-row")
+    assert template_contains_row(body, "sabbatical-row")
+    assert 'data-empty-label="Untitled job"' in body
     label_input = re.search(r'<input[^>]*name="jobs\[0\]\.label"[^>]*>', body)
     assert label_input is not None
     assert "data-summary-source" in label_input.group(0)
-    assert body.index('data-prefix="sabbaticals"') > body.index(
-        '<details class="row job-row"'
-    )
 
 
 def test_editor_jobs_shows_custom_pension_when_table_is_not_calstrs(

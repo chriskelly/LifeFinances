@@ -182,20 +182,19 @@
           if (match) wireIndex = parseInt(match[1], 10);
         });
         if (wireIndex === null) return;
+        const ownName = prefix + "[" + wireIndex + "].existing_index";
         let input = null;
         row.querySelectorAll("input[type='hidden']").forEach(function (el) {
-          if (el.name.indexOf("." + "existing_index") !== -1) {
-            // Only the row's own existing_index, not nested lists (none today).
-            const own = el.name.match(pattern);
-            if (own && parseInt(own[1], 10) === wireIndex) input = el;
-          }
+          // Exact name: a nested list cannot be mistaken for this row.
+          if (el.name === ownName) input = el;
         });
         if (!input) {
           input = document.createElement("input");
           input.type = "hidden";
-          input.name = prefix + "[" + wireIndex + "].existing_index";
+          input.name = ownName;
           const body = rowFields(row);
-          (body || row).insertBefore(input, (body || row).firstChild);
+          if (!body) return;
+          body.insertBefore(input, body.firstChild);
         }
         input.value = String(position);
       });

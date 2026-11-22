@@ -241,6 +241,7 @@ body {
 }
 
 .editor-section {
+  margin: 0;
   padding: 0 1.25rem;
   background: var(--pico-background-color);
   border: 1px solid var(--pico-muted-border-color);
@@ -288,6 +289,7 @@ body {
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  color: var(--pico-color);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -299,21 +301,26 @@ body {
   flex-shrink: 0;
   width: 0.5rem;
   height: 0.5rem;
+  margin: 0;
+  background: none;
   border-right: 2px solid var(--pico-muted-color);
   border-bottom: 2px solid var(--pico-muted-color);
+  float: none;
   transform: rotate(-45deg);
+}
+
+.editor-section[open] > summary,
+.row[open] > summary {
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius) var(--pico-border-radius) 0 0;
 }
 
 .editor-section[open] > summary {
   margin-bottom: 1rem;
-  border-bottom: 1px solid var(--pico-muted-border-color);
-  border-radius: var(--pico-border-radius) var(--pico-border-radius) 0 0;
 }
 
 .row[open] > summary {
   margin-bottom: 0.75rem;
-  border-bottom: 1px solid var(--pico-muted-border-color);
-  border-radius: var(--pico-border-radius) var(--pico-border-radius) 0 0;
 }
 
 .editor-section[open] > summary::after,
@@ -331,8 +338,8 @@ body {
   color: var(--pico-primary);
 }
 
-.editor-section > summary:focus-visible,
-.row > summary:focus-visible {
+details.editor-section > summary:focus-visible,
+details.row > summary:focus-visible {
   outline: 2px solid var(--pico-primary-focus);
   outline-offset: -2px;
   border-radius: var(--pico-border-radius);
@@ -345,6 +352,7 @@ body {
 }
 
 .row {
+  margin: 0;
   padding: 0 0.75rem;
   background: var(--pico-background-color);
   border: 1px solid var(--pico-muted-border-color);

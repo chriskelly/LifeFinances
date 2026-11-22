@@ -363,7 +363,7 @@ def _job_from_row(
     ]
     return Job.model_validate(
         {
-            "label": boundaries.row_scalar(row, "label") or None,
+            "label": boundaries.row_scalar(row, "label").strip() or None,
             "annual_income": parse_usd(
                 boundaries.row_scalar(row, "annual_income", "0"),
                 previous=previous.annual_income if previous else None,
@@ -645,7 +645,7 @@ def _stream_from_row(
 ) -> TimedStream:
     return TimedStream.model_validate(
         {
-            "label": boundaries.row_scalar(row, STREAM_LABEL) or None,
+            "label": boundaries.row_scalar(row, STREAM_LABEL).strip() or None,
             "monthly_amount": parse_usd(
                 boundaries.row_scalar(row, STREAM_MONTHLY_AMOUNT, "0"),
                 previous=previous.monthly_amount if previous else None,

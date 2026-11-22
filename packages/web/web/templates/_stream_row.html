@@ -1,6 +1,6 @@
 {% import "_boundary.html" as boundary %}
 
-{% macro stream_row(prefix, index, stream, choices, empty_label="Item") %}
+{% macro stream_row(prefix, index, stream, choices, empty_label) %}
 <details class="row stream-row" data-empty-label="{{ empty_label }}">
   <summary class="row-summary">
     <span class="row-summary-label" data-summary-label>{{ ((stream.label or "")|trim) or empty_label }}</span>
@@ -18,4 +18,12 @@
     <div class="boundary-field">End {{ boundary.boundary_control(prefix ~ "[" ~ index ~ "]." ~ forms.STREAM_END, boundaries.to_form(stream.end) if stream else {"kind": boundaries.KIND_NONE}, choices, allow_now=True, allow_none=True, allow_max_age=True, none_label="Plan horizon") }}</div>
   </div>
 </details>
+{% endmacro %}
+
+{% macro stream_rows(prefix, streams, people, empty_label, add_label) %}
+<div class="rows" data-prefix="{{ prefix }}">
+  {% for stream in streams %}{{ stream_row(prefix, loop.index0, stream, people, empty_label=empty_label) }}{% endfor %}
+  <template class="row-template">{{ stream_row(prefix, 0, none, people, empty_label=empty_label) }}</template>
+  <button type="button" data-add-row>{{ add_label }}</button>
+</div>
 {% endmacro %}
