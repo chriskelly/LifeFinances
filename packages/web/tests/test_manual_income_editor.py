@@ -9,6 +9,45 @@ from web.sections import MANUAL_INCOME_TITLE
 
 from web import boundaries, forms
 
+from .row_helpers import (
+    assert_row_collapsed,
+    assert_row_templates,
+    input_attrs,
+    rendered_rows,
+    row_summary_labels,
+)
+
+
+def test_editor_manual_income_renders_collapsible_stream_rows(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    stream_start = CalendarMonthBoundary(year=2010, month=1)
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.manual_income_streams = [
+        TimedStream(label="Rental", monthly_amount=Decimal("2500"), start=stream_start),
+        TimedStream(label="   ", monthly_amount=Decimal("100"), start=stream_start),
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_MANUAL_INCOME}?plan={plan_id}")
+    labels = row_summary_labels(response.text)
+
+    assert response.status_code == 200
+    assert labels == ["Rental", "Untitled income stream"]
+    assert len(rendered_rows(response.text, "stream-row")) == 2
+    assert_row_collapsed(response.text, "stream-row")
+    assert "data-summary-source" in input_attrs(
+        response.text, f"{forms.STREAMS_PREFIX}[0].label"
+    )
+    assert_row_templates(
+        response.text,
+        prefix=forms.STREAMS_PREFIX,
+        row_class="stream-row",
+        empty_label="Untitled income stream",
+        summary_label="Untitled income stream",
+    )
+
 
 def test_patch_manual_income_adds_stream(
     client: TestClient, repo: PlanRepository, plan_id: int
@@ -31,6 +70,26 @@ def test_patch_manual_income_adds_stream(
     streams = after.manual_income_streams
     assert [s.label for s in streams] == [expected_label]
     assert streams[0].monthly_amount == Decimal(expected_amount)
+
+
+def test_patch_manual_income_stores_whitespace_label_as_none(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    response = client.patch(
+        f"{PLAN_MANUAL_INCOME}?plan={plan_id}",
+        data={
+            "streams[0].label": "   ",
+            "streams[0].monthly_amount": "2500",
+            "streams[0].annual_growth_rate": "0",
+            "streams[0].start_kind": "now",
+            "streams[0].end_kind": "none",
+        },
+    )
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.manual_income_streams[0].label is None
 
 
 def test_patch_manual_income_blank_monthly_amount_returns_422(

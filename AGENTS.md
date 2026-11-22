@@ -95,7 +95,7 @@ core → stdlib + pydantic + sqlite
 ## Reference index
 
 - Market data refresh, caches, and vendored series → `docs/market-data.md`
-- Test fixtures and conftest layout → `docs/testing.md`
+- Test fixtures, conftest layout, and browser-only editor checks → `docs/testing.md`
 - Area guides → `packages/web/AGENTS.md` · `packages/simulation/AGENTS.md` · `packages/domain/AGENTS.md` · `tools/AGENTS.md`
 
 ## Hard guardrails

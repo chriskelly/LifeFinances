@@ -19,6 +19,54 @@
     });
   }
 
+  function rowFields(row) {
+    return row.querySelector(":scope > .row-fields");
+  }
+
+  function updateRowSummary(field) {
+    const row = field.closest(".row");
+    if (!row) return;
+    const label = row.querySelector(":scope > summary [data-summary-label]");
+    if (!label) return;
+    const text = field.value.trim();
+    // data-empty-label is part of the row contract; keep a generic fallback.
+    label.textContent = text || row.dataset.emptyLabel || "Untitled";
+  }
+
+  function focusFirstField(row) {
+    const fields = row.querySelectorAll(
+      "[data-summary-source], .row-fields input, .row-fields select"
+    );
+    for (const field of fields) {
+      if (field.closest(".row") !== row) continue;
+      if (
+        field.disabled ||
+        field.type === "hidden" ||
+        field.offsetParent === null
+      ) {
+        continue;
+      }
+      field.focus();
+      return;
+    }
+  }
+
+  function focusRowSummary(row) {
+    const summary = row.querySelector(":scope > summary");
+    if (!summary) return false;
+    summary.focus();
+    return true;
+  }
+
+  function focusAfterRemove(container, next, previous) {
+    if (next && next.classList.contains("row") && focusRowSummary(next)) return;
+    if (previous && previous.classList.contains("row") && focusRowSummary(previous)) {
+      return;
+    }
+    const addButton = container.querySelector(":scope > [data-add-row]");
+    if (addButton) addButton.focus();
+  }
+
   function maxSiblingIndex(container) {
     const prefix = container.dataset.prefix;
     const pattern = new RegExp(prefix + "\\[(\\d+)\\]");
@@ -51,6 +99,12 @@
   function initAll() {
     document.querySelectorAll(".boundary-control").forEach(syncBoundary);
   }
+
+  document.addEventListener("input", function (event) {
+    if (event.target.matches("[data-summary-source]")) {
+      updateRowSummary(event.target);
+    }
+  });
 
   document.addEventListener("change", function (event) {
     const target = event.target;
@@ -111,7 +165,9 @@
       const clone = template.content.firstElementChild.cloneNode(true);
       setRowIndex(clone, container.dataset.prefix, nextIndex);
       container.insertBefore(clone, template);
+      clone.open = true;
       clone.querySelectorAll(".boundary-control").forEach(syncBoundary);
+      focusFirstField(clone);
       // No save here: a fresh row has blank required boundary fields, so
       // submitting it would fail validation and block the whole section from
       // saving until the user fills it in. The user's first edit saves it.
@@ -125,9 +181,13 @@
       }
       const row = removeButton.closest(".row");
       const form = row.closest("form");
+      const container = row.parentElement;
+      const next = row.nextElementSibling;
+      const previous = row.previousElementSibling;
       row.remove();
       // Leave sparse gaps; the server orders by numeric index.
       form.dispatchEvent(new Event("change", { bubbles: true }));
+      if (container) focusAfterRemove(container, next, previous);
     }
   });
 
@@ -143,19 +203,19 @@
           if (match) wireIndex = parseInt(match[1], 10);
         });
         if (wireIndex === null) return;
+        const ownName = prefix + "[" + wireIndex + "].existing_index";
         let input = null;
         row.querySelectorAll("input[type='hidden']").forEach(function (el) {
-          if (el.name.indexOf("." + "existing_index") !== -1) {
-            // Only the row's own existing_index, not nested lists (none today).
-            const own = el.name.match(pattern);
-            if (own && parseInt(own[1], 10) === wireIndex) input = el;
-          }
+          // Exact name: a nested list cannot be mistaken for this row.
+          if (el.name === ownName) input = el;
         });
         if (!input) {
           input = document.createElement("input");
           input.type = "hidden";
-          input.name = prefix + "[" + wireIndex + "].existing_index";
-          row.insertBefore(input, row.firstChild);
+          input.name = ownName;
+          const body = rowFields(row);
+          if (!body) return;
+          body.insertBefore(input, body.firstChild);
         }
         input.value = String(position);
       });

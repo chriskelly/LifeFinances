@@ -40,6 +40,29 @@ resize only; skip a `#results-chart` that is not yet a `js-plotly-plot`. The
 future chat pane adds a mirrored rail on the right; editor section markup does
 not change.
 
+### Collapsible list rows
+
+Repeated items in Jobs, Spending goals, and Manual income are native
+`<details class="row ...">` elements whose `<summary class="row-summary">`
+contains one `<span data-summary-label>`, with the controls in a `.row-fields`
+body. Existing rows start collapsed; a row added with `data-add-row` opens and
+focuses its label, or its first visible field for a sabbatical. The `.row`
+class stays on the outer element because `editor_lists.js` discovers, removes,
+and reindexes rows by that class.
+
+Label inputs carry `data-summary-source`; `editor_lists.js` copies the trimmed
+value into the row's `[data-summary-label]`, falling back to the row's
+`data-empty-label`. Rows deliberately show labels only; amount and date
+previews are not rendered. Row open state is not persisted, so a reload
+collapses every row. When a new job, spending, or income row's first save
+succeeds, `editor_lists.js` adds its `existing_index` hidden input inside
+`.row-fields` so it never precedes `<summary>`. Sabbaticals are parsed
+positionally and do not get an `existing_index`.
+
+Sabbaticals are `.row` details inside a job's `.row-fields` (visible when the
+job is open); the nested `.rows` is indented and bordered. Row classes are
+`job-row`, `sabbatical-row`, and `stream-row`.
+
 ## Spending & simulation config editors
 
 Four sections own these plan fields:

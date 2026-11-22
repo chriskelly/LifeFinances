@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from core.job import AgeFactor, FormulaPension, Job
+from core.job import AgeFactor, FormulaPension, Job, SabbaticalWindow
 from core.repository import PlanRepository
 from core.streams import CalendarMonthBoundary, PersonAgeBoundary
 from domain.statutory.pension import (
@@ -19,6 +19,15 @@ from web.routes import EDITOR_JOBS, PLAN_JOBS
 from web.sections import JOBS_TITLE
 
 from web import forms
+
+from .row_helpers import (
+    assert_row_collapsed,
+    assert_row_templates,
+    assert_sabbatical_rows_nested_in_job,
+    input_attrs,
+    rendered_rows,
+    row_summary_labels,
+)
 
 
 def test_patch_jobs_adds_job_to_person1(
@@ -44,6 +53,28 @@ def test_patch_jobs_adds_job_to_person1(
     jobs = after.household.person1.jobs
     assert [j.label for j in jobs] == [expected_label]
     assert jobs[0].annual_income == Decimal(expected_income)
+
+
+def test_patch_jobs_stores_whitespace_label_as_none(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    response = client.patch(
+        f"{PLAN_JOBS}?plan={plan_id}&person=person1",
+        data={
+            "jobs[0].label": "   ",
+            "jobs[0].annual_income": "150000",
+            "jobs[0].annual_tax_deferred": "0",
+            "jobs[0].annual_raise": "0",
+            "jobs[0].social_security_eligible": "on",
+            "jobs[0].start_kind": "now",
+            "jobs[0].end_kind": "none",
+        },
+    )
+
+    assert response.status_code == 200
+    after = repo.get_by_id(plan_id)
+    assert after is not None
+    assert after.household.person1.jobs[0].label is None
 
 
 def test_patch_jobs_blank_annual_income_returns_422(
@@ -256,6 +287,60 @@ def test_editor_jobs_pension_dropdown_defaults_to_none(
     assert f">{forms.PENSION_NONE_LABEL}</option>" in response.text
     assert f'value="{forms.PENSION_CALSTRS_2_AT_62}"' in response.text
     assert f">{forms.PENSION_CALSTRS_2_AT_62_LABEL}</option>" in response.text
+
+
+def test_editor_jobs_renders_collapsible_job_and_sabbatical_rows(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            label="Engineer",
+            annual_income=Decimal("150000"),
+            start=CalendarMonthBoundary(year=2020, month=1),
+            sabbaticals=[
+                SabbaticalWindow(
+                    start=CalendarMonthBoundary(year=2027, month=1),
+                    end=CalendarMonthBoundary(year=2027, month=7),
+                    remaining_fraction=Decimal("0.5"),
+                )
+            ],
+        ),
+        Job(
+            label="   ",
+            annual_income=Decimal("90000"),
+            start=CalendarMonthBoundary(year=2021, month=1),
+        ),
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_JOBS}?plan={plan_id}")
+    body = response.text
+    labels = row_summary_labels(body)
+
+    assert response.status_code == 200
+    assert labels == ["Engineer", "Sabbatical", "Untitled job"]
+    assert len(rendered_rows(body, "job-row")) == 2
+    assert len(rendered_rows(body, "sabbatical-row")) == 1
+    assert_row_collapsed(body, "job-row")
+    assert_row_collapsed(body, "sabbatical-row")
+    assert_sabbatical_rows_nested_in_job(body)
+    assert_row_templates(
+        body,
+        prefix="jobs",
+        row_class="job-row",
+        empty_label="Untitled job",
+        summary_label="Untitled job",
+    )
+    assert_row_templates(
+        body,
+        prefix="sabbaticals",
+        row_class="sabbatical-row",
+        empty_label=None,
+        summary_label="Sabbatical",
+    )
+    assert "data-summary-source" in input_attrs(body, "jobs[0].label")
 
 
 def test_editor_jobs_shows_custom_pension_when_table_is_not_calstrs(
