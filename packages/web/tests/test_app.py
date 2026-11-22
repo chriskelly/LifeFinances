@@ -62,6 +62,7 @@ from web.routes import (
     PLAN_SET_DEFAULT,
     PLAN_SETTINGS,
     RESULTS,
+    STATIC,
 )
 from web.sections import (
     CLEAR_EOD_API_KEY_LABEL,
@@ -214,6 +215,29 @@ def test_home_renders_all_sections_as_closed_details(
             body,
         )
         assert not re.search(r"\bopen\b", _details_open_tag(body, section_id))
+
+
+def test_home_renders_editor_rail(client: TestClient, plan_id: int) -> None:
+    response = client.get(f"{HOME}?plan={plan_id}")
+    body = response.text
+
+    assert response.status_code == 200
+    assert 'class="pane-rail"' in body
+    assert 'id="toggle-editor"' in body
+    assert 'aria-controls="editor-pane"' in body
+    assert 'aria-expanded="true"' in body
+    assert 'aria-label="Editor"' in body
+    assert 'title="Collapse editor pane"' in body
+    assert 'class="pane-rail-chevron"' in body
+    assert 'class="pane-rail-label"' in body
+    assert 'id="editor-pane"' in body
+    assert body.index('class="pane-rail"') < body.index('id="toggle-editor"')
+    assert body.index('id="toggle-editor"') < body.index('id="editor-pane"')
+    assert body.index('id="editor-pane"') < body.index('id="results-panel"')
+    assert body.index("lifeFinances.panes") < body.index("<header")
+    assert body.index("lifeFinances.panes") < body.index('class="layout"')
+    assert f"{STATIC}/editor_layout.js" in body
+    assert client.get(f"{STATIC}/editor_layout.js").status_code == 200
 
 
 def test_home_auto_creates_default_plan(

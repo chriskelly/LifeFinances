@@ -145,11 +145,98 @@ body {
 
 .layout {
   display: grid;
-  grid-template-columns: 2fr 3fr;
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 2fr) 1.5rem minmax(0, 3fr);
+  gap: 0;
   padding: 1.5rem;
   flex: 1;
   min-height: 0;
+}
+
+.editor-pane {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.pane-rail {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-left: 1px solid var(--pico-muted-border-color);
+  border-right: 1px solid var(--pico-muted-border-color);
+  background: transparent;
+}
+
+#results-panel {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.pane-rail-control {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--pico-muted-color);
+  cursor: pointer;
+}
+
+.pane-rail-control::before {
+  content: "";
+  position: absolute;
+  inset: -0.25rem;
+}
+
+.pane-rail-control:hover {
+  color: var(--pico-primary);
+}
+
+.pane-rail-control:focus-visible {
+  outline: 2px solid var(--pico-primary-focus);
+  outline-offset: -2px;
+}
+
+.pane-rail-chevron {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.pane-rail-label {
+  display: none;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.editor-hidden .editor-pane {
+  display: none;
+}
+
+.editor-hidden .layout {
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+}
+
+.editor-hidden .pane-rail {
+  grid-column: 1;
+}
+
+.editor-hidden #results-panel {
+  grid-column: 2;
+}
+
+.editor-hidden .pane-rail-label {
+  display: block;
 }
 
 .editor-pane {
