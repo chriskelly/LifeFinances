@@ -327,12 +327,19 @@ def test_editor_jobs_renders_collapsible_job_and_sabbatical_rows(
     assert_row_collapsed(body, "sabbatical-row")
     assert_sabbatical_rows_nested_in_job(body)
     assert_row_templates(
-        body, prefix="jobs", row_class="job-row", empty_label="Untitled job"
+        body,
+        prefix="jobs",
+        row_class="job-row",
+        empty_label="Untitled job",
+        summary_label="Untitled job",
     )
     assert_row_templates(
-        body, prefix="sabbaticals", row_class="sabbatical-row", empty_label=None
+        body,
+        prefix="sabbaticals",
+        row_class="sabbatical-row",
+        empty_label=None,
+        summary_label="Sabbatical",
     )
-    assert 'data-empty-label="Untitled job"' in body
     assert "data-summary-source" in input_attrs(body, "jobs[0].label")
 
 

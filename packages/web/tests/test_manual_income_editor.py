@@ -41,6 +41,7 @@ def test_editor_manual_income_renders_collapsible_stream_rows(
         prefix=forms.STREAMS_PREFIX,
         row_class="stream-row",
         empty_label="Untitled income stream",
+        summary_label="Untitled income stream",
     )
 
 

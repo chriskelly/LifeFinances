@@ -73,7 +73,10 @@ class _FragmentParser(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "template" and self._skip_templates:
-            self._template_depth = max(0, self._template_depth - 1)
+            if self._template_depth == 0:
+                self.errors.append("unexpected closing tag </template>")
+                return
+            self._template_depth -= 1
             return
         if self._template_depth:
             return
@@ -94,6 +97,8 @@ class _FragmentParser(HTMLParser):
             self._stack[-1].text += data
 
     def finish(self) -> None:
+        if self._skip_templates and self._template_depth > 0:
+            self.errors.append("unclosed <template>")
         if len(self._stack) > 1:
             self.errors.append(
                 "unclosed tags: " + ", ".join(node.tag for node in self._stack[1:])
@@ -141,7 +146,12 @@ def input_attrs(body: str, name: str) -> dict[str, str]:
 
 
 def assert_row_templates(
-    body: str, *, prefix: str, row_class: str, empty_label: str | None
+    body: str,
+    *,
+    prefix: str,
+    row_class: str,
+    empty_label: str | None,
+    summary_label: str,
 ) -> None:
     root = parse_fragment(body, skip_templates=False)
     containers = _rows_containers(root, prefix)
@@ -159,6 +169,14 @@ def assert_row_templates(
         assert row_class in row.classes(), f"{prefix} template should be {row_class}"
         assert row.attrs.get("data-empty-label") == empty_label, (
             f"{prefix} template fallback should be {empty_label!r}"
+        )
+        assert _summary_text(row) == summary_label, (
+            f"{prefix} template summary should be {summary_label!r}"
+        )
+
+    for row in _rendered_rows_in_containers(body, prefix):
+        assert row.attrs.get("data-empty-label") == empty_label, (
+            f"{prefix} rendered fallback should be {empty_label!r}"
         )
 
 
@@ -216,6 +234,16 @@ def _rows_containers(root: Node, prefix: str) -> list[Node]:
     ]
 
 
+def _rendered_rows_in_containers(body: str, prefix: str) -> list[Node]:
+    containers = _rows_containers(parse_fragment(body), prefix)
+    return [
+        child
+        for container in containers
+        for child in container.children
+        if child.tag == "details" and "row" in child.classes()
+    ]
+
+
 def _template_row(template: Node) -> Node:
     row = next(
         (
@@ -227,6 +255,19 @@ def _template_row(template: Node) -> Node:
     )
     assert row is not None, "row template does not contain a details row"
     return row
+
+
+def _summary_text(row: Node) -> str:
+    summary = next(
+        (
+            node
+            for node in row.descendants()
+            if node.tag == "span" and "data-summary-label" in node.attrs
+        ),
+        None,
+    )
+    assert summary is not None, "row is missing its summary label"
+    return _node_text(summary).strip()
 
 
 def _attrs(attrs: list[tuple[str, str | None]]) -> dict[str, str]:

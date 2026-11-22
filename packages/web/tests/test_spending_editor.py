@@ -64,12 +64,14 @@ def test_editor_spending_renders_collapsible_stream_rows(
         prefix=forms.ESSENTIAL_PREFIX,
         row_class="stream-row",
         empty_label="Untitled essential spending",
+        summary_label="Untitled essential spending",
     )
     assert_row_templates(
         response.text,
         prefix=forms.DISCRETIONARY_PREFIX,
         row_class="stream-row",
         empty_label="Untitled discretionary spending",
+        summary_label="Untitled discretionary spending",
     )
 
 

@@ -11,9 +11,9 @@ root `AGENTS.md`.
 ## Browser-only editor behavior
 
 The repo has no JavaScript test runner; issue #291 tracks a browser harness. A
-change to `packages/web/web/static/editor_lists.js` or `editor_layout.js` needs
-a headless-browser pass against a temporary database
-(`LIFE_FINANCES_DB_PATH`), not `data/data.db`:
+change to `editor_lists.js`, `editor_layout.js`, `editor_conditional.js`, or the
+editor CSS in `style.css` needs a headless-browser pass against a temporary
+database (`LIFE_FINANCES_DB_PATH`), not `data/data.db`:
 
 - Add a job, spending row, or income row: it opens, its label is focused, and
   the summary follows the label as it is typed. Clearing the label or entering
