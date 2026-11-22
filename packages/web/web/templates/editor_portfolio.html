@@ -1,5 +1,5 @@
-<section class="editor-section">
-  <h2>{{ sections.PORTFOLIO_TITLE }}</h2>
+<details class="editor-section" id="editor-portfolio">
+  <summary class="editor-section-summary"><h2>{{ sections.PORTFOLIO_TITLE }}</h2></summary>
   <form
     hx-patch="{{ routes.PLAN_PORTFOLIO }}?plan={{ plan_id }}"
     hx-trigger="input changed delay:750ms"
@@ -19,4 +19,4 @@
       >
     </label>
   </form>
-</section>
+</details>

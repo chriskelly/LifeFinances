@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 
 from core.repository import PlanRepository
@@ -73,6 +74,11 @@ def test_upload_statement_replaces_earnings_and_triggers_refresh(
     )
 
     assert response.status_code == 200
+    assert re.search(
+        r'<details class="editor-section" id="editor-social-security"'
+        r"[^>]*\bopen\b[^>]*>",
+        response.text,
+    )
     assert response.headers.get("HX-Trigger") == "planUpdated"
     after = repo.get_by_id(plan_id)
     assert after is not None
@@ -102,6 +108,11 @@ def test_upload_invalid_xml_rerenders_error_without_changing_earnings(
     # htmx only swaps 2xx responses, so the error has to come back as a
     # renderable partial rather than an error status the shell dumps as text.
     assert response.status_code == 200
+    assert re.search(
+        r'<details class="editor-section" id="editor-social-security"'
+        r"[^>]*\bopen\b[^>]*>",
+        response.text,
+    )
     assert 'class="form-error"' in response.text
     assert 'role="alert"' in response.text
     assert response.headers.get("HX-Trigger") is None
@@ -122,6 +133,11 @@ def test_upload_oversized_statement_is_rejected_without_changing_earnings(
     )
 
     assert response.status_code == 200
+    assert re.search(
+        r'<details class="editor-section" id="editor-social-security"'
+        r"[^>]*\bopen\b[^>]*>",
+        response.text,
+    )
     assert 'class="form-error"' in response.text
     after = repo.get_by_id(plan_id)
     assert after is not None
@@ -136,3 +152,20 @@ def test_editor_social_security_get_renders_section(
 
     assert response.status_code == 200
     assert SOCIAL_SECURITY_TITLE in response.text
+
+
+def test_editor_social_security_get_is_closed_by_default(
+    client: TestClient, plan_id: int
+) -> None:
+    response = client.get(f"{EDITOR_SOCIAL_SECURITY}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert re.search(
+        r'<details class="editor-section" id="editor-social-security"[^>]*>',
+        response.text,
+    )
+    assert not re.search(
+        r'<details class="editor-section" id="editor-social-security"'
+        r"[^>]*\bopen\b[^>]*>",
+        response.text,
+    )

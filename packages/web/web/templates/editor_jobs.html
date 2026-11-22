@@ -58,8 +58,8 @@
 </fieldset>
 {% endmacro %}
 
-<section class="editor-section">
-  <h2>{{ sections.JOBS_TITLE }}</h2>
+<details class="editor-section" id="editor-jobs">
+  <summary class="editor-section-summary"><h2>{{ sections.JOBS_TITLE }}</h2></summary>
   {% for pid, plabel, person in people %}
   <form
     hx-patch="{{ routes.PLAN_JOBS }}?plan={{ plan_id }}&person={{ pid }}"
@@ -74,4 +74,4 @@
     </div>
   </form>
   {% endfor %}
-</section>
+</details>

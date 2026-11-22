@@ -1,3 +1,4 @@
+import re
 import sqlite3
 from datetime import date
 from decimal import Decimal
@@ -68,9 +69,13 @@ from web.sections import (
     HOUSEHOLD_TITLE,
     JOBS_TITLE,
     MANUAL_INCOME_TITLE,
+    MARKET_ASSUMPTIONS_TITLE,
     PORTFOLIO_TITLE,
+    RISK_TITLE,
     SETTINGS_TITLE,
+    SIMULATION_DETAILS_TITLE,
     SOCIAL_SECURITY_TITLE,
+    SPENDING_GOALS_TITLE,
 )
 from web.spending_summary import (
     INITIAL_SPENDING_LABEL,
@@ -106,6 +111,26 @@ def _household_form_data() -> dict[str, str]:
         PERSON2_BIRTH_YEAR: str(p2.birth_year),
         PERSON2_MAX_AGE_YEARS: str(p2.max_age_years),
     }
+
+
+EDITOR_SECTIONS = [
+    ("editor-household", HOUSEHOLD_TITLE),
+    ("editor-jobs", JOBS_TITLE),
+    ("editor-social-security", SOCIAL_SECURITY_TITLE),
+    ("editor-manual-income", MANUAL_INCOME_TITLE),
+    ("editor-spending", SPENDING_GOALS_TITLE),
+    ("editor-risk", RISK_TITLE),
+    ("editor-market-assumptions", MARKET_ASSUMPTIONS_TITLE),
+    ("editor-simulation-details", SIMULATION_DETAILS_TITLE),
+    ("editor-portfolio", PORTFOLIO_TITLE),
+    ("editor-settings", SETTINGS_TITLE),
+]
+
+
+def _details_open_tag(body: str, section_id: str) -> str:
+    start = body.index(f'<details class="editor-section" id="{section_id}"')
+    end = body.index(">", start) + 1
+    return body[start:end]
 
 
 def test_home_shows_both_editor_sections(client: TestClient) -> None:
@@ -172,6 +197,23 @@ def test_home_shows_all_income_sections(client: TestClient, plan_id: int) -> Non
     assert JOBS_TITLE in response.text
     assert SOCIAL_SECURITY_TITLE in response.text
     assert MANUAL_INCOME_TITLE in response.text
+
+
+def test_home_renders_all_sections_as_closed_details(
+    client: TestClient, plan_id: int
+) -> None:
+    response = client.get(f"{HOME}?plan={plan_id}")
+    body = response.text
+
+    assert response.status_code == 200
+    for section_id, title in EDITOR_SECTIONS:
+        assert f'<details class="editor-section" id="{section_id}"' in body
+        assert re.search(
+            rf'<summary class="editor-section-summary">\s*'
+            rf"<h2>{re.escape(title)}</h2>\s*</summary>",
+            body,
+        )
+        assert not re.search(r"\bopen\b", _details_open_tag(body, section_id))
 
 
 def test_home_auto_creates_default_plan(
@@ -947,6 +989,19 @@ def test_home_shows_simulation_failure_in_results_panel(
     assert _SIMULATION_FAILURE_MESSAGE in response.text
     assert failure_detail not in response.text
     assert 'id="chart-config"' not in response.text
+    assert (
+        '<details class="editor-section" id="editor-market-assumptions"'
+        in response.text
+    )
+    assert re.search(
+        r"\bopen\b",
+        _details_open_tag(response.text, "editor-market-assumptions"),
+    )
+    assert '<details class="editor-section" id="editor-household"' in response.text
+    assert not re.search(
+        r"\bopen\b",
+        _details_open_tag(response.text, "editor-household"),
+    )
 
 
 def test_home_results_panel_reads_chart_from_select(

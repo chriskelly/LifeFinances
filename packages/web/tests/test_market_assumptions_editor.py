@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 from html import unescape
 from typing import get_args
@@ -13,10 +14,12 @@ from core.models import (
 )
 from core.repository import PlanRepository
 from fastapi.testclient import TestClient
+from web.app import _ASSUMPTIONS_FAILURE_MESSAGE
 from web.percent import format_percent
 from web.routes import EDITOR_MARKET_ASSUMPTIONS, PLAN_MARKET_ASSUMPTIONS
 from web.sections import MARKET_ASSUMPTIONS_TITLE
 
+from simulation import assumptions as simulation_assumptions
 from web import forms
 
 
@@ -268,6 +271,26 @@ def test_editor_market_assumptions_get_renders_title_and_all_presets(
         assert forms.PLANNING_PRESET_LABELS[preset] in body
 
 
+def test_editor_market_assumptions_error_opens_section(
+    client: TestClient, plan_id: int, monkeypatch
+) -> None:
+    def boom(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(simulation_assumptions, "resolve_assumptions", boom)
+
+    response = client.get(f"{EDITOR_MARKET_ASSUMPTIONS}?plan={plan_id}")
+    body = unescape(response.text)
+
+    assert response.status_code == 200
+    assert re.search(
+        r'<details class="editor-section" id="editor-market-assumptions"'
+        r"[^>]*\bopen\b[^>]*>",
+        body,
+    )
+    assert _ASSUMPTIONS_FAILURE_MESSAGE in body
+
+
 def test_editor_market_assumptions_get_includes_conditional_hooks_and_defaults(
     client: TestClient, plan_id: int
 ) -> None:
@@ -296,5 +319,8 @@ def test_editor_market_assumptions_get_includes_conditional_hooks_and_defaults(
     assert f'value="{forms.CUSTOM_BONDS_BASE_FORM_DEFAULT}"' in bonds_select
     assert "selected" in bonds_select
     assert 'id="resolved-assumptions-summary"' in body
-    assert "<summary>Customize</summary>" in body
-    assert f'name="{forms.STOCK_VOLATILITY_SCALE}"' in body
+    assert '<details class="editor-subsection">' in body
+    subsection_start = body.index('<details class="editor-subsection">')
+    subsection = body[subsection_start : body.index("</details>", subsection_start)]
+    assert "<summary>Customize</summary>" in subsection
+    assert f'name="{forms.STOCK_VOLATILITY_SCALE}"' in subsection

@@ -155,13 +155,13 @@ body {
 .editor-pane {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.5rem;
   overflow-y: auto;
   min-height: 0;
 }
 
 .editor-section {
-  padding: 1rem 1.25rem;
+  padding: 0 1.25rem;
   background: var(--pico-background-color);
   border: 1px solid var(--pico-muted-border-color);
   border-radius: var(--pico-border-radius);
@@ -170,6 +170,58 @@ body {
 .editor-section h2 {
   margin: 0 0 1rem;
   font-size: 1.1rem;
+}
+
+.editor-section[open] {
+  padding-bottom: 1rem;
+}
+
+.editor-section > summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 -1.25rem;
+  padding: 0.55rem 1.25rem;
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--pico-border-radius);
+  user-select: none;
+}
+
+.editor-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.editor-section > summary h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.editor-section > summary::after {
+  content: "▸";
+  color: var(--pico-muted-color);
+}
+
+.editor-section[open] > summary {
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius) var(--pico-border-radius) 0 0;
+}
+
+.editor-section[open] > summary::after {
+  transform: rotate(90deg);
+}
+
+.editor-section > summary:hover h2,
+.editor-section > summary:focus-visible h2 {
+  color: var(--pico-primary);
+}
+
+.editor-section > summary:focus-visible {
+  outline: 2px solid var(--pico-primary-focus);
+  outline-offset: -2px;
+  border-radius: var(--pico-border-radius);
 }
 
 .editor-section form {
