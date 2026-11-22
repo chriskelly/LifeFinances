@@ -25,15 +25,15 @@ database (`LIFE_FINANCES_DB_PATH`), not `data/data.db`:
   remaining sabbaticals stay attributed to the right job.
 - Add a job to each person when a partner exists; confirm each form's
   add/remove/indexing stays independent.
-- Save a new row and confirm its `existing_index` input is inside
-  `.row-fields`, not before `<summary>`.
+- Save a new job, spending, or income row and confirm its `existing_index` input
+  is inside `.row-fields`, not before `<summary>`.
 - Remove a row and confirm focus moves to a neighbouring row summary or the
   list's add button.
 - Toggle a row and a section summary with the keyboard (Enter/Space) and
   confirm the focus ring is visible.
 - Confirm computed styles: `.row` and `.editor-section` margins are 0, `.rows`
-  gap is 7px, the summary chevron has no background image or float and zero
-  margin, the open row label color matches body text, and a focused summary
-  outline is 2px with a -2px offset.
+  gap is 7px, the summary chevron has no background image and zero margin, the
+  open row label color matches body text, and a focused summary outline is 2px
+  with a -2px offset.
 - Toggle the pane rail and confirm the Plotly chart resizes; corrupt
   `lifeFinances.panes` and confirm the editor falls back to visible.

@@ -305,7 +305,6 @@ body {
   background: none;
   border-right: 2px solid var(--pico-muted-color);
   border-bottom: 2px solid var(--pico-muted-color);
-  float: none;
   transform: rotate(-45deg);
 }
 

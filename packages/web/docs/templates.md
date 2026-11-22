@@ -54,9 +54,10 @@ Label inputs carry `data-summary-source`; `editor_lists.js` copies the trimmed
 value into the row's `[data-summary-label]`, falling back to the row's
 `data-empty-label`. Rows deliberately show labels only; amount and date
 previews are not rendered. Row open state is not persisted, so a reload
-collapses every row. When a new row's first save succeeds,
-`editor_lists.js` adds its `existing_index` hidden input inside `.row-fields`
-so it never precedes `<summary>`.
+collapses every row. When a new job, spending, or income row's first save
+succeeds, `editor_lists.js` adds its `existing_index` hidden input inside
+`.row-fields` so it never precedes `<summary>`. Sabbaticals are parsed
+positionally and do not get an `existing_index`.
 
 Sabbaticals are `.row` details inside a job's `.row-fields` (visible when the
 job is open); the nested `.rows` is indented and bordered. Row classes are

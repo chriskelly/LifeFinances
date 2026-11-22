@@ -167,6 +167,9 @@ def assert_row_templates(
 
         row = _template_row(templates[0])
         assert row_class in row.classes(), f"{prefix} template should be {row_class}"
+        assert _has_direct_row_fields(row), (
+            f"{prefix} template row should have a direct .row-fields child"
+        )
         assert row.attrs.get("data-empty-label") == empty_label, (
             f"{prefix} template fallback should be {empty_label!r}"
         )
@@ -177,6 +180,9 @@ def assert_row_templates(
     for row in _rendered_rows_in_containers(body, prefix):
         assert row_class in row.classes(), (
             f"{prefix} rendered row should be {row_class}"
+        )
+        assert _has_direct_row_fields(row), (
+            f"{prefix} rendered row should have a direct .row-fields child"
         )
         assert row.attrs.get("data-empty-label") == empty_label, (
             f"{prefix} rendered fallback should be {empty_label!r}"
@@ -221,6 +227,10 @@ def assert_sabbatical_rows_nested_in_job(body: str) -> None:
         assert container is not None, (
             "sabbatical row is not inside a sabbaticals container"
         )
+        assert _has_direct_row_fields(row), (
+            "sabbatical row is missing its direct .row-fields"
+        )
+        assert _has_direct_row_fields(job), "job row is missing its direct .row-fields"
         assert job in fields.ancestors(), "job row does not contain its .row-fields"
         assert fields in container.ancestors(), (
             "sabbaticals container is not inside .row-fields"
@@ -245,6 +255,12 @@ def _rendered_rows_in_containers(body: str, prefix: str) -> list[Node]:
         for child in container.children
         if child.tag == "details" and "row" in child.classes()
     ]
+
+
+def _has_direct_row_fields(row: Node) -> bool:
+    return any(
+        child.tag == "div" and "row-fields" in child.classes() for child in row.children
+    )
 
 
 def _template_row(template: Node) -> Node:
