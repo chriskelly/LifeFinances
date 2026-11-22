@@ -88,6 +88,8 @@ from web.theme import PICO_STYLESHEET_HREF, PRIMARY
 from simulation import assumptions as simulation_assumptions
 from web import charts as web_charts
 
+from .section_helpers import assert_section_closed, assert_section_open
+
 
 def test_figure_json_escapes_script_breakout_sequences() -> None:
     figure = {"data": [{"name": "</script><img onerror=alert(1)>"}]}
@@ -126,12 +128,6 @@ EDITOR_SECTIONS = [
     ("editor-portfolio", PORTFOLIO_TITLE),
     ("editor-settings", SETTINGS_TITLE),
 ]
-
-
-def _details_open_tag(body: str, section_id: str) -> str:
-    start = body.index(f'<details class="editor-section" id="{section_id}"')
-    end = body.index(">", start) + 1
-    return body[start:end]
 
 
 def test_home_shows_both_editor_sections(client: TestClient) -> None:
@@ -208,13 +204,13 @@ def test_home_renders_all_sections_as_closed_details(
 
     assert response.status_code == 200
     for section_id, title in EDITOR_SECTIONS:
-        assert f'<details class="editor-section" id="{section_id}"' in body
         assert re.search(
             rf'<summary class="editor-section-summary">\s*'
             rf"<h2>{re.escape(title)}</h2>\s*</summary>",
             body,
-        )
-        assert not re.search(r"\bopen\b", _details_open_tag(body, section_id))
+        ), section_id
+        assert_section_closed(body, section_id)
+    assert body.count('class="editor-section"') == len(EDITOR_SECTIONS)
 
 
 def test_home_renders_editor_rail(client: TestClient, plan_id: int) -> None:
@@ -224,12 +220,16 @@ def test_home_renders_editor_rail(client: TestClient, plan_id: int) -> None:
     assert response.status_code == 200
     assert 'class="pane-rail"' in body
     assert 'id="toggle-editor"' in body
-    assert 'aria-controls="editor-pane"' in body
-    assert 'aria-expanded="true"' in body
-    assert 'aria-label="Editor"' in body
-    assert 'title="Collapse editor pane"' in body
-    assert 'class="pane-rail-chevron"' in body
-    assert 'class="pane-rail-label"' in body
+    rail_start = body.index('class="pane-rail"')
+    button_start = body.index("<button", rail_start)
+    button_end = body.index("</button>", button_start)
+    button = body[button_start:button_end]
+    assert 'aria-controls="editor-pane"' in button
+    assert 'aria-expanded="true"' in button
+    assert 'aria-label="Editor"' in button
+    assert 'title="Collapse editor pane"' in button
+    assert 'class="pane-rail-chevron"' in button
+    assert 'class="pane-rail-label"' in button
     assert 'id="editor-pane"' in body
     assert body.index('class="pane-rail"') < body.index('id="toggle-editor"')
     assert body.index('id="toggle-editor"') < body.index('id="editor-pane"')
@@ -1017,15 +1017,9 @@ def test_home_shows_simulation_failure_in_results_panel(
         '<details class="editor-section" id="editor-market-assumptions"'
         in response.text
     )
-    assert re.search(
-        r"\bopen\b",
-        _details_open_tag(response.text, "editor-market-assumptions"),
-    )
+    assert_section_open(response.text, "editor-market-assumptions")
     assert '<details class="editor-section" id="editor-household"' in response.text
-    assert not re.search(
-        r"\bopen\b",
-        _details_open_tag(response.text, "editor-household"),
-    )
+    assert_section_closed(response.text, "editor-household")
 
 
 def test_home_results_panel_reads_chart_from_select(

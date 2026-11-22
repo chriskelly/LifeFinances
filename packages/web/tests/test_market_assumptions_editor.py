@@ -1,4 +1,3 @@
-import re
 from decimal import Decimal
 from html import unescape
 from typing import get_args
@@ -21,6 +20,8 @@ from web.sections import MARKET_ASSUMPTIONS_TITLE
 
 from simulation import assumptions as simulation_assumptions
 from web import forms
+
+from .section_helpers import assert_section_open
 
 
 def _market_form_data(
@@ -283,11 +284,7 @@ def test_editor_market_assumptions_error_opens_section(
     body = unescape(response.text)
 
     assert response.status_code == 200
-    assert re.search(
-        r'<details class="editor-section" id="editor-market-assumptions"'
-        r"[^>]*\bopen\b[^>]*>",
-        body,
-    )
+    assert_section_open(body, "editor-market-assumptions")
     assert _ASSUMPTIONS_FAILURE_MESSAGE in body
 
 

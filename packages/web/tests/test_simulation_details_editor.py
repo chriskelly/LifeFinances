@@ -11,6 +11,8 @@ from web.sections import SIMULATION_DETAILS_TITLE
 
 from web import forms
 
+from .section_helpers import assert_section_closed
+
 
 def _simulation_details_form_data(
     *,
@@ -201,12 +203,7 @@ def test_editor_simulation_details_get_is_collapsed_by_default(
 
     assert response.status_code == 200
     assert SIMULATION_DETAILS_TITLE in body
-    details_start = body.index(
-        '<details class="editor-section" id="editor-simulation-details"'
-    )
-    details_tag = body[details_start : body.index(">", details_start) + 1]
-
-    assert " open" not in details_tag
+    assert_section_closed(body, "editor-simulation-details")
 
 
 def test_editor_simulation_details_get_includes_sampling_field_names(

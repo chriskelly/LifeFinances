@@ -2,14 +2,15 @@
 
 {% block body %}
 <script>
+  // Mirror the key and shape contract in editor_layout.js; keep them in sync.
   try {
     const parsed = JSON.parse(localStorage.getItem("lifeFinances.panes") || "{}");
-    const panes =
-      parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-    if (panes.editorHidden) {
+    if (parsed && parsed.editorHidden) {
       document.documentElement.classList.add("editor-hidden");
     }
-  } catch (error) {}
+  } catch (error) {
+    /* storage may be blocked or corrupt; the editor stays visible */
+  }
 </script>
 
 <header class="app-header">

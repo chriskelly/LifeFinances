@@ -1,4 +1,3 @@
-import re
 from decimal import Decimal
 
 from core.repository import PlanRepository
@@ -12,6 +11,8 @@ from web.routes import (
     PLAN_SS_EARNINGS,
 )
 from web.sections import SOCIAL_SECURITY_TITLE
+
+from .section_helpers import assert_section_closed, assert_section_open
 
 
 def _statement_xml(years: list[int]) -> str:
@@ -74,11 +75,7 @@ def test_upload_statement_replaces_earnings_and_triggers_refresh(
     )
 
     assert response.status_code == 200
-    assert re.search(
-        r'<details class="editor-section" id="editor-social-security"'
-        r"[^>]*\bopen\b[^>]*>",
-        response.text,
-    )
+    assert_section_open(response.text, "editor-social-security")
     assert response.headers.get("HX-Trigger") == "planUpdated"
     after = repo.get_by_id(plan_id)
     assert after is not None
@@ -108,11 +105,7 @@ def test_upload_invalid_xml_rerenders_error_without_changing_earnings(
     # htmx only swaps 2xx responses, so the error has to come back as a
     # renderable partial rather than an error status the shell dumps as text.
     assert response.status_code == 200
-    assert re.search(
-        r'<details class="editor-section" id="editor-social-security"'
-        r"[^>]*\bopen\b[^>]*>",
-        response.text,
-    )
+    assert_section_open(response.text, "editor-social-security")
     assert 'class="form-error"' in response.text
     assert 'role="alert"' in response.text
     assert response.headers.get("HX-Trigger") is None
@@ -133,11 +126,7 @@ def test_upload_oversized_statement_is_rejected_without_changing_earnings(
     )
 
     assert response.status_code == 200
-    assert re.search(
-        r'<details class="editor-section" id="editor-social-security"'
-        r"[^>]*\bopen\b[^>]*>",
-        response.text,
-    )
+    assert_section_open(response.text, "editor-social-security")
     assert 'class="form-error"' in response.text
     after = repo.get_by_id(plan_id)
     assert after is not None
@@ -160,12 +149,4 @@ def test_editor_social_security_get_is_closed_by_default(
     response = client.get(f"{EDITOR_SOCIAL_SECURITY}?plan={plan_id}")
 
     assert response.status_code == 200
-    assert re.search(
-        r'<details class="editor-section" id="editor-social-security"[^>]*>',
-        response.text,
-    )
-    assert not re.search(
-        r'<details class="editor-section" id="editor-social-security"'
-        r"[^>]*\bopen\b[^>]*>",
-        response.text,
-    )
+    assert_section_closed(response.text, "editor-social-security")

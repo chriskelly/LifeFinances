@@ -6,6 +6,7 @@
 
   const chevron = button.querySelector(".pane-rail-chevron");
 
+  // Mirror the inline bootstrap in index.html; keep key and shape checks in sync.
   function readPanes() {
     try {
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
@@ -13,6 +14,7 @@
         ? parsed
         : {};
     } catch (error) {
+      /* storage may be blocked or corrupt; fall back to defaults */
       return {};
     }
   }
@@ -21,7 +23,7 @@
     const hidden = root.classList.contains("editor-hidden");
     button.setAttribute("aria-expanded", String(!hidden));
     button.title = hidden ? "Expand editor pane" : "Collapse editor pane";
-    chevron.textContent = hidden ? "›" : "‹";
+    if (chevron) chevron.textContent = hidden ? "›" : "‹";
   }
 
   function save() {
@@ -29,7 +31,9 @@
       const panes = readPanes();
       panes.editorHidden = root.classList.contains("editor-hidden");
       localStorage.setItem(STORAGE_KEY, JSON.stringify(panes));
-    } catch (error) {}
+    } catch (error) {
+      /* storage may be blocked or full; the toggle still works for this page */
+    }
   }
 
   function resizeChart() {
