@@ -3,12 +3,10 @@
 Scope: how simulation correctness is validated without a runnable TPAW binary,
 and how to diagnose a gap against a real plan. Read before changing parity
 goldens or investigating a mismatch. Parity behavior and input mapping:
-`parity.md`.
+`parity.md`. Validation targets algorithmic parity, not bit-identical output;
+see `parity.md` (Numerical parity caveat).
 
-Validation targets algorithmic parity, not bit-identical output; see
-`parity.md` (Numerical parity caveat).
-
-## Testing approach: doctest-golden values
+## Testing approach
 
 There is no runnable TPAW binary in this repo to diff full simulation runs
 against, so correctness is validated in two layers:
@@ -19,7 +17,7 @@ against, so correctness is validated in two layers:
    `../simulation/mertons.py` (plain/effective Merton's formula,
    `get_rra_for_all_stocks`), `../simulation/risk.py` (risk-tolerance → RRA
    endpoints), `../simulation/npv.py` (backward precomputation, target
-   withdrawals with no ceiling/floor, stock allocation), and
+   withdrawals with no ceiling/floor), and
    `../simulation/withdrawals.py` (`apply_contributions_and_withdrawals`,
    `apply_allocation`). These literals are intentionally pinned contract
    values, comment-marked with the TPAW test they were sourced from (for
@@ -32,8 +30,7 @@ against, so correctness is validated in two layers:
    returns, all else equal).
 
 Together, these confirm that each formula matches TPAW's reference values and
-that the assembled pipeline behaves sensibly, even though no full end-to-end
-numerical diff against TPAW is possible.
+that the assembled pipeline behaves sensibly.
 
 ## Investigating a gap against a real TPAW plan
 
@@ -47,9 +44,7 @@ historical-returns adjustment. Read the later months only once month 0 agrees.
 **Diff the inputs, most sensitive first:** portfolio balance; risk (tolerance
 at 20, glide to max age, legacy delta, time preference, additional annual
 spending tilt); planning-return preset and log-volatility scales; inflation;
-sampling; horizon. For the risk block, use the mapping table in `parity.md` —
-TPAW's UI shows the glide decrease and Preference for the Future; both are the
-negation of TPAW's stored values.
+sampling; horizon. For the risk block, use the mapping table in `parity.md`.
 
 **Take TPAW's values from an exported plan.** Plan menu → *Save to File*
 writes a `.tpaw.txt`: prose header, then JSON from the first `{`. The payload
@@ -60,17 +55,14 @@ last entry is the current state. The head's `timestamp` is the plan's
 **evaluation date**: run LifeFinances with `today` set to it, because planning
 returns come from that date's CAPE and TIPS data.
 
-**Expect these mapping differences.** TPAW has no tax model — its
-`futureSavings` and `incomeDuringRetirement` are net amounts, while
-LifeFinances builds gross job/SS/pension income and taxes it; compare
-annualized `income_real` against the stream schedule and accept a few percent
-of drift. TPAW's `startAndDuration` extra-spending windows are durations, while
-LifeFinances includes both the start and end months; a 12-month TPAW sabbatical
-becomes 13 months in LifeFinances if the end is copied literally. TPAW's month
-count includes the max-age month, so a tail difference can be the horizon
-rather than the math. TPAW's chart percentile set and run count are not in the
-exported params, so do not treat a band difference as engine drift; compare
-month 0 and the summary scalars first.
+**Expect these mapping differences.** Because TPAW's income streams are net and
+LifeFinances builds gross income and taxes it, compare annualized `income_real`
+against the stream schedule and accept a few percent of drift. An inclusive end
+month makes a 12-month TPAW sabbatical 13 months here. TPAW's month count
+includes the max-age month, so a tail difference can be the horizon rather than
+the math. Its chart percentile set and run count are not in the exported params,
+so do not read a band difference as engine drift; compare month 0 and the
+summary scalars first.
 
 **Mutate copies.** Ablate parameters on a copy of the plan — never the stored
 plan or the exported TPAW params.

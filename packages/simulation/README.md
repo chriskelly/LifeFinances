@@ -57,8 +57,7 @@ the whole horizon and uses it to deflate those genuinely nominal streams once,
 at the boundary, rather than carrying inflation as a per-month adjustment
 through the rest of the pipeline. Real income therefore passes through
 undeflated — its growth is a real raise, not an inflation-adjusted one. This is
-a deliberate simplification versus TPAW's stochastic/bootstrapped inflation:
-the engine resolves one scalar monthly rate for the whole horizon.
+a deliberate simplification versus TPAW's stochastic/bootstrapped inflation.
 
 **Return paths.** Also, `build_return_paths` produces bootstrapped
 monthly stock and bond returns for every simulated run, over the full horizon.
@@ -67,11 +66,14 @@ Before indexing runs, it rescales the vendored historical series so the
 return — a block-size-specific shift correction (the per-block table mean is the
 bootstrap's own mean, so the whole-series annualized mean matches only where the
 table mean equals the series mean), with stocks' spread scaled by
-`stock_volatility_scale` and bonds left at scale `1.0` — matching TPAW. These
-adjusted returns are the random inputs that make each run differ from the
-others; the rest of the pipeline is otherwise deterministic given a plan and a
-set of return paths. The deterministic "expected run" still uses planning
-returns directly and is unaffected by this adjustment. Block size and
+`stock_volatility_scale` and bonds left at scale `1.0` — matching TPAW.
+`adjusted_historical_returns` (via `presets.adjust_log_returns`) mirrors TPAW's
+`process_historical_returns.rs` → `adjust_log_returns_detailed` and its
+`adjust_log_returns_monte_carlo` test. These adjusted returns are the random
+inputs that make each run differ from the others; the rest of the pipeline is
+otherwise deterministic given a plan and a set of return paths. The
+deterministic "expected run" still uses planning returns directly and is
+unaffected by this adjustment. Block size and
 volatility scale are read from the resolved `PlanningReturns` snapshot; see
 `packages/simulation/docs/parity.md` for the plan/planning mismatch guard.
 
@@ -281,7 +283,8 @@ where \(r_{\text{portfolio}}\) is that month's planning total-portfolio return.
 That cumulative factor amortizes the general pool into monthly withdrawal
 targets in the forward loop.
 
-Unit tests pin numeric outputs against TPAW doctests in `test_mertons.py`.
+Unit tests pin numeric outputs against TPAW doctests in `test_mertons.py`; see
+`packages/simulation/docs/numerical-validation.md` for the validation approach.
 
 ## Planning returns and CAPE regression
 

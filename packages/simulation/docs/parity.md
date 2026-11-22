@@ -1,8 +1,8 @@
 # TPAW parity and input mapping
 
 Scope: how the engine maps to TPAW and what behavior matches. Read before
-changing engine math, planning-return presets, or parity goldens. Numerical
-validation and gap diagnosis: `numerical-validation.md`.
+changing engine math or planning-return presets. Numerical validation and gap
+diagnosis: `numerical-validation.md`.
 
 This package is a Python port of [TPAW](https://tpawplanner.com/)'s withdrawal
 engine (formerly CUDA/Rust: `run_tpaw.cu`, `run_common.cu`,
@@ -31,15 +31,16 @@ scope is in `packages/simulation/README.md`.
 TPAW runs on CUDA with mixed float32/float64 arithmetic and ChaCha8 RNG
 streams. This port uses NumPy `float64` throughout and the seeded
 `numpy.random.default_rng`, which is **not** bit-identical to TPAW's ChaCha8
-streams — see `../simulation/market_data/bootstrap.py`'s
-`build_index_sequences` docstring. We target **algorithmic** parity: the same
-formulas applied in the same sequence, validated against TPAW's published
+streams — see the `build_index_sequences` comment in
+`../simulation/market_data/bootstrap.py`. We target **algorithmic** parity: the
+same formulas applied in the same sequence, validated against TPAW's published
 test/doctest values, not bit-identical output against a running TPAW instance.
 Differences at the level of floating-point rounding or RNG stream identity are
 expected and are not treated as bugs.
 
 Bootstrapped return paths match TPAW's historical-returns adjustment; the
-mechanism is in `packages/simulation/README.md` (Return paths).
+mechanism and TPAW function/test mapping are in
+`packages/simulation/README.md` (Stage by stage → **Return paths**).
 `build_return_paths` raises `ValueError` when its `plan` and `planning`
 arguments disagree on `block_size_months` or `stock_volatility_scale` — resolve
 planning from the same plan you pass in.
@@ -66,17 +67,10 @@ stored with opposite signs. Compare the stored values, not the UI labels.
 | `wealth.incomeDuringRetirement` | jobs, Social Security, pension, manual streams | TPAW stores net manual streams; LifeFinances builds gross and taxes. Not one-to-one; compare annualized flows. |
 | `people.*.ages.maxAge.inMonths` | `household.person*.max_age_years` | TPAW months; LifeFinances years. |
 
-**Time-preference sign trap.** Both UIs show the negation of the stored
-`timePreference`/`time_preference` rate: a visible +0.5% is stored -0.005 in
-both. The engine applies the stored rate as impatience. Compare stored values
-when diffing an export, or negate a displayed value before comparing. TPAW
-shows the stored TPR in its foldable details; LifeFinances' help text describes
-it.
-
-**Glide sign trap.** TPAW's UI shows the decrease and stores its negation;
-LifeFinances stores the decrease itself. TPAW `-8` is LifeFinances `8`, not
-`-8`. The legacy delta is not negated in either: it is added to the age-20
-tolerance.
+**Time-preference sign trap.** A visible +0.5% is stored -0.005 in both UIs.
+Compare stored values when diffing an export, or negate a displayed value before
+comparing. TPAW shows the stored TPR in its foldable details; LifeFinances' help
+text describes it.
 
 ## Planning-returns presets
 
