@@ -58,21 +58,14 @@ of floating-point rounding (float32 vs. float64) or RNG stream identity are
 expected and are not treated as bugs.
 
 Bootstrapped return paths match TPAW's historical-returns adjustment.
-`../simulation/market_data/bootstrap.py::adjusted_historical_returns` rescales the vendored
-monthly log series (via `presets.adjust_log_returns`) so the *block-bootstrapped*
-annualized non-log mean equals the planning expected return, using the per-block
-empirical mean for the shift correction and scaling stocks' deviations by
-`stock_volatility_scale` (bonds at `1.0`). This mirrors TPAW's
-`process_historical_returns.rs` → `adjust_log_returns_detailed` and its
-`adjust_log_returns_monte_carlo` test (the `block_size=None` case is the
-preset-menu correction in `presets._shift_correction`). The deterministic
-expected run uses planning returns and is unaffected.
+`../simulation/market_data/bootstrap.py::adjusted_historical_returns` (via
+`presets.adjust_log_returns`) mirrors TPAW's `process_historical_returns.rs` →
+`adjust_log_returns_detailed` and its `adjust_log_returns_monte_carlo` test. The
+mechanism is in `packages/simulation/README.md` (Return paths).
 
-The block size and volatility scale are read from the resolved `PlanningReturns`
-snapshot rather than directly from `Plan`, so the adjustment targets and the
-index sequences use the same values. `build_return_paths` raises `ValueError`
-when its `plan` and `planning` arguments disagree on `block_size_months` or
-`stock_volatility_scale` — resolve planning from the same plan you pass in.
+`build_return_paths` raises `ValueError` when its `plan` and `planning`
+arguments disagree on `block_size_months` or `stock_volatility_scale` — resolve
+planning from the same plan you pass in.
 
 ## Input and sign mapping
 
