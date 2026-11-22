@@ -175,6 +175,9 @@ def assert_row_templates(
         )
 
     for row in _rendered_rows_in_containers(body, prefix):
+        assert row_class in row.classes(), (
+            f"{prefix} rendered row should be {row_class}"
+        )
         assert row.attrs.get("data-empty-label") == empty_label, (
             f"{prefix} rendered fallback should be {empty_label!r}"
         )
@@ -258,16 +261,18 @@ def _template_row(template: Node) -> Node:
 
 
 def _summary_text(row: Node) -> str:
-    summary = next(
+    summary = next((child for child in row.children if child.tag == "summary"), None)
+    assert summary is not None, "row is missing its summary"
+    label = next(
         (
             node
-            for node in row.descendants()
+            for node in summary.descendants()
             if node.tag == "span" and "data-summary-label" in node.attrs
         ),
         None,
     )
-    assert summary is not None, "row is missing its summary label"
-    return _node_text(summary).strip()
+    assert label is not None, "row summary is missing its label span"
+    return _node_text(label).strip()
 
 
 def _attrs(attrs: list[tuple[str, str | None]]) -> dict[str, str]:

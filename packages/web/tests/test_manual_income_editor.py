@@ -12,6 +12,7 @@ from web import boundaries, forms
 from .row_helpers import (
     assert_row_collapsed,
     assert_row_templates,
+    input_attrs,
     rendered_rows,
     row_summary_labels,
 )
@@ -36,6 +37,9 @@ def test_editor_manual_income_renders_collapsible_stream_rows(
     assert labels == ["Rental", "Untitled income stream"]
     assert len(rendered_rows(response.text, "stream-row")) == 2
     assert_row_collapsed(response.text, "stream-row")
+    assert "data-summary-source" in input_attrs(
+        response.text, f"{forms.STREAMS_PREFIX}[0].label"
+    )
     assert_row_templates(
         response.text,
         prefix=forms.STREAMS_PREFIX,
