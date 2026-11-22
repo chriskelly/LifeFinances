@@ -1,6 +1,7 @@
+import re
 from decimal import Decimal
 
-from core.job import AgeFactor, FormulaPension, Job
+from core.job import AgeFactor, FormulaPension, Job, SabbaticalWindow
 from core.repository import PlanRepository
 from core.streams import CalendarMonthBoundary, PersonAgeBoundary
 from domain.statutory.pension import (
@@ -19,6 +20,8 @@ from web.routes import EDITOR_JOBS, PLAN_JOBS
 from web.sections import JOBS_TITLE
 
 from web import forms
+
+from .row_helpers import assert_row_collapsed, row_details_tag, row_summary_labels
 
 
 def test_patch_jobs_adds_job_to_person1(
@@ -256,6 +259,51 @@ def test_editor_jobs_pension_dropdown_defaults_to_none(
     assert f">{forms.PENSION_NONE_LABEL}</option>" in response.text
     assert f'value="{forms.PENSION_CALSTRS_2_AT_62}"' in response.text
     assert f">{forms.PENSION_CALSTRS_2_AT_62_LABEL}</option>" in response.text
+
+
+def test_editor_jobs_renders_collapsible_job_and_sabbatical_rows(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.household.person1.jobs = [
+        Job(
+            label="Engineer",
+            annual_income=Decimal("150000"),
+            start=CalendarMonthBoundary(year=2020, month=1),
+            sabbaticals=[
+                SabbaticalWindow(
+                    start=CalendarMonthBoundary(year=2027, month=1),
+                    end=CalendarMonthBoundary(year=2027, month=7),
+                    remaining_fraction=Decimal("0.5"),
+                )
+            ],
+        ),
+        Job(
+            annual_income=Decimal("90000"),
+            start=CalendarMonthBoundary(year=2021, month=1),
+        ),
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_JOBS}?plan={plan_id}")
+    body = response.text
+    labels = row_summary_labels(body)
+
+    assert response.status_code == 200
+    assert row_details_tag(body, "job-row").startswith('<details class="row job-row"')
+    assert 'data-empty-label="Untitled job"' in row_details_tag(body, "job-row")
+    assert_row_collapsed(body, "job-row")
+    assert_row_collapsed(body, "sabbatical-row")
+    assert "Engineer" in labels
+    assert labels.count("Untitled job") == 3
+    assert "Sabbatical" in labels
+    label_input = re.search(r'<input[^>]*name="jobs\[0\]\.label"[^>]*>', body)
+    assert label_input is not None
+    assert "data-summary-source" in label_input.group(0)
+    assert body.index('data-prefix="sabbaticals"') > body.index(
+        '<details class="row job-row"'
+    )
 
 
 def test_editor_jobs_shows_custom_pension_when_table_is_not_calstrs(

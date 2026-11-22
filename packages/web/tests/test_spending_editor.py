@@ -11,6 +11,8 @@ from web.sections import SPENDING_GOALS_TITLE
 
 from web import boundaries, forms
 
+from .row_helpers import assert_row_collapsed, row_summary_labels
+
 
 def _stream_data(*, prefix: str, label: str, amount: str) -> dict[str, str]:
     return {
@@ -20,6 +22,35 @@ def _stream_data(*, prefix: str, label: str, amount: str) -> dict[str, str]:
         f"{prefix}[0].start_kind": boundaries.KIND_NOW,
         f"{prefix}[0].end_kind": boundaries.KIND_NONE,
     }
+
+
+def test_editor_spending_renders_collapsible_stream_rows(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    stream_start = CalendarMonthBoundary(year=2010, month=1)
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.extra_essential_spending = [
+        TimedStream(
+            label="Healthcare", monthly_amount=Decimal("700"), start=stream_start
+        ),
+        TimedStream(monthly_amount=Decimal("100"), start=stream_start),
+    ]
+    seeded.extra_discretionary_spending = [
+        TimedStream(label="Travel", monthly_amount=Decimal("500"), start=stream_start)
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_SPENDING}?plan={plan_id}")
+    labels = row_summary_labels(response.text)
+
+    assert response.status_code == 200
+    assert_row_collapsed(response.text, "stream-row")
+    assert "Healthcare" in labels
+    assert "Travel" in labels
+    assert labels.count("Untitled essential spending") == 2
+    assert labels.count("Untitled discretionary spending") == 1
+    assert response.text.count('<details class="row stream-row"') == 5
 
 
 def test_patch_spending_keeps_categories_separate(

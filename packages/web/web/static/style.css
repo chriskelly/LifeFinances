@@ -251,19 +251,30 @@ body {
   padding-bottom: 1rem;
 }
 
-.editor-section > summary {
+.editor-section > summary,
+.row > summary {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin: 0 -1.25rem;
-  padding: 0.55rem 1.25rem;
   cursor: pointer;
   list-style: none;
   border-radius: var(--pico-border-radius);
   user-select: none;
 }
 
-.editor-section > summary::-webkit-details-marker {
+.editor-section > summary {
+  gap: 1rem;
+  margin: 0 -1.25rem;
+  padding: 0.55rem 1.25rem;
+}
+
+.row > summary {
+  gap: 0.75rem;
+  margin: 0 -0.75rem;
+  padding: 0.45rem 0.75rem;
+}
+
+.editor-section > summary::-webkit-details-marker,
+.row > summary::-webkit-details-marker {
   display: none;
 }
 
@@ -273,7 +284,17 @@ body {
   font-size: 1.05rem;
 }
 
-.editor-section > summary::after {
+.row-summary-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-section > summary::after,
+.row > summary::after {
   content: "";
   flex-shrink: 0;
   width: 0.5rem;
@@ -289,7 +310,14 @@ body {
   border-radius: var(--pico-border-radius) var(--pico-border-radius) 0 0;
 }
 
-.editor-section[open] > summary::after {
+.row[open] > summary {
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius) var(--pico-border-radius) 0 0;
+}
+
+.editor-section[open] > summary::after,
+.row[open] > summary::after {
   transform: rotate(45deg);
 }
 
@@ -298,10 +326,49 @@ body {
   color: var(--pico-primary);
 }
 
-.editor-section > summary:focus-visible {
+.row > summary:hover .row-summary-label,
+.row > summary:focus-visible .row-summary-label {
+  color: var(--pico-primary);
+}
+
+.editor-section > summary:focus-visible,
+.row > summary:focus-visible {
   outline: 2px solid var(--pico-primary-focus);
   outline-offset: -2px;
   border-radius: var(--pico-border-radius);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.row {
+  padding: 0 0.75rem;
+  background: var(--pico-background-color);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+}
+
+.row[open] {
+  padding-bottom: 0.75rem;
+}
+
+.row-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.row-fields > [data-remove-row] {
+  align-self: flex-start;
+}
+
+.row-fields .rows {
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--pico-muted-border-color);
 }
 
 .editor-section form {

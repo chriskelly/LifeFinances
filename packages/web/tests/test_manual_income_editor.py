@@ -9,6 +9,30 @@ from web.sections import MANUAL_INCOME_TITLE
 
 from web import boundaries, forms
 
+from .row_helpers import assert_row_collapsed, row_summary_labels
+
+
+def test_editor_manual_income_renders_collapsible_stream_rows(
+    client: TestClient, repo: PlanRepository, plan_id: int
+) -> None:
+    stream_start = CalendarMonthBoundary(year=2010, month=1)
+    seeded = repo.get_by_id(plan_id)
+    assert seeded is not None
+    seeded.manual_income_streams = [
+        TimedStream(label="Rental", monthly_amount=Decimal("2500"), start=stream_start),
+        TimedStream(monthly_amount=Decimal("100"), start=stream_start),
+    ]
+    repo.save(plan_id, seeded)
+
+    response = client.get(f"{EDITOR_MANUAL_INCOME}?plan={plan_id}")
+    labels = row_summary_labels(response.text)
+
+    assert response.status_code == 200
+    assert_row_collapsed(response.text, "stream-row")
+    assert "Rental" in labels
+    assert labels.count("Untitled income stream") == 2
+    assert response.text.count('<details class="row stream-row"') == 3
+
 
 def test_patch_manual_income_adds_stream(
     client: TestClient, repo: PlanRepository, plan_id: int

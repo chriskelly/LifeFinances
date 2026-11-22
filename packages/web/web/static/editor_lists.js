@@ -19,6 +19,37 @@
     });
   }
 
+  function rowFields(row) {
+    return row.querySelector(":scope > .row-fields");
+  }
+
+  function updateRowSummary(field) {
+    const row = field.closest(".row");
+    if (!row) return;
+    const label = row.querySelector(":scope > summary [data-summary-label]");
+    if (!label) return;
+    const text = field.value.trim();
+    label.textContent = text || row.dataset.emptyLabel || "Untitled";
+  }
+
+  function focusFirstField(row) {
+    const fields = row.querySelectorAll(
+      "[data-summary-source], .row-fields input, .row-fields select"
+    );
+    for (const field of fields) {
+      if (field.closest(".row") !== row) continue;
+      if (
+        field.disabled ||
+        field.type === "hidden" ||
+        field.offsetParent === null
+      ) {
+        continue;
+      }
+      field.focus();
+      return;
+    }
+  }
+
   function maxSiblingIndex(container) {
     const prefix = container.dataset.prefix;
     const pattern = new RegExp(prefix + "\\[(\\d+)\\]");
@@ -51,6 +82,12 @@
   function initAll() {
     document.querySelectorAll(".boundary-control").forEach(syncBoundary);
   }
+
+  document.addEventListener("input", function (event) {
+    if (event.target.matches("[data-summary-source]")) {
+      updateRowSummary(event.target);
+    }
+  });
 
   document.addEventListener("change", function (event) {
     const target = event.target;
@@ -111,7 +148,9 @@
       const clone = template.content.firstElementChild.cloneNode(true);
       setRowIndex(clone, container.dataset.prefix, nextIndex);
       container.insertBefore(clone, template);
+      clone.open = true;
       clone.querySelectorAll(".boundary-control").forEach(syncBoundary);
+      focusFirstField(clone);
       // No save here: a fresh row has blank required boundary fields, so
       // submitting it would fail validation and block the whole section from
       // saving until the user fills it in. The user's first edit saves it.
@@ -155,7 +194,8 @@
           input = document.createElement("input");
           input.type = "hidden";
           input.name = prefix + "[" + wireIndex + "].existing_index";
-          row.insertBefore(input, row.firstChild);
+          const body = rowFields(row);
+          (body || row).insertBefore(input, (body || row).firstChild);
         }
         input.value = String(position);
       });

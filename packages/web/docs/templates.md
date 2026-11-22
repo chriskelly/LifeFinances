@@ -21,6 +21,28 @@ children of the `<details>`; CSS supplies the card padding and a negative-margin
 summary so the whole header row is clickable. Nested advanced disclosures use
 `class="editor-subsection"`.
 
+### Collapsible list rows
+
+Repeated items in Jobs, Spending goals, and Manual income are native
+`<details class="row ...">` elements whose `<summary class="row-summary">`
+contains one `<span data-summary-label>`, with the controls in a `.row-fields`
+body. Existing rows start collapsed; a row added with `data-add-row` opens and
+focuses its label, or its first visible field for a sabbatical. The `.row`
+class stays on the outer element because `editor_lists.js` discovers, removes,
+and reindexes rows by that class.
+
+Label inputs carry `data-summary-source`; `editor_lists.js` copies the trimmed
+value into the row's `[data-summary-label]`, falling back to the row's
+`data-empty-label`. Rows deliberately show labels only; amount and date
+previews are not rendered. Row open state is not persisted, so a reload
+collapses every row. When a new row's first save succeeds,
+`editor_lists.js` adds its `existing_index` hidden input inside `.row-fields`
+so it never precedes `<summary>`.
+
+Sabbaticals are `.row` details nested inside an open job's `.row-fields`; the
+nested `.rows` is indented and bordered. Other row classes are `job-row` and
+`stream-row`.
+
 The Social Security upload response always carries `open` (success or error);
 Market assumptions carries it when `simulation_error` is set. The Social
 Security section GET and the initial page include stay collapsed. The inline
