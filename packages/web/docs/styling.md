@@ -9,5 +9,7 @@ colors, density, or `../web/static/style.css`.
 - **Charts** use stock Plotly series colors. The percentile band fill (`BAND_FILLCOLOR`) and the simulated-run line (`MEDIAN_RUN_COLOR`) in `../web/charts.py` are the only explicit chart colors we set; do not wire chart colors through `../web/theme.py`.
 - **Density** (overall size): edit `FONT_SIZE`, `LINE_HEIGHT`, `SPACING`, `FORM_SPACING_VERTICAL`, and `FORM_SPACING_HORIZONTAL` in `../web/theme.py`. Shell gaps in `../web/static/style.css` (layout/`editor-pane` padding) are separate if the page still feels roomy.
 - Live emitted Pico roles: surfaces, primary family, invalid/del, plus density tokens above. To add secondary/contrast, copy names from https://picocss.com/docs/css-variables into `PICO_LIGHT` — do not comment-dump Pico's full theme.
-- Custom CSS is for split-pane shell, plan-menu positioning, Plotly `#results-chart` min-height, HTMX error-banner layout, and JS-driven show/hide. Prefer stock Pico for forms.
+- Custom CSS is for split-pane shell, plan-menu positioning, editor section
+  disclosures, the pane rail, Plotly `#results-chart` min-height, HTMX
+  error-banner layout, and JS-driven show/hide. Prefer stock Pico for forms.
 - If Pico makes plan-menu × or boundary rows unusable: try a structural HTML tweak first; then **one** named hatch (`.compact-controls`) that only changes spacing and still uses `--pico-*` for color. No ad-hoc per-widget override pile-up.

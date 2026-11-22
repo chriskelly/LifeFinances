@@ -12,6 +12,34 @@ Read before changing a template, a form DTO, or an editor partial.
 - **Section-scoped forms:** each editor partial (`../web/templates/editor_household.html`, `../web/templates/editor_portfolio.html`, `../web/templates/editor_settings.html`) is a self-contained `<form>` that `PATCH`es its own route with **`?plan={{ plan_id }}`** on the HTMX URL so saves target the active plan. FastAPI binds flat `Form()` parameters to the matching DTO; the DTO's `apply_to(plan)` merges into the full `Plan` before `repo.save`.
 - **Partials:** `../web/templates/index.html` includes both editor sections and the live `../web/templates/results.html` charts partial. Section GET routes return individual partials for HTMX swaps if needed later.
 
+## Editor disclosures and pane rail
+
+Each editor partial root is a native `<details class="editor-section" id="editor-...">`
+with a `<summary class="editor-section-summary"><h2>...</h2></summary>`.
+All sections start collapsed; multiple may be open. Section bodies stay direct
+children of the `<details>`; CSS supplies the card padding and a negative-margin
+summary so the whole header row is clickable. Nested advanced disclosures use
+`class="editor-subsection"`.
+
+The Social Security upload response always carries `open` (success or error);
+Market assumptions carries it when `simulation_error` is set. The Social
+Security section GET and the initial page include stay collapsed. The inline
+script at the top of the home body applies `editor-hidden` before `.layout`
+paints; if localStorage is unavailable or its value is not the expected object,
+the editor stays visible and the toggle still works for the session.
+
+`index.html` places a 1.5rem `.pane-rail` as the middle track of `.layout`,
+between the editor and results. Its `#toggle-editor` button toggles
+`editor-hidden` on `<html>`, which hides `.editor-pane` and changes the grid to
+`rail | results`. The button comes before the editor in DOM order so keyboard
+users reach it before the section summaries. Pane visibility persists in
+localStorage under `lifeFinances.panes` as `{"editorHidden": true|false}`;
+section open state is not persisted. After a toggle, call
+`Plotly.Plots.resize` because Plotly's responsive config listens to window
+resize only; skip a `#results-chart` that is not yet a `js-plotly-plot`. The
+future chat pane adds a mirrored rail on the right; editor section markup does
+not change.
+
 ## Spending & simulation config editors
 
 Four sections own these plan fields:
