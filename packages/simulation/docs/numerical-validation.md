@@ -57,8 +57,9 @@ returns come from that date's CAPE and TIPS data.
 
 **Expect these mapping differences.** Because TPAW's income streams are net and
 LifeFinances builds gross income and taxes it, compare annualized `income_real`
-against the stream schedule and accept a few percent of drift. An inclusive end
-month makes a 12-month TPAW sabbatical 13 months here. TPAW's month count
+against the stream schedule and accept a few percent of drift. LifeFinances
+counts both the start and end months, so a 12-month TPAW sabbatical becomes 13
+months. TPAW's month count
 includes the max-age month, so a tail difference can be the horizon rather than
 the math. Its chart percentile set and run count are not in the exported params,
 so do not read a band difference as engine drift; compare month 0 and the

@@ -64,7 +64,7 @@ stored with opposite signs. Compare the stored values, not the UI labels.
 | `wealth.portfolioBalance.amount` (or `updatedTo` when carried forward) | `portfolio.current_savings_balance` | Same value. |
 | `adjustmentsToSpending.tpawAndSPAW.legacy.total` | `legacy_target` | Same value. |
 | `adjustmentsToSpending.extraSpending.essential` / `.discretionary` | `extra_essential_spending` / `extra_discretionary_spending` | Amounts and windows; LifeFinances includes both start and end months, while TPAW's `startAndDuration` is a duration. |
-| `wealth.incomeDuringRetirement` | jobs, Social Security, pension, manual streams | TPAW stores net manual streams; LifeFinances builds gross and taxes. Not one-to-one; compare annualized flows. |
+| `wealth.futureSavings` / `wealth.incomeDuringRetirement` | jobs, Social Security, pension, manual streams | TPAW stores net future savings and retirement income; LifeFinances builds gross income and taxes it. Not one-to-one; compare annualized flows. |
 | `people.*.ages.maxAge.inMonths` | `household.person*.max_age_years` | TPAW months; LifeFinances years. |
 
 **Time-preference sign trap.** A visible +0.5% is stored -0.005 in both UIs.
