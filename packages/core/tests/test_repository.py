@@ -29,6 +29,21 @@ def test_save_and_get_by_id_round_trip_preserves_balance(repo: PlanRepository) -
     assert loaded.portfolio.current_savings_balance == expected_balance
 
 
+def test_save_and_get_by_id_preserves_stored_zero_legacy_delta(
+    repo: PlanRepository,
+) -> None:
+    # A stored 0 must load as 0, not fall back to the default.
+    plan_id, plan = repo.get_or_create_default()
+    stored_delta = Decimal(0)
+    plan.risk.legacy_delta_from_at_20 = stored_delta
+
+    repo.save(plan_id, plan)
+    loaded = repo.get_by_id(plan_id)
+
+    assert loaded is not None
+    assert loaded.risk.legacy_delta_from_at_20 == stored_delta
+
+
 def test_get_or_create_default_returns_existing_without_insert(
     repo: PlanRepository,
 ) -> None:

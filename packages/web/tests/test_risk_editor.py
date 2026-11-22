@@ -354,6 +354,17 @@ def test_editor_shows_default_max_age_decrease(
     assert _input_value(body, forms.DELTA_AT_MAX_AGE) == str(expected_decrease)
 
 
+def test_editor_shows_default_legacy_delta(client: TestClient, plan_id: int) -> None:
+    # Pinned: TPAW's DEFAULT_RISK_TPAW.riskTolerance.forLegacyAsDeltaFromAt20 is 2.
+    expected_delta = Decimal(2)
+
+    response = client.get(f"{EDITOR_RISK}?plan={plan_id}")
+    body = unescape(response.text)
+
+    assert response.status_code == 200
+    assert _input_value(body, forms.LEGACY_DELTA_FROM_AT_20) == str(expected_delta)
+
+
 def test_editor_risk_get_advanced_details_contains_field_names(
     client: TestClient, plan_id: int
 ) -> None:

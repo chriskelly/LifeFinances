@@ -26,7 +26,9 @@ DEFAULT_RISK_TOLERANCE_AT_20 = Decimal(12)  # tpaw default test plan "Moderate"
 # Decrease subtracted from tolerance between age 20 and max age.
 # TPAW stores the negation of this displayed decrease (deltaAtMaxAge -2) and adds it.
 DEFAULT_DELTA_AT_MAX_AGE = Decimal(2)
-DEFAULT_LEGACY_DELTA_FROM_AT_20 = Decimal(0)
+# TPAW's DEFAULT_RISK_TPAW.riskTolerance.forLegacyAsDeltaFromAt20 is 2. Unlike
+# deltaAtMaxAge, this delta is not negated.
+DEFAULT_LEGACY_DELTA_FROM_AT_20 = Decimal(2)
 DEFAULT_TIME_PREFERENCE = Decimal(0)
 DEFAULT_ADDITIONAL_ANNUAL_SPENDING_TILT = Decimal(0)
 
