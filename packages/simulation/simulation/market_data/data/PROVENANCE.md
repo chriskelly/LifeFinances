@@ -29,8 +29,9 @@ Prerequisite: read sources from `tpaw` at the commit that introduced `vN`
    previous `stock_log_variance_by_block.csv`.
 4. **Loaders** — point `returns.py` (`_DEFAULT_RETURNS_CSV`, effective-date
    constant) and `presets_data.py` (`_CAPE_REGRESSION_PATH`) at the new filenames.
-5. **Docs** — update this file’s artifact sections, plus `packages/simulation/README.md`
-   and `packages/simulation/docs/parity.md` version wording.
+5. **Docs** — update this file’s artifact sections and the `vN` references in
+   `packages/simulation/README.md` (planning-returns runtime/coefficients and
+   shift correction).
 6. **Tests** — rebase `test_returns.py` length/first/last pins,
    `tpaw_preset_contract.py` goldens (including Shiller earnings and variance
    table endpoints), and any Sep-4-style parity smoke

@@ -11,9 +11,12 @@ Monthly TPAW withdrawal engine. Depends on `domain` and `core`; never imports
 - Keep the mechanism walkthrough in the package README as the human-facing
   long-form explanation; it has no line budget. The `docs/` leaves remain the
   agent references; do not move or restate the walkthrough in one.
+- Roadmap status for TPAW parity lives in GitHub issues; the parity docs record
+  current behavior only.
 
 ## Reference
 
-- TPAW parity, numerical caveats, and testing approach → `packages/simulation/docs/parity.md`
+- TPAW parity and input mapping → `packages/simulation/docs/parity.md`
+- Numerical validation and gap diagnosis → `packages/simulation/docs/numerical-validation.md`
 - Mechanism walkthrough → `packages/simulation/README.md`
 - Display-only assumptions entrypoint → `packages/simulation/docs/assumptions.md`
