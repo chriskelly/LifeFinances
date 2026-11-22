@@ -181,6 +181,7 @@ body {
 }
 
 .pane-rail-control::before {
+  /* Zero horizontal inset: a wider hit area would cover neighbouring scrollbars. */
   content: "";
   position: absolute;
   inset: -0.25rem 0;

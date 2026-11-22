@@ -10,9 +10,17 @@ def details_open_tag(body: str, section_id: str) -> str:
     return match.group(0)
 
 
+def _has_open_attribute(tag: str) -> bool:
+    return re.search(r"(?:^|\s)open(?=\s|>|=)", tag) is not None
+
+
 def assert_section_open(body: str, section_id: str) -> None:
-    assert re.search(r"\bopen\b", details_open_tag(body, section_id))
+    assert _has_open_attribute(details_open_tag(body, section_id)), (
+        f"{section_id} should be open"
+    )
 
 
 def assert_section_closed(body: str, section_id: str) -> None:
-    assert not re.search(r"\bopen\b", details_open_tag(body, section_id))
+    assert not _has_open_attribute(details_open_tag(body, section_id)), (
+        f"{section_id} should be closed"
+    )

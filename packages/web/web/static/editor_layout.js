@@ -6,7 +6,7 @@
 
   const chevron = button.querySelector(".pane-rail-chevron");
 
-  // Mirror the inline bootstrap in index.html; keep key and shape checks in sync.
+  // Shares the key and editorHidden meaning with the inline bootstrap in index.html.
   function readPanes() {
     try {
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");

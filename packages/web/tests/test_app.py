@@ -1013,12 +1013,7 @@ def test_home_shows_simulation_failure_in_results_panel(
     assert _SIMULATION_FAILURE_MESSAGE in response.text
     assert failure_detail not in response.text
     assert 'id="chart-config"' not in response.text
-    assert (
-        '<details class="editor-section" id="editor-market-assumptions"'
-        in response.text
-    )
     assert_section_open(response.text, "editor-market-assumptions")
-    assert '<details class="editor-section" id="editor-household"' in response.text
     assert_section_closed(response.text, "editor-household")
 
 

@@ -2,7 +2,7 @@
 
 {% block body %}
 <script>
-  // Mirror the key and shape contract in editor_layout.js; keep them in sync.
+  // Shares the key and editorHidden meaning with readPanes() in editor_layout.js.
   try {
     const parsed = JSON.parse(localStorage.getItem("lifeFinances.panes") || "{}");
     if (parsed && parsed.editorHidden) {
