@@ -1,4 +1,3 @@
-import re
 from decimal import Decimal
 
 from core.job import AgeFactor, FormulaPension, Job, SabbaticalWindow
@@ -24,6 +23,7 @@ from web import forms
 from .row_helpers import (
     assert_row_collapsed,
     assert_sabbatical_rows_nested_in_job,
+    input_attrs,
     rendered_rows,
     row_summary_labels,
     template_contains_row,
@@ -329,9 +329,7 @@ def test_editor_jobs_renders_collapsible_job_and_sabbatical_rows(
     assert template_contains_row(body, "job-row")
     assert template_contains_row(body, "sabbatical-row")
     assert 'data-empty-label="Untitled job"' in body
-    label_input = re.search(r'<input[^>]*name="jobs\[0\]\.label"[^>]*>', body)
-    assert label_input is not None
-    assert "data-summary-source" in label_input.group(0)
+    assert "data-summary-source" in input_attrs(body, "jobs[0].label")
 
 
 def test_editor_jobs_shows_custom_pension_when_table_is_not_calstrs(

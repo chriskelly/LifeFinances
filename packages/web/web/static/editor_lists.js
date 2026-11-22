@@ -29,6 +29,7 @@
     const label = row.querySelector(":scope > summary [data-summary-label]");
     if (!label) return;
     const text = field.value.trim();
+    // data-empty-label is part of the row contract; keep a generic fallback.
     label.textContent = text || row.dataset.emptyLabel || "Untitled";
   }
 

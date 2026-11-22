@@ -115,38 +115,39 @@ def row_summary_labels(body: str) -> list[str]:
     ]
 
 
+def input_attrs(body: str, name: str) -> dict[str, str]:
+    for node in parse_fragment(body).descendants():
+        if node.tag == "input" and node.attrs.get("name") == name:
+            return node.attrs
+    raise AssertionError(f"missing input {name}")
+
+
 def assert_sabbatical_rows_nested_in_job(body: str) -> None:
-    containers = [
-        node
-        for node in parse_fragment(body).descendants()
-        if node.tag == "div"
-        and "rows" in node.classes()
-        and node.attrs.get("data-prefix") == "sabbaticals"
-    ]
-    assert containers, "missing sabbaticals container"
+    rows = rendered_rows(body, "sabbatical-row")
+    assert rows, "missing sabbatical rows"
 
-    container = containers[0]
-    ancestors = list(container.ancestors())
-    job = next(
-        (
-            node
-            for node in ancestors
-            if node.tag == "details" and "job-row" in node.classes()
-        ),
-        None,
-    )
-    fields = next(
-        (
-            node
-            for node in ancestors
-            if node.tag == "div" and "row-fields" in node.classes()
-        ),
-        None,
-    )
+    for row in rows:
+        ancestors = list(row.ancestors())
+        job = next(
+            (
+                node
+                for node in ancestors
+                if node.tag == "details" and "job-row" in node.classes()
+            ),
+            None,
+        )
+        fields = next(
+            (
+                node
+                for node in ancestors
+                if node.tag == "div" and "row-fields" in node.classes()
+            ),
+            None,
+        )
 
-    assert job is not None, "sabbaticals container is not inside a job row"
-    assert fields is not None, "sabbaticals container is not inside .row-fields"
-    assert job in fields.ancestors(), "job row does not contain its .row-fields"
+        assert job is not None, "sabbatical row is not inside a job row"
+        assert fields is not None, "sabbatical row is not inside .row-fields"
+        assert job in fields.ancestors(), "job row does not contain its .row-fields"
 
 
 def template_contains_row(body: str, row_class: str) -> bool:
