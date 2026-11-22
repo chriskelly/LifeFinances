@@ -3,7 +3,7 @@
 {% macro stream_row(prefix, index, stream, choices, empty_label="Item") %}
 <details class="row stream-row" data-empty-label="{{ empty_label }}">
   <summary class="row-summary">
-    <span class="row-summary-label" data-summary-label>{{ (stream.label if stream and stream.label else empty_label)|trim }}</span>
+    <span class="row-summary-label" data-summary-label>{{ ((stream.label or "")|trim) or empty_label }}</span>
   </summary>
   <div class="row-fields">
     <button type="button" data-remove-row>Remove</button>

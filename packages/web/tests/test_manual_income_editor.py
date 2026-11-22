@@ -20,7 +20,7 @@ def test_editor_manual_income_renders_collapsible_stream_rows(
     assert seeded is not None
     seeded.manual_income_streams = [
         TimedStream(label="Rental", monthly_amount=Decimal("2500"), start=stream_start),
-        TimedStream(monthly_amount=Decimal("100"), start=stream_start),
+        TimedStream(label="   ", monthly_amount=Decimal("100"), start=stream_start),
     ]
     repo.save(plan_id, seeded)
 

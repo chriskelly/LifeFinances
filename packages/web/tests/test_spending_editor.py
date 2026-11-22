@@ -34,7 +34,7 @@ def test_editor_spending_renders_collapsible_stream_rows(
         TimedStream(
             label="Healthcare", monthly_amount=Decimal("700"), start=stream_start
         ),
-        TimedStream(monthly_amount=Decimal("100"), start=stream_start),
+        TimedStream(label="   ", monthly_amount=Decimal("100"), start=stream_start),
     ]
     seeded.extra_discretionary_spending = [
         TimedStream(label="Travel", monthly_amount=Decimal("500"), start=stream_start)

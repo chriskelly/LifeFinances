@@ -22,7 +22,7 @@
 {% set pension_value = forms.PENSION_NONE if (not job or not job.pension) else (forms.PENSION_CUSTOM if is_custom_pension else forms.PENSION_CALSTRS_2_AT_62) %}
 <details class="row job-row" data-empty-label="Untitled job">
   <summary class="row-summary">
-    <span class="row-summary-label" data-summary-label>{{ (job.label if job and job.label else "Untitled job")|trim }}</span>
+    <span class="row-summary-label" data-summary-label>{{ ((job.label or "")|trim) or "Untitled job" }}</span>
   </summary>
   <div class="row-fields">
     <button type="button" data-remove-row>Remove job</button>

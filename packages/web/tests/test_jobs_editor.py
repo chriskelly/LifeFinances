@@ -280,6 +280,7 @@ def test_editor_jobs_renders_collapsible_job_and_sabbatical_rows(
             ],
         ),
         Job(
+            label="   ",
             annual_income=Decimal("90000"),
             start=CalendarMonthBoundary(year=2021, month=1),
         ),
