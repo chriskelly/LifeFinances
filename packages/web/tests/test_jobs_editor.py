@@ -22,11 +22,11 @@ from web import forms
 
 from .row_helpers import (
     assert_row_collapsed,
+    assert_row_templates,
     assert_sabbatical_rows_nested_in_job,
     input_attrs,
     rendered_rows,
     row_summary_labels,
-    template_contains_row,
 )
 
 
@@ -326,8 +326,12 @@ def test_editor_jobs_renders_collapsible_job_and_sabbatical_rows(
     assert_row_collapsed(body, "job-row")
     assert_row_collapsed(body, "sabbatical-row")
     assert_sabbatical_rows_nested_in_job(body)
-    assert template_contains_row(body, "job-row")
-    assert template_contains_row(body, "sabbatical-row")
+    assert_row_templates(
+        body, prefix="jobs", row_class="job-row", empty_label="Untitled job"
+    )
+    assert_row_templates(
+        body, prefix="sabbaticals", row_class="sabbatical-row", empty_label=None
+    )
     assert 'data-empty-label="Untitled job"' in body
     assert "data-summary-source" in input_attrs(body, "jobs[0].label")
 

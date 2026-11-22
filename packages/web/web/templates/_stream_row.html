@@ -20,9 +20,9 @@
 </details>
 {% endmacro %}
 
-{% macro stream_rows(prefix, streams, people, empty_label, add_label) %}
+{% macro stream_rows(prefix, stream_list, people, empty_label, add_label) %}
 <div class="rows" data-prefix="{{ prefix }}">
-  {% for stream in streams %}{{ stream_row(prefix, loop.index0, stream, people, empty_label=empty_label) }}{% endfor %}
+  {% for stream in stream_list %}{{ stream_row(prefix, loop.index0, stream, people, empty_label=empty_label) }}{% endfor %}
   <template class="row-template">{{ stream_row(prefix, 0, none, people, empty_label=empty_label) }}</template>
   <button type="button" data-add-row>{{ add_label }}</button>
 </div>

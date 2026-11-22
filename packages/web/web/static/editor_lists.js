@@ -51,6 +51,22 @@
     }
   }
 
+  function focusRowSummary(row) {
+    const summary = row.querySelector(":scope > summary");
+    if (!summary) return false;
+    summary.focus();
+    return true;
+  }
+
+  function focusAfterRemove(container, next, previous) {
+    if (next && next.classList.contains("row") && focusRowSummary(next)) return;
+    if (previous && previous.classList.contains("row") && focusRowSummary(previous)) {
+      return;
+    }
+    const addButton = container.querySelector(":scope > [data-add-row]");
+    if (addButton) addButton.focus();
+  }
+
   function maxSiblingIndex(container) {
     const prefix = container.dataset.prefix;
     const pattern = new RegExp(prefix + "\\[(\\d+)\\]");
@@ -165,9 +181,13 @@
       }
       const row = removeButton.closest(".row");
       const form = row.closest("form");
+      const container = row.parentElement;
+      const next = row.nextElementSibling;
+      const previous = row.previousElementSibling;
       row.remove();
       // Leave sparse gaps; the server orders by numeric index.
       form.dispatchEvent(new Event("change", { bubbles: true }));
+      if (container) focusAfterRemove(container, next, previous);
     }
   });
 

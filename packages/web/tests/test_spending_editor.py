@@ -13,9 +13,9 @@ from web import boundaries, forms
 
 from .row_helpers import (
     assert_row_collapsed,
+    assert_row_templates,
     rendered_rows,
     row_summary_labels,
-    template_contains_row,
 )
 
 
@@ -42,7 +42,8 @@ def test_editor_spending_renders_collapsible_stream_rows(
         TimedStream(label="   ", monthly_amount=Decimal("100"), start=stream_start),
     ]
     seeded.extra_discretionary_spending = [
-        TimedStream(label="Travel", monthly_amount=Decimal("500"), start=stream_start)
+        TimedStream(label="Travel", monthly_amount=Decimal("500"), start=stream_start),
+        TimedStream(label="   ", monthly_amount=Decimal("100"), start=stream_start),
     ]
     repo.save(plan_id, seeded)
 
@@ -50,10 +51,26 @@ def test_editor_spending_renders_collapsible_stream_rows(
     labels = row_summary_labels(response.text)
 
     assert response.status_code == 200
-    assert labels == ["Healthcare", "Untitled essential spending", "Travel"]
-    assert len(rendered_rows(response.text, "stream-row")) == 3
+    assert labels == [
+        "Healthcare",
+        "Untitled essential spending",
+        "Travel",
+        "Untitled discretionary spending",
+    ]
+    assert len(rendered_rows(response.text, "stream-row")) == 4
     assert_row_collapsed(response.text, "stream-row")
-    assert template_contains_row(response.text, "stream-row")
+    assert_row_templates(
+        response.text,
+        prefix=forms.ESSENTIAL_PREFIX,
+        row_class="stream-row",
+        empty_label="Untitled essential spending",
+    )
+    assert_row_templates(
+        response.text,
+        prefix=forms.DISCRETIONARY_PREFIX,
+        row_class="stream-row",
+        empty_label="Untitled discretionary spending",
+    )
 
 
 def test_patch_spending_keeps_categories_separate(
