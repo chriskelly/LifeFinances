@@ -1,6 +1,6 @@
 {% import "_condition_group.html" as condition %}
-<section class="editor-section">
-  <h2>{{ sections.MARKET_ASSUMPTIONS_TITLE }}</h2>
+<details class="editor-section" id="editor-market-assumptions"{% if simulation_error %} open{% endif %}>
+  <summary class="editor-section-summary"><h2>{{ sections.MARKET_ASSUMPTIONS_TITLE }}</h2></summary>
   {% if simulation_error %}
   <p class="results-error" role="alert">{{ simulation_error }}</p>
   {% endif %}
@@ -156,7 +156,7 @@
       </label>
     {% endcall %}
 
-    <details>
+    <details class="editor-subsection">
       <summary>Customize</summary>
       <label>
         Stock volatility scale
@@ -172,4 +172,4 @@
   <div id="resolved-assumptions-summary">
     {% include "_resolved_assumptions.html" %}
   </div>
-</section>
+</details>

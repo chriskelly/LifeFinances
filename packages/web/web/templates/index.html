@@ -1,13 +1,41 @@
 {% extends "base.html" %}
 
 {% block body %}
+<script>
+  // Shares the key and editorHidden meaning with readPanes() in editor_layout.js.
+  try {
+    const parsed = JSON.parse(localStorage.getItem("lifeFinances.panes") || "{}");
+    if (parsed && parsed.editorHidden) {
+      document.documentElement.classList.add("editor-hidden");
+    }
+  } catch (error) {
+    /* storage may be blocked or corrupt; the editor stays visible */
+  }
+</script>
+
 <header class="app-header">
   <h1>LifeFinances</h1>
   {% include "plan_menu.html" %}
 </header>
 
 <div class="layout">
-  <div class="editor-pane">
+  <div class="pane-rail">
+    <button
+      type="button"
+      id="toggle-editor"
+      class="pane-rail-control"
+      aria-controls="editor-pane"
+      aria-expanded="true"
+      aria-label="Editor"
+      title="Collapse editor pane"
+    >
+      <span class="pane-rail-chevron" aria-hidden="true">‹</span>
+      <span class="pane-rail-label" aria-hidden="true">Editor</span>
+    </button>
+  </div>
+  <script src="{{ routes.STATIC }}/editor_layout.js"></script>
+
+  <div class="editor-pane" id="editor-pane">
     <div id="form-error" class="form-error" role="alert" hidden></div>
     {% include "editor_household.html" %}
     {% include "editor_jobs.html" %}

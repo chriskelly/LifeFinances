@@ -1,3 +1,4 @@
+import re
 import sqlite3
 from datetime import date
 from decimal import Decimal
@@ -61,6 +62,7 @@ from web.routes import (
     PLAN_SET_DEFAULT,
     PLAN_SETTINGS,
     RESULTS,
+    STATIC,
 )
 from web.sections import (
     CLEAR_EOD_API_KEY_LABEL,
@@ -68,9 +70,13 @@ from web.sections import (
     HOUSEHOLD_TITLE,
     JOBS_TITLE,
     MANUAL_INCOME_TITLE,
+    MARKET_ASSUMPTIONS_TITLE,
     PORTFOLIO_TITLE,
+    RISK_TITLE,
     SETTINGS_TITLE,
+    SIMULATION_DETAILS_TITLE,
     SOCIAL_SECURITY_TITLE,
+    SPENDING_GOALS_TITLE,
 )
 from web.spending_summary import (
     INITIAL_SPENDING_LABEL,
@@ -81,6 +87,8 @@ from web.theme import PICO_STYLESHEET_HREF, PRIMARY
 
 from simulation import assumptions as simulation_assumptions
 from web import charts as web_charts
+
+from .section_helpers import assert_section_closed, assert_section_open
 
 
 def test_figure_json_escapes_script_breakout_sequences() -> None:
@@ -106,6 +114,20 @@ def _household_form_data() -> dict[str, str]:
         PERSON2_BIRTH_YEAR: str(p2.birth_year),
         PERSON2_MAX_AGE_YEARS: str(p2.max_age_years),
     }
+
+
+EDITOR_SECTIONS = [
+    ("editor-household", HOUSEHOLD_TITLE),
+    ("editor-jobs", JOBS_TITLE),
+    ("editor-social-security", SOCIAL_SECURITY_TITLE),
+    ("editor-manual-income", MANUAL_INCOME_TITLE),
+    ("editor-spending", SPENDING_GOALS_TITLE),
+    ("editor-risk", RISK_TITLE),
+    ("editor-market-assumptions", MARKET_ASSUMPTIONS_TITLE),
+    ("editor-simulation-details", SIMULATION_DETAILS_TITLE),
+    ("editor-portfolio", PORTFOLIO_TITLE),
+    ("editor-settings", SETTINGS_TITLE),
+]
 
 
 def test_home_shows_both_editor_sections(client: TestClient) -> None:
@@ -172,6 +194,50 @@ def test_home_shows_all_income_sections(client: TestClient, plan_id: int) -> Non
     assert JOBS_TITLE in response.text
     assert SOCIAL_SECURITY_TITLE in response.text
     assert MANUAL_INCOME_TITLE in response.text
+
+
+def test_home_renders_all_sections_as_closed_details(
+    client: TestClient, plan_id: int
+) -> None:
+    response = client.get(f"{HOME}?plan={plan_id}")
+    body = response.text
+
+    assert response.status_code == 200
+    for section_id, title in EDITOR_SECTIONS:
+        assert re.search(
+            rf'<summary class="editor-section-summary">\s*'
+            rf"<h2>{re.escape(title)}</h2>\s*</summary>",
+            body,
+        ), section_id
+        assert_section_closed(body, section_id)
+    assert body.count('class="editor-section"') == len(EDITOR_SECTIONS)
+
+
+def test_home_renders_editor_rail(client: TestClient, plan_id: int) -> None:
+    response = client.get(f"{HOME}?plan={plan_id}")
+    body = response.text
+
+    assert response.status_code == 200
+    assert 'class="pane-rail"' in body
+    assert 'id="toggle-editor"' in body
+    rail_start = body.index('class="pane-rail"')
+    button_start = body.index("<button", rail_start)
+    button_end = body.index("</button>", button_start)
+    button = body[button_start:button_end]
+    assert 'aria-controls="editor-pane"' in button
+    assert 'aria-expanded="true"' in button
+    assert 'aria-label="Editor"' in button
+    assert 'title="Collapse editor pane"' in button
+    assert 'class="pane-rail-chevron"' in button
+    assert 'class="pane-rail-label"' in button
+    assert 'id="editor-pane"' in body
+    assert body.index('class="pane-rail"') < body.index('id="toggle-editor"')
+    assert body.index('id="toggle-editor"') < body.index('id="editor-pane"')
+    assert body.index('id="editor-pane"') < body.index('id="results-panel"')
+    assert body.index("lifeFinances.panes") < body.index("<header")
+    assert body.index("lifeFinances.panes") < body.index('class="layout"')
+    assert f"{STATIC}/editor_layout.js" in body
+    assert client.get(f"{STATIC}/editor_layout.js").status_code == 200
 
 
 def test_home_auto_creates_default_plan(
@@ -947,6 +1013,8 @@ def test_home_shows_simulation_failure_in_results_panel(
     assert _SIMULATION_FAILURE_MESSAGE in response.text
     assert failure_detail not in response.text
     assert 'id="chart-config"' not in response.text
+    assert_section_open(response.text, "editor-market-assumptions")
+    assert_section_closed(response.text, "editor-household")
 
 
 def test_home_results_panel_reads_chart_from_select(

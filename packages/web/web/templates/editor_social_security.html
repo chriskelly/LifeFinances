@@ -1,6 +1,6 @@
 {% set people = forms.people_choices(plan) %}
-<section class="editor-section" id="editor-social-security">
-  <h2>{{ sections.SOCIAL_SECURITY_TITLE }}</h2>
+<details class="editor-section" id="editor-social-security"{% if ss_error or section_open %} open{% endif %}>
+  <summary class="editor-section-summary"><h2>{{ sections.SOCIAL_SECURITY_TITLE }}</h2></summary>
   {% if ss_error %}<div class="form-error" role="alert">{{ ss_error }}</div>{% endif %}
   {% for pid, plabel, person in people %}
   <div class="ss-person">
@@ -34,4 +34,4 @@
     </p>
   </div>
   {% endfor %}
-</section>
+</details>

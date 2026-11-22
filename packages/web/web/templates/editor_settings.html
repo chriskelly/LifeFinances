@@ -1,5 +1,5 @@
-<section class="editor-section">
-  <h2>{{ sections.SETTINGS_TITLE }}</h2>
+<details class="editor-section" id="editor-settings">
+  <summary class="editor-section-summary"><h2>{{ sections.SETTINGS_TITLE }}</h2></summary>
   <form
     hx-patch="{{ routes.PLAN_SETTINGS }}?plan={{ plan_id }}"
     hx-trigger="input changed delay:750ms"
@@ -56,4 +56,4 @@
     <button type="submit">{{ sections.CLEAR_EOD_API_KEY_LABEL }}</button>
   </form>
   {% endif %}
-</section>
+</details>

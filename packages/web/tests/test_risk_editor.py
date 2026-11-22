@@ -372,7 +372,7 @@ def test_editor_risk_get_advanced_details_contains_field_names(
     body = unescape(response.text)
 
     assert response.status_code == 200
-    details_start = body.index("<details>")
+    details_start = body.index('<details class="editor-subsection">')
     details_end = body.index("</details>", details_start)
     details = body[details_start:details_end]
     assert "Advanced risk settings" in details

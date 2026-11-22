@@ -1,6 +1,6 @@
 {% import "_range_slider.html" as range_slider %}
-<section class="editor-section">
-  <h2>{{ sections.RISK_TITLE }}</h2>
+<details class="editor-section" id="editor-risk">
+  <summary class="editor-section-summary"><h2>{{ sections.RISK_TITLE }}</h2></summary>
   <form
     hx-patch="{{ routes.PLAN_RISK }}?plan={{ plan_id }}"
     hx-trigger="input changed delay:750ms"
@@ -35,7 +35,7 @@
       ) }}
     </label>
 
-    <details>
+    <details class="editor-subsection">
       <summary>Advanced risk settings</summary>
       <label>
         Risk tolerance decrease by max age
@@ -69,4 +69,4 @@
       <p class="field-help">{{ forms.PREFERENCE_FOR_THE_FUTURE_HELP }}</p>
     </details>
   </form>
-</section>
+</details>

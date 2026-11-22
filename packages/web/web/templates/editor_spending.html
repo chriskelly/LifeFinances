@@ -1,8 +1,8 @@
 {% import "_stream_row.html" as streams %}
 {% set people = forms.people_choices(plan) %}
 
-<section class="editor-section">
-  <h2>{{ sections.SPENDING_GOALS_TITLE }}</h2>
+<details class="editor-section" id="editor-spending">
+  <summary class="editor-section-summary"><h2>{{ sections.SPENDING_GOALS_TITLE }}</h2></summary>
   <form
     hx-patch="{{ routes.PLAN_SPENDING }}?plan={{ plan_id }}"
     hx-trigger="input changed delay:750ms, change delay:750ms"
@@ -34,4 +34,4 @@
     </label>
     <p class="field-help">{{ forms.LEGACY_TARGET_HELP }}</p>
   </form>
-</section>
+</details>

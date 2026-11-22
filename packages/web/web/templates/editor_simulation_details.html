@@ -1,5 +1,5 @@
-<details class="editor-section">
-  <summary><h2>{{ sections.SIMULATION_DETAILS_TITLE }}</h2></summary>
+<details class="editor-section" id="editor-simulation-details">
+  <summary class="editor-section-summary"><h2>{{ sections.SIMULATION_DETAILS_TITLE }}</h2></summary>
   <form
     hx-patch="{{ routes.PLAN_SIMULATION_DETAILS }}?plan={{ plan_id }}"
     hx-trigger="input changed delay:750ms, change delay:750ms"

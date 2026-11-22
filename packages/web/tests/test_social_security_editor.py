@@ -12,6 +12,8 @@ from web.routes import (
 )
 from web.sections import SOCIAL_SECURITY_TITLE
 
+from .section_helpers import assert_section_closed, assert_section_open
+
 
 def _statement_xml(years: list[int]) -> str:
     rows = "\n".join(
@@ -73,6 +75,7 @@ def test_upload_statement_replaces_earnings_and_triggers_refresh(
     )
 
     assert response.status_code == 200
+    assert_section_open(response.text, "editor-social-security")
     assert response.headers.get("HX-Trigger") == "planUpdated"
     after = repo.get_by_id(plan_id)
     assert after is not None
@@ -102,6 +105,7 @@ def test_upload_invalid_xml_rerenders_error_without_changing_earnings(
     # htmx only swaps 2xx responses, so the error has to come back as a
     # renderable partial rather than an error status the shell dumps as text.
     assert response.status_code == 200
+    assert_section_open(response.text, "editor-social-security")
     assert 'class="form-error"' in response.text
     assert 'role="alert"' in response.text
     assert response.headers.get("HX-Trigger") is None
@@ -122,6 +126,7 @@ def test_upload_oversized_statement_is_rejected_without_changing_earnings(
     )
 
     assert response.status_code == 200
+    assert_section_open(response.text, "editor-social-security")
     assert 'class="form-error"' in response.text
     after = repo.get_by_id(plan_id)
     assert after is not None
@@ -136,3 +141,12 @@ def test_editor_social_security_get_renders_section(
 
     assert response.status_code == 200
     assert SOCIAL_SECURITY_TITLE in response.text
+
+
+def test_editor_social_security_get_is_closed_by_default(
+    client: TestClient, plan_id: int
+) -> None:
+    response = client.get(f"{EDITOR_SOCIAL_SECURITY}?plan={plan_id}")
+
+    assert response.status_code == 200
+    assert_section_closed(response.text, "editor-social-security")

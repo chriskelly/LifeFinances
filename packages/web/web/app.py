@@ -149,11 +149,17 @@ def _ss_partial(
     plan_model: Plan,
     error: str | None = None,
     headers: dict[str, str] | None = None,
+    section_open: bool = False,
 ) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "editor_social_security.html",
-        {"plan_id": plan_id, "plan": plan_model, "ss_error": error},
+        {
+            "plan_id": plan_id,
+            "plan": plan_model,
+            "ss_error": error,
+            "section_open": section_open,
+        },
         headers=headers,
     )
 
@@ -644,6 +650,7 @@ def _register_social_security_routes(web_app: FastAPI) -> None:
             plan_id=selected.id,
             plan_model=updated,
             headers={"HX-Trigger": "planUpdated"},
+            section_open=True,
         )
 
 
