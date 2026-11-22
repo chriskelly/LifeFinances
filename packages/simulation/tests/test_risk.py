@@ -146,6 +146,15 @@ def test_legacy_rra_uses_legacy_delta():
     )
 
 
+def test_default_legacy_rra_adds_tpaw_delta_to_age_20_tolerance():
+    # Pinned: TPAW's default legacy delta is 2, so the legacy carve uses the
+    # age-20 tolerance plus 2.
+    config = RiskConfig()
+
+    expected_tolerance = config.risk_tolerance_at_20 + Decimal(2)
+    assert legacy_rra(config) == risk_tolerance_to_rra(float(expected_tolerance))
+
+
 def test_legacy_rra_floors_at_zero_tolerance_for_extreme_negative_delta():
     # A legacy delta that would push tolerance below 0 must floor at 0
     # (infinite RRA / 0% stocks), matching _interpolate_risk_tolerance's

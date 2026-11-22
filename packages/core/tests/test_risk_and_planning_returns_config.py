@@ -17,6 +17,11 @@ from core.models import (
 from pydantic import ValidationError
 
 
+def test_legacy_delta_default_matches_tpaw():
+    # Pinned: TPAW's DEFAULT_RISK_TPAW.riskTolerance.forLegacyAsDeltaFromAt20 is 2.
+    assert RiskConfig().legacy_delta_from_at_20 == Decimal(2)
+
+
 def test_risk_config_defaults_match_constants():
     config = RiskConfig()
 

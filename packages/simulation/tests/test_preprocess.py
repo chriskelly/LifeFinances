@@ -8,8 +8,9 @@ from core.job import Job
 from core.models import Household, InflationConfig, PersonHousehold, Plan
 from core.streams import CalendarMonthBoundary, TimedStream
 from simulation.market_data.inflation import annual_to_monthly
+from simulation.mertons import effective_mertons
 from simulation.preprocess import ProcessedPlan, preprocess
-from simulation.risk import rra_by_month
+from simulation.risk import risk_tolerance_to_rra, rra_by_month
 
 
 def _spending_plan(*, streams: list[TimedStream], annual_inflation: Decimal):
@@ -235,6 +236,29 @@ def test_legacy_npv_zero_when_no_legacy_target():
     processed = preprocess(plan, today=today)
 
     assert np.allclose(processed.legacy_npv, 0.0)
+
+
+def test_default_legacy_stock_allocation_uses_tpaw_legacy_delta():
+    # Pinned: the legacy carve is invested at the age-20 tolerance plus TPAW's
+    # default legacy delta of 2, with no time preference or spending tilt.
+    plan = default_plan()
+    today = date(2026, 1, 1)
+    expected_rra = risk_tolerance_to_rra(
+        float(plan.risk.risk_tolerance_at_20 + Decimal(2))
+    )
+
+    processed = preprocess(plan, today=today)
+
+    planning = processed.planning_resolved
+    expected = effective_mertons(
+        annual_bond_return=planning.annual_bonds,
+        annual_equity_premium=planning.annual_stocks - planning.annual_bonds,
+        annual_variance_stocks=planning.annual_stock_log_variance,
+        rra=expected_rra,
+        time_preference=0.0,
+        annual_additional_spending_tilt=0.0,
+    )
+    assert processed.legacy_stock_allocation == pytest.approx(expected.stock_allocation)
 
 
 def test_age_glide_rra_tracks_person_with_latest_end_date_not_highest_max_age():
