@@ -2,8 +2,8 @@
 
 This package turns a `Plan` into a set of simulated retirement outcomes. It is a
 Python port of the withdrawal logic from [TPAW](https://tpawplanner.com/), adapted
-to this rebuild's product scope (no spending ceiling/floor, no tax-bucket
-sequencing yet, single scalar inflation rate). This document is a prose walkthrough
+to this rebuild's product scope: no spending ceiling/floor, no tax-bucket
+sequencing, and a single scalar inflation rate. This document is a prose walkthrough
 of how a plan flows through the engine — read it before diving into the source.
 
 ## The pipeline
@@ -57,8 +57,8 @@ the whole horizon and uses it to deflate those genuinely nominal streams once,
 at the boundary, rather than carrying inflation as a per-month adjustment
 through the rest of the pipeline. Real income therefore passes through
 undeflated — its growth is a real raise, not an inflation-adjusted one. This is
-a deliberate simplification versus TPAW's stochastic/bootstrapped inflation —
-see `packages/simulation/docs/parity.md` for the parity note.
+a deliberate simplification versus TPAW's stochastic/bootstrapped inflation:
+the engine resolves one scalar monthly rate for the whole horizon.
 
 **Return paths.** Also, `build_return_paths` produces bootstrapped
 monthly stock and bond returns for every simulated run, over the full horizon.
