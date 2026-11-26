@@ -119,13 +119,13 @@ def _household_form_data() -> dict[str, str]:
 EDITOR_SECTIONS = [
     ("editor-household", HOUSEHOLD_TITLE),
     ("editor-jobs", JOBS_TITLE),
+    ("editor-portfolio", PORTFOLIO_TITLE),
     ("editor-social-security", SOCIAL_SECURITY_TITLE),
     ("editor-manual-income", MANUAL_INCOME_TITLE),
     ("editor-spending", SPENDING_GOALS_TITLE),
     ("editor-risk", RISK_TITLE),
     ("editor-market-assumptions", MARKET_ASSUMPTIONS_TITLE),
     ("editor-simulation-details", SIMULATION_DETAILS_TITLE),
-    ("editor-portfolio", PORTFOLIO_TITLE),
     ("editor-settings", SETTINGS_TITLE),
 ]
 
@@ -211,6 +211,19 @@ def test_home_renders_all_sections_as_closed_details(
         ), section_id
         assert_section_closed(body, section_id)
     assert body.count('class="editor-section"') == len(EDITOR_SECTIONS)
+
+
+def test_home_renders_editor_sections_in_order(
+    client: TestClient, plan_id: int
+) -> None:
+    response = client.get(f"{HOME}?plan={plan_id}")
+
+    assert response.status_code == 200
+    rendered = re.findall(
+        r'<details class="editor-section" id="([^"]+)"', response.text
+    )
+
+    assert rendered == [section_id for section_id, _ in EDITOR_SECTIONS]
 
 
 def test_home_renders_editor_rail(client: TestClient, plan_id: int) -> None:
