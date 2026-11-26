@@ -175,7 +175,8 @@ def test_removed_rows_stay_removed_after_reload(editor_page: Page) -> None:
     with editor_page.expect_response(
         lambda response: (
             response.request.method == "PATCH" and PLAN_JOBS in response.url
-        )
+        ),
+        timeout=8_000,
     ) as first_save:
         rows.nth(1).get_by_role("button", name="Remove job", exact=True).click()
     assert first_save.value.ok
@@ -183,7 +184,8 @@ def test_removed_rows_stay_removed_after_reload(editor_page: Page) -> None:
     with editor_page.expect_response(
         lambda response: (
             response.request.method == "PATCH" and PLAN_JOBS in response.url
-        )
+        ),
+        timeout=8_000,
     ) as second_save:
         rows.nth(0).get_by_role("button", name="Remove job", exact=True).click()
     assert second_save.value.ok

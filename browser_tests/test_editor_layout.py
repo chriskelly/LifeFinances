@@ -38,11 +38,15 @@ def test_pane_toggle_resizes_chart(editor_page: Page) -> None:
     button = editor_page.locator("#toggle-editor")
 
     button.click()
-    editor_page.wait_for_function("window.__plotlyResizeTargets.length === 1")
+    editor_page.wait_for_function(
+        "window.__plotlyResizeTargets.length === 1", timeout=5_000
+    )
     assert editor_page.evaluate("window.__plotlyResizeTargets[0]") == "results-chart"
 
     button.click()
-    editor_page.wait_for_function("window.__plotlyResizeTargets.length === 2")
+    editor_page.wait_for_function(
+        "window.__plotlyResizeTargets.length === 2", timeout=5_000
+    )
 
 
 def test_corrupt_panes_storage_falls_back_to_visible(editor_page: Page) -> None:
