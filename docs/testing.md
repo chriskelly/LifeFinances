@@ -19,7 +19,7 @@ the target instead of skipping. CI runs the same target.
 The list below is the full checklist. The harness automates the add, focus,
 summary, sabbatical, removal, `existing_index`, pane-toggle, Plotly resize, and
 corrupt-storage cases; keyboard/focus-ring, computed-style, partner-independence,
-and re-add-sabbatical checks remain manual.
+and sabbatical re-add-after-removal/attribution checks remain manual.
 
 - Add a job, spending row, or income row: it opens, its label is focused, and
   the summary follows the label as it is typed. Clearing the label or entering

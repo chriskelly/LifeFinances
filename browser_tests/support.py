@@ -7,8 +7,8 @@ import pytest
 from playwright.sync_api import Locator, Page, TimeoutError, expect
 
 SAVE_TIMEOUT_MS = 8_000
-# Mirrors web.routes.PLAN_JOBS; importing web here would build an app bound to
-# the developer's real database in the pytest process.
+# These mirror web.routes.PLAN_JOBS and web.forms.EXISTING_INDEX; importing web
+# here would build an app bound to the developer's real database.
 PLAN_JOBS_PATH = "/plan/jobs"
 EXISTING_INDEX_SUFFIX = ".existing_index"
 

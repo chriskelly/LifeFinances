@@ -141,9 +141,11 @@ def test_sabbatical_open_state_survives_job_reopen(editor_page: Page) -> None:
         job.locator(".rows[data-prefix='sabbaticals']"),
         add_label="Add sabbatical",
     )
-    expect(
-        second.locator(":scope > .row-fields select.boundary-kind").first
-    ).to_be_focused()
+    second_start = second.locator(":scope > .row-fields select.boundary-kind").first
+    expect(second_start).to_be_focused()
+    assert (second_start.get_attribute("name") or "").endswith(
+        ".sabbaticals[1].start_kind"
+    )
 
 
 def test_remove_first_row_focuses_next_summary(editor_page: Page) -> None:
@@ -248,11 +250,11 @@ def test_saved_row_keeps_existing_index_inside_row_fields(
     # The save is visible in the fixture's temp DB, proving the subprocess used it.
     saved_plan = PlanRepository(db_path=live_app.db_path).get_by_id(1)
     assert saved_plan is not None
-    if prefix == "jobs":
-        labels = [job.label for job in saved_plan.household.person1.jobs]
-    else:
-        labels = [stream.label for stream in saved_plan.extra_essential_spending]
-    assert labels == [label_text]
+    saved_labels = {
+        "jobs": [job.label for job in saved_plan.household.person1.jobs],
+        "essential": [stream.label for stream in saved_plan.extra_essential_spending],
+    }
+    assert saved_labels[prefix] == [label_text]
 
     editor_page.reload()
     open_section(page=editor_page, section=section)
