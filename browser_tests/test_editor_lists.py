@@ -1,8 +1,15 @@
 import pytest
+from core.repository import PlanRepository
 from playwright.sync_api import Page, expect
 from web.routes import PLAN_JOBS
 
-from browser_tests.support import add_row, open_section, section_rows
+from browser_tests.conftest import LiveApp
+from browser_tests.support import (
+    add_row,
+    open_section,
+    section_rows,
+    wait_for_existing_index,
+)
 
 ROW_CASES = [
     pytest.param("#editor-jobs", "jobs", "Add job", "Untitled job", id="job"),
@@ -185,3 +192,54 @@ def test_removed_rows_stay_removed_after_reload(editor_page: Page) -> None:
             ":scope > details.row"
         )
     ).to_have_count(0)
+
+
+INDEX_CASES = [
+    pytest.param("#editor-jobs", "jobs", "Add job", "Saved job", id="job"),
+    pytest.param(
+        "#editor-spending",
+        "essential",
+        "Add essential spending",
+        "Saved spending",
+        id="spending",
+    ),
+]
+
+
+@pytest.mark.parametrize(("section", "prefix", "add_label", "label_text"), INDEX_CASES)
+def test_saved_row_keeps_existing_index_inside_row_fields(
+    editor_page: Page,
+    live_app: LiveApp,
+    section: str,
+    prefix: str,
+    add_label: str,
+    label_text: str,
+) -> None:
+    open_section(page=editor_page, section=section)
+    row = add_row(
+        section_rows(page=editor_page, section=section, prefix=prefix),
+        add_label=add_label,
+    )
+
+    row.locator("input[data-summary-source]").fill(label_text)
+    index_input = wait_for_existing_index(row)
+
+    expect(index_input).to_have_value("0")
+    expect(row.locator(":scope > input")).to_have_count(0)
+
+    # The save is visible in the fixture's temp DB, proving the subprocess used it.
+    saved_plan = PlanRepository(db_path=live_app.db_path).get_by_id(1)
+    assert saved_plan is not None
+    assert label_text in saved_plan.model_dump_json()
+
+    editor_page.reload()
+    open_section(page=editor_page, section=section)
+    saved = (
+        editor_page.locator(f"{section} details.row").filter(has_text=label_text).first
+    )
+    expect(
+        saved.locator(
+            ":scope > .row-fields > input[type='hidden'][name$='.existing_index']"
+        )
+    ).to_have_value("0")
+    expect(saved.locator(":scope > input")).to_have_count(0)
