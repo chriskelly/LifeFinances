@@ -8,7 +8,6 @@ import time
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
-from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 
@@ -17,17 +16,12 @@ from core.db_bootstrap import materialize_blank_db
 from core.models import InflationConfig
 from core.paths import default_db_path, repo_root
 from core.repository import PlanRepository
-from core.settings_repository import SettingsRepository
 from playwright.sync_api import Browser, Page, Playwright, sync_playwright
 from playwright.sync_api import Error as PlaywrightError
 
-from browser_tests.support import goto_editor
+from browser_tests.support import LiveApp, goto_editor
 
-
-@dataclass(frozen=True)
-class LiveApp:
-    base_url: str
-    db_path: Path
+SERVER_START_TIMEOUT_SECONDS = 20.0
 
 
 def _free_port() -> int:
@@ -41,9 +35,8 @@ def _wait_for_server(
     base_url: str,
     process: subprocess.Popen[bytes],
     log_path: Path,
-    timeout: float = 20.0,
 ) -> None:
-    deadline = time.monotonic() + timeout
+    deadline = time.monotonic() + SERVER_START_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
         if process.poll() is not None:
             pytest.fail(
@@ -54,14 +47,18 @@ def _wait_for_server(
             with urllib.request.urlopen(f"{base_url}/favicon.ico", timeout=0.5):
                 return
         except urllib.error.URLError, TimeoutError, ConnectionError:
+            # Readiness poll interval, not a UI wait.
             time.sleep(0.05)
-    pytest.fail(f"uvicorn did not answer on {base_url} within {timeout:.0f}s")
+    pytest.fail(
+        "uvicorn did not answer on "
+        f"{base_url} within {SERVER_START_TIMEOUT_SECONDS:.0f}s:\n"
+        f"{log_path.read_text(encoding='utf-8')[-4_000:]}"
+    )
 
 
 def _seed_offline_plan(db_path: Path) -> None:
     plans = PlanRepository(db_path=db_path)
-    settings = SettingsRepository(db_path=db_path)
-    plan_id, plan = plans.ensure_bootstrap(settings_repo=settings)
+    plan_id, plan = plans.get_or_create_default()
     # The browser harness never needs market data: manual inflation and fixed
     # returns keep the first page load offline and deterministic.
     plan.inflation = InflationConfig(mode="manual", manual_annual_rate=Decimal("0.025"))
@@ -81,11 +78,10 @@ def browser(playwright_instance: Playwright) -> Iterator[Browser]:
         browser = playwright_instance.chromium.launch(headless=True)
     except PlaywrightError as exc:
         pytest.fail(
-            "Chromium is not installed. Run `make browser-checks` to install it; "
-            "on Linux use `uv run playwright install --with-deps chromium`.\n"
+            "Chromium could not be launched. Run `make browser-checks` to install "
+            "it; on Linux use `uv run playwright install --with-deps chromium`.\n"
             f"{exc}"
         )
-        raise
     yield browser
     browser.close()
 

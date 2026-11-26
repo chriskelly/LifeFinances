@@ -1,11 +1,13 @@
 import pytest
 from core.repository import PlanRepository
-from playwright.sync_api import Page, expect
-from web.routes import PLAN_JOBS
+from playwright.sync_api import Page, Response, expect
 
-from browser_tests.conftest import LiveApp
 from browser_tests.support import (
+    PLAN_JOBS_PATH,
+    SAVE_TIMEOUT_MS,
+    LiveApp,
     add_row,
+    existing_index_input,
     open_section,
     section_rows,
     wait_for_existing_index,
@@ -68,6 +70,7 @@ def test_label_typing_updates_summary(
     label = row.locator(":scope > .row-fields input[data-summary-source]")
     summary = row.locator(":scope > summary [data-summary-label]")
 
+    expect(summary).to_have_text(empty_label)
     label.fill("  Consulting  ")
 
     expect(summary).to_have_text("Consulting")
@@ -133,6 +136,15 @@ def test_sabbatical_open_state_survives_job_reopen(editor_page: Page) -> None:
     expect(job).to_have_js_property("open", True)
     assert sabbatical.evaluate("element => element.open") is True
 
+    # Re-adding after the reopen still runs the JS focus and insertion path.
+    second = add_row(
+        job.locator(".rows[data-prefix='sabbaticals']"),
+        add_label="Add sabbatical",
+    )
+    expect(
+        second.locator(":scope > .row-fields select.boundary-kind").first
+    ).to_be_focused()
+
 
 def test_remove_first_row_focuses_next_summary(editor_page: Page) -> None:
     open_section(page=editor_page, section="#editor-jobs")
@@ -144,6 +156,7 @@ def test_remove_first_row_focuses_next_summary(editor_page: Page) -> None:
 
     rows.nth(0).get_by_role("button", name="Remove job", exact=True).click()
 
+    expect(rows).to_have_count(1)
     expect(rows.nth(0).locator(":scope > summary")).to_be_focused()
 
 
@@ -158,10 +171,16 @@ def test_remove_last_row_focuses_previous_then_add_button(
     rows = container.locator(":scope > details.row")
 
     rows.nth(1).get_by_role("button", name="Remove job", exact=True).click()
+    expect(rows).to_have_count(1)
     expect(rows.nth(0).locator(":scope > summary")).to_be_focused()
 
     rows.nth(0).get_by_role("button", name="Remove job", exact=True).click()
+    expect(rows).to_have_count(0)
     expect(container.get_by_role("button", name="Add job", exact=True)).to_be_focused()
+
+
+def _is_jobs_save(response: Response) -> bool:
+    return response.request.method == "PATCH" and PLAN_JOBS_PATH in response.url
 
 
 def test_removed_rows_stay_removed_after_reload(editor_page: Page) -> None:
@@ -173,19 +192,13 @@ def test_removed_rows_stay_removed_after_reload(editor_page: Page) -> None:
     rows = container.locator(":scope > details.row")
 
     with editor_page.expect_response(
-        lambda response: (
-            response.request.method == "PATCH" and PLAN_JOBS in response.url
-        ),
-        timeout=8_000,
+        _is_jobs_save, timeout=SAVE_TIMEOUT_MS
     ) as first_save:
         rows.nth(1).get_by_role("button", name="Remove job", exact=True).click()
     assert first_save.value.ok
 
     with editor_page.expect_response(
-        lambda response: (
-            response.request.method == "PATCH" and PLAN_JOBS in response.url
-        ),
-        timeout=8_000,
+        _is_jobs_save, timeout=SAVE_TIMEOUT_MS
     ) as second_save:
         rows.nth(0).get_by_role("button", name="Remove job", exact=True).click()
     assert second_save.value.ok
@@ -235,16 +248,16 @@ def test_saved_row_keeps_existing_index_inside_row_fields(
     # The save is visible in the fixture's temp DB, proving the subprocess used it.
     saved_plan = PlanRepository(db_path=live_app.db_path).get_by_id(1)
     assert saved_plan is not None
-    assert label_text in saved_plan.model_dump_json()
+    if prefix == "jobs":
+        labels = [job.label for job in saved_plan.household.person1.jobs]
+    else:
+        labels = [stream.label for stream in saved_plan.extra_essential_spending]
+    assert labels == [label_text]
 
     editor_page.reload()
     open_section(page=editor_page, section=section)
     saved = (
         editor_page.locator(f"{section} details.row").filter(has_text=label_text).first
     )
-    expect(
-        saved.locator(
-            ":scope > .row-fields > input[type='hidden'][name$='.existing_index']"
-        )
-    ).to_have_value("0")
+    expect(existing_index_input(saved)).to_have_value("0")
     expect(saved.locator(":scope > input")).to_have_count(0)

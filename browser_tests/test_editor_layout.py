@@ -30,6 +30,9 @@ def test_pane_toggle_updates_class_aria_and_storage(editor_page: Page) -> None:
     button.click()
     assert not root.evaluate("element => element.classList.contains('editor-hidden')")
     expect(button).to_have_attribute("aria-expanded", "true")
+    assert editor_page.evaluate(
+        "JSON.parse(localStorage.getItem('lifeFinances.panes'))"
+    ) == {"editorHidden": False}
 
 
 def test_pane_toggle_resizes_chart(editor_page: Page) -> None:
@@ -47,6 +50,7 @@ def test_pane_toggle_resizes_chart(editor_page: Page) -> None:
     editor_page.wait_for_function(
         "window.__plotlyResizeTargets.length === 2", timeout=5_000
     )
+    assert editor_page.evaluate("window.__plotlyResizeTargets[1]") == "results-chart"
 
 
 def test_corrupt_panes_storage_falls_back_to_visible(editor_page: Page) -> None:

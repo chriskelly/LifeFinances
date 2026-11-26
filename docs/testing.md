@@ -12,15 +12,14 @@ root `AGENTS.md`.
 
 `make browser-checks` runs the Playwright/Chromium harness in `browser_tests/`.
 It starts the app with `LIFE_FINANCES_DB_PATH` pointed at a throwaway database
-(never `data/data.db`) and automates the list and pane checks below that it
-covers; the remaining checks stay manual. The first run installs Chromium; on
-Linux use `uv run playwright install --with-deps chromium` once. A missing
-browser fails the target instead of skipping. CI runs the same target.
+(never `data/data.db`) and installs Chromium if needed; on Linux use
+`uv run playwright install --with-deps chromium` once. A missing browser fails
+the target instead of skipping. CI runs the same target.
 
-The checks below are the complete manual pass. The harness covers the add,
-focus, summary, sabbatical, removal, `existing_index`, pane-toggle, Plotly
-resize, and corrupt-storage cases; keyboard/focus-ring, computed-style,
-partner-independence, and re-add-sabbatical checks remain manual.
+The list below is the full checklist. The harness automates the add, focus,
+summary, sabbatical, removal, `existing_index`, pane-toggle, Plotly resize, and
+corrupt-storage cases; keyboard/focus-ring, computed-style, partner-independence,
+and re-add-sabbatical checks remain manual.
 
 - Add a job, spending row, or income row: it opens, its label is focused, and
   the summary follows the label as it is typed. Clearing the label or entering
