@@ -1,5 +1,6 @@
 import pytest
 from playwright.sync_api import Page, expect
+from web.routes import PLAN_JOBS
 
 from browser_tests.support import add_row, open_section, section_rows
 
@@ -84,3 +85,103 @@ def test_whitespace_label_falls_back_to_empty_label(
     label.fill("   ")
 
     expect(summary).to_have_text(empty_label)
+
+
+def test_sabbatical_add_focuses_start_control(editor_page: Page) -> None:
+    open_section(page=editor_page, section="#editor-jobs")
+    job = add_row(
+        section_rows(page=editor_page, section="#editor-jobs", prefix="jobs"),
+        add_label="Add job",
+    )
+    sabbatical = add_row(
+        job.locator(".rows[data-prefix='sabbaticals']"),
+        add_label="Add sabbatical",
+    )
+    start_kind = sabbatical.locator(":scope > .row-fields select.boundary-kind").first
+
+    expect(start_kind).to_be_focused()
+    assert (start_kind.get_attribute("name") or "").endswith(".start_kind")
+
+
+def test_sabbatical_open_state_survives_job_reopen(editor_page: Page) -> None:
+    open_section(page=editor_page, section="#editor-jobs")
+    job = add_row(
+        section_rows(page=editor_page, section="#editor-jobs", prefix="jobs"),
+        add_label="Add job",
+    )
+    sabbatical = add_row(
+        job.locator(".rows[data-prefix='sabbaticals']"),
+        add_label="Add sabbatical",
+    )
+    job_summary = job.locator(":scope > summary")
+
+    job_summary.click()
+    expect(job).to_have_js_property("open", False)
+    assert sabbatical.evaluate("element => element.open") is True
+
+    job_summary.click()
+    expect(job).to_have_js_property("open", True)
+    assert sabbatical.evaluate("element => element.open") is True
+
+
+def test_remove_first_row_focuses_next_summary(editor_page: Page) -> None:
+    open_section(page=editor_page, section="#editor-jobs")
+    container = section_rows(page=editor_page, section="#editor-jobs", prefix="jobs")
+    add_row(container, add_label="Add job")
+    add_row(container, add_label="Add job")
+    editor_page.on("dialog", lambda dialog: dialog.accept())
+    rows = container.locator(":scope > details.row")
+
+    rows.nth(0).get_by_role("button", name="Remove job", exact=True).click()
+
+    expect(rows.nth(0).locator(":scope > summary")).to_be_focused()
+
+
+def test_remove_last_row_focuses_previous_then_add_button(
+    editor_page: Page,
+) -> None:
+    open_section(page=editor_page, section="#editor-jobs")
+    container = section_rows(page=editor_page, section="#editor-jobs", prefix="jobs")
+    add_row(container, add_label="Add job")
+    add_row(container, add_label="Add job")
+    editor_page.on("dialog", lambda dialog: dialog.accept())
+    rows = container.locator(":scope > details.row")
+
+    rows.nth(1).get_by_role("button", name="Remove job", exact=True).click()
+    expect(rows.nth(0).locator(":scope > summary")).to_be_focused()
+
+    rows.nth(0).get_by_role("button", name="Remove job", exact=True).click()
+    expect(container.get_by_role("button", name="Add job", exact=True)).to_be_focused()
+
+
+def test_removed_rows_stay_removed_after_reload(editor_page: Page) -> None:
+    open_section(page=editor_page, section="#editor-jobs")
+    container = section_rows(page=editor_page, section="#editor-jobs", prefix="jobs")
+    add_row(container, add_label="Add job")
+    add_row(container, add_label="Add job")
+    editor_page.on("dialog", lambda dialog: dialog.accept())
+    rows = container.locator(":scope > details.row")
+
+    with editor_page.expect_response(
+        lambda response: (
+            response.request.method == "PATCH" and PLAN_JOBS in response.url
+        )
+    ) as first_save:
+        rows.nth(1).get_by_role("button", name="Remove job", exact=True).click()
+    assert first_save.value.ok
+
+    with editor_page.expect_response(
+        lambda response: (
+            response.request.method == "PATCH" and PLAN_JOBS in response.url
+        )
+    ) as second_save:
+        rows.nth(0).get_by_role("button", name="Remove job", exact=True).click()
+    assert second_save.value.ok
+
+    editor_page.reload()
+    open_section(page=editor_page, section="#editor-jobs")
+    expect(
+        section_rows(page=editor_page, section="#editor-jobs", prefix="jobs").locator(
+            ":scope > details.row"
+        )
+    ).to_have_count(0)
