@@ -89,6 +89,9 @@ def test_whitespace_label_falls_back_to_empty_label(
     label = row.locator(":scope > .row-fields input[data-summary-source]")
     summary = row.locator(":scope > summary [data-summary-label]")
 
+    label.fill("Consulting")
+    expect(summary).to_have_text("Consulting")
+
     label.fill("   ")
 
     expect(summary).to_have_text(empty_label)
