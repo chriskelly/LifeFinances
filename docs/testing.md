@@ -10,10 +10,16 @@ root `AGENTS.md`.
 
 ## Browser-only editor behavior
 
-The repo has no JavaScript test runner; issue #291 tracks a browser harness. A
-change to `editor_lists.js`, `editor_layout.js`, `editor_conditional.js`, or the
-editor CSS in `style.css` needs a headless-browser pass against a temporary
-database (`LIFE_FINANCES_DB_PATH`), not `data/data.db`:
+`make browser-checks` runs the Playwright/Chromium harness in `browser_tests/`.
+It starts the app with `LIFE_FINANCES_DB_PATH` pointed at a throwaway database
+(never `data/data.db`) and installs Chromium if needed; on Linux use
+`uv run playwright install --with-deps chromium` once. A missing browser fails
+the target instead of skipping. CI runs the same target.
+
+The list below is the full checklist. The harness automates the add, focus,
+summary, sabbatical, removal, `existing_index`, pane-toggle, Plotly resize, and
+corrupt-storage cases; keyboard/focus-ring, computed-style, partner-independence,
+and sabbatical re-add-after-removal/attribution checks remain manual.
 
 - Add a job, spending row, or income row: it opens, its label is focused, and
   the summary follows the label as it is typed. Clearing the label or entering

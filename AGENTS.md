@@ -48,6 +48,7 @@ Run everything from the **repository root**; `LIFE_FINANCES_DB_PATH` overrides t
 | Coverage gate | `make coverage` |
 | Lint | `make lint` |
 | Lint + test | `make` |
+| Browser checks | `make browser-checks` |
 | Pre-commit | `pre-commit run --all-files` |
 | DB schema | `sqlite3 data/data.db ".schema"` |
 | Inspect a plan | `uv run python scripts/db_inspect.py --plan 1` |
