@@ -2,8 +2,8 @@
 
 Mirrors `run_tpaw.cu::_kernel` / `_single_month`: the array axis is the run
 axis, and this module advances every run one month at a time using the
-per-month planning-return precompute from `preprocess.py` and the per-run
-bootstrapped simple returns from Phase 3a.
+per-month planning-return precompute from `preprocess.py` and the
+bootstrapped stock and bond simple returns for each run.
 """
 
 from __future__ import annotations

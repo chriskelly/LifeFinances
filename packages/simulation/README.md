@@ -290,7 +290,7 @@ Unit tests pin numeric outputs against TPAW doctests in `test_mertons.py`; see
 
 Implementation lives in `presets.py` (pure math) and `planning_returns.py`
 (dispatch + market-data injection). Vendored inputs are under
-`market_data/data/` — see `packages/simulation/simulation/market_data/data/PROVENANCE.md` for sources.
+`simulation/market_data/data/` — see `packages/simulation/simulation/market_data/data/PROVENANCE.md` for sources.
 
 ### Preset menu
 

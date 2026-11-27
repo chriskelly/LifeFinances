@@ -58,7 +58,7 @@ After substantive changes, run `make` and confirm it passes before claiming work
 ## Tools and results
 
 - Explain a result: with the dev server running, follow `.agents/skills/explain-results/SKILL.md`; call the local JSON routes for the cached simulation, never a separate simulation process.
-- Disability insurance calculator: `uv run marimo edit tools/disability_insurance.py` (rules: `tools/AGENTS.md`).
+- Disability insurance calculator: see `tools/README.md` (rules: `tools/AGENTS.md`).
 
 ## Testing
 
@@ -102,7 +102,7 @@ core → stdlib + pydantic + sqlite
 ## Hard guardrails
 
 - NEVER commit `data/data.db` or personal plan data.
-- NEVER modify config.yml — YAML workflow removed; legacy import is the import script only (`scripts/import_legacy_yaml.py`).
+- Legacy import runs only through `scripts/import_legacy_yaml.py`.
 - NEVER modify files under `.github/workflows/` without explicit user confirmation.
 - NEVER edit lockfiles by hand — use `uv add` / `uv sync`.
 - NEVER import `web` from `tools/` or `simulation`.

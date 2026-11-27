@@ -4,13 +4,7 @@ Marimo standalone apps live here. They consume shared packages; they are not the
 
 ## Run
 
-From the repository root:
-
-```bash
-uv run marimo edit tools/disability_insurance.py
-```
-
-Optional: `uv run marimo run tools/disability_insurance.py` for view-only.
+Commands live in `tools/README.md`.
 
 ## Rules
 
