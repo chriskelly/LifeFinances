@@ -48,4 +48,4 @@ Copy `data/data.db` to back up plans. No in-app export currently.
 
 
 
-**Legacy v1 (Flask + React):** tag `[legacy/v1-final](https://github.com/chriskelly/LifeFinances/tree/legacy/v1-final)` and mirror repo [life-finances-legacy](https://github.com/chriskelly/life-finances-legacy).
+**Legacy v1 (Flask + React):** tag [legacy/v1-final](https://github.com/chriskelly/LifeFinances/tree/legacy/v1-final) and mirror repo [life-finances-legacy](https://github.com/chriskelly/life-finances-legacy).
